@@ -859,6 +859,20 @@ a{color:#003a8c;text-decoration:none}
 /* MODALS */
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.show{display:flex}
+
+/* ══ 登录页（全屏，退出后跳转） ══ */
+.login-page{position:fixed;top:0;left:0;right:0;bottom:0;z-index:500;display:none;align-items:center;justify-content:center;padding:20px;background:linear-gradient(160deg,#e6f4ff 0%,#f0f2f5 55%,#fff 100%)}
+.login-page.show{display:flex}
+.login-card{width:100%;max-width:420px;background:#fff;border:1px solid #d6e4ff;border-radius:18px;padding:32px 28px;box-shadow:0 12px 40px rgba(22,119,255,.12);box-sizing:border-box}
+.login-brand{text-align:center;margin-bottom:22px}
+.login-logo{width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,#1677ff,#003a8c);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;margin:0 auto 10px}
+.login-title{font-size:20px;font-weight:700;color:#003a8c}
+.login-sub{font-size:12px;color:#8c9bb5;margin-top:4px}
+.login-input{width:100%;margin-bottom:12px;box-sizing:border-box;padding:10px 12px;border:1px solid #91caff;border-radius:8px;font-size:14px;outline:none;background:#f7fbff}
+.login-input:focus{border-color:#1677ff;background:#fff}
+.login-foot{text-align:center;margin-top:18px;padding-top:14px;border-top:1px solid #eef0f2}
+.login-local{font-size:12px;color:#8c9bb5;text-decoration:none;cursor:pointer}
+.login-local:hover{color:#1677ff;text-decoration:underline}
 #photoLightbox img{max-width:94vw;max-height:92vh;object-fit:contain;background:#fff;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5);cursor:pointer}
 #photoLightbox .pl-close{position:absolute;top:18px;right:18px;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;z-index:2}
 #photoLightbox .pl-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:64px;background:rgba(0,0,0,.4);color:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;line-height:1;cursor:pointer;user-select:none;border-radius:8px;z-index:2}
@@ -1738,7 +1752,7 @@ a{color:#003a8c;text-decoration:none}
           <input type="file" id="importFile" accept=".json,.csv" style="display:none" onchange="importData(this)">
         </div>
         <div class="data-mgmt" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
-          <button class="btn-primary btn-sm" onclick="openCloudModal()">☁️ 云端同步</button>
+          <button class="btn-primary btn-sm" onclick="showLoginPage()">☁️ 云端同步</button>
           <span id="cloudStatus" style="font-size:12px;color:#1677ff">未连接</span>
         </div>
       </div>
@@ -2869,8 +2883,7 @@ const CloudSync={
     const token=await this._ensureToken();
     if(!token)return;
     const uid=cloudUser.uid||tokenSub(token);   /* uid 兜底，防止 RLS 拦截 */
-    /* 不上传内置示例项目，避免它作为“真实项目”同步到其他设备 */
-    const data=Object.assign({},App,{projects:(App.projects||[]).filter(p=>!p.isDemo)});
+    const data=Object.assign({},App,{projects:(App.projects||[])});
     const body=[{user:uid,data}];
     await this._req('POST','/rest/v1/user_data?on_conflict=user',body,{'Authorization':'Bearer '+token,'Prefer':'resolution=merge-duplicates'},12000);
     return true;
@@ -2899,13 +2912,14 @@ function showCloudView(v){
   const map={cfg:'cloudCfgView',auth:'cloudAuthView',done:'cloudDoneView'};
   ['cloudCfgView','cloudAuthView','cloudDoneView'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=(id===map[v])?'block':'none';});
 }
+/* 显示全屏登录页（替代原弹窗）；自动根据登录态决定显示配置/登录/已登录视图 */
 function openCloudModal(){
-  openCloudModalAsync();
+  showLoginPage();
 }
-async function openCloudModalAsync(){
+function showLoginPage(){
   if(cloudUser&&cloudUser.access){
     let token=null;
-    try{token=await CloudSync._ensureToken();}catch(e){}
+    try{token=CloudSync._ensureToken();}catch(e){}
     if(token){showCloudView('done');}
     else{saveCloudUser(null);cloudUser=null;showCloudView(CloudSync.configured?'auth':'cfg');}
   }
@@ -2916,7 +2930,29 @@ async function openCloudModalAsync(){
   if($('cloudEmail'))$('cloudEmail').textContent=cloudUser?cloudUser.email:'';
   if($('cloudAuthMsg'))$('cloudAuthMsg').textContent='';
   if($('cloudTestMsg'))$('cloudTestMsg').textContent='';
-  showModal('cloudModal');
+  /* 显示登录页、隐藏工作台 */
+  $('loginPage').classList.add('show');
+  $('app').style.display='none';
+}
+function hideLoginPage(){$('loginPage').classList.remove('show');}
+/* 进入工作台：隐藏登录页、显示 app、恢复上次浏览页面 */
+function enterApp(){
+  hideLoginPage();
+  $('app').style.display='';
+  let savedPage='home';
+  try{const sp=localStorage.getItem('xzgz_current_page');if(sp)savedPage=sp;}catch(e){}
+  const VALID_PAGES=['home','process','finance','ledger','purchase','compare','tools','quote','diary','knowledge'];
+  if(!VALID_PAGES.includes(savedPage))savedPage='home';
+  switchPage(savedPage);
+}
+/* 登录成功后：先同步再进工作台 */
+function cloudEnterApp(){
+  cloudSyncNow();
+  enterApp();
+}
+/* 仅本地使用：不登录，直接用本地数据进工作台（满足本地优先、不强制联网） */
+function enterLocalMode(){
+  enterApp();
 }
 async function cloudTestConn(){
   const msg=$('cloudTestMsg');if(!msg)return;
@@ -2947,14 +2983,14 @@ function cloudReconfig(){showCloudView('cfg');}
 async function cloudDoLogin(){
   const e=$('cloudEmailInput').value.trim(),p=$('cloudPwdInput').value;
   if(!e||!p){$('cloudAuthMsg').textContent='请输入邮箱和密码';return;}
-  try{await CloudSync.login(e,p);showCloudView('done');cloudSyncNow();}
+  try{await CloudSync.login(e,p);cloudEnterApp();}
   catch(err){$('cloudAuthMsg').textContent=err.message;}
 }
 async function cloudDoSignup(){
   const e=$('cloudEmailInput').value.trim(),p=$('cloudPwdInput').value;
   if(!e||!p){$('cloudAuthMsg').textContent='请输入邮箱和密码';return;}
   if(p.length<6){$('cloudAuthMsg').textContent='密码至少 6 位';return;}
-  try{await CloudSync.signup(e,p);showCloudView('done');cloudSyncNow();}
+  try{await CloudSync.signup(e,p);cloudEnterApp();}
   catch(err){$('cloudAuthMsg').textContent=err.message;}
 }
 async function cloudLogout(){
@@ -2964,9 +3000,8 @@ async function cloudLogout(){
   App.projects=[];App.currentProjectId=null;
   persist();                  /* 此时已登出，persist 不会触发云端上传 */
   refreshProjectUI();
-  if(currentPage)switchPage(currentPage);
-  /* 退出后自动弹出登录界面：配置仍在 → 显示登录；配置也清了 → 显示配置页 */
-  openCloudModal();
+  /* 退出后跳转登录页（配置仍在 → 显示登录；配置也清了 → 显示配置页） */
+  showLoginPage();
 }
 /* 把云端数据应用到当前 App。
    keepLocalOnly=true 时保留“本地独有”项目，但仅限【末次同步之后新建】的，
@@ -2978,7 +3013,6 @@ function applyCloudData(d,keepLocalOnly){
     const cloudIds=new Set(cloudProj.map(p=>p.id));
     const lastPull=(typeof App.__lastPullAt==='number')?App.__lastPullAt:0;
     const localOnly=App.projects.filter(p=>{
-      if(p.isDemo)return false;                       /* 示例项目不参与同步 */
       if(cloudIds.has(p.id))return false;            /* 云端已有则不重复 */
       const ctime=p.createdAt?new Date(p.createdAt).getTime():0;
       return ctime>lastPull;                          /* 仅末次拉取后才离线新建的，才视为本机新增 */
@@ -3090,50 +3124,6 @@ function mergeProject(p){
   out.profile=Object.assign({style:'',layout:'',mode:'',startDate:''}, out.profile);
   return out;
 }
-/* 示例项目：无项目记录时自动注入，用于直接展示各版块预设内容（不强制先新建项目） */
-function demoProject(){
-  return {
-    id:'__demo__', isDemo:true, name:'示例项目', code:'', houseType:'new', createdAt:todayISO(),
-    totalAmount:300000, area:112, adjustment:0,
-    profile:{style:'现代简约', layout:'三室两厅', mode:'半包', startDate:'2026-08-20'},
-    tasks:[
-      {id:'dt1', title:'确定全屋设计方案', kind:'task', prio:'P1', due:todayISO(), note:'与设计师确认平面与效果图', stage:'', done:false},
-      {id:'dt2', title:'签订装修施工合同', kind:'task', prio:'P1', due:'2026-08-25', note:'', stage:'', done:false},
-      {id:'dt3', title:'主材选购与比价', kind:'task', prio:'P2', due:'2026-09-10', note:'瓷砖 / 地板 / 卫浴', stage:'', done:false}
-    ],
-    processSteps:[
-      {id:'dps1', name:'设计交底', days:'3', desc:'设计师与施工负责人现场交底，确认图纸与现场尺寸一致。', acceptance:[{label:'验收',text:'图纸与现场复核无误'}], articles:[], planStartDate:'2026-08-20', planEndDate:'2026-08-22'},
-      {id:'dps2', name:'主体拆改', days:'7', desc:'按图纸进行非承重墙拆改、门洞调整。', acceptance:[{label:'验收',text:'拆改尺寸符合图纸'}], articles:[], planStartDate:'2026-08-23', planEndDate:'2026-08-29'},
-      {id:'dps3', name:'水电改造', days:'10', desc:'强弱电布线、给排水改造，隐蔽工程重点。', acceptance:[{label:'验收',text:'打压测试合格、回路标识清晰'}], articles:[], planStartDate:'2026-08-30', planEndDate:'2026-09-08'},
-      {id:'dps4', name:'泥瓦工程', days:'15', desc:'防水、贴砖、地面找平。', acceptance:[{label:'验收',text:'闭水试验 48h 无渗漏'}], articles:[], planStartDate:'2026-09-09', planEndDate:'2026-09-23'},
-      {id:'dps5', name:'木工工程', days:'12', desc:'吊顶、造型、柜体基层。', acceptance:[{label:'验收',text:'平整度、垂直度达标'}], articles:[], planStartDate:'2026-09-24', planEndDate:'2026-10-05'}
-    ],
-    purchases:[
-      {id:'dp1', name:'客厅地砖 800×800', cat:'主材', stage:'', budget:4500, status:'待购', actualPrice:0, vendor:'', dueDate:'2026-09-05', note:'', checkedRef:false},
-      {id:'dp2', name:'卧室实木地板', cat:'主材', stage:'', budget:6800, status:'待购', actualPrice:0, vendor:'', dueDate:'2026-09-12', note:'', checkedRef:false},
-      {id:'dp3', name:'卫生间墙砖', cat:'主材', stage:'', budget:2200, status:'已下单', actualPrice:2100, vendor:'东鹏', dueDate:'2026-08-30', note:'含损耗', checkedRef:false}
-    ],
-    income:[
-      {id:'di1', name:'一期工程款', amount:150000, date:'2026-08-15', cat:'预付款', payer:'业主（示例）', received:true, note:'首期 50%'}
-    ],
-    expense:[
-      {id:'de1', name:'全案设计费', amount:18000, date:'2026-08-16', cat:'设计费', payee:'东晨设计（示例）', paid:true, stage:'', note:''},
-      {id:'de2', name:'水电材料', amount:32000, date:'2026-09-01', cat:'材料款', payee:'建材供应商（示例）', paid:false, stage:'', note:'待付'}
-    ],
-    diaries:[
-      {id:'dd1', title:'开工大吉', content:'今日正式进场，完成设计交底，施工队已放样定位。', stage:'', photos:[], date:'2026-08-20'}
-    ],
-    compares:[],
-    checked:{}
-  };
-}
-/* 无项目记录时，自动注入示例项目，使各版块可直接展示预设内容（新建项目后可并存/删除） */
-function seedDemoIfEmpty(){
-  if(App.projects.length===0){
-    App.projects.push(demoProject());
-    App.currentProjectId='__demo__';
-  }
-}
 function load(){
   // 候选存储键：当前键 + 历史上可能用过的旧键名（防止早期版本命名不同导致"数据丢失"）
   const CANDIDATE_KEYS=[APP_KEY,'xzgz_app_v1','xzgz_app','xzgz_renovation','renovation_app','xzjz_app'];
@@ -3167,7 +3157,6 @@ function load(){
     App.currentProjectId=App.projects.length?App.projects[0].id:null;
   }
   migrateChecked();
-  seedDemoIfEmpty();
   // 启动时检测存储是否可用，不可用则立即提示用户（避免"导入成功但关掉就没了"的静默丢失）
   if(!storageAvailable()){
     __storageBroken=true;
@@ -3929,8 +3918,6 @@ function createProjectFromWizard(){
   };
   App.projects.push(p);
   App.currentProjectId=p.id;
-  /* 新建项目后自动删除示例项目（不再需要预览样例） */
-  App.projects=App.projects.filter(pr=>!pr.isDemo);
   persist();
   editingProjectId=null;
   closeProjectWizard();
@@ -3986,7 +3973,7 @@ function openProjectManage(){
       <div class="project-manage-actions">
         <button class="btn-outline btn-sm" onclick="switchProject('${p.id}');closeModal('projectManageModal')">打开</button>
         <button class="btn-outline btn-sm" style="color:#003a8c;border-color:#003a8c" onclick="closeModal('projectManageModal');openProjectModal('${p.id}')">编辑</button>
-        ${p.isDemo?'<span style="font-size:12px;color:#999">内置示例</span>':'<button class="btn-outline btn-sm" style="color:#ff4d4f;border-color:#ffa39e" onclick="delProject(\''+p.id+'\')">删除</button>'}
+        <button class="btn-outline btn-sm" style="color:#ff4d4f;border-color:#ffa39e" onclick="delProject('${p.id}')">删除</button>
       </div>
     </div>
   `).join('')||'<p style="color:#999;text-align:center;padding:20px">还没有项目</p>';
@@ -3995,17 +3982,11 @@ function openProjectManage(){
 function delProject(id){
   const p=App.projects.find(x=>x.id===id);
   if(!p)return;
-  /* 仅剩示例项目时不允许删除：它用于在尚未建项目时预览各版块内容 */
-  if(p.isDemo&&App.projects.length===1){
-    alert('示例项目为内置样例，用于在尚未创建项目时预览各版块内容，无需删除。\n您可以点击「新建项目」创建自己的装修项目。');
-    return;
-  }
   /* 先关闭项目列表弹窗，使确认弹窗在屏幕正中单独显示；删除后列表弹窗不会再残留 */
   closeModal('projectManageModal');
   confirmDialog('确认删除项目「'+projDisplayName(p)+'」？\n该项目所有数据将永久清除，不可恢复。',function(){
     App.projects=App.projects.filter(x=>x.id!==id);
     if(App.currentProjectId===id)App.currentProjectId=App.projects[0]?App.projects[0].id:null;
-    seedDemoIfEmpty();
     persist();
     refreshProjectUI();
     if(currentPage)switchPage(currentPage);
@@ -4014,7 +3995,7 @@ function delProject(id){
 function refreshProjectUI(){
   const sel=$('projectSelect');
   if(sel){
-    sel.innerHTML=App.projects.map(p=>`<option value="${p.id}">${HOUSE_ICONS[p.houseType]||''} ${projDisplayName(p)}${p.isDemo?'（示例）':''}</option>`).join('');
+    sel.innerHTML=App.projects.map(p=>`<option value="${p.id}">${HOUSE_ICONS[p.houseType]||''} ${projDisplayName(p)}</option>`).join('');
     if(App.projects.length&&!App.currentProjectId)App.currentProjectId=App.projects[0].id;
     sel.value=App.currentProjectId||'';
   }
@@ -4033,7 +4014,7 @@ function showNoProject(page){
   /* 检测是否"退出账号后清空"：配置过云端但未登录 → 显示登入引导 */
   const cloudConfigured=CloudSync.configured;
   const cloudLoggedOut=cloudConfigured&&!CloudSync.loggedIn;
-  const cloudBtnHtml=cloudLoggedOut?`<div class="empty-button" style="margin-top:8px"><button class="btn-outline" onclick="openCloudModal()" style="border-color:#91caff;color:#003a8c">☁️ 登录云端账号</button></div>`:'';
+  const cloudBtnHtml=cloudLoggedOut?`<div class="empty-button" style="margin-top:8px"><button class="btn-outline" onclick="showLoginPage()" style="border-color:#91caff;color:#003a8c">☁️ 登录云端账号</button></div>`:'';
   el.innerHTML=`<div class="empty-state">
     <div class="empty-icon">📋</div>
     <div class="empty-title">${has?'请选择一个项目':'还没有项目'}</div>
@@ -4969,7 +4950,7 @@ function renderProjectPulseAll(projects){
   if(!projects.length){
     const cloudConfigured=CloudSync.configured;
     const cloudLoggedOut=cloudConfigured&&!CloudSync.loggedIn;
-    container.innerHTML=`<div style="text-align:center;padding:40px 16px;color:#bbb"><div style="font-size:32px;margin-bottom:8px">📋</div><p>${cloudLoggedOut?'你已退出云端账号，本地数据已清除。':'还没有项目，先创建一个吧'}</p>${cloudLoggedOut?'<div style="margin-top:12px"><button class="btn-outline" onclick="openCloudModal()" style="border-color:#91caff;color:#003a8c">☁️ 登录云端账号</button></div>':''}</div>`;
+    container.innerHTML=`<div style="text-align:center;padding:40px 16px;color:#bbb"><div style="font-size:32px;margin-bottom:8px">📋</div><p>${cloudLoggedOut?'你已退出云端账号，本地数据已清除。':'还没有项目，先创建一个吧'}</p>${cloudLoggedOut?'<div style="margin-top:12px"><button class="btn-outline" onclick="showLoginPage()" style="border-color:#91caff;color:#003a8c">☁️ 登录云端账号</button></div>':''}</div>`;
     return;
   }
   /* 按项目编号倒序排列 */
@@ -9511,7 +9492,6 @@ function confirmClearAll(){
   if(!confirm('再次确认：将清空全部项目数据，是否继续？'))return;
   localStorage.removeItem(APP_KEY);App={version:2,currentProjectId:null,projects:[]};
   try{localStorage.setItem('xzgz_current_page','home');}catch(e){}
-  seedDemoIfEmpty();
   refreshProjectUI();
   switchPage('home');
 }
@@ -9532,7 +9512,7 @@ async function init(){
       if(d&&d.projects){
         applyCloudData(d,true);
         persist();
-        refreshProjectUI();if(currentPage)switchPage(currentPage);
+        refreshProjectUI();
       }
     }catch(e){/* 云端失败，用本地兜底 */}
   }
@@ -9542,64 +9522,65 @@ async function init(){
   if(App.projects.length&&!App.currentProjectId)App.currentProjectId=App.projects[0].id;
   refreshProjectUI();
   refreshContactDatalists();
-  // 无论有无项目，工作台始终可进入
-  $('welcomeScreen').style.display='none';
-  $('pagesWrapper').style.display='block';
-  /* 刷新后停留在上次浏览的页面 */
-  let savedPage='home';
-  try{const sp=localStorage.getItem('xzgz_current_page');if(sp)savedPage=sp;}catch(e){}
-  const VALID_PAGES=['home','process','finance','ledger','purchase','compare','tools','quote','diary','knowledge'];
-  if(!VALID_PAGES.includes(savedPage))savedPage='home';
-  switchPage(savedPage);
+  /* 着陆逻辑：已登录云端 → 直接进入工作台；否则 → 显示全屏登录页 */
+  if(CloudSync.loggedIn){
+    enterApp();
+  }else{
+    showLoginPage();
+  }
 }
-init();
+/* 等待 DOM（含登录页 #loginPage）解析完成再启动，避免在元素尚未就绪时调用 */
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+else init();
 </script>
-<!-- ═══ 云端同步弹窗 ═══ -->
-<div class="modal-overlay" id="cloudModal">
-  <div class="modal" style="max-width:460px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
-    <div class="modal-header">
-      <div class="modal-title">☁️ 云端同步（多设备）</div>
-      <div class="modal-close" onclick="closeModal('cloudModal')">✕</div>
+<!-- ═══ 登录页（全屏，退出后跳转） ═══ -->
+<div class="login-page" id="loginPage" style="display:none">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo">装</div>
+      <div class="login-title">装修工作台</div>
+      <div class="login-sub">多设备云同步 · 数据随身</div>
     </div>
-    <div class="modal-body">
-      <div id="cloudCfgView">
-        <div style="font-size:13px;color:#666;margin-bottom:12px">填入你的 Supabase <b>Project URL</b> 与 <b>Publishable Key</b>（均为前端公开 key，可安全填写）。配置后登录账号即可多设备同步，不同账号数据相互隔离。若用作者提供的后端，请向作者索取 URL 与 Key。</div>
-        <div style="font-size:12px;color:#666;margin-bottom:4px">Project URL</div>
-        <input id="cloudUrl" placeholder="https://xxxx.supabase.co" style="width:100%;margin-bottom:10px;box-sizing:border-box;padding:8px 10px;border:1px solid #91caff;border-radius:8px;font-size:14px;outline:none">
-        <div style="font-size:12px;color:#666;margin-bottom:4px">Publishable Key</div>
-        <input id="cloudKey" style="width:100%;margin-bottom:14px;box-sizing:border-box;padding:8px 10px;border:1px solid #91caff;border-radius:8px;font-size:14px;outline:none">
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-primary" onclick="cloudSaveCfg()">保存配置</button>
-          <button class="btn-outline" onclick="cloudTestConn()">测试连接</button>
-          <button class="btn-outline" onclick="closeModal('cloudModal')">关闭</button>
-        </div>
-        <div id="cloudTestMsg" style="font-size:12px;min-height:16px;margin-top:8px;color:#999"></div>
-      </div>
 
-      <div id="cloudAuthView" style="display:none">
-        <div style="font-size:13px;color:#666;margin-bottom:12px">已配置后端。登录你的账号即可同步（不同账号数据相互隔离）。</div>
-        <div style="font-size:12px;color:#666;margin-bottom:4px">邮箱</div>
-        <input id="cloudEmailInput" placeholder="you@example.com" style="width:100%;margin-bottom:10px;box-sizing:border-box;padding:8px 10px;border:1px solid #91caff;border-radius:8px;font-size:14px;outline:none">
-        <div style="font-size:12px;color:#666;margin-bottom:4px">密码</div>
-        <input id="cloudPwdInput" type="password" style="width:100%;margin-bottom:12px;box-sizing:border-box;padding:8px 10px;border:1px solid #91caff;border-radius:8px;font-size:14px;outline:none">
-        <div id="cloudAuthMsg" style="color:#ff4d4f;font-size:12px;min-height:16px;margin-bottom:8px"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-primary" onclick="cloudDoLogin()">登录</button>
-          <button class="btn-outline" onclick="cloudDoSignup()">注册新账号</button>
-          <button class="btn-outline" onclick="cloudReconfig()">修改配置</button>
-          <button class="btn-outline" onclick="closeModal('cloudModal')">关闭</button>
-        </div>
+    <div id="cloudCfgView">
+      <div style="font-size:13px;color:#666;margin-bottom:12px">首次使用请填入 Supabase <b>Project URL</b> 与 <b>Publishable Key</b>（前端公开 key，可安全填写）。配置后登录账号即可多设备同步，不同账号数据相互隔离。</div>
+      <div style="font-size:12px;color:#666;margin-bottom:4px">Project URL</div>
+      <input id="cloudUrl" placeholder="https://xxxx.supabase.co" class="login-input">
+      <div style="font-size:12px;color:#666;margin-bottom:4px">Publishable Key</div>
+      <input id="cloudKey" class="login-input">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn-primary" onclick="cloudSaveCfg()">保存配置</button>
+        <button class="btn-outline" onclick="cloudTestConn()">测试连接</button>
       </div>
+      <div id="cloudTestMsg" style="font-size:12px;min-height:16px;margin-top:8px;color:#999"></div>
+    </div>
 
-      <div id="cloudDoneView" style="display:none">
-        <div style="font-size:13px;margin-bottom:6px">已登录：<b id="cloudEmail"></b></div>
-        <div id="cloudStatus2" style="font-size:12px;color:#999;margin-bottom:12px">—</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-primary" onclick="cloudSyncNow()">立即同步</button>
-          <button class="btn-outline" onclick="cloudLogout()">退出登录</button>
-          <button class="btn-outline" onclick="closeModal('cloudModal')">关闭</button>
-        </div>
+    <div id="cloudAuthView" style="display:none">
+      <div style="font-size:13px;color:#666;margin-bottom:12px">登录你的账号即可同步（不同账号数据相互隔离）。</div>
+      <div style="font-size:12px;color:#666;margin-bottom:4px">邮箱</div>
+      <input id="cloudEmailInput" placeholder="you@example.com" class="login-input">
+      <div style="font-size:12px;color:#666;margin-bottom:4px">密码</div>
+      <input id="cloudPwdInput" type="password" class="login-input">
+      <div id="cloudAuthMsg" style="color:#ff4d4f;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="cloudDoLogin()">登录</button>
+        <button class="btn-outline" onclick="cloudDoSignup()">注册新账号</button>
+        <button class="btn-outline" onclick="cloudReconfig()">修改配置</button>
       </div>
+    </div>
+
+    <div id="cloudDoneView" style="display:none">
+      <div style="font-size:13px;margin-bottom:6px">已登录：<b id="cloudEmail"></b></div>
+      <div id="cloudStatus2" style="font-size:12px;color:#999;margin-bottom:12px">—</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="cloudEnterApp()">进入工作台</button>
+        <button class="btn-outline" onclick="cloudSyncNow()">立即同步</button>
+        <button class="btn-outline" onclick="cloudLogout()">退出登录</button>
+      </div>
+    </div>
+
+    <div class="login-foot">
+      <a href="javascript:void(0)" class="login-local" onclick="enterLocalMode()">仅本地使用（不同步云端）</a>
     </div>
   </div>
 </div>
