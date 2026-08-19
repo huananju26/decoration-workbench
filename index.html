@@ -827,7 +827,7 @@ a{color:#003a8c;text-decoration:none}
 .project-manage-name{font-size:14px;font-weight:600;color:#1a1a1a}
 .project-manage-meta{font-size:12px;color:#999;margin-top:2px}
 .project-manage-actions{display:flex;gap:6px}
-.house-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.house-type-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px}
 .house-type-opt{border:1px solid #d9d9d9;border-radius:10px;padding:14px;cursor:pointer;transition:all .2s;text-align:center}
 .house-type-opt.active{border-color:#003a8c;background:#e6f4ff}
 .house-type-opt .ht-icon{font-size:24px;margin-bottom:4px}
@@ -952,7 +952,7 @@ a{color:#003a8c;text-decoration:none}
 .wizard-panel.active{display:block;flex:1;min-height:0;overflow-y:auto}
 
 /* ── Step2: 施工计划 ── */
-.plan-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.plan-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;position:sticky;top:0;z-index:2;background:#fff;padding:12px 0 4px;margin-bottom:8px}
 .plan-date-group{display:flex;align-items:center;gap:6px}
 .plan-date-group label{font-size:13px;font-weight:600;color:#333;white-space:nowrap}
 .plan-date-group input[type=date]{padding:7px 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;outline:none;transition:border .2s}
@@ -1104,7 +1104,7 @@ a{color:#003a8c;text-decoration:none}
   .float-add{bottom:70px;right:20px;width:48px;height:48px}
   .compare-stats{grid-template-columns:repeat(2,1fr)}
   .diary-stats{grid-template-columns:1fr}
-  .house-type-grid{grid-template-columns:1fr 1fr}
+  .house-type-grid{grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
   /* 流程页：移动端隐藏左侧导航，改为顶部操作栏 */
   .process-page-layout{flex-direction:column}
   .process-nav-panel{position:relative;top:auto;max-height:none;width:100%;margin-bottom:16px;order:-1}
@@ -5791,11 +5791,29 @@ function renderPdmCal(){
     if(tagEl)tagEl.textContent=(iso===_pdmStartISO)?'起':((iso===endVal)?'止':'');
   });
 }
+/* 悬停时仅更新高亮（不重建 DOM，避免点击目标被销毁导致 click 不触发） */
+function refreshPdmHover(){
+  const grid=$('pdmCalGrid');if(!grid)return;
+  const endVal=(_pdmMode==='end')?(_pdmHover||_pdmEndISO):'';
+  grid.querySelectorAll('.date-cell').forEach(cell=>{
+    const iso=cell.getAttribute('data-iso');if(!iso||cell.classList.contains('muted'))return;
+    let cls='date-cell';
+    if(_pdmMode==='start'&&_pdmEndISO&&iso>_pdmEndISO)cls+=' disabled';
+    if(_pdmMode==='end'&&_pdmStartISO&&iso<_pdmStartISO)cls+=' disabled';
+    if(_pdmStartISO&&iso===_pdmStartISO)cls+=' range-start';
+    if(endVal&&iso===endVal)cls+=' range-end single';
+    if(_pdmMode==='end'&&_pdmStartISO&&endVal&&iso>_pdmStartISO&&iso<endVal)cls+=' in-range';
+    cell.className=cls;
+    const tagEl=cell.querySelector('.cell-tag');
+    if(tagEl)tagEl.textContent=(iso===_pdmStartISO)?'起':((iso===endVal)?'止':'');
+  });
+}
 /* 鼠标悬停某日期 → 实时预览底部工期信息 */
 function pdmCalHover(cell){
   const iso=cell.getAttribute('data-iso');if(!iso)return;
+  if(cell.classList.contains('muted')||cell.classList.contains('disabled'))return;
   _pdmHover=iso;
-  if(_pdmMode==='end'){renderPdmCal();updatePdmCalFoot();}
+  if(_pdmMode==='end'){refreshPdmHover();updatePdmCalFoot();}
 }
 /* 日历底部动态工期信息：跟随鼠标悬停实时预览「开始 / 完成 / 共X天」 */
 function updatePdmCalFoot(){
