@@ -38,6 +38,16 @@ GH_TOKEN=ghp_xxx ./update_pages.sh
 
 推送后约 1 分钟生效。脚本带「无改动跳过」保护：没改过内容时直接提示无需推送。
 
+### Windows 用户
+
+仓库根目录有 `update_pages.bat`，**双击即可部署**（逻辑同 Mac 版）：
+
+- 前置：安装 [Git for Windows](https://git-scm.com/download/win)，并把**本机** SSH 公钥加到 GitHub（Settings → SSH and GPG keys）；或在运行前设置 `GH_TOKEN` 环境变量走 token。
+- 把 `update_pages.bat` 放在 `装修工作台.html` 同级目录；若本地没有 `gh-pages` 文件夹，脚本会先自动克隆仓库。
+- 双击运行 → 自动复制、提交、推送。
+
+也可完全不碰命令行：装 **GitHub Desktop**，克隆仓库 → 编辑 `gh-pages/index.html` → 点 Commit & Push 即可。
+
 ## 技术说明
 
 - 纯单文件 HTML，CSS / JS / SVG 全内联，零外部依赖，不引任何 CDN / SDK。
