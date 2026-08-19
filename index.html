@@ -2869,7 +2869,9 @@ const CloudSync={
     const token=await this._ensureToken();
     if(!token)return;
     const uid=cloudUser.uid||tokenSub(token);   /* uid 兜底，防止 RLS 拦截 */
-    const body=[{user:uid,data:App}];
+    /* 不上传内置示例项目，避免它作为“真实项目”同步到其他设备 */
+    const data=Object.assign({},App,{projects:(App.projects||[]).filter(p=>!p.isDemo)});
+    const body=[{user:uid,data}];
     await this._req('POST','/rest/v1/user_data?on_conflict=user',body,{'Authorization':'Bearer '+token,'Prefer':'resolution=merge-duplicates'},12000);
     return true;
   },
@@ -2956,19 +2958,35 @@ async function cloudDoSignup(){
   catch(err){$('cloudAuthMsg').textContent=err.message;}
 }
 async function cloudLogout(){
-  await CloudSync.logout();showCloudView('cfg');updateCloudUI();
+  await CloudSync.logout();   /* 清云端登录态（cloudUser=null） */
+  /* 退出即清除本机数据，避免旧账号信息残留在页面（多设备退出后“原信息还在”的根因） */
+  App=JSON.parse(JSON.stringify(APP_DEFAULT));
+  App.projects=[];App.currentProjectId=null;
+  persist();                  /* 此时已登出，persist 不会触发云端上传 */
+  refreshProjectUI();
+  if(currentPage)switchPage(currentPage);
+  showCloudView('cfg');updateCloudUI();
 }
-/* 把云端数据应用到当前 App；keepLocalOnly=true 时保留本地独有（云端没有）的项目，避免覆盖本机新增 */
+/* 把云端数据应用到当前 App。
+   keepLocalOnly=true 时保留“本地独有”项目，但仅限【末次同步之后新建】的，
+   避免把“云端已删除、本机还残留”的旧项目误当新增而复活（多设备删除不同步的根因）。 */
 function applyCloudData(d,keepLocalOnly){
   const cloudProj=(Array.isArray(d.projects)?d.projects:[]).map(mergeProject);
   let projects=cloudProj;
   if(keepLocalOnly){
     const cloudIds=new Set(cloudProj.map(p=>p.id));
-    const localOnly=App.projects.filter(p=>!cloudIds.has(p.id)&&!p.isDemo);
+    const lastPull=(typeof App.__lastPullAt==='number')?App.__lastPullAt:0;
+    const localOnly=App.projects.filter(p=>{
+      if(p.isDemo)return false;                       /* 示例项目不参与同步 */
+      if(cloudIds.has(p.id))return false;            /* 云端已有则不重复 */
+      const ctime=p.createdAt?new Date(p.createdAt).getTime():0;
+      return ctime>lastPull;                          /* 仅末次拉取后才离线新建的，才视为本机新增 */
+    });
     projects=cloudProj.concat(localOnly);
   }
   App=Object.assign({},APP_DEFAULT,d);
   App.projects=projects;
+  App.__lastPullAt=Date.now();   /* 记录本次成功拉取时刻，作为下一轮“删除 vs 新增”的判定基准 */
   if(App.currentProjectId&&!App.projects.find(p=>p.id===App.currentProjectId))App.currentProjectId=App.projects.length?App.projects[0].id:null;
 }
 async function cloudSyncNow(){
