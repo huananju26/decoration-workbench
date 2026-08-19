@@ -2930,11 +2930,12 @@ function showLoginPage(){
   if($('cloudEmail'))$('cloudEmail').textContent=cloudUser?cloudUser.email:'';
   if($('cloudAuthMsg'))$('cloudAuthMsg').textContent='';
   if($('cloudTestMsg'))$('cloudTestMsg').textContent='';
-  /* 显示登录页、隐藏工作台 */
+  /* 显示登录页、隐藏工作台（显式内联 display，避免被内联 style 覆盖导致白屏） */
   $('loginPage').classList.add('show');
+  $('loginPage').style.display='flex';
   $('app').style.display='none';
 }
-function hideLoginPage(){$('loginPage').classList.remove('show');}
+function hideLoginPage(){$('loginPage').classList.remove('show');$('loginPage').style.display='none';}
 /* 进入工作台：隐藏登录页、显示 app、恢复上次浏览页面 */
 function enterApp(){
   hideLoginPage();
@@ -9534,7 +9535,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 else init();
 </script>
 <!-- ═══ 登录页（全屏，退出后跳转） ═══ -->
-<div class="login-page" id="loginPage" style="display:none">
+<div class="login-page" id="loginPage">
   <div class="login-card">
     <div class="login-brand">
       <div class="login-logo">装</div>
