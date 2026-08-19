@@ -23,9 +23,8 @@
 
 改完 `装修工作台.html` 后，用仓库根目录的一键脚本推送：
 
-```bash
-./update_pages.sh
-```
+- **最简单**：在访达（Finder）里**双击 `update_pages.command`**，自动用终端部署（窗口看完按回车关闭）。
+- 或终端运行：`./update_pages.sh`
 
 默认走 **SSH 免 token**（首次需把 `~/.ssh/github_pages.pub` 加到 GitHub → Settings → SSH and GPG keys）。
 
@@ -37,7 +36,7 @@ GH_TOKEN=ghp_xxx ./update_pages.sh
 
 （token 只需 `repo` 权限，生成地址：GitHub → Settings → Developer settings → Personal access tokens）
 
-推送后约 1 分钟生效。
+推送后约 1 分钟生效。脚本带「无改动跳过」保护：没改过内容时直接提示无需推送。
 
 ## 技术说明
 
