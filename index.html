@@ -2172,31 +2172,8 @@ a{color:#003a8c;text-decoration:none}
 
       <!-- 底部按钮区 — 固定在弹窗底部（与 modal-body 同级），不随内容滚动 -->
       <div class="wizard-actions" id="wizActionsBar">
-        <!-- Step1 按钮 -->
-        <div class="wizard-actions-left" id="wizActionsLeft1">
-          <button class="btn-outline" onclick="closeProjectWizard()">取消</button>
-        </div>
-        <div class="wizard-actions-right" id="wizActionsRight1">
-          <button class="btn-primary" onclick="goWizardStep(2)">下一步：施工计划</button>
-        </div>
-        <!-- Step2 按钮（默认隐藏） -->
-        <div class="wizard-actions-left" id="wizActionsLeft2" style="display:none">
-          <button class="btn-outline" onclick="goWizardStep(1)">上一步</button>
-          <button class="btn-outline" onclick="closeProjectWizard()">取消</button>
-        </div>
-        <div class="wizard-actions-right" id="wizActionsRight2" style="display:none">
-          <button class="btn-outline" id="wizCreateNewBtn" onclick="createProjectFromWizard()" style="display:none">创建新的项目</button>
-          <button class="btn-primary" id="wizCreateBtn" onclick="goWizardStep(3)">下一步：收款计划</button>
-          <button class="btn-primary" id="wizSaveBtn" onclick="saveProject()" style="display:none">保存修改</button>
-        </div>
-        <!-- Step3 按钮（默认隐藏） -->
-        <div class="wizard-actions-left" id="wizActionsLeft3" style="display:none">
-          <button class="btn-outline" onclick="goWizardStep(2)">上一步</button>
-          <button class="btn-outline" onclick="closeProjectWizard()">取消</button>
-        </div>
-        <div class="wizard-actions-right" id="wizActionsRight3" style="display:none">
-          <button class="btn-primary" id="wizCreateAllBtn" onclick="createProjectFromWizard()">创建项目并保存全部计划</button>
-        </div>
+        <div class="wizard-actions-left" id="wizActionsLeft"></div>
+        <div class="wizard-actions-right" id="wizActionsRight"></div>
       </div>
     </div>
   </div>
@@ -3258,13 +3235,32 @@ function goWizardStep(n){
   document.querySelectorAll('.wizard-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.wizard-step-tab').forEach((t,i)=>{t.classList.toggle('active',i+1===n);t.classList.toggle('done',i+1<n)});
   $('wizStep'+n).classList.add('active');
-  /* 切换底部按钮区 */
-  $('wizActionsLeft1').style.display=n===1?'flex':'none';
-  $('wizActionsRight1').style.display=n===1?'flex':'none';
-  $('wizActionsLeft2').style.display=n===2?'flex':'none';
-  $('wizActionsRight2').style.display=n===2?'flex':'none';
-  $('wizActionsLeft3').style.display=n===3?'flex':'none';
-  $('wizActionsRight3').style.display=n===3?'flex':'none';
+  renderWizardActions();
+}
+
+/* 动态渲染向导底部按钮（根据当前步骤与新建/编辑模式） */
+function renderWizardActions(){
+  const left=$('wizActionsLeft');
+  const right=$('wizActionsRight');
+  if(!left||!right)return;
+  if(wizStep===1){
+    left.innerHTML='<button class="btn-outline" onclick="closeProjectWizard()">取消</button>';
+    right.innerHTML='<button class="btn-primary" onclick="goWizardStep(2)">下一步</button>';
+  }else if(wizStep===2){
+    left.innerHTML='<button class="btn-outline" onclick="goWizardStep(1)">上一步</button><button class="btn-outline" onclick="closeProjectWizard()">取消</button>';
+    if(editingProjectId){
+      right.innerHTML='<button class="btn-outline" onclick="createProjectFromWizard()">创建新的项目</button><button class="btn-primary" onclick="saveProject()">保存修改</button>';
+    }else{
+      right.innerHTML='<button class="btn-primary" onclick="goWizardStep(3)">下一步</button>';
+    }
+  }else if(wizStep===3){
+    left.innerHTML='<button class="btn-outline" onclick="goWizardStep(2)">上一步</button><button class="btn-outline" onclick="closeProjectWizard()">取消</button>';
+    if(editingProjectId){
+      right.innerHTML='<button class="btn-outline" onclick="createProjectFromWizard()">创建新的项目</button><button class="btn-primary" onclick="saveProject()">保存修改</button>';
+    }else{
+      right.innerHTML='<button class="btn-outline" onclick="createProjectFromWizard()">创建新的项目</button><button class="btn-primary" onclick="createProjectFromWizard()">保存修改</button>';
+    }
+  }
 }
 
 function closeProjectWizard(){
@@ -3272,9 +3268,6 @@ function closeProjectWizard(){
   wizStep=1;wizPlanNodes=[];
   wizPayPlanMode='pct';wizPayPlanNodes=[];wizPayPlanSplit={laborAmt:0,laborMethod:'pct',materialAmt:0,materialMethod:'pct'};
   editingProjectId=null;
-  /* 复位 step2 按钮为「下一步：收款计划」 */
-  const cb=$('wizCreateBtn'),nb=$('wizCreateNewBtn'),sb=$('wizSaveBtn');
-  if(cb)cb.style.display='';if(nb)nb.style.display='none';if(sb)sb.style.display='none';
 }
 
 /* ── Step2: 施工计划核心逻辑 ── */
@@ -3550,36 +3543,24 @@ function openProjectModal(id){
       }));
       if(wizPlanNodes.length===0)initPlanNodesFromTemplate();
       $('projectModalTitle').textContent='编辑项目';
-      /* 显示完整向导（项目资料 + 施工计划） */
+      /* 显示完整向导（项目资料 + 施工计划），编辑模式隐藏第 3 步收款计划 */
       $('wizSubtitle').style.display='';document.querySelector('.wizard-steps').style.display='';
       $('wizSubtitle').textContent='可修改项目资料，也可切换到「施工计划」调整节点后再保存。';
-      /* step 指示器复位到第1步，主按钮恢复「下一步」 */
-      document.querySelectorAll('.wizard-step-tab').forEach((t,i)=>{t.classList.toggle('active',i===0);t.classList.toggle('done',false)});
-      document.querySelectorAll('.wizard-panel').forEach(p=>p.classList.remove('active'));
-      $('wizStep1').classList.add('active');
-      const b1=$('wizStep1NextBtn');
-      if(b1){b1.textContent='下一步：施工计划';b1.setAttribute('onclick','goWizardStep(2)');}
-      /* step2 按钮：编辑模式显示「保存修改」+「创建新的项目」 */
-      $('wizCreateBtn').style.display='none';
-      $('wizCreateNewBtn').style.display='';
-      $('wizSaveBtn').style.display='';
+      $('wizTab3').style.display='none';
       renderPlanTemplateOptions();
       fillStepNameDatalist();
       recalcPlanSchedule();
+      goWizardStep(1);
       showModal('projectModal');return;
     }
   }
   /* 新建模式：初始化三步向导 */
   wizStep=1;wizPlanNodes=[];
   wizPayPlanMode='pct';wizPayPlanNodes=[];wizPayPlanSplit={laborAmt:0,laborMethod:'pct',materialAmt:0,materialMethod:'pct'};
-  /* 复位主按钮为「下一步」（防止上一次编辑残留的「保存修改」） */
-  const b1n=$('wizStep1NextBtn');
-  if(b1n){b1n.textContent='下一步：施工计划';b1n.setAttribute('onclick','goWizardStep(2)');}
-  /* 复位 step2 按钮为「创建项目」单按钮（隐藏编辑模式专属按钮） */
-  $('wizCreateBtn').style.display='';$('wizCreateNewBtn').style.display='none';$('wizSaveBtn').style.display='none';
   selectedHouseType='new';
   $('projectModalTitle').textContent='新建项目';
   $('wizSubtitle').style.display='';document.querySelector('.wizard-steps').style.display='';
+  $('wizTab3').style.display='';
   $('wizSubtitle').textContent='先完善项目资料，再配置施工计划和收款计划。';
   $('projName').value='';
   /* 自动生成编号 */
@@ -3589,12 +3570,9 @@ function openProjectModal(id){
   $('projTotalAmount').value='';$('projArea').value='';
   document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type==='new'));
   $('wPlanStartDate').value='';
-  /* 重置步骤指示器 */
-  document.querySelectorAll('.wizard-step-tab').forEach((t,i)=>{t.classList.toggle('active',i===0);t.classList.toggle('done',false)});
-  document.querySelectorAll('.wizard-panel').forEach(p=>p.classList.remove('active'));
-  $('wizStep1').classList.add('active');
   renderPlanTemplateOptions();
   fillStepNameDatalist();
+  goWizardStep(1);
   showModal('projectModal');
 }
 
@@ -3811,11 +3789,7 @@ function saveProject(){
       p.name=name;p.code=code;p.totalAmount=totalAmount;p.area=area;p.houseType=selectedHouseType;
       p.profile=p.profile||{};p.profile.startDate=$('wPlanStartDate').value||'';
       p.processSteps=processSteps;
-      persist();closeModal('projectModal');editingProjectId=null;
-      /* 恢复向导UI显示与主按钮（下次打开新建时为「下一步」） */
-      $('wizSubtitle').style.display='';document.querySelector('.wizard-steps').style.display='';
-      const b1r=$('wizStep1NextBtn');if(b1r){b1r.textContent='下一步：施工计划';b1r.setAttribute('onclick','goWizardStep(2)');}
-      $('wizCreateBtn').style.display='';$('wizCreateNewBtn').style.display='none';$('wizSaveBtn').style.display='none';
+      persist();closeProjectWizard();
       refreshProjectUI();if(currentPage)switchPage(currentPage);return;
     }
   }
