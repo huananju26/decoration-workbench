@@ -2769,27 +2769,87 @@ function saveCloudCfg(c){cloudCfg=c;try{localStorage.setItem(CLOUD_CFG_KEY,JSON.
 function loadCloudUser(){try{const u=JSON.parse(localStorage.getItem(CLOUD_USER_KEY));return u&&u.access?u:null;}catch(e){return null;}}
 function saveCloudUser(u){cloudUser=u;try{localStorage.setItem(CLOUD_USER_KEY,JSON.stringify(u));}catch(e){}}
 
-function isJwtExpired(t){try{const p=JSON.parse(atob(t.split('.')[1]));return !p.exp||p.exp*1000<Date.now();}catch(e){return true;}}
+function isJwtExpired(t){try{const b=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');const p=JSON.parse(atob(b));return !p.exp||p.exp*1000<Date.now();}catch(e){return true;}}
+/* 把 Supabase 鉴权错误映射为可懂的中文提示 */
+function cloudAuthErr(j,fallback){
+  if(!j||typeof j!=='object')return fallback;
+  const code=j.error_code||j.code;
+  const msg=j.msg||j.message||j.error_description||j.error||'';
+  const map={
+    invalid_credentials:'邮箱或密码错误，请重试',
+    user_already_exists:'该邮箱已注册，请直接登录（或换一个邮箱）',
+    email_exists:'该邮箱已注册，请直接登录',
+    email_not_confirmed:'邮箱尚未确认，请先查收确认邮件后重试',
+    weak_password:'密码强度不足（至少 6 位，建议字母+数字组合）',
+    signup_disabled:'当前后端已关闭注册，请联系管理员',
+    signup_not_allowed:'当前后端未开放注册，请联系管理员',
+    user_not_found:'账号不存在，请先注册',
+    email_provider_disabled:'该登录方式未启用，请联系管理员',
+    user_banned:'账号已被禁用',
+    invalid_grant:'登录凭证已失效，请重新登录',
+    invalid_apikey:'API Key 无效，请检查 Publishable Key 是否正确',
+    over_request_rate_limit:'请求过于频繁，请稍后重试',
+    rate_limit:'请求过于频繁，请稍后重试'
+  };
+  if(code&&map[code])return map[code];
+  return msg||fallback;
+}
 
+/* 从 JWT 中解析 sub（用户ID），作为 user_data 的 user 字段与 RLS 对齐；
+   登录/注册响应未带 user 对象时，用 token 的 sub 兜底，避免 push 时 user 为空被 RLS 拦截 */
+function tokenSub(t){try{const b=(t||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/');const p=JSON.parse(atob(b));return p.sub||null;}catch(e){return null;}}
 const CloudSync={
   get configured(){return !!(cloudCfg&&cloudCfg.url&&cloudCfg.key);},
   get loggedIn(){return !!(cloudUser&&cloudUser.access);},
   _headers(extra){return Object.assign({'Content-Type':'application/json','apikey':cloudCfg.key},extra||{});},
+  /* 带超时的 fetch（应对跨国链路卡死） */
+  async _fetch(url,opts,tmo){
+    tmo=tmo||15000;
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),tmo);
+    try{return await fetch(url,Object.assign({signal:ctrl.signal},opts));}
+    finally{clearTimeout(tid);}
+  },
+  /* 统一请求：网络/超时错误自动重试一次；非 2xx 抛可读错误（含 HTTP 状态与服务器原文） */
+  async _req(method,path,body,extra,tmo){
+    for(let attempt=0;attempt<2;attempt++){
+      let r,j=null,txt='';
+      try{
+        r=await this._fetch(cloudCfg.url+path,{method,headers:this._headers(extra),body:(body!==null&&body!==undefined)?JSON.stringify(body):undefined},tmo);
+        txt=await r.text();
+        try{j=JSON.parse(txt);}catch(e){j={__raw:txt};}
+      }catch(e){
+        if(attempt<1 && (e.name==='AbortError'||/Failed to fetch|NetworkError|network|timeout/i.test(e.message||''))){
+          await new Promise(res=>setTimeout(res,1200));continue;   /* 链路抖动 → 重试一次 */
+        }
+        if(e.name==='AbortError')throw new Error('连接云端超时（'+Math.round((tmo||15000)/1000)+'秒）：多为网络不畅或区域访问受限，请稍后重试，或用「在线预览链接」打开本应用');
+        throw new Error('无法连接云端，请检查网络或 Project URL 是否正确（'+(e.message||'')+'）');
+      }
+      if(!r.ok){
+        const raw=(j&&(j.msg||j.message||j.error_description||j.error))||(j&&j.__raw)||'';
+        const friendly=cloudAuthErr(j,'操作失败');
+        const extra2=(friendly==='操作失败'&&raw)?('：'+raw.slice(0,160)):'';
+        throw new Error(friendly+(r.status?('（HTTP '+r.status+'）'):'')+extra2);
+      }
+      return j;
+    }
+  },
   async signup(email,password){
-    const r=await fetch(cloudCfg.url+'/auth/v1/signup',{method:'POST',headers:this._headers({'Authorization':'Bearer '+cloudCfg.key}),body:JSON.stringify({email,password})});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(j.msg||j.message||'注册失败');
+    const j=await this._req('POST','/auth/v1/signup',{email,password},{'Authorization':'Bearer '+cloudCfg.key});
     const sess=j.session||j;
-    if(sess&&sess.access_token){saveCloudUser({email,uid:j.user&&j.user.id,access:sess.access_token,refresh:sess.refresh_token});}
-    else{throw new Error('注册成功，请查收确认邮件后登录（或在 Supabase 后台关闭邮件确认）');}
+    if(sess&&sess.access_token){
+      const uid=(j.user&&j.user.id)||tokenSub(sess.access_token);
+      saveCloudUser({email,uid,access:sess.access_token,refresh:sess.refresh_token});
+    }else{
+      throw new Error('注册成功，但服务端未返回登录态，请直接登录，或在 Supabase 后台关闭「邮件确认」');
+    }
     return j;
   },
   async login(email,password){
-    const r=await fetch(cloudCfg.url+'/auth/v1/token?grant_type=password',{method:'POST',headers:this._headers({'Authorization':'Bearer '+cloudCfg.key}),body:JSON.stringify({email,password})});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(j.error_description||j.msg||'登录失败');
+    const j=await this._req('POST','/auth/v1/token?grant_type=password',{email,password},{'Authorization':'Bearer '+cloudCfg.key});
     const sess=j.session||j;
-    saveCloudUser({email,uid:j.user&&j.user.id,access:sess.access_token,refresh:sess.refresh_token});
+    const uid=(j.user&&j.user.id)||tokenSub(sess.access_token);
+    saveCloudUser({email,uid,access:sess.access_token,refresh:sess.refresh_token});
     return j;
   },
   async logout(){saveCloudUser(null);},
@@ -2798,30 +2858,27 @@ const CloudSync={
     if(cloudUser.access&&!isJwtExpired(cloudUser.access))return cloudUser.access;
     if(cloudUser.refresh){
       try{
-        const r=await fetch(cloudCfg.url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:this._headers({'Authorization':'Bearer '+cloudCfg.key}),body:JSON.stringify({refresh_token:cloudUser.refresh})});
-        const j=await r.json();
-        if(r.ok&&j.access_token){saveCloudUser({email:cloudUser.email,uid:cloudUser.uid,access:j.access_token,refresh:j.refresh_token||cloudUser.refresh});return j.access_token;}
+        const j=await this._req('POST','/auth/v1/token?grant_type=refresh_token',{refresh_token:cloudUser.refresh},{'Authorization':'Bearer '+cloudCfg.key},8000);
+        if(j.access_token){saveCloudUser({email:cloudUser.email,uid:cloudUser.uid,access:j.access_token,refresh:j.refresh_token||cloudUser.refresh});return j.access_token;}
       }catch(e){}
     }
-    return cloudUser.access;
+    return null;
   },
   async push(){
     if(!this.configured||!this.loggedIn)return;
     const token=await this._ensureToken();
     if(!token)return;
-    const body=[{user:cloudUser.uid,data:App}];
-    const r=await fetch(cloudCfg.url+'/rest/v1/user_data?on_conflict=user',{method:'POST',headers:this._headers({'Authorization':'Bearer '+token,'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(body)});
-    if(!r.ok){const t=await r.text();throw new Error('上传失败 '+r.status+': '+t);}
+    const uid=cloudUser.uid||tokenSub(token);   /* uid 兜底，防止 RLS 拦截 */
+    const body=[{user:uid,data:App}];
+    await this._req('POST','/rest/v1/user_data?on_conflict=user',body,{'Authorization':'Bearer '+token,'Prefer':'resolution=merge-duplicates'},12000);
     return true;
   },
   async pull(){
     if(!this.configured||!this.loggedIn)return null;
     const token=await this._ensureToken();
     if(!token)return null;
-    const r=await fetch(cloudCfg.url+'/rest/v1/user_data?select=*',{method:'GET',headers:this._headers({'Authorization':'Bearer '+token})});
-    if(!r.ok)throw new Error('拉取失败 '+r.status);
-    const rows=await r.json();
-    if(rows&&rows.length)return rows[0].data;
+    const j=await this._req('GET','/rest/v1/user_data?select=*',null,{'Authorization':'Bearer '+token},12000);
+    if(j&&j.length)return j[0].data;
     return null;
   }
 };
@@ -2841,14 +2898,42 @@ function showCloudView(v){
   ['cloudCfgView','cloudAuthView','cloudDoneView'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=(id===map[v])?'block':'none';});
 }
 function openCloudModal(){
-  if(cloudUser&&CloudSync.loggedIn)showCloudView('done');
+  openCloudModalAsync();
+}
+async function openCloudModalAsync(){
+  if(cloudUser&&cloudUser.access){
+    let token=null;
+    try{token=await CloudSync._ensureToken();}catch(e){}
+    if(token){showCloudView('done');}
+    else{saveCloudUser(null);cloudUser=null;showCloudView(CloudSync.configured?'auth':'cfg');}
+  }
   else if(CloudSync.configured)showCloudView('auth');
   else showCloudView('cfg');
   if($('cloudUrl'))$('cloudUrl').value=cloudCfg?cloudCfg.url:'';
   if($('cloudKey'))$('cloudKey').value=cloudCfg?cloudCfg.key:'';
   if($('cloudEmail'))$('cloudEmail').textContent=cloudUser?cloudUser.email:'';
   if($('cloudAuthMsg'))$('cloudAuthMsg').textContent='';
+  if($('cloudTestMsg'))$('cloudTestMsg').textContent='';
   showModal('cloudModal');
+}
+async function cloudTestConn(){
+  const msg=$('cloudTestMsg');if(!msg)return;
+  const u=$('cloudUrl').value.trim(),k=$('cloudKey').value.trim();
+  if(!u||!k){msg.textContent='请先填写 URL 和 Key';msg.style.color='#fa8c16';return;}
+  msg.textContent='连接中…';msg.style.color='#1677ff';
+  const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),12000);
+  try{
+    const r=await fetch(u.replace(/\/+$/,'')+'/auth/v1/settings',{method:'GET',headers:{'Content-Type':'application/json','apikey':k,'Authorization':'Bearer '+k},signal:ctrl.signal});
+    if(r.ok){
+      msg.textContent='✅ 后端连接成功，配置可用（保存后即可登录）。注意：若从本地文件双击打开仍登入失败，多为浏览器跨域/区域网络限制，建议改用「在线预览链接」打开。';
+      msg.style.color='#1677ff';
+    }
+    else{await r.text().catch(()=>'');msg.textContent='⚠️ 连接被拒绝（HTTP '+r.status+'）：请检查 Publishable Key 是否正确';msg.style.color='#ff4d4f';}
+  }catch(e){
+    if(e.name==='AbortError')msg.textContent='⚠️ 连接超时（12秒）：后端不可达或区域访问受限，请检查网络 / Project URL，或改用在线预览链接';
+    else msg.textContent='⚠️ 无法连接：'+e.message+'（请检查网络 / Project URL）';
+    msg.style.color='#ff4d4f';
+  }finally{clearTimeout(tid);}
 }
 function cloudSaveCfg(){
   const u=$('cloudUrl').value.trim(),k=$('cloudKey').value.trim();
@@ -9457,10 +9542,12 @@ init();
         <input id="cloudUrl" placeholder="https://xxxx.supabase.co" style="width:100%;margin-bottom:10px;box-sizing:border-box;padding:8px 10px;border:1px solid #91caff;border-radius:8px;font-size:14px;outline:none">
         <div style="font-size:12px;color:#666;margin-bottom:4px">Publishable Key</div>
         <input id="cloudKey" style="width:100%;margin-bottom:14px;box-sizing:border-box;padding:8px 10px;border:1px solid #91caff;border-radius:8px;font-size:14px;outline:none">
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn-primary" onclick="cloudSaveCfg()">保存配置</button>
+          <button class="btn-outline" onclick="cloudTestConn()">测试连接</button>
           <button class="btn-outline" onclick="closeModal('cloudModal')">关闭</button>
         </div>
+        <div id="cloudTestMsg" style="font-size:12px;min-height:16px;margin-top:8px;color:#999"></div>
       </div>
 
       <div id="cloudAuthView" style="display:none">
