@@ -1935,7 +1935,7 @@ a{color:#003a8c;text-decoration:none}
 
       <!-- 支出分类网格 -->
       <div class="fin-cat-section">
-        <div class="fin-cat-title">支出分类（材料款 / 人工款 等）</div>
+        <div class="fin-cat-title">支出分类（材料采购 / 人工劳务 等）</div>
         <div class="fin-cat-grid" id="finCatGrid"></div>
       </div>
 
@@ -2353,7 +2353,7 @@ a{color:#003a8c;text-decoration:none}
     <div class="modal-body" style="overflow-y:auto;padding:16px 20px">
       <div class="form-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group"><label class="form-label">材料名称 <b style="color:#ff4d4f">*</b></label><input id="mpName" type="text" placeholder="例如：客厅地砖" list="mpNameList" autocomplete="off"><datalist id="mpNameList"></datalist></div>
-        <div class="form-group"><label class="form-label">分类 <b style="color:#ff4d4f">*</b></label><select id="mpCat"><option value="材料款">材料款</option><option value="人工款">人工款</option><option value="包工包料">包工包料</option><option value="系统设备">系统设备</option><option value="家电电器">家电电器</option><option value="软装家具">软装家具</option><option value="项目工资">项目工资</option><option value="设计费">设计费</option><option value="运营管理">运营管理</option><option value="服务杂项">服务杂项</option></select></div>
+        <div class="form-group"><label class="form-label">分类 <b style="color:#ff4d4f">*</b></label><select id="mpCat"><option value="材料采购">材料采购</option><option value="人工劳务">人工劳务</option><option value="包工包料">包工包料</option><option value="系统设备">系统设备</option><option value="家电电器">家电电器</option><option value="软装家具">软装家具</option><option value="项目工资">项目工资</option><option value="设计费用">设计费用</option><option value="运营管理">运营管理</option><option value="服务杂项">服务杂项</option></select></div>
         <div class="form-group"><label class="form-label">关联施工节点</label><select id="mpStepId"><option value="">暂不关联</option></select></div>
         <div class="form-group"><label class="form-label">采购负责人</label><select id="mpBuyer"><option value="">暂不指定</option></select></div>
         <div class="form-group"><label class="form-label">供应商</label><input id="mpVendor" type="text" placeholder=""></div>
@@ -2611,7 +2611,7 @@ a{color:#003a8c;text-decoration:none}
       </div>
       <div class="form-row" id="fExpenseRow">
         <div class="form-group"><label class="form-label">分类</label>        <select id="fCat">
-          <option value="材料款">材料款</option><option value="人工款">人工款</option><option value="包工包料">包工包料</option><option value="系统设备">系统设备</option><option value="家电电器">家电电器</option><option value="软装家具">软装家具</option><option value="项目工资">项目工资</option><option value="设计费">设计费</option><option value="运营管理">运营管理</option><option value="服务杂项">服务杂项</option><option value="采买报销">采买报销</option><option value="交通差旅">交通差旅</option><option value="对公转账">对公转账</option><option value="开票税费">开票税费</option>
+          <option value="材料采购">材料采购</option><option value="人工劳务">人工劳务</option><option value="包工包料">包工包料</option><option value="系统设备">系统设备</option><option value="家电电器">家电电器</option><option value="软装家具">软装家具</option><option value="项目工资">项目工资</option><option value="设计费用">设计费用</option><option value="运营管理">运营管理</option><option value="服务杂项">服务杂项</option><option value="采买报销">采买报销</option><option value="交通差旅">交通差旅</option><option value="对公转账">对公转账</option><option value="开票税费">开票税费</option>
         </select></div>
         <div class="form-group"><label class="form-label">所属阶段</label><select id="fStage"><option value="">无</option></select></div>
       </div>
@@ -6005,7 +6005,7 @@ function renderProjDetailHeader(p){
       '<div class="pdh-meta-field"><span class="pdh-meta-label">设计</span><input class="pdh-meta-input" id="pdhDesigner" value="'+escHtml(designer)+'" placeholder="待分配" onchange="saveProjMetaField(\'designer\',this.value)"></div>'+
       '<div class="pdh-meta-field"><span class="pdh-meta-label">工长</span><input class="pdh-meta-input" id="pdhWorker" value="'+escHtml(worker)+'" placeholder="待分配" onchange="saveProjMetaField(\'worker\',this.value)"></div>'+
       '<div class="pdh-meta-field"><span class="pdh-meta-label">总负责人</span><input class="pdh-meta-input" id="pdhManager" value="'+escHtml(manager)+'" placeholder="待分配" onchange="saveProjMetaField(\'manager\',this.value)"></div>'+
-      '<div class="pdh-meta-field"><span class="pdh-meta-label">项目面积</span><input class="pdh-meta-input" id="pdhArea" type="number" step="0.01" min="0" value="'+escHtml(area)+'" placeholder="未填写" onchange="saveProjMetaField(\'area\',this.value)"></div>'+
+      '<div class="pdh-meta-field"><span class="pdh-meta-label">项目面积(m²)</span><input class="pdh-meta-input" id="pdhArea" type="number" step="0.01" min="0" value="'+escHtml(area)+'" placeholder="未填写" style="width:120px" onchange="saveProjMetaField(\'area\',this.value)"></div>'+
     '</div>'+
     '<div class="pdh-meta-line">'+
       '<div class="pdh-meta-field" style="width:100%"><span class="pdh-meta-label">地址</span><input class="pdh-meta-input pdh-meta-address" id="pdhAddress" value="'+escHtml(address)+'" placeholder="未填写" onchange="saveProjMetaField(\'address\',this.value)"></div>'+
@@ -7257,7 +7257,7 @@ function syncPurchaseToExpense(p, purchase){
     amount: purchase.budget||0,
     date: purchase.dueDate || todayISO(),
     note: `采购${payLabel} · ${purchase.vendor||'供应商待定'} · ${purchase.qty||1}${purchase.unit||'项'}`,
-    cat: purchase.cat||'材料款',
+    cat: purchase.cat||'材料采购',
     stage: purchase.stage||'材料采购',
     payee: purchase.vendor||'供应商待定',
     paid: isPaid,
@@ -7284,7 +7284,7 @@ function saveMaterialPlanBatch(){
   p.purchases=p.purchases||[];
   const data={
     name:name,
-    cat:$('mpCat').value||'材料款',
+    cat:$('mpCat').value||'材料采购',
     stage:step?step.name:'',
     stageId:stepId||'',
     buyer:$('mpBuyer').value,
@@ -7347,7 +7347,7 @@ function editPurchaseItem(id){
   /* 复用新增弹窗，预填数据 */
   openAddMaterialPlan();
   $('mpName').value=item.name||'';
-  $('mpCat').value=item.cat||'材料款';
+  $('mpCat').value=item.cat||'材料采购';
   $('mpStepId').value=item.stageId||'';
   $('mpBuyer').value=item.buyer||'';
   $('mpVendor').value=item.vendor||'';
@@ -7879,14 +7879,14 @@ function showPendingPayments(){
 }
 // 支出分类定义（10 类）
 const EXPENSE_CATS=[
-  {key:'材料款',label:'材料款',color:'#1a4a6e',short:'材'},
-  {key:'人工款',label:'人工款',color:'#c45c3e',short:'人'},
+  {key:'材料采购',label:'材料采购',color:'#1a4a6e',short:'材'},
+  {key:'人工劳务',label:'人工劳务',color:'#c45c3e',short:'人'},
   {key:'包工包料',label:'包工包料',color:'#2d7d5c',short:'包'},
   {key:'系统设备',label:'系统设备',color:'#1a7a8c',short:'系'},
   {key:'家电电器',label:'家电电器',color:'#b8860b',short:'家'},
   {key:'软装家具',label:'软装家具',color:'#6b4c9a',short:'软'},
   {key:'项目工资',label:'项目工资',color:'#a8546a',short:'工'},
-  {key:'设计费',label:'设计费',color:'#5c6b7a',short:'设'},
+  {key:'设计费用',label:'设计费用',color:'#5c6b7a',short:'设'},
   {key:'运营管理',label:'运营管理',color:'#6b8e4a',short:'运'},
   {key:'服务杂项',label:'服务杂项',color:'#8b6914',short:'服'},
   {key:'采买报销',label:'采买报销',color:'#3a6ea5',short:'采'},
@@ -7894,11 +7894,13 @@ const EXPENSE_CATS=[
   {key:'对公转账',label:'对公转账',color:'#5a7d8c',short:'对'},
   {key:'开票税费',label:'开票税费',color:'#8a5a8c',short:'税'}
 ];
+/* 分类改名兼容：旧数据 cat 值映射到新 key，避免历史记录丢失颜色/统计 */
+const EXPENSE_CAT_RENAME={'材料款':'材料采购','人工款':'人工劳务','设计费':'设计费用'};
 function getExpenseCategories(p){
   const map={};
   EXPENSE_CATS.forEach(c=>map[c.key]=0);
   (p.expense||[]).forEach(e=>{
-    const k=e.cat||'其他';
+    const k=EXPENSE_CAT_RENAME[e.cat]||e.cat||'其他';
     if(map[k]!==undefined)map[k]+=(e.amount||0);
     else map['其他']+=(e.amount||0);
   });
@@ -8052,7 +8054,7 @@ function renderFinanceRecords(){
 
   /* 辅助：根据分类名获取颜色和首字 */
   function catInfo(cat){
-    const found=EXPENSE_CATS.find(c=>c.key===cat);
+    const found=EXPENSE_CATS.find(c=>c.key===(EXPENSE_CAT_RENAME[cat]||cat));
     return found?{color:found.color,short:found.short}:{color:'#fa8c16',short:(cat||'支')[0]};
   }
 
@@ -8126,7 +8128,7 @@ function renderFinanceRecords(){
   /* 右栏：分类占比 */
   const catEl=$('finColCategory');
   const cats=getExpenseCategories(p);
-  const total=cats['材料款']+cats['人工款']+cats['包工包料']+cats['系统设备']+cats['家电电器']+cats['软装家具']+cats['项目工资']+cats['设计费']+cats['运营管理']+cats['服务杂项']||1;
+  const total=Object.values(cats).reduce((a,b)=>a+b,0)||1;
   let html='<div style="padding:4px 0">';
   EXPENSE_CATS.forEach(c=>{
     const v=cats[c.key]||0; const pct=Math.round(v/total*100); const bg=c.color||'#003a8c';
@@ -8367,7 +8369,7 @@ function editFinance(type,id){
   $('fDetail').value=found.name;$('fAmount').value=found.amount;
   $('fStatus').value=type==='income'?(found.received?'received':'pending'):(found.paid?'received':'pending');
   if(type==='income'){$('fIncomeCat').value=found.cat||'预付款';$('fPayer').value=found.payer||'';}
-  else{$('fCat').value=found.cat||'材料款';$('fPayee').value=found.payee||'';}
+  else{$('fCat').value=(EXPENSE_CAT_RENAME[found.cat]||found.cat)||'材料采购';$('fPayee').value=found.payee||'';}
   $('fDate').value=found.date||todayISO();$('fNote').value=found.note||'';
   /* 所属阶段必须在所有同步 DOM 操作完成后设值（setTimeout 0 确保 openFinanceModal 的 populateStageSelect 不覆盖） */
   if(type==='expense'){setTimeout(()=>{populateStageSelect('fStage');$('fStage').value=origStage;},0);}
@@ -8395,9 +8397,9 @@ function openFinanceModal(){
   populateProjectSelect('fProject');
   if(cur())$('fProject').value=cur().id;
   else if(App.projects.length)$('fProject').value=App.projects[0].id;
-  $('fType').value='income';$('fDetail').value='';$('fAmount').value='';
-  $('fStatus').value='received';$('fCat').value='材料款';$('fStage').value='';$('fIncomeCat').value='预付款';$('fPayer').value='';$('fPayee').value='';$('fDate').value=todayISO();$('fNote').value='';
-  toggleFinType('income');
+  $('fType').value='expense';$('fDetail').value='';$('fAmount').value='';
+  $('fStatus').value='received';$('fCat').value='材料采购';$('fStage').value='';$('fIncomeCat').value='预付款';$('fPayer').value='';$('fPayee').value='';$('fDate').value=todayISO();$('fNote').value='';
+  toggleFinType('expense');
   populateStageSelect('fStage');
   showModal('financeModal');
 }
