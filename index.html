@@ -1143,6 +1143,23 @@ a{color:#003a8c;text-decoration:none}
   .fin-dash-sm-val{font-size:13.5px}
   .fin-dash-sm{padding:8px 4px 6px}
   .fin-adj-row{padding:6px 8px;font-size:11px}
+  /* ── 收款计划卡片：移动端自适应 ── */
+  .ppay-list{overflow-x:visible;padding-bottom:0}
+  .ppay-card{padding:12px;padding-top:40px;position:relative}
+  .ppay-card-row{display:block;gap:0}
+  .ppay-card-idx{position:absolute;top:10px;left:12px;align-self:auto;margin-bottom:0}
+  .ppay-card-actions{position:absolute;top:8px;right:12px;align-self:auto}
+  .ppay-card-actions button{width:30px;height:30px;font-size:14px}
+  .ppay-card-main{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+  .ppay-card-main > *{width:100%;grid-column:auto!important;grid-row:auto!important}
+  .ppay-card-target{width:100%;font-size:12px;white-space:normal;margin-bottom:2px}
+  .ppay-card-col-label{display:none}
+  .ppay-card-name{width:100%}
+  .ppay-card-name input{width:100%}
+  .ppay-card-pct,.ppay-card-date{flex:1 1 calc(50% - 4px);min-width:90px;width:auto;display:flex}
+  .ppay-card-pct input,.ppay-card-date input{width:100%}
+  .ppay-card-group{margin-top:4px;width:100%}
+  .ppay-card-group select{width:100%}
 }
 @media(max-width:480px){
   .stats-row{grid-template-columns:1fr 1fr}
@@ -3672,8 +3689,8 @@ function renderWizardPayPlan(){
     const pctVal=(n.pct||0).toFixed(1);
     const isPct=wizPayPlanMode==='pct'||(wizPayPlanMode==='split'&&((n.group==='material'?wizPayPlanSplit.materialMethod:wizPayPlanSplit.laborMethod)==='pct'));
     const inputHtml=isPct
-      ?`<input type="number" value="${n.pct||''}" min="0" max="100" step="0.5" onchange="wizPayPlanNodes[${idx}].pct=parseFloat(this.value)||0;renderWizardPayPlan()" style="width:52px"><span class="ppay-field-unit">%</span>`
-      :`<input type="number" value="${n.amount||''}" min="0" step="100" onchange="wizPayPlanNodes[${idx}].amount=parseFloat(this.value)||0;renderWizardPayPlan()" style="width:70px"><span class="ppay-field-unit">¥</span>`;
+      ?`<input type="number" value="${n.pct||''}" min="0" max="100" step="0.5" placeholder="占比" onchange="wizPayPlanNodes[${idx}].pct=parseFloat(this.value)||0;renderWizardPayPlan()" style="width:52px"><span class="ppay-field-unit">%</span>`
+      :`<input type="number" value="${n.amount||''}" min="0" step="100" placeholder="金额" onchange="wizPayPlanNodes[${idx}].amount=parseFloat(this.value)||0;renderWizardPayPlan()" style="width:70px"><span class="ppay-field-unit">¥</span>`;
     const groupHtml=showGroup?`<div class="ppay-card-group"><select onchange="wizPayPlanNodes[${idx}].group=this.value;renderWizardPayPlan()">
       <option value="labor" ${n.group!=='material'?'selected':''}>归属：人辅</option>
       <option value="material" ${n.group==='material'?'selected':''}>归属：主材</option>
@@ -3690,7 +3707,7 @@ function renderWizardPayPlan(){
           </div>
           <div class="ppay-card-pct">${inputHtml}</div>
           <div class="ppay-card-date">
-            <input type="date" value="${n.dueDate||''}" onchange="wizPayPlanNodes[${idx}].dueDate=this.value" style="text-align:left">
+            <input type="date" value="${n.dueDate||''}" placeholder="计划日期" onchange="wizPayPlanNodes[${idx}].dueDate=this.value" style="text-align:left">
           </div>
         </div>
         <div class="ppay-card-actions">
@@ -7381,8 +7398,8 @@ function renderSplitTable(){
 function renderPlanCard(idx,n,target,dueAmt,mode,isPctInput,received){
   const inputColLabel=mode==='pct'?'合同占比':(mode==='custom'?'自定义本期金额':'组内比例/金额');
   const inputHtml=isPctInput
-    ?`<input type="number" value="${n.pct||''}" min="0" max="100" step="0.5" onchange="_planNodes[${idx}].pct=parseFloat(this.value)||0;recalcAndRender()" style="width:52px"><span class="ppay-field-unit">%</span>`
-    :`<input type="number" value="${n.amount||''}" min="0" step="100" onchange="_planNodes[${idx}].amount=parseFloat(this.value)||0;recalcAndRender()" style="width:70px"><span class="ppay-field-unit">¥</span>`;
+    ?`<input type="number" value="${n.pct||''}" min="0" max="100" step="0.5" placeholder="占比" onchange="_planNodes[${idx}].pct=parseFloat(this.value)||0;recalcAndRender()" style="width:52px"><span class="ppay-field-unit">%</span>`
+    :`<input type="number" value="${n.amount||''}" min="0" step="100" placeholder="金额" onchange="_planNodes[${idx}].amount=parseFloat(this.value)||0;recalcAndRender()" style="width:70px"><span class="ppay-field-unit">¥</span>`;
   const groupHtml=mode==='split'?`<div class="ppay-card-group"><select onchange="_planNodes[${idx}].group=this.value;recalcAndRender()">
     <option value="labor" ${n.group!=='material'?'selected':''}>归属：人辅</option>
     <option value="material" ${n.group==='material'?'selected':''}>归属：主材</option>
@@ -7399,7 +7416,7 @@ function renderPlanCard(idx,n,target,dueAmt,mode,isPctInput,received){
         </div>
         <div class="ppay-card-pct">${inputHtml}</div>
         <div class="ppay-card-date">
-          <input type="date" value="${n.dueDate||''}" onchange="_planNodes[${idx}].dueDate=this.value" style="text-align:left">
+          <input type="date" value="${n.dueDate||''}" placeholder="计划日期" onchange="_planNodes[${idx}].dueDate=this.value" style="text-align:left">
         </div>
       </div>
       <div class="ppay-card-actions">
