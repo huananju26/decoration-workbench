@@ -827,7 +827,7 @@ a{color:#003a8c;text-decoration:none}
 .project-manage-name{font-size:14px;font-weight:600;color:#1a1a1a}
 .project-manage-meta{font-size:12px;color:#999;margin-top:2px}
 .project-manage-actions{display:flex;gap:6px}
-.house-type-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+.house-type-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px}
 .house-type-opt{border:1px solid #d9d9d9;border-radius:10px;padding:14px;cursor:pointer;transition:all .2s;text-align:center}
 .house-type-opt.active{border-color:#003a8c;background:#e6f4ff}
 .house-type-opt .ht-icon{font-size:24px;margin-bottom:4px}
@@ -1105,7 +1105,7 @@ a{color:#003a8c;text-decoration:none}
   .float-add{bottom:70px;right:20px;width:48px;height:48px}
   .compare-stats{grid-template-columns:repeat(2,1fr)}
   .diary-stats{grid-template-columns:1fr}
-  .house-type-grid{grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
+  .house-type-grid{grid-template-columns:1fr 1fr 1fr;gap:6px}
   /* 流程页：移动端隐藏左侧导航，改为顶部操作栏 */
   .process-page-layout{flex-direction:column}
   .process-nav-panel{position:relative;top:auto;max-height:none;width:100%;margin-bottom:16px;order:-1}
@@ -1657,7 +1657,7 @@ a{color:#003a8c;text-decoration:none}
     <div id="welcomeScreen" class="welcome" style="display:none">
       <div class="welcome-icon">🏗️</div>
       <div class="welcome-title">欢迎使用装修工作台</div>
-      <div class="welcome-desc">当前还没有项目。创建一个新项目开始管理你的装修——支持新房毛胚、旧房改造、精装房、工装项目，各项目数据完全独立。</div>
+      <div class="welcome-desc">当前还没有项目。创建一个新项目开始管理你的装修——支持新房毛胚、旧房改造、精装房、局部改造、适老改造、工装项目，各项目数据完全独立。</div>
       <button class="btn-primary" style="padding:12px 40px;font-size:15px;border-radius:24px" onclick="openProjectModal()">+ 新建第一个项目</button>
 
       <div class="recovery-card">
@@ -2088,6 +2088,8 @@ a{color:#003a8c;text-decoration:none}
             <div class="house-type-opt active" data-type="new" onclick="selectHouseType('new')"><div class="ht-icon">🏠</div><div class="ht-name">新房毛胚</div></div>
             <div class="house-type-opt" data-type="old" onclick="selectHouseType('old')"><div class="ht-icon">🔨</div><div class="ht-name">旧房改造</div></div>
             <div class="house-type-opt" data-type="renovated" onclick="selectHouseType('renovated')"><div class="ht-icon">✨</div><div class="ht-name">精装房</div></div>
+            <div class="house-type-opt" data-type="local" onclick="selectHouseType('local')"><div class="ht-icon">🛠️</div><div class="ht-name">局部改造</div></div>
+            <div class="house-type-opt" data-type="elderly" onclick="selectHouseType('elderly')"><div class="ht-icon">♿</div><div class="ht-name">适老改造</div></div>
             <div class="house-type-opt" data-type="commercial" onclick="selectHouseType('commercial')"><div class="ht-icon">🏢</div><div class="ht-name">工装项目</div></div>
           </div>
         </div>
@@ -3177,7 +3179,7 @@ function load(){
 // ============================================================
 // GLOBAL TEMPLATES (same for all projects; per-project state in project data)
 // ============================================================
-const HOUSE_TYPES={new:'新房毛胚',old:'旧房改造',renovated:'精装房',commercial:'工装项目'};
+const HOUSE_TYPES={new:'新房毛胚',old:'旧房改造',renovated:'精装房',local:'局部改造',elderly:'适老改造',commercial:'工装项目'};
 const HOUSE_ICONS={new:'🏠',old:'🔨',renovated:'✨',commercial:'🏢'};
 
 const PROCESS_STEPS=[
@@ -3575,8 +3577,8 @@ function renderPlanTable(){
     </select></td>
     <td class="plan-date-range">${n.planStart?fmtDate(n.planStart)+' — '+fmtDate(n.planEnd):'—'}</td>
     <td style="text-align:center">
-      <span class="plan-op-btn" onclick="movePlanNode(${i},-1)" title="上移"${i===0?' style="opacity:.3;pointer-events:none"':''}>↑</span>
-      <span class="plan-op-btn" onclick="movePlanNode(${i},1)" title="下移"${i===wizPlanNodes.length-1?' style="opacity:.3;pointer-events:none"':''}>↓</span>
+      <span class="plan-op-btn" onclick="moveWizPlanNode(${i},-1)" title="上移"${i===0?' style="opacity:.3;pointer-events:none"':''}>↑</span>
+      <span class="plan-op-btn" onclick="moveWizPlanNode(${i},1)" title="下移"${i===wizPlanNodes.length-1?' style="opacity:.3;pointer-events:none"':''}>↓</span>
       <span class="plan-op-btn danger" onclick="deletePlanNode(${i})" title="删除">×</span>
     </td>
   </tr>`).join('');
@@ -3636,8 +3638,8 @@ function adjustPlanNodeDays(i,delta){
   recalcPlanSchedule();
 }
 
-/** 上移/下移节点 */
-function movePlanNode(i,dir){
+/** 上移/下移节点（施工计划） */
+function moveWizPlanNode(i,dir){
   const j=i+dir;if(j<0||j>=wizPlanNodes.length)return;
   [wizPlanNodes[i],wizPlanNodes[j]]=[wizPlanNodes[j],wizPlanNodes[i]];
   recalcPlanSchedule();
@@ -7587,8 +7589,8 @@ function renderPlanCard(idx,n,target,dueAmt,mode,isPctInput,received){
         </div>
       </div>
       <div class="ppay-card-actions">
-        <button onclick="movePlanNode(${idx},-1)" title="上移">↑</button>
-        <button onclick="movePlanNode(${idx},1)" title="下移">↓</button>
+        <button onclick="movePayNode(${idx},-1)" title="上移">↑</button>
+        <button onclick="movePayNode(${idx},1)" title="下移">↓</button>
         <button class="danger" onclick="removePlanNode(${idx})" title="删除">✕</button>
       </div>
     </div>
@@ -7602,7 +7604,7 @@ function addPlanNode(){
   recalcAndRender();
 }
 function removePlanNode(idx){if(_planNodes.length<=1){alert('至少保留一个收款节点');return;}_planNodes.splice(idx,1);recalcAndRender();}
-function movePlanNode(idx,dir){const ni=idx+dir;if(ni<0||ni>=_planNodes.length)return;const tmp=_planNodes[idx];_planNodes[idx]=_planNodes[ni];_planNodes[ni]=tmp;recalcAndRender();}
+function movePayNode(idx,dir){const ni=idx+dir;if(ni<0||ni>=_planNodes.length)return;const tmp=_planNodes[idx];_planNodes[idx]=_planNodes[ni];_planNodes[ni]=tmp;recalcAndRender();}
 
 function savePlanModal(){
   const p=cur();if(!p){closeModal('planModal');return;}
