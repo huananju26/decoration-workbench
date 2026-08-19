@@ -2764,18 +2764,12 @@ const SYNC_BACKEND=null;    // 未来填入云端句柄
 // ============================================================
 const CLOUD_CFG_KEY='xzgz_cloud_cfg';
 const CLOUD_USER_KEY='xzgz_cloud_user';
-// 默认云端后端：作者提供的 Supabase 项目，开箱即用。
-// 用户可在「云端同步」弹窗点「修改配置」换成自己的 Supabase（URL/Key 均为前端公开安全值）。
-const DEFAULT_CLOUD_CONFIG={
-  url:'https://diynraxruflbwhauewlp.supabase.co',
-  key:'sb_publishable_X1U5yHZBbQ9eojFiikNHdQ_4NR-9xpc'
-};
 let cloudCfg=loadCloudCfg();
 let cloudUser=loadCloudUser();
 
 function loadCloudCfg(){
   try{const s=localStorage.getItem(CLOUD_CFG_KEY);if(s)return JSON.parse(s);}catch(e){}
-  return DEFAULT_CLOUD_CONFIG?Object.assign({},DEFAULT_CLOUD_CONFIG):null;
+  return null;
 }
 function saveCloudCfg(c){cloudCfg=c;try{localStorage.setItem(CLOUD_CFG_KEY,JSON.stringify(c));}catch(e){}}
 function loadCloudUser(){try{const u=JSON.parse(localStorage.getItem(CLOUD_USER_KEY));return u&&u.access?u:null;}catch(e){return null;}}
@@ -9421,7 +9415,7 @@ init();
     </div>
     <div class="modal-body">
       <div id="cloudCfgView">
-        <div style="font-size:13px;color:#666;margin-bottom:12px">已预填作者提供的 <b>默认后端</b>，直接点「保存配置」即可使用（不同账号数据相互隔离）。若想用自己的 Supabase，把下面的 <b>Project URL</b> 与 <b>Publishable Key</b> 改成你自己的（均为前端公开 key，可安全填写）。</div>
+        <div style="font-size:13px;color:#666;margin-bottom:12px">填入你的 Supabase <b>Project URL</b> 与 <b>Publishable Key</b>（均为前端公开 key，可安全填写）。配置后登录账号即可多设备同步，不同账号数据相互隔离。若用作者提供的后端，请向作者索取 URL 与 Key。</div>
         <div style="font-size:12px;color:#666;margin-bottom:4px">Project URL</div>
         <input id="cloudUrl" placeholder="https://xxxx.supabase.co" style="width:100%;margin-bottom:10px;box-sizing:border-box;padding:8px 10px;border:1px solid #91caff;border-radius:8px;font-size:14px;outline:none">
         <div style="font-size:12px;color:#666;margin-bottom:4px">Publishable Key</div>
