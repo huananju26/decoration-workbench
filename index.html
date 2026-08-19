@@ -2959,13 +2959,14 @@ async function cloudDoSignup(){
 }
 async function cloudLogout(){
   await CloudSync.logout();   /* 清云端登录态（cloudUser=null） */
-  /* 退出即清除本机数据，避免旧账号信息残留在页面（多设备退出后“原信息还在”的根因） */
+  /* 退出即清除本机数据，避免旧账号信息残留在页面（多设备退出后"原信息还在"的根因） */
   App=JSON.parse(JSON.stringify(APP_DEFAULT));
   App.projects=[];App.currentProjectId=null;
   persist();                  /* 此时已登出，persist 不会触发云端上传 */
   refreshProjectUI();
   if(currentPage)switchPage(currentPage);
-  showCloudView('cfg');updateCloudUI();
+  /* 退出后自动弹出登录界面：配置仍在 → 显示登录；配置也清了 → 显示配置页 */
+  openCloudModal();
 }
 /* 把云端数据应用到当前 App。
    keepLocalOnly=true 时保留“本地独有”项目，但仅限【末次同步之后新建】的，
@@ -4029,11 +4030,16 @@ const PROJECT_SCOPED=new Set(['home','process','purchase','finance','diary']);
 function showNoProject(page){
   const el=$('noProjectOverlay'); if(!el)return;
   const has=App.projects.length>0;
+  /* 检测是否"退出账号后清空"：配置过云端但未登录 → 显示登入引导 */
+  const cloudConfigured=CloudSync.configured;
+  const cloudLoggedOut=cloudConfigured&&!CloudSync.loggedIn;
+  const cloudBtnHtml=cloudLoggedOut?`<div class="empty-button" style="margin-top:8px"><button class="btn-outline" onclick="openCloudModal()" style="border-color:#91caff;color:#003a8c">☁️ 登录云端账号</button></div>`:'';
   el.innerHTML=`<div class="empty-state">
     <div class="empty-icon">📋</div>
     <div class="empty-title">${has?'请选择一个项目':'还没有项目'}</div>
-    <div class="empty-desc">${has?'当前没有选中项目。在左上角项目选择框里选一个，或点击下方按钮新建。':'创建一个装修项目后，这里会显示该项目的专属数据——待办、流程节点、采购清单、收支记账、装修日记等。'}</div>
+    <div class="empty-desc">${has?'当前没有选中项目。在左上角项目选择框里选一个，或点击下方按钮新建。':(cloudLoggedOut?'你已退出云端账号，本地数据已清除。<b>登录后可从云端恢复你的项目数据</b>。':'创建一个装修项目后，这里会显示该项目的专属数据——待办、流程节点、采购清单、收支记账、装修日记等。')}</div>
     <div class="empty-button"><button class="btn-primary" onclick="openProjectModal()">+ 新建项目</button></div>
+    ${cloudBtnHtml}
   </div>`;
   el.style.display='flex';
 }
@@ -4961,7 +4967,9 @@ function renderMetricCardsAll(projects){
 function renderProjectPulseAll(projects){
   const container=$('projectPulseList');
   if(!projects.length){
-    container.innerHTML='<div style="text-align:center;padding:40px 16px;color:#bbb"><div style="font-size:32px;margin-bottom:8px">📋</div><p>还没有项目，先创建一个吧</p></div>';
+    const cloudConfigured=CloudSync.configured;
+    const cloudLoggedOut=cloudConfigured&&!CloudSync.loggedIn;
+    container.innerHTML=`<div style="text-align:center;padding:40px 16px;color:#bbb"><div style="font-size:32px;margin-bottom:8px">📋</div><p>${cloudLoggedOut?'你已退出云端账号，本地数据已清除。':'还没有项目，先创建一个吧'}</p>${cloudLoggedOut?'<div style="margin-top:12px"><button class="btn-outline" onclick="openCloudModal()" style="border-color:#91caff;color:#003a8c">☁️ 登录云端账号</button></div>':''}</div>`;
     return;
   }
   /* 按项目编号倒序排列 */
