@@ -2873,12 +2873,34 @@ async function cloudDoSignup(){
 async function cloudLogout(){
   await CloudSync.logout();showCloudView('cfg');updateCloudUI();
 }
+/* 把云端数据应用到当前 App；keepLocalOnly=true 时保留本地独有（云端没有）的项目，避免覆盖本机新增 */
+function applyCloudData(d,keepLocalOnly){
+  const cloudProj=(Array.isArray(d.projects)?d.projects:[]).map(mergeProject);
+  let projects=cloudProj;
+  if(keepLocalOnly){
+    const cloudIds=new Set(cloudProj.map(p=>p.id));
+    const localOnly=App.projects.filter(p=>!cloudIds.has(p.id)&&!p.isDemo);
+    projects=cloudProj.concat(localOnly);
+  }
+  App=Object.assign({},APP_DEFAULT,d);
+  App.projects=projects;
+  if(App.currentProjectId&&!App.projects.find(p=>p.id===App.currentProjectId))App.currentProjectId=App.projects.length?App.projects[0].id:null;
+}
 async function cloudSyncNow(){
   if(!CloudSync.loggedIn){showCloudView('auth');return;}
   try{
     cloudStatusSet('☁️ 同步中…');
-    await CloudSync.push();
-    cloudStatusSet('☁️ 已同步 '+new Date().toLocaleTimeString());
+    /* 先下载云端数据并合并到本机；云端为空时才上传本机作为首次种子 */
+    const d=await CloudSync.pull();
+    if(d&&d.projects&&d.projects.length){
+      applyCloudData(d,true);
+      persist();
+      refreshProjectUI();if(currentPage)switchPage(currentPage);
+      cloudStatusSet('☁️ 已同步（已下载云端数据）'+new Date().toLocaleTimeString());
+    }else{
+      await CloudSync.push();
+      cloudStatusSet('☁️ 已同步（已上传本地数据）'+new Date().toLocaleTimeString());
+    }
     updateCloudUI();
   }catch(err){cloudStatusSet('⚠️ 同步失败：'+err.message);}
 }
@@ -9397,10 +9419,9 @@ async function init(){
     try{
       const d=await CloudSync.pull();
       if(d&&d.projects){
-        App=Object.assign({},APP_DEFAULT,d);
-        App.projects=(Array.isArray(d.projects)?d.projects:[]).map(mergeProject);
-        if(App.currentProjectId&&!App.projects.find(p=>p.id===App.currentProjectId))App.currentProjectId=App.projects.length?App.projects[0].id:null;
+        applyCloudData(d,true);
         persist();
+        refreshProjectUI();if(currentPage)switchPage(currentPage);
       }
     }catch(e){/* 云端失败，用本地兜底 */}
   }
