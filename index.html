@@ -1634,6 +1634,7 @@ a{color:#003a8c;text-decoration:none}
 .cpr-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
 .cpr-brand{display:flex;align-items:center;gap:12px}
 .cpr-logo{width:44px;height:44px;border-radius:10px;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
+.cpr-logo-img{width:44px;height:44px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #e8e8e8;flex-shrink:0}
 .cpr-company{font-size:15px;font-weight:700;color:#003a8c}
 .cpr-tagline{font-size:11px;color:#999;margin-top:1px}
 .cpr-title-area{text-align:right}
@@ -1691,6 +1692,15 @@ a{color:#003a8c;text-decoration:none}
 .gs-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:20px}
 .gs-brand{display:flex;align-items:center;gap:12px}
 .gs-logo{width:44px;height:44px;border-radius:10px;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
+.gs-logo-img{width:44px;height:44px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #e8e8e8;flex-shrink:0}
+/* 打印 / 导出 PDF：仅显示进度表图像，A4 横版 */
+.gs-print-host{display:none}
+@media print{
+  body>*:not(.gs-print-host){display:none !important}
+  .gs-print-host{display:block !important;position:absolute;left:0;top:0;width:100%;background:#fff}
+  .gs-print-host img{width:100%;height:auto;display:block;margin:0 auto}
+  @page{size:A4 landscape;margin:8mm}
+}
 .gs-company{font-size:15px;font-weight:700;color:#003a8c}
 .gs-tagline{font-size:11px;color:#999;margin-top:1px}
 .gs-title-area{text-align:right}
@@ -2001,7 +2011,7 @@ a{color:#003a8c;text-decoration:none}
             </div>
             <div class="ppe-item" role="menuitem" onclick="exportPlanVsActualImage()">
               <span class="ppe-icon" aria-hidden="true">⌗</span>
-              <span>导出计划/实际图片</span>
+              <span>导出客户版计划/实际进度表</span>
             </div>
           </div>
         </div>
@@ -2816,8 +2826,10 @@ a{color:#003a8c;text-decoration:none}
     <div style="padding:12px 20px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fafafa">
       <span id="customerPaySize" style="font-size:11px;color:#bbb"></span>
       <div style="display:flex;gap:8px">
+        <button class="btn-outline" onclick="openCompanyCfgModal()" style="padding:8px 16px;font-size:13px" title="设置企业名称与 Logo">⚙ 企业抬头</button>
         <button class="btn-outline" onclick="closeModal('customerPayModal')" style="padding:8px 20px;font-size:13px">关闭预览</button>
-        <button class="btn-primary" onclick="downloadCustomerPayPNG()" style="padding:8px 20px;font-size:13px;background:#003a8c;border-color:#003a8c">下载高清 PNG 图片</button>
+        <button class="btn-outline" onclick="printSheet('cprSheet')" style="padding:8px 18px;font-size:13px">打印进度表</button>
+        <button class="btn-primary" onclick="downloadSheetPDF('cprSheet','客户版收款计划表')" style="padding:8px 18px;font-size:13px;background:#003a8c;border-color:#003a8c">下载 PDF 文件</button>
       </div>
     </div>
   </div>
@@ -2842,8 +2854,10 @@ a{color:#003a8c;text-decoration:none}
     <div style="padding:12px 20px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fafafa">
       <span id="clientTimelineSize" style="font-size:11px;color:#bbb"></span>
       <div style="display:flex;gap:8px">
+        <button class="btn-outline" onclick="openCompanyCfgModal()" style="padding:8px 16px;font-size:13px" title="设置企业名称与 Logo">⚙ 企业抬头</button>
         <button class="btn-outline" onclick="closeModal('clientTimelineModal');zoomGsReset('clientTimelineSheet')" style="padding:8px 20px;font-size:13px">关闭预览</button>
-        <button class="btn-primary" onclick="downloadClientTimelinePNG()" style="padding:8px 20px;font-size:13px;background:#003a8c;border-color:#003a8c">下载高清 PNG 图片</button>
+        <button class="btn-outline" onclick="printSheet('clientTimelineSheet')" style="padding:8px 18px;font-size:13px">打印进度表</button>
+        <button class="btn-primary" onclick="downloadSheetPDF('clientTimelineSheet','客户版施工进度表')" style="padding:8px 18px;font-size:13px;background:#003a8c;border-color:#003a8c">下载 PDF 文件</button>
       </div>
     </div>
   </div>
@@ -2868,10 +2882,34 @@ a{color:#003a8c;text-decoration:none}
     <div style="padding:12px 20px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fafafa">
       <span id="planVsActualSize" style="font-size:11px;color:#bbb"></span>
       <div style="display:flex;gap:8px">
+        <button class="btn-outline" onclick="openCompanyCfgModal()" style="padding:8px 16px;font-size:13px" title="设置企业名称与 Logo">⚙ 企业抬头</button>
         <button class="btn-outline" onclick="closeModal('planVsActualModal');zoomGsReset('planVsActualSheet')" style="padding:8px 20px;font-size:13px">关闭预览</button>
-        <button class="btn-primary" onclick="downloadPlanVsActualPNG()" style="padding:8px 20px;font-size:13px;background:#003a8c;border-color:#003a8c">下载高清 PNG 图片</button>
+        <button class="btn-outline" onclick="printSheet('planVsActualSheet')" style="padding:8px 18px;font-size:13px">打印进度表</button>
+        <button class="btn-primary" onclick="downloadSheetPDF('planVsActualSheet','客户版计划与实际进度表')" style="padding:8px 18px;font-size:13px;background:#003a8c;border-color:#003a8c">下载 PDF 文件</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ═══ 企业抬头设置 ═══ -->
+<div class="modal-overlay" id="companyCfgModal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header"><div class="modal-title" style="font-size:16px">企业抬头设置</div><div class="modal-close" onclick="closeModal('companyCfgModal')">✕</div></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">企业名称</label><input id="cfgCompanyName" class="form-input" placeholder="如：DCspace / 某某装饰" maxlength="20"></div>
+      <div class="form-group">
+        <label class="form-label">企业 Logo（PNG，推荐透明背景、正方形）</label>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div id="cfgLogoPreview" style="width:64px;height:64px;border:1px dashed #ccc;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;flex-shrink:0"></div>
+          <div>
+            <input type="file" id="cfgLogoFile" accept="image/png,image/*" onchange="onCfgLogoChange(this)" style="font-size:12px">
+            <div style="margin-top:6px"><button type="button" class="btn-outline" style="padding:3px 10px;font-size:11px" onclick="clearCfgLogo()">清除 Logo</button></div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#999;line-height:1.6">设置后，客户版进度表、计划/实际进度表、收款计划表的抬头将统一使用该企业名称与 Logo。Logo 会自动缩放并保存在本地（内嵌）。</div>
+    </div>
+    <div class="form-actions"><button class="btn-outline" onclick="closeModal('companyCfgModal')">取消</button><button class="btn-primary" onclick="saveCompanyCfgFromUI()">保存</button></div>
   </div>
 </div>
 
@@ -6824,7 +6862,7 @@ function exportFinanceTable(){
     const el=$('cprSheet');
     if(el){
       const w=el.scrollWidth,h=el.scrollHeight;
-      $('customerPaySize').textContent=w+' × '+h+'px · PNG · 高清图片';
+      $('customerPaySize').textContent=w+' × '+h+'px · A4 横版 · 可打印 / PDF';
     }
   });
 }
@@ -6860,9 +6898,9 @@ function renderCustomerPayReport(p,incList,contractTotal){
     <!-- 顶部：企业抬头 + 标题 -->
     <div class="cpr-top">
       <div class="cpr-brand">
-        <div class="cpr-logo">D</div>
+        ${companyLogo()?'<img class="cpr-logo-img" src="'+companyLogo()+'">':'<div class="cpr-logo">D</div>'}
         <div>
-          <div class="cpr-company">DCspace</div>
+          <div class="cpr-company">${escHtml(companyName())}</div>
           <div class="cpr-tagline">专业施工 · 透明交付 · 节点验收</div>
         </div>
       </div>
@@ -6899,45 +6937,177 @@ function renderCustomerPayReport(p,incList,contractTotal){
       <div class="cpr-foot-note">
         <b>计算说明</b>&nbsp; 节点目标金额 = 合同价 × 合同占比；累计到账截至已扣除定金，具体付款以双方签署的合同及补充协议为准。
       </div>
-      <div class="cpr-foot-sign">由 DCspace 生成</div>
+      <div class="cpr-foot-sign">由 ${escHtml(companyName())} 生成</div>
     </div>
   </div>`;
 }
 
+/* ── 企业抬头配置（企业名称 + Logo PNG，零依赖，localStorage 持久化）── */
+function companyCfg(){
+  try{ const s=localStorage.getItem('xzgz_company'); if(s){ const o=JSON.parse(s); if(o&&typeof o==='object') return {name:(o.name||'DCspace').toString(),logo:(o.logo||'').toString()}; } }catch(e){}
+  return {name:'DCspace',logo:''};
+}
+function companyName(){ return companyCfg().name||'DCspace'; }
+function companyLogo(){ return companyCfg().logo||''; }
+function saveCompanyCfg(name,logo){ try{ localStorage.setItem('xzgz_company',JSON.stringify({name:name||'DCspace',logo:logo||''})); }catch(e){ alert('保存企业抬头失败：'+(e&&e.message||e)); } }
+let _cfgLogoTemp='';
+function openCompanyCfgModal(){
+  const cfg=companyCfg();
+  const nI=$('cfgCompanyName'); if(nI)nI.value=cfg.name||'DCspace';
+  _cfgLogoTemp=cfg.logo||'';
+  _renderCfgLogoPreview();
+  showModal('companyCfgModal');
+}
+function _renderCfgLogoPreview(){
+  const box=$('cfgLogoPreview'); if(!box)return;
+  if(_cfgLogoTemp){ box.innerHTML='<img src="'+_cfgLogoTemp+'" style="max-width:100%;max-height:100%;display:block">'; }
+  else{ box.innerHTML='<span style="color:#bbb;font-size:12px">无</span>'; }
+}
+function onCfgLogoChange(input){
+  const f=input.files&&input.files[0]; if(!f)return;
+  if(!f.type||f.type.indexOf('image/')!==0){ alert('请选择图片文件（推荐 PNG，透明背景、正方形）'); input.value=''; return; }
+  const reader=new FileReader();
+  reader.onload=function(){
+    const img=new Image();
+    img.onload=function(){
+      const max=240; let w=img.width,h=img.height;
+      if(w>max||h>max){ const r=Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r); }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+      _cfgLogoTemp=c.toDataURL('image/png');
+      _renderCfgLogoPreview();
+    };
+    img.onerror=function(){ alert('图片读取失败'); };
+    img.src=reader.result;
+  };
+  reader.readAsDataURL(f);
+}
+function clearCfgLogo(){ _cfgLogoTemp=''; _renderCfgLogoPreview(); }
+function saveCompanyCfgFromUI(){
+  const nI=$('cfgCompanyName'); const name=((nI&&nI.value)||'DCspace').trim()||'DCspace';
+  saveCompanyCfg(name,_cfgLogoTemp);
+  closeModal('companyCfgModal');
+  rerenderOpenGsSheets();
+}
+function rerenderOpenGsSheets(){
+  const cb=document.getElementById('clientTimelineModal'); if(cb&&cb.classList.contains('show')){ exportClientTimeline(); }
+  const pv=document.getElementById('planVsActualModal'); if(pv&&pv.classList.contains('show')){ exportPlanVsActualImage(); }
+  const cp=document.getElementById('customerPayModal'); if(cp&&cp.classList.contains('show')){ exportFinanceTable(); }
+}
+
 /* ── DOM → PNG（零外部依赖，SVG foreignObject + canvas）── */
-function downloadCustomerPayPNG(){
-  const el=$('cprSheet');if(!el)return;
+/* ── 共享：把任意报表 DOM 渲染为 SVG（内联全局样式），再绘制到 canvas（高清）── */
+function buildSheetSVG(el){
   const w=el.scrollWidth,h=el.scrollHeight;
-  const scale=2; /* retina */
   const clone=el.cloneNode(true);
-  /* 强制展开折叠尺寸 */
   clone.style.width=w+'px';clone.style.height=h+'px';clone.style.position='absolute';clone.style.left='-9999px';clone.style.top='0';clone.style.background='#fff';
   document.body.appendChild(clone);
-  /* 将文档全局样式内联进 SVG（CDATA 包裹），确保导出的 PNG 与页面（含施工计划甘特图 pg-* 样式）完全一致 */
-  let _gsCss='';
-  document.querySelectorAll('style').forEach(st=>{_gsCss+=(st.textContent||'')+'\n';});
-  _gsCss=_gsCss.replace(/]]>/g,']]\u2060>');
-  const _gsStyle='<style><![CDATA['+_gsCss+']]></style>';
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w*scale}" height="${h*scale}">
-    <foreignObject width="100%" height="100%">
-      ${_gsStyle}
-      <div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale(${scale});transform-origin:0 0;width:${w}px;height:${h}px">
-        ${clone.innerHTML}
-      </div>
-    </foreignObject>
-  </svg>`;
+  /* 将文档全局样式内联进 SVG（CDATA 包裹），确保导出与页面（含 pg-* 甘特样式）完全一致 */
+  let css='';
+  document.querySelectorAll('style').forEach(st=>{css+=(st.textContent||'')+'\n';});
+  css=css.replace(/]]>/g,']]\u2060>');
+  const style='<style><![CDATA['+css+']]></style>';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'">'
+    +'<foreignObject width="100%" height="100%">'+style
+    +'<div xmlns="http://www.w3.org/1999/xhtml" style="width:'+w+'px;height:'+h+'px">'+clone.innerHTML+'</div>'
+    +'</foreignObject></svg>';
   document.body.removeChild(clone);
-  const img=new Image();
-  const svgBlob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
-  const url=URL.createObjectURL(svgBlob);
-  img.onload=function(){
-    URL.revokeObjectURL(url);
-    const c=document.createElement('canvas');
-    c.width=w*scale;c.height=h*scale;
-    const ctx=c.getContext('2d');
-    ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
-    ctx.drawImage(img,0,0,c.width,c.height);
-    c.toBlob(function(blob){
+  return {svg:svg,w:w,h:h};
+}
+function svgToCanvas(svg,w,h,scale){
+  return new Promise(function(resolve,reject){
+    const img=new Image();
+    const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}));
+    img.onload=function(){
+      URL.revokeObjectURL(url);
+      const c=document.createElement('canvas');
+      c.width=Math.round(w*scale);c.height=Math.round(h*scale);
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+      ctx.drawImage(img,0,0,c.width,c.height);
+      resolve(c);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('svg render failed'));};
+    img.src=url;
+  });
+}
+/* ── 真实 PDF 生成（零依赖）：把高分辨率 JPEG 嵌入 A4 横版页面 ── */
+function _makePDF(jpeg, iw, ih){
+  const PW=842, PH=595, M=24; /* A4 横版点数（72dpi）与页边距 */
+  const maxW=PW-2*M, maxH=PH-2*M;
+  const aspect=iw/ih;
+  let dispW, dispH;
+  if((maxW/maxH) > aspect){ dispH=maxH; dispW=dispH*aspect; } else { dispW=maxW; dispH=dispW/aspect; }
+  const x=(PW-dispW)/2, y=(PH-dispH)/2;
+  const content='q '+dispW.toFixed(2)+' 0 0 '+dispH.toFixed(2)+' '+x.toFixed(2)+' '+y.toFixed(2)+' cm /Im0 Do Q';
+  const obj1='<< /Type /Catalog /Pages 2 0 R >>';
+  const obj2='<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
+  const obj3='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+PW+' '+PH+'] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>';
+  const obj4head='<< /Type /XObject /Subtype /Image /Width '+iw+' /Height '+ih+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpeg.length+' >>';
+  const obj5='<< /Length '+content.length+' >>\nstream\n'+content+'\nendstream';
+  const parts=[]; let pos=0; const offsets=[0,0,0,0,0,0];
+  const addStr=function(s){ parts.push({t:'s',d:s}); pos+=s.length; };
+  const addBytes=function(b){ parts.push({t:'b',d:b}); pos+=b.length; };
+  addStr('%PDF-1.3\n');
+  addBytes(new Uint8Array([0x25,0xE2,0xE3,0xCF,0xD3,0x0A]));
+  offsets[1]=pos; addStr('1 0 obj\n'+obj1+'\nendobj\n');
+  offsets[2]=pos; addStr('2 0 obj\n'+obj2+'\nendobj\n');
+  offsets[3]=pos; addStr('3 0 obj\n'+obj3+'\nendobj\n');
+  offsets[4]=pos; addStr(obj4head+'\nstream\n'); addBytes(jpeg); addStr('endstream\nendobj\n');
+  offsets[5]=pos; addStr('5 0 obj\n'+obj5+'\nendobj\n');
+  const xrefStart=pos;
+  let xref='xref\n0 6\n';
+  xref+='0000000000 65535 f \n';
+  for(let i=1;i<=5;i++){ xref+=String(offsets[i]).padStart(10,'0')+' 00000 n \n'; }
+  addStr(xref);
+  addStr('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xrefStart+'\n%%EOF');
+  const out=new Uint8Array(pos); let o=0;
+  for(let k=0;k<parts.length;k++){
+    const p=parts[k];
+    if(p.t==='s'){ for(let i=0;i<p.d.length;i++) out[o++]=p.d.charCodeAt(i)&0xff; }
+    else { out.set(p.d,o); o+=p.d.length; }
+  }
+  return out;
+}
+function downloadSheetPDF(sheetId,fileBase){
+  const el=$(sheetId); if(!el) return;
+  const r=buildSheetSVG(el);
+  svgToCanvas(r.svg,r.w,r.h,2).then(function(c){
+    const jpeg=c.toDataURL('image/jpeg',0.92);
+    const b64=jpeg.split(',')[1];
+    const bin=atob(b64);
+    const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i)&0xff;
+    const pdf=_makePDF(bytes, c.width, c.height);
+    const blob=new Blob([pdf],{type:'application/pdf'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=(cur().name||'项目')+'_'+fileBase+'_'+todayISO()+'.pdf';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  }).catch(function(){ alert('PDF 生成失败，请重试。'); });
+}
+function printSheet(sheetId){
+  const el=$(sheetId); if(!el) return;
+  zoomGsReset(sheetId);
+  const r=buildSheetSVG(el);
+  svgToCanvas(r.svg,r.w,r.h,2).then(function(c){
+    let host=$('gsPrintHost');
+    if(!host){ host=document.createElement('div'); host.id='gsPrintHost'; host.className='gs-print-host'; document.body.appendChild(host); }
+    host.innerHTML='';
+    const img=document.createElement('img');
+    img.src=c.toDataURL('image/png');
+    host.appendChild(img);
+    setTimeout(function(){ window.print(); }, 80);
+  }).catch(function(){ alert('打印准备失败，请重试。'); });
+}
+window.addEventListener('afterprint',function(){ const h=$('gsPrintHost'); if(h) h.innerHTML=''; });
+
+function downloadCustomerPayPNG(){
+  const el=$('cprSheet'); if(!el) return;
+  const r=buildSheetSVG(el);
+  svgToCanvas(r.svg,r.w,r.h,2).then(c=>{
+    c.toBlob(blob=>{
       if(!blob){alert('PNG 生成失败，请重试');return;}
       const a=document.createElement('a');
       a.href=URL.createObjectURL(blob);
@@ -6945,9 +7115,7 @@ function downloadCustomerPayPNG(){
       document.body.appendChild(a);a.click();document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
     },'image/png');
-  };
-  img.onerror=function(){URL.revokeObjectURL(url);alert('图片生成失败，请重试。');};
-  img.src=url;
+  }).catch(()=>alert('图片生成失败，请重试。'));
 }
 
 /* ════════════════════════════════════════
@@ -7083,10 +7251,10 @@ function exportClientTimeline(){
   showModal('clientTimelineModal');
   /* 同步立即计算一次尺寸（保证 jsdom 测试也能命中），再用 rAF 校正一次 */
   const el=$('clientTimelineSheet');
-  if(el)$('clientTimelineSize').textContent=el.scrollWidth+' × '+el.scrollHeight+'px · PNG · 高清图片';
+  if(el)$('clientTimelineSize').textContent=el.scrollWidth+' × '+el.scrollHeight+'px · A4 横版 · 可打印 / PDF';
   requestAnimationFrame(()=>{
     const sheetEl=$('clientTimelineSheet');
-    if(sheetEl)$('clientTimelineSize').textContent=sheetEl.scrollWidth+' × '+sheetEl.scrollHeight+'px · PNG · 高清图片';
+    if(sheetEl)$('clientTimelineSize').textContent=sheetEl.scrollWidth+' × '+sheetEl.scrollHeight+'px · A4 横版 · 可打印 / PDF';
   });
 }
 function renderClientTimelineSheet(p,steps){
@@ -7148,9 +7316,9 @@ function renderClientTimelineSheet(p,steps){
   return `<div class="gs-sheet" id="clientTimelineSheet" style="width:920px">
     <div class="gs-top">
       <div class="gs-brand">
-        <div class="gs-logo">D</div>
+        ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">D</div>'}
         <div>
-          <div class="gs-company">DCspace</div>
+          <div class="gs-company">${escHtml(companyName())}</div>
           <div class="gs-tagline">专业施工 · 透明交付 · 节点验收</div>
         </div>
       </div>
@@ -7191,41 +7359,15 @@ function renderClientTimelineSheet(p,steps){
       <div class="gs-foot-note">
         <b>表说明</b>&nbsp; 节点工期以「施工计划」配置为准；今日线为导出当天的实际进度参照；客户可根据此表自行验收项目节点。
       </div>
-      <div class="gs-foot-sign">由 DCspace 生成 · ${fmtDate(today)}</div>
+      <div class="gs-foot-sign">由 ${escHtml(companyName())} 生成 · ${fmtDate(today)}</div>
     </div>
   </div>`;
 }
 function _downloadSheetPNG(sheetId,fileBase){
-  const el=$(sheetId);if(!el)return;
-  const w=el.scrollWidth,h=el.scrollHeight;
-  const scale=2;
-  const clone=el.cloneNode(true);
-  clone.style.width=w+'px';clone.style.height=h+'px';clone.style.position='absolute';clone.style.left='-9999px';clone.style.top='0';clone.style.background='#fff';
-  document.body.appendChild(clone);
-  /* 将文档全局样式内联进 SVG（CDATA 包裹），确保导出的 PNG 与页面（含施工计划甘特图 pg-* 样式）完全一致 */
-  let _gsCss='';
-  document.querySelectorAll('style').forEach(st=>{_gsCss+=(st.textContent||'')+'\n';});
-  _gsCss=_gsCss.replace(/]]>/g,']]\u2060>');
-  const _gsStyle='<style><![CDATA['+_gsCss+']]></style>';
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w*scale}" height="${h*scale}">
-    <foreignObject width="100%" height="100%">
-      ${_gsStyle}
-      <div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale(${scale});transform-origin:0 0;width:${w}px;height:${h}px">
-        ${clone.innerHTML}
-      </div>
-    </foreignObject>
-  </svg>`;
-  document.body.removeChild(clone);
-  const img=new Image();
-  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}));
-  img.onload=function(){
-    URL.revokeObjectURL(url);
-    const c=document.createElement('canvas');
-    c.width=w*scale;c.height=h*scale;
-    const ctx=c.getContext('2d');
-    ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
-    ctx.drawImage(img,0,0,c.width,c.height);
-    c.toBlob(function(blob){
+  const el=$(sheetId); if(!el) return;
+  const r=buildSheetSVG(el);
+  svgToCanvas(r.svg,r.w,r.h,2).then(c=>{
+    c.toBlob(blob=>{
       if(!blob){alert('PNG 生成失败，请重试');return;}
       const a=document.createElement('a');
       a.href=URL.createObjectURL(blob);
@@ -7233,9 +7375,7 @@ function _downloadSheetPNG(sheetId,fileBase){
       document.body.appendChild(a);a.click();document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
     },'image/png');
-  };
-  img.onerror=function(){URL.revokeObjectURL(url);alert('图片生成失败，请重试。');};
-  img.src=url;
+  }).catch(()=>alert('图片生成失败，请重试。'));
 }
 function downloadClientTimelinePNG(){_downloadSheetPNG('clientTimelineSheet','客户版施工进度表');}
 
@@ -7248,10 +7388,10 @@ function exportPlanVsActualImage(){
   $('planVsActualBody').innerHTML=renderPlanVsActualSheet(p,steps);
   showModal('planVsActualModal');
   const el=$('planVsActualSheet');
-  if(el)$('planVsActualSize').textContent=el.scrollWidth+' × '+el.scrollHeight+'px · PNG · 高清图片';
+  if(el)$('planVsActualSize').textContent=el.scrollWidth+' × '+el.scrollHeight+'px · A4 横版 · 可打印 / PDF';
   requestAnimationFrame(()=>{
     const sheetEl=$('planVsActualSheet');
-    if(sheetEl)$('planVsActualSize').textContent=sheetEl.scrollWidth+' × '+sheetEl.scrollHeight+'px · PNG · 高清图片';
+    if(sheetEl)$('planVsActualSize').textContent=sheetEl.scrollWidth+' × '+sheetEl.scrollHeight+'px · A4 横版 · 可打印 / PDF';
   });
 }
 function renderPlanVsActualSheet(p,steps){
@@ -7301,9 +7441,9 @@ function renderPlanVsActualSheet(p,steps){
   return `<div class="gs-sheet" id="planVsActualSheet" style="width:980px">
     <div class="gs-top">
       <div class="gs-brand">
-        <div class="gs-logo">D</div>
+        ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">D</div>'}
         <div>
-          <div class="gs-company">DCspace</div>
+          <div class="gs-company">${escHtml(companyName())}</div>
           <div class="gs-tagline">专业施工 · 透明交付 · 节点验收</div>
         </div>
       </div>
@@ -7344,7 +7484,7 @@ function renderPlanVsActualSheet(p,steps){
       <div class="gs-foot-note">
         <b>对比说明</b>&nbsp; 每个节点上下两条：上为计划区间（浅蓝），下为实际区间（深蓝=已完成 / 蓝=进行中 / 红=已逾期）。红色虚线为今日。客户可据此核对施工实际进度 vs 计划进度的偏差。
       </div>
-      <div class="gs-foot-sign">由 DCspace 生成 · ${fmtDate(today)}</div>
+      <div class="gs-foot-sign">由 ${escHtml(companyName())} 生成 · ${fmtDate(today)}</div>
     </div>
   </div>`;
 }
