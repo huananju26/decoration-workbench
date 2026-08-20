@@ -1016,6 +1016,7 @@ a{color:#003a8c;text-decoration:none}
 .pg-badge.overdue{background:#ff4d4f;color:#fff}
 .pg-badge.none{background:#f0f0f0;color:#999}
 .pg-actual-days{display:inline;font-size:10px;color:#666;margin-left:6px;white-space:nowrap;vertical-align:middle}
+.pg-badge-row{display:flex;align-items:center;gap:6px}
 .pg-track{position:relative;height:26px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 22px,#e8e8e8 22px,#e8e8e8 23px,transparent 23px,transparent 24px),repeating-linear-gradient(180deg,transparent 0,transparent 12px,#e8e8e8 12px,#e8e8e8 13px,transparent 13px,transparent 26px);margin-left:0}
 .pg-bar{position:absolute;top:6px;height:14px;border-radius:4px;font-size:0;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;display:flex;align-items:center;padding:0;white-space:nowrap;overflow:visible;cursor:default;box-sizing:border-box;touch-action:none;z-index:2;user-select:none;-webkit-user-select:none}
 .pg-bar.dragging{z-index:4;box-shadow:0 4px 12px rgba(0,0,0,.18)}
@@ -4109,7 +4110,7 @@ function renderPlanGantt(){
     const st=n.status||(scheduled?'pending':'none');
     const actDays=(st==='done'&&n.completedAtStart&&n.completedAt)?(Math.round((Date.parse(n.completedAt)-Date.parse(n.completedAtStart))/86400000)+1):0;
     const actDaysHtml=actDays>0?`<span class="pg-actual-days">${actDays}天</span>`:'';
-    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(n.name||'')}</span><span class="pg-badge ${st}">${STXT[st]||'待开始'}</span>${actDaysHtml}</div>`;
+    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(n.name||'')}</span><span class="pg-badge-row"><span class="pg-badge ${st}">${STXT[st]||'待开始'}</span>${actDaysHtml}</span></div>`;
     if(!scheduled){
       return `<div class="pg-row">${nameCell}<div class="pg-track"><span class="pg-bar-label" style="left:0;top:50%;transform:translateY(-50%)"><span class="pg-label-name">${escHtml(n.name||'')}</span></span></div></div>`;
     }
@@ -7516,7 +7517,7 @@ function renderClientTimelineSheet(p,steps){
     const actDays2=(done&&s.completedAtStart&&s.completedAt)?(Math.round((Date.parse(s.completedAt)-Date.parse(s.completedAtStart))/86400000)+1):0;
     const actDaysHtml2=actDays2>0?`<span class="pg-actual-days">${actDays2}天</span>`:'';
     const barLabel=`${fmtDateMd(r.s)} — ${fmtDateMd(r.e)}`;
-    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${cls}">${_gsPgStatusLabel(cls)}</span>${actDaysHtml2}</div>`;
+    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${cls}">${_gsPgStatusLabel(cls)}</span>${actDaysHtml2}</span></div>`;
     const barRight2=leftPct+wPct;
     const labelOnLeft2=barRight2>72;
     const labelStyle2=labelOnLeft2?`left:calc(${leftPct}% - 6px);transform:translateX(-100%)`:`left:calc(${leftPct}% + ${wPct}% + 6px)`;
@@ -7652,7 +7653,7 @@ function renderPlanVsActualSheet(p,steps){
     const labelStyle3=labelOnLeft3?`left:calc(${labelLeft}% - 6px);transform:translateX(-100%)`:`left:calc(${labelLeft}% + 6px)`;
     const actDays3=(isDone&&s.completedAtStart&&s.completedAt)?(Math.round((Date.parse(s.completedAt)-Date.parse(s.completedAtStart))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
-    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</div>`;
+    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</span></div>`;
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:28px">${todayEl}`
       +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:2px;height:10px;font-size:9px;padding:0;opacity:.9"></div>`
       +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:15px;height:10px;font-size:9px;padding:0">实际</div>`
