@@ -1009,12 +1009,14 @@ a{color:#003a8c;text-decoration:none}
 .pg-badge.pending{background:#e6f4ff;color:#003a8c}
 .pg-badge.inprogress{background:#003a8c;color:#fff}
 .pg-badge.done{background:#0050b3;color:#fff}
+.pg-badge.overdue{background:#ff4d4f;color:#fff}
 .pg-track{position:relative;height:34px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 22px,#e8e8e8 22px,#e8e8e8 23px,transparent 23px,transparent 24px),repeating-linear-gradient(180deg,transparent 0,transparent 16px,#e8e8e8 16px,#e8e8e8 17px,transparent 17px,transparent 34px)}
 .pg-bar{position:absolute;top:7px;height:20px;border-radius:5px;font-size:10.5px;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;display:flex;align-items:center;padding:0 8px;white-space:nowrap;overflow:hidden;cursor:default;box-sizing:border-box;touch-action:none;z-index:2;user-select:none;-webkit-user-select:none}
 .pg-bar.dragging{z-index:4;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 .pg-bar.inprogress{background:#1677ff;color:#fff;border-color:#1677ff}
 .pg-bar.done{background:#0050b3;color:#fff;border-color:#0050b3}
 .pg-bar.overlap{box-shadow:0 0 0 2px #fa8c16,inset 0 0 0 1px #fa8c16;background:#fff7e6;border-color:#fa8c16;color:#d46b08;z-index:3}
+.pg-bar.overdue{background:#ff4d4f;color:#fff;border-color:#ff4d4f}
 .pg-handle{position:absolute;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:5;touch-action:none}
 .pg-handle-l{left:-4px}
 .pg-handle-r{right:-4px}
@@ -1734,10 +1736,10 @@ a{color:#003a8c;text-decoration:none}
 .gs-legend{display:flex;gap:10px 16px;flex-wrap:wrap;font-size:11px;color:#666;margin-bottom:14px;padding:10px 14px;background:#f8fafc;border:1px solid #eef1f5;border-radius:8px}
 .gs-legend-item{display:flex;align-items:center;gap:6px}
 .gs-legend-dot{width:14px;height:10px;border-radius:3px}
-.gs-legend-dot.done{background:linear-gradient(180deg,#52a8ff,#1a73e8)}
-.gs-legend-dot.active{background:linear-gradient(180deg,#34d399,#059669)}
-.gs-legend-dot.pending{background:linear-gradient(180deg,#a8c8ee,#8aabd8)}
-.gs-legend-dot.overdue{background:linear-gradient(180deg,#ff7875,#f5222d)}
+.gs-legend-dot.done{background:#0050b3}
+.gs-legend-dot.active{background:#1677ff}
+.gs-legend-dot.pending{background:#91caff}
+.gs-legend-dot.overdue{background:#ff4d4f}
 .gs-legend-line{width:0;height:12px;border-left:1.5px dashed #ff4d4f;position:relative}
 @media(max-width:780px){
   .proj-plan-export{border-left:none;padding-left:0;margin-top:12px;width:100%;justify-content:flex-end}
@@ -6893,8 +6895,14 @@ function downloadCustomerPayPNG(){
   /* 强制展开折叠尺寸 */
   clone.style.width=w+'px';clone.style.height=h+'px';clone.style.position='absolute';clone.style.left='-9999px';clone.style.top='0';clone.style.background='#fff';
   document.body.appendChild(clone);
+  /* 将文档全局样式内联进 SVG（CDATA 包裹），确保导出的 PNG 与页面（含施工计划甘特图 pg-* 样式）完全一致 */
+  let _gsCss='';
+  document.querySelectorAll('style').forEach(st=>{_gsCss+=(st.textContent||'')+'\n';});
+  _gsCss=_gsCss.replace(/]]>/g,']]\u2060>');
+  const _gsStyle='<style><![CDATA['+_gsCss+']]></style>';
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w*scale}" height="${h*scale}">
     <foreignObject width="100%" height="100%">
+      ${_gsStyle}
       <div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale(${scale});transform-origin:0 0;width:${w}px;height:${h}px">
         ${clone.innerHTML}
       </div>
@@ -7007,6 +7015,38 @@ function _ganttMonthBands(startISO,endISO){
   }
   return out;
 }
+/* 生成与「施工计划甘特图(pg-*)」完全一致的百分比月份刻度带（仅显示月，跨年显示年份） */
+function _gsPgMonthAxis(range){
+  const bands=_ganttMonthBands(range.startISO,range.endISO);
+  const totalDays=range.totalDays;
+  const showYear=range.startISO.slice(0,4)!==range.endISO.slice(0,4);
+  const pct=iso=>_pctFromISO(iso,range.startISO,totalDays);
+  return bands.map(b=>{
+    const left=pct(b.firstISO),w=pct(b.lastISO)-left;
+    const m=parseInt(b.firstISO.slice(5,7),10);
+    const y=b.firstISO.slice(0,4);
+    const label=showYear?`${y}年${m}月`:`${m}月`;
+    return `<div class="pg-month" style="left:${left}%;width:${w}%">${escHtml(label)}</div>`;
+  }).join('');
+}
+/* 生成与「施工计划甘特图」一致的「今日」红色虚线（落在范围内时才绘制） */
+function _gsPgToday(range,today){
+  if(today>=range.startISO&&today<=range.endISO){
+    const tp=_pctFromISO(today,range.startISO,range.totalDays);
+    return `<div class="pg-today" style="left:${tp}%"><span class="pg-today-flag">今日</span></div>`;
+  }
+  return '';
+}
+/* 将导出甘特图的状态映射为 pg-* 的 bar/badge class（待开始/进行中/已完成/已逾期） */
+function _gsPgStatusClass(done,today,r){
+  if(done)return'done';
+  if(r.e<today)return'overdue';
+  if((r.s||'')<=today)return'inprogress';
+  return'pending';
+}
+function _gsPgStatusLabel(cls){
+  return ({pending:'待开始',inprogress:'进行中',overdue:'已逾期',done:'已完成'})[cls]||'待开始';
+}
 function _pctFromISO(iso,startISO,totalDays){
   const off=Math.round((Date.parse(iso)-Date.parse(startISO))/(24*3600*1000));
   return Math.max(0,Math.min(100,(off/totalDays)*100));
@@ -7071,53 +7111,21 @@ function renderClientTimelineSheet(p,steps){
   });
   const totalCount=steps.length;
   const ratioPct=totalCount?Math.round(doneCount/totalCount*100):0;
-  /* 横轴：月份带（按等宽铺） */
-  const axisBands=bands.map((b,i)=>`<div class="gs-axis-month" style="flex:${b.lastISO>=b.firstISO?(Date.parse(b.lastISO)-Date.parse(b.firstISO))/(24*3600*1000)+1:1}">${escHtml(b.label)}</div>`).join('');
-  /* 周末虚列分隔（每 7 天画一条淡线） */
-  let weekSep='';
-  let cursor=range.startISO;
-  while(cursor<range.endISO){
-    const w=new Date(cursor+'T00:00:00').getDay();
-    if(w===0&&cursor>range.startISO){
-      const pct=_pctFromISO(cursor,range.startISO,totalDays);
-      weekSep+=`<div class="gs-grid-week" style="left:calc(124px + ${pct}% * (100% - 124px - 14px) / 100%)"></div>`;
-    }
-    cursor=shiftDate(cursor,1);
-  }
-  /* 今日虚线 */
-  const todayPct=_pctFromISO(today,range.startISO,totalDays);
-  const todayLine=`<div class="gs-today-line" style="left:calc(124px + ${todayPct}% * (100% - 124px - 14px) / 100%)"></div>`;
+  /* 横轴：月份带（与施工计划甘特图一致，按日期比例铺，仅显示月/跨年显示年份） */
+  const axisBandsPg=_gsPgMonthAxis(range);
+  /* 今日虚线（每行内绘制，与施工计划甘特图一致） */
+  const todayEl=_gsPgToday(range,today);
   /* 节点行 */
   let rowsHtml='';
   steps.forEach((s,idx)=>{
     const r=range.byId[s.id];if(!r)return;
     const leftPct=_pctFromISO(r.s,range.startISO,totalDays);
     const rightPct=_pctFromISO(r.e,range.startISO,totalDays);
-    const barLeft=`calc(124px + ${leftPct}% * (100% - 124px - 14px) / 100%)`;
-    const barWidth=`calc(${Math.max(rightPct-leftPct,0.6)}% * (100% - 124px - 14px) / 100%)`;
     const done=isStepChecked(s.id);
-    let cls='pending';
-    if(done)cls='done';
-    else if(r.e<today)cls='overdue';
-    else if((r.s||'') <= today)cls='active';
-    /* 显示日期 */
-    const fmtShot=(d)=>{if(!d)return '';const t=new Date(d);return (t.getMonth()+1)+'/'+t.getDate()};
-    const dateLabel=(s.planStartDate||s.completedAtStart) && (s.planEndDate||s.completedAt)
-      ? fmtShot(s.planStartDate||s.completedAtStart)+' - '+fmtShot(s.planEndDate||s.completedAt)
-      : (s.planEndDate?fmtShot(s.planEndDate):'');
-    /* 验收/标准仍提取 (s.acceptance) 描述第一条作为行子标签 */
-    const desc=s.desc?s.desc.slice(0,16):'';
-    const daysTxt=s.days?`工期 ${s.days} 天`:'';
-    const sub=[dateLabel,daysTxt,desc].filter(Boolean).join(' · ');
-    rowsHtml+=`<div class="gs-row ${idx%2?'gs-grid-row-alt':''}">
-      <div class="gs-row-label">
-        <div class="gs-row-name">${escHtml(s.name||('节点'+(idx+1)))}</div>
-        <div class="gs-row-meta">${escHtml(sub)}</div>
-      </div>
-      <div class="gs-track">
-        <div class="gs-bar ${cls}" style="left:${barLeft};width:${barWidth}" title="${escHtml((s.name||'')+' · '+(dateLabel||'未排期'))}">${escHtml(_escGsText(s.name||'',8))}</div>
-      </div>
-    </div>`;
+    const cls=_gsPgStatusClass(done,today,r);
+    const barLabel=`${fmtDateMd(r.s)}~${fmtDateMd(r.e)}`;
+    rowsHtml+=`<div class="pg-row"><div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${cls}">${_gsPgStatusLabel(cls)}</span></div>`
+      +`<div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${Math.max(rightPct-leftPct,0.6)}%">${escHtml(barLabel)}</div></div></div>`;
   });
   return `<div class="gs-sheet" id="clientTimelineSheet" style="width:920px">
     <div class="gs-top">
@@ -7155,8 +7163,11 @@ function renderClientTimelineSheet(p,steps){
       <div class="gs-legend-item" style="margin-left:auto">完成率 <b style="color:#003a8c">${ratioPct}%</b></div>
     </div>
     <div class="gs-chart">
-      <div class="gs-axis">${axisBands}</div>
-      <div class="gs-rows">${weekSep}${rowsHtml}${todayLine}</div>
+      <div class="pg-grid">
+        <div class="pg-axis-label">节点 / 日期</div>
+        <div class="pg-axis-track">${axisBandsPg}</div>
+      </div>
+      <div class="pg-rows">${rowsHtml}</div>
     </div>
     <div class="gs-foot">
       <div class="gs-foot-note">
@@ -7173,8 +7184,14 @@ function _downloadSheetPNG(sheetId,fileBase){
   const clone=el.cloneNode(true);
   clone.style.width=w+'px';clone.style.height=h+'px';clone.style.position='absolute';clone.style.left='-9999px';clone.style.top='0';clone.style.background='#fff';
   document.body.appendChild(clone);
+  /* 将文档全局样式内联进 SVG（CDATA 包裹），确保导出的 PNG 与页面（含施工计划甘特图 pg-* 样式）完全一致 */
+  let _gsCss='';
+  document.querySelectorAll('style').forEach(st=>{_gsCss+=(st.textContent||'')+'\n';});
+  _gsCss=_gsCss.replace(/]]>/g,']]\u2060>');
+  const _gsStyle='<style><![CDATA['+_gsCss+']]></style>';
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w*scale}" height="${h*scale}">
     <foreignObject width="100%" height="100%">
+      ${_gsStyle}
       <div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale(${scale});transform-origin:0 0;width:${w}px;height:${h}px">
         ${clone.innerHTML}
       </div>
@@ -7230,7 +7247,8 @@ function renderPlanVsActualSheet(p,steps){
   let plannedDone=0,actualDone=0,actualHasDates=0;
   steps.forEach(s=>{if(isStepChecked(s.id))actualDone++;plannedDone++;});
   steps.forEach(s=>{if(isStepChecked(s.id)&&(s.completedAt||s.completedAtStart))actualHasDates++;});
-  const axisBands=bands.map((b)=>`<div class="gs-axis-month" style="flex:${Math.max(1,Math.round((Date.parse(b.lastISO)-Date.parse(b.firstISO))/(24*3600*1000))+1)}">${escHtml(b.label)}</div>`).join('');
+  const axisBandsPg=_gsPgMonthAxis(range);
+  const todayEl=_gsPgToday(range,today);
   let rowsHtml='';
   steps.forEach((s,idx)=>{
     const r=range.byId[s.id];if(!r)return;
@@ -7239,7 +7257,7 @@ function renderPlanVsActualSheet(p,steps){
     const planE=s.planEndDate||r.e;
     const planLeftPct=_pctFromISO(planS,range.startISO,totalDays);
     const planRightPct=_pctFromISO(planE,range.startISO,totalDays);
-    /* 下轨：实际（已完成 → completedAtStart/End；未完成 → 截到今日，跟计划同色） */
+    /* 下轨：实际（已完成 → completedAtStart/End；未完成 → 截到今日） */
     const isDone=isStepChecked(s.id);
     let actS,actE,actClass;
     if(isDone&&s.completedAtStart&&s.completedAt){
@@ -7247,35 +7265,21 @@ function renderPlanVsActualSheet(p,steps){
     } else if(isDone&&(s.completedAtStart||s.completedAt)){
       actS=s.completedAtStart||planS;actE=s.completedAt||planE;actClass='done';
     } else {
-      /* 未完成：从 planStart 到 today（或 planStart，无日期无 rendered） */
       actS=planS;actE=(planS<=today?today:planE);
       if((planE||planS)<today)actClass='overdue';
-      else actClass='active';
+      else actClass='inprogress';
     }
     const actLeftPct=_pctFromISO(actS,range.startISO,totalDays);
     const actRightPct=_pctFromISO(actE,range.startISO,totalDays);
-    const fmtShot=(d)=>{if(!d)return '';const t=new Date(d);return (t.getMonth()+1)+'/'+t.getDate()};
-    const planLabel=`计划 ${fmtShot(planS)} → ${fmtShot(planE)}`;
-    const actLabel=isDone
-      ? `实际 ${fmtShot(actS)} → ${fmtShot(actE)}`
-      : (actS<today?`已延期至 ${fmtShot(today)}`:(`计划 ${fmtShot(planS)} → ${fmtShot(planE)}`));
-    rowsHtml+=`<div class="gs-row ${idx%2?'gs-grid-row-alt':''}">
-      <div class="gs-row-label" style="width:160px">
-        <div class="gs-row-name">${escHtml(s.name||('节点'+(idx+1)))}</div>
-        <div class="gs-row-meta">${escHtml(planLabel)}</div>
-        <div class="gs-row-meta" style="color:${isDone?'#003a8c':actClass==='overdue'?'#ff4d4f':'#666'}">${escHtml(actLabel)}${isDone?' · 已完成':''}</div>
-      </div>
-      <div class="gs-track" style="left:160px">
-        <!-- 计划条：固定颜色 (pending=浅) -->
-        <div class="gs-bar pending" style="left:${planLeftPct}%;width:${Math.max(planRightPct-planLeftPct,0.4)}%;opacity:.85;height:14px;top:4px;background:linear-gradient(180deg,#cfe0fa,#a4c2ed)" title="${escHtml('计划：'+planLabel)}">计划</div>
-        <!-- 实际条 -->
-        <div class="gs-bar ${actClass}" style="left:${actLeftPct}%;width:${Math.max(actRightPct-actLeftPct,0.4)}%;height:14px;top:20px" title="${escHtml(actLabel)}">实际</div>
-      </div>
-    </div>`;
+    const planLabel=`${fmtDateMd(planS)}~${fmtDateMd(planE)}`;
+    const actLabel=isDone?`${fmtDateMd(actS)}~${fmtDateMd(actE)}`:(actS<today?`${fmtDateMd(actS)}~${fmtDateMd(today)}`:planLabel);
+    const badgeCls=isDone?'done':actClass;
+    rowsHtml+=`<div class="pg-row"><div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span></div>`
+      +`<div class="pg-track">${todayEl}`
+      +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${Math.max(planRightPct-planLeftPct,0.4)}%;top:5px;height:11px;font-size:9px;padding:0 4px;opacity:.9">计划</div>`
+      +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${Math.max(actRightPct-actLeftPct,0.4)}%;top:18px;height:11px;font-size:9px;padding:0 4px">实际</div>`
+      +`</div></div>`;
   });
-  /* 今日虚线 */
-  const todayPct=_pctFromISO(today,range.startISO,totalDays);
-  const todayLine=`<div class="gs-today-line" style="left:calc(160px + ${todayPct}% * (100% - 160px - 14px) / 100%)"></div>`;
   return `<div class="gs-sheet" id="planVsActualSheet" style="width:980px">
     <div class="gs-top">
       <div class="gs-brand">
@@ -7312,12 +7316,15 @@ function renderPlanVsActualSheet(p,steps){
       <div class="gs-legend-item"><span class="gs-legend-line"></span>今日</div>
     </div>
     <div class="gs-chart">
-      <div class="gs-axis" style="padding-left:160px">${axisBands}</div>
-      <div class="gs-rows">${rowsHtml}${todayLine}</div>
+      <div class="pg-grid">
+        <div class="pg-axis-label">节点 / 日期</div>
+        <div class="pg-axis-track">${axisBandsPg}</div>
+      </div>
+      <div class="pg-rows">${rowsHtml}</div>
     </div>
     <div class="gs-foot">
       <div class="gs-foot-note">
-        <b>对比说明</b>&nbsp; 每个节点上下两条：上为计划区间，下为实际区间。红色虚线为今日。实际条带颜色：已完成=蓝、进行中=绿、已逾期=红。客户可据此核对施工实际进度 vs 计划进度的偏差。
+        <b>对比说明</b>&nbsp; 每个节点上下两条：上为计划区间（浅蓝），下为实际区间（深蓝=已完成 / 蓝=进行中 / 红=已逾期）。红色虚线为今日。客户可据此核对施工实际进度 vs 计划进度的偏差。
       </div>
       <div class="gs-foot-sign">由 DCspace 生成 · ${fmtDate(today)}</div>
     </div>
