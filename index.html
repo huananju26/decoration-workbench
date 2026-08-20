@@ -952,6 +952,8 @@ a{color:#003a8c;text-decoration:none}
 /* 步骤面板 — 可滚动内容区（激活时为普通块级，避免 flex 子项 min-height 钳制导致长表格无法滚动） */
 .wizard-panel{display:none;padding:16px 24px 24px;background:#fff}
 .wizard-panel.active{display:block;flex:1;min-height:0;overflow-y:auto}
+/* Step2 施工计划：顶部计划开工日期行紧贴向导标签页下边缘，消除默认 panel 上内边距 */
+#wizStep2{padding-top:0}
 
 /* ── Step2: 施工计划 ── */
 .plan-top-block{background:#f8fafc;border:1px solid #e8e8e8;border-radius:10px;padding:14px 16px;margin-bottom:12px}
