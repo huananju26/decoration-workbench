@@ -859,7 +859,7 @@ a{color:#003a8c;text-decoration:none}
 .empty-button{display:flex;gap:12px;justify-content:center}
 
 /* MODALS */
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:40px}
 .modal-overlay.show{display:flex}
 
 /* ══ 登录页（全屏，退出后跳转） ══ */
@@ -935,7 +935,7 @@ a{color:#003a8c;text-decoration:none}
 #pdmCalFoot,#dpFoot{margin-top:10px;padding:8px 10px;border:1.5px solid #ff4d4f;border-radius:8px;font-size:12px;color:#003a8c;font-weight:600;text-align:center;min-height:20px;background:#fff}
 
 /* ── 两步新建项目向导 ── */
-.wizard-modal{max-width:860px!important;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.wizard-modal{max-width:min(1200px,calc(100vw - 80px))!important;width:100%;max-height:calc(100vh - 80px);display:flex;flex-direction:column;overflow:hidden}
 .wizard-modal .modal-header{flex-shrink:0}
 .wizard-modal .modal-body{display:flex;flex-direction:column;overflow:hidden;padding:0;flex:1;min-height:0;background:#fff}
 .wizard-subtitle{font-size:12px;color:#999;margin-bottom:10px;padding:16px 24px 0;line-height:1.5}
@@ -1003,11 +1003,12 @@ a{color:#003a8c;text-decoration:none}
 .pg-badge.pending{background:#e6f4ff;color:#003a8c}
 .pg-badge.inprogress{background:#003a8c;color:#fff}
 .pg-badge.done{background:#0050b3;color:#fff}
-.pg-track{position:relative;height:34px}
-.pg-bar{position:absolute;top:7px;height:20px;border-radius:5px;font-size:10.5px;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;display:flex;align-items:center;padding:0 6px;white-space:nowrap;overflow:hidden;cursor:default;box-sizing:border-box}
+.pg-track{position:relative;height:34px;background-image:repeating-linear-gradient(90deg,#e0e0e0 0,#e0e0e0 3px,transparent 3px,transparent 24px),repeating-linear-gradient(180deg,#e0e0e0 0,#e0e0e0 3px,transparent 3px,transparent 34px)}
+.pg-bar{position:absolute;top:7px;height:20px;border-radius:5px;font-size:10.5px;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;display:flex;align-items:center;padding:0 6px;white-space:nowrap;overflow:hidden;cursor:grab;box-sizing:border-box;touch-action:none;z-index:2;user-select:none;-webkit-user-select:none}
+.pg-bar:active,.pg-bar.dragging{cursor:grabbing;z-index:4;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 .pg-bar.inprogress{background:#1677ff;color:#fff;border-color:#1677ff}
 .pg-bar.done{background:#0050b3;color:#fff;border-color:#0050b3}
-.pg-bar.overlap{box-shadow:0 0 0 2px #fa8c16;background:#fff7e6;border-color:#fa8c16;color:#d46b08;z-index:3}
+.pg-bar.overlap{box-shadow:0 0 0 2px #fa8c16,inset 0 0 0 1px #fa8c16;background:#fff7e6;border-color:#fa8c16;color:#d46b08;z-index:3}
 .pg-today{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #ff4d4f;z-index:2}
 .pg-today-flag{position:absolute;top:-1px;transform:translateX(-50%);font-size:9px;color:#ff4d4f;background:#fff;padding:0 3px;white-space:nowrap}
 .pg-empty{font-size:12px;color:#bbb;text-align:center;padding:18px 0}
@@ -1153,9 +1154,9 @@ a{color:#003a8c;text-decoration:none}
   .ledger-count{text-align:center;margin-top:6px}
   .ledger-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   /* ── 弹窗 & 下拉菜单：小屏幕自适应 ── */
-  .modal-overlay{padding:12px}
+  .modal-overlay{padding:16px}
   .modal{max-width:95vw!important;max-height:90vh;border-radius:12px}
-  .wizard-modal{max-width:96vw!important;max-height:93vh!important}
+  .wizard-modal{max-width:calc(100vw - 32px)!important;max-height:calc(100vh - 32px)!important}
   .wizard-steps{margin:0 12px 0}
   .wizard-step-tab{padding:10px 8px;font-size:12px}
   .wizard-step-num{width:20px;height:20px;font-size:11px;margin-right:4px}
@@ -1222,9 +1223,9 @@ a{color:#003a8c;text-decoration:none}
   .fin-cat-grid{grid-template-columns:1fr}
   .compare-stats{grid-template-columns:repeat(2,1fr)}
   /* ── 超小屏幕：弹窗进一步压缩 ── */
-  .modal-overlay{padding:8px}
+  .modal-overlay{padding:10px}
   .modal{max-width:98vw!important;border-radius:10px;max-height:92vh}
-  .wizard-modal{max-width:99vw!important;max-height:96vh!important}
+  .wizard-modal{max-width:calc(100vw - 20px)!important;max-height:calc(100vh - 20px)!important}
   .modal-header{padding:12px 14px}
   .modal-title{font-size:14px}
   .modal-body{padding:12px}
@@ -3784,6 +3785,8 @@ function parseDays(d){
 
 /** 格式化日期 YYYY/MM/DD */
 function fmtDate(d){if(!d)return '';const t=new Date(d);return `${t.getFullYear()}/${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')}`}
+/** 格式化日期 MM/DD（甘特图节点方块内使用，不显示年份） */
+function fmtDateMd(d){if(!d)return '';const t=new Date(d);return `${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')}`}
 /* 本地时间格式化为 YYYY-MM-DD（避免 toISOString 的 UTC 偏移问题） */
 function localISODate(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${da}`}
 
@@ -3889,6 +3892,7 @@ function renderPlanGantt(){
   }
   const range=_ganttRangeLocal(nodes);
   if(!range){box.innerHTML='<div class="plan-gantt-title">施工计划甘特图</div><div class="pg-empty">节点日期不完整</div>';return;}
+  box._ganttRange=range;
   const bands=_ganttMonthBands(range.startISO,range.endISO);
   const totalDays=range.totalDays;
   /* 计算交叉作业：节点区间 [s,e] 与其他节点区间相交 */
@@ -3901,10 +3905,14 @@ function renderPlanGantt(){
     }
   }
   const pct=iso=>_pctFromISO(iso,range.startISO,totalDays);
-  /* 月份刻度带 */
+  /* 月份刻度带：跨年时显示年份，同年只显示「6月」 */
+  const showYear=range.startISO.slice(0,4)!==range.endISO.slice(0,4);
   const axisBands=bands.map(b=>{
     const left=pct(b.firstISO),w=pct(b.lastISO)-left;
-    return `<div class="pg-month" style="left:${left}%;width:${w}%">${escHtml(b.label)}</div>`;
+    const m=parseInt(b.firstISO.slice(5,7),10);
+    const y=b.firstISO.slice(0,4);
+    const label=showYear?`${y}年${m}月`:`${m}月`;
+    return `<div class="pg-month" style="left:${left}%;width:${w}%">${escHtml(label)}</div>`;
   }).join('');
   /* 今日线（仅当今日在范围内） */
   let todayEl='';
@@ -3921,9 +3929,9 @@ function renderPlanGantt(){
     const left=pct(n.planStart),w=pct(n.planEnd)-left;
     const st=n.status||'pending';
     const ov=overlapSet.has(n.id||('n'+i))?' overlap':'';
-    const barLabel=`${fmtDate(n.planStart)}~${fmtDate(n.planEnd)}`;
+    const barLabel=`${fmtDateMd(n.planStart)}~${fmtDateMd(n.planEnd)}`;
     return `<div class="pg-row"><div class="pg-row-label"><span class="pg-name">${escHtml(n.name||'')}</span><span class="pg-badge ${st}">${statusLabel[st]||'待开始'}</span></div>`
-      +`<div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" title="${escHtml(barLabel)}" style="left:${left}%;width:${w}%">${escHtml(barLabel)}</div></div></div>`;
+      +`<div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" data-idx="${i}" title="${escHtml(barLabel)}" style="left:${left}%;width:${w}%" onmousedown="ganttBarDragStart(event,this)" ontouchstart="ganttBarDragStart(event,this)">${escHtml(barLabel)}</div></div></div>`;
   }).join('');
   box.innerHTML=
     '<div class="plan-gantt-title">施工计划甘特图 <small>按节点起止日期绘制 · 橙色描边=交叉作业 · 虚线=今日</small></div>'
@@ -3953,6 +3961,67 @@ function refreshPlanStats(){
   });
   sd.textContent=nd;sw.textContent=wd;
   se.textContent=lastEnd?fmtDate(lastEnd):'—';
+}
+
+/** 根据百分比反推 ISO 日期（甘特图拖拽落点） */
+function _isoFromPct(pct,startISO,totalDays){
+  const days=Math.round((pct/100)*totalDays);
+  return shiftDate(startISO,days);
+}
+
+/** 甘特图节点条拖拽状态 */
+let _ganttDrag={active:false,idx:null,bar:null,track:null,startX:0,startLeftPct:0,barWidthPct:0,range:null,onMove:null,onUp:null};
+
+/** 开始拖拽节点条（鼠标/触摸） */
+function ganttBarDragStart(e,bar){
+  e.preventDefault();e.stopPropagation();
+  const idx=parseInt(bar.dataset.idx,10);if(isNaN(idx)||!wizPlanNodes[idx])return;
+  const track=bar.parentElement;if(!track)return;
+  const tRect=track.getBoundingClientRect();
+  const bRect=bar.getBoundingClientRect();
+  const startLeftPct=((bRect.left-tRect.left)/tRect.width)*100;
+  const barWidthPct=(bRect.width/tRect.width)*100;
+  const isTouch=e.type.startsWith('touch');
+  _ganttDrag={active:true,idx,bar,track,startX:isTouch?e.touches[0].clientX:e.clientX,startLeftPct,barWidthPct,range:null,onMove:null,onUp:null};
+  bar.classList.add('dragging');
+  const onMove=ganttBarDragMove.bind(null);
+  const onUp=ganttBarDragEnd.bind(null);
+  _ganttDrag.onMove=onMove;_ganttDrag.onUp=onUp;
+  document.addEventListener(isTouch?'touchmove':'mousemove',onMove,{passive:false});
+  document.addEventListener(isTouch?'touchend':'mouseup',onUp,{once:true});
+}
+
+/** 拖拽中：实时更新条形位置 */
+function ganttBarDragMove(e){
+  if(!_ganttDrag.active)return;
+  e.preventDefault();
+  const cx=e.type.startsWith('touch')?e.touches[0].clientX:e.clientX;
+  const tRect=_ganttDrag.track.getBoundingClientRect();
+  const dPct=((cx-_ganttDrag.startX)/tRect.width)*100;
+  let newLeft=_ganttDrag.startLeftPct+dPct;
+  const maxLeft=100-_ganttDrag.barWidthPct;
+  if(newLeft<0)newLeft=0;if(newLeft>maxLeft)newLeft=maxLeft;
+  _ganttDrag.bar.style.left=newLeft+'%';
+}
+
+/** 拖拽结束：把新位置换算为日期并写入节点 */
+function ganttBarDragEnd(e){
+  if(!_ganttDrag.active)return;
+  const wasTouch=e.type.startsWith('touch');
+  document.removeEventListener(wasTouch?'touchmove':'mousemove',_ganttDrag.onMove,{passive:false});
+  _ganttDrag.bar.classList.remove('dragging');
+  const box=$('planGantt');
+  const range=box&&box._ganttRange?box._ganttRange:null;
+  const n=wizPlanNodes[_ganttDrag.idx];
+  if(range&&n&&n.planStart&&n.planEnd){
+    const finalLeft=parseFloat(_ganttDrag.bar.style.left)||0;
+    const duration=Math.max(1,Math.round((Date.parse(n.planEnd)-Date.parse(n.planStart))/86400000)+1);
+    const newStart=_isoFromPct(finalLeft,range.startISO,range.totalDays);
+    const newEnd=shiftDate(newStart,duration-1);
+    n.planStart=newStart;n.planEnd=newEnd;
+  }
+  _ganttDrag={active:false,idx:null,bar:null,track:null,startX:0,startLeftPct:0,barWidthPct:0,range:null,onMove:null,onUp:null};
+  renderPlanTable();
 }
 
 /** 调整单个节点的工期天数：仅影响该节点自身的 planEnd（保留其 planStart），
