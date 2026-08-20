@@ -1632,9 +1632,9 @@ a{color:#003a8c;text-decoration:none}
 /* ── 客户版合同收款计划表 ── */
 .cpr-sheet{background:#fff;padding:32px 36px 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#1a1a1a;line-height:1.6}
 .cpr-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
-.cpr-brand{display:flex;align-items:center;gap:12px}
-.cpr-logo{width:44px;height:44px;border-radius:10px;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
-.cpr-logo-img{width:44px;height:44px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #e8e8e8;flex-shrink:0}
+.cpr-brand{display:flex;align-items:center;gap:14px}
+.cpr-logo{width:56px;height:56px;border-radius:12px;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
+.cpr-logo-img{width:64px;height:auto;max-height:72px;border-radius:12px;object-fit:contain;background:#fff;border:1px solid #e8e8e8;flex-shrink:0}
 .cpr-company{font-size:15px;font-weight:700;color:#003a8c}
 .cpr-tagline{font-size:11px;color:#999;margin-top:1px}
 .cpr-title-area{text-align:right}
@@ -1690,16 +1690,17 @@ a{color:#003a8c;text-decoration:none}
 /* ── 客户版施工进度表(甘特图) ── */
 .gs-sheet{background:#fff;padding:30px 34px 26px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#1a1a1a;line-height:1.6}
 .gs-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:20px}
-.gs-brand{display:flex;align-items:center;gap:12px}
-.gs-logo{width:44px;height:44px;border-radius:10px;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
-.gs-logo-img{width:44px;height:44px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #e8e8e8;flex-shrink:0}
-/* 打印 / 导出 PDF：仅显示进度表图像，A4 横版 */
+.gs-brand{display:flex;align-items:center;gap:14px}
+.gs-logo{width:56px;height:56px;border-radius:12px;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
+.gs-logo-img{width:64px;height:auto;max-height:72px;border-radius:12px;object-fit:contain;background:#fff;border:1px solid #e8e8e8;flex-shrink:0}
+/* 打印 / 导出 PDF：直接 DOM 打印方案 */
 .gs-print-host{display:none}
+#gsPrintOverlay{display:none}
 @media print{
-  body>*:not(.gs-print-host){display:none !important}
-  .gs-print-host{display:block !important;position:absolute;left:0;top:0;width:100%;background:#fff}
-  .gs-print-host img{width:100%;height:auto;display:block;margin:0 auto}
-  @page{size:A4 landscape;margin:8mm}
+  body>*:not(#gsPrintOverlay){display:none !important}
+  #gsPrintOverlay{display:block !important;position:fixed;left:0;top:0;width:100%;height:auto;background:#fff;z-index:999998}
+  #gsPrintClone{position:relative!important;left:0!important;top:0!important;width:100%!important;z-index:999999;background:#fff;padding:20px;box-sizing:border-box}
+  @page{size:A4 landscape;margin:6mm}
 }
 .gs-company{font-size:15px;font-weight:700;color:#003a8c}
 .gs-tagline{font-size:11px;color:#999;margin-top:1px}
@@ -6996,22 +6997,49 @@ function rerenderOpenGsSheets(){
 }
 
 /* ── DOM → PNG（零外部依赖，SVG foreignObject + canvas）── */
-/* ── 共享：把任意报表 DOM 渲染为 SVG（内联全局样式），再绘制到 canvas（高清）── */
+/* ── 共享：把任意报表 DOM 渲染为 SVG（智能提取相关样式），再绘制到 canvas（高清）── */
 function buildSheetSVG(el){
   const w=el.scrollWidth,h=el.scrollHeight;
   const clone=el.cloneNode(true);
   clone.style.width=w+'px';clone.style.height=h+'px';clone.style.position='absolute';clone.style.left='-9999px';clone.style.top='0';clone.style.background='#fff';
-  document.body.appendChild(clone);
-  /* 将文档全局样式内联进 SVG（CDATA 包裹），确保导出与页面（含 pg-* 甘特样式）完全一致 */
+  /* 收集元素内实际用到的所有 class 名 */
+  const usedClasses=new Set();
+  function collectClasses(node){
+    if(node.nodeType===1){
+      if(node.className){
+        const cn=(typeof node.className==='string')?node.className:node.className.baseVal||'';
+        cn.split(/\s+/).forEach(function(c){if(c)usedClasses.add(c);});
+      }
+      for(let i=0;i<node.children.length;i++)collectClasses(node.children[i]);
+    }
+  }
+  collectClasses(clone);
+  /* 只提取包含已使用 class 的 CSS 规则，大幅缩减体积 */
   let css='';
-  document.querySelectorAll('style').forEach(st=>{css+=(st.textContent||'')+'\n';});
+  document.querySelectorAll('style').forEach(function(st){
+    const text=st.textContent||'';
+    /* 按 } 分割规则块，逐块检查是否包含已使用的 class */
+    const rules=text.split('}');
+    rules.forEach(function(rule){
+      if(!rule.trim())return;
+      const selectors=rule.split('{')[0];
+      let shouldInclude=false;
+      usedClasses.forEach(function(cls){
+        if(selectors.indexOf('.'+cls)!==-1||selectors.indexOf('#'+el.id)!==-1||selectors.indexOf(el.tagName.toLowerCase()+' ')!==-1||selectors.indexOf(el.tagName.toLowerCase()+'.')!==-1){
+          shouldInclude=true;
+        }
+      });
+      /* 始终保留 @media print 和 @page 规则 */
+      if(selectors.indexOf('@media')!==-1||selectors.indexOf('@page')!==-1)shouldInclude=true;
+      if(shouldInclude)css+=rule+'}\n';
+    });
+  });
   css=css.replace(/]]>/g,']]\u2060>');
   const style='<style><![CDATA['+css+']]></style>';
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'">'
     +'<foreignObject width="100%" height="100%">'+style
     +'<div xmlns="http://www.w3.org/1999/xhtml" style="width:'+w+'px;height:'+h+'px">'+clone.innerHTML+'</div>'
     +'</foreignObject></svg>';
-  document.body.removeChild(clone);
   return {svg:svg,w:w,h:h};
 }
 function svgToCanvas(svg,w,h,scale){
@@ -7071,6 +7099,16 @@ function _makePDF(jpeg, iw, ih){
 }
 function downloadSheetPDF(sheetId,fileBase){
   const el=$(sheetId); if(!el) return;
+  /* 确保所有图片已加载（尤其是 base64 logo） */
+  const imgs=el.querySelectorAll('img');
+  let pending=imgs.length;
+  if(pending===0){ _doGeneratePDF(el,sheetId,fileBase); return; }
+  imgs.forEach(function(img){
+    if(img.complete){pending--;if(pending===0)_doGeneratePDF(el,sheetId,fileBase);}
+    else{img.onload=function(){pending--;if(pending===0)_doGeneratePDF(el,sheetId,fileBase);};img.onerror=function(){pending--;if(pending===0)_doGeneratePDF(el,sheetId,fileBase);};}
+  });
+}
+function _doGeneratePDF(el,sheetId,fileBase){
   const r=buildSheetSVG(el);
   svgToCanvas(r.svg,r.w,r.h,2).then(function(c){
     const jpeg=c.toDataURL('image/jpeg',0.92);
@@ -7085,23 +7123,37 @@ function downloadSheetPDF(sheetId,fileBase){
     a.download=(cur().name||'项目')+'_'+fileBase+'_'+todayISO()+'.pdf';
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
-  }).catch(function(){ alert('PDF 生成失败，请重试。'); });
+  }).catch(function(err){
+    console.warn('PDF生成失败(主方案):',err&&err.message||err);
+    /* 降级方案：提示用户使用浏览器打印→另存为PDF */
+    alert('PDF 自动生成失败，请点击「打印进度表」按钮，在打印对话框中选择「另存为 PDF」保存。');
+  });
 }
 function printSheet(sheetId){
   const el=$(sheetId); if(!el) return;
   zoomGsReset(sheetId);
-  const r=buildSheetSVG(el);
-  svgToCanvas(r.svg,r.w,r.h,2).then(function(c){
-    let host=$('gsPrintHost');
-    if(!host){ host=document.createElement('div'); host.id='gsPrintHost'; host.className='gs-print-host'; document.body.appendChild(host); }
-    host.innerHTML='';
-    const img=document.createElement('img');
-    img.src=c.toDataURL('image/png');
-    host.appendChild(img);
-    setTimeout(function(){ window.print(); }, 80);
-  }).catch(function(){ alert('打印准备失败，请重试。'); });
+  /* 直接 DOM 打印：克隆目标内容 → 全屏覆盖 → window.print() → 恢复 */
+  const clone=el.cloneNode(true);
+  clone.id='gsPrintClone';
+  clone.style.cssText='position:fixed;left:0;top:0;width:100%;height:auto;z-index:999999;background:#fff;padding:40px;box-sizing:border-box';
+  /* 内联所有图片 src（确保打印时图片可访问） */
+  clone.querySelectorAll('img').forEach(function(img){
+    if(img.src && !img.src.startsWith('data:')){ /* 非 data URL 的图片保持原样 */ }
+  });
+  const overlay=document.createElement('div');
+  overlay.id='gsPrintOverlay';
+  overlay.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%;z-index:999998;background:#fff;overflow:auto;padding:20px;box-sizing:border-box';
+  overlay.appendChild(clone);
+  document.body.appendChild(overlay);
+  /* 标记打印状态，让 @media print 规则只显示 overlay */
+  document.documentElement.classList.add('gs-printing');
+  setTimeout(function(){ window.print(); }, 150);
 }
-window.addEventListener('afterprint',function(){ const h=$('gsPrintHost'); if(h) h.innerHTML=''; });
+window.addEventListener('afterprint',function(){
+  const ov=$('gsPrintOverlay');
+  if(ov){ ov.remove(); }
+  document.documentElement.classList.remove('gs-printing');
+});
 
 function downloadCustomerPayPNG(){
   const el=$('cprSheet'); if(!el) return;
