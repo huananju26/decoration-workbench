@@ -1047,6 +1047,8 @@ a{color:#003a8c;text-decoration:none}
 .plan-op-btn{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e8e8e8;border-radius:5px;cursor:pointer;font-size:13px;color:#999;background:#fff;transition:all .15s}
 .plan-op-btn:hover{border-color:#003a8c;color:#003a8c;background:#e6f4ff}
 .plan-op-btn.danger:hover{border-color:#ff4d4f;color:#ff4d4f;background:#fff1f0}
+.plan-reset-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:4px;border:1px solid #e8e8e8;border-radius:50%;cursor:pointer;font-size:12px;color:#999;background:#fff;vertical-align:middle;transition:all .15s}
+.plan-reset-btn:hover{border-color:#003a8c;color:#003a8c;background:#e6f4ff}
 
 /* 向导底部按钮 — 固定在弹窗底部，不随内容滚动 */
 .wizard-actions{display:flex;gap:10px;justify-content:space-between;padding:14px 24px;border-top:1px solid #f0f0f0;background:#fff;flex-shrink:0;z-index:2}
@@ -3888,6 +3890,31 @@ function recalcPlanSchedule(){
   renderPlanTable();
 }
 
+/** 单条节点「恢复初始时间」：清除该节点的手动标记，并以最近的上游手动节点（无则计划开工日）为锚点，
+ *  向后紧凑顺排直到遇到下一个手动节点为止。其余手动节点（含空档/交叉）保持不变。 */
+function resetSingleNode(i){
+  const n=wizPlanNodes[i];if(!n)return;
+  if(!confirm('将节点「'+(n.name||'')+'」恢复为初始排期时间？\n（当前手动设置将被清除）'))return;
+  n.manual=false;
+  /* 上游锚点：i 之前最近的手动节点的 planEnd，否则计划开工日 */
+  let anchorISO='';
+  for(let k=i-1;k>=0;k--){ if(wizPlanNodes[k].manual===true && wizPlanNodes[k].planEnd){ anchorISO=wizPlanNodes[k].planEnd; break; } }
+  if(!anchorISO) anchorISO=$('wPlanStartDate')?$('wPlanStartDate').value.trim():'';
+  let cur = anchorISO ? new Date(shiftDate(anchorISO,1)+'T00:00:00') : null;
+  for(let k=i;k<wizPlanNodes.length;k++){
+    const m=wizPlanNodes[k];
+    if(m.manual===true) break; /* 停在下一个手动节点 */
+    if(!cur){ m.planStart='';m.planEnd='';continue; }
+    const d=Math.max(1,Math.round(parseDays(m.days)));
+    m.planStart=localISODate(cur);
+    cur=new Date(cur.getTime()+(d-1)*86400000);
+    m.planEnd=localISODate(cur);
+    cur=new Date(cur.getTime()+86400000);
+  }
+  refreshPlanStats();
+  renderPlanTable();
+}
+
 /** 渲染节点表格 */
 function renderPlanTable(){
   const tbody=$('planNodeBody');
@@ -3900,7 +3927,7 @@ function renderPlanTable(){
       <option value="inprogress" ${n.status==='inprogress'?'selected':''}>进行中</option>
       <option value="done" ${n.status==='done'?'selected':''}>已完成</option>
     </select></td>
-    <td class="plan-date-range">${n.planStart?fmtDate(n.planStart)+' — '+fmtDate(n.planEnd):'—'}${n.manual?' <span style="font-size:10px;color:#1677ff;border:1px solid #91caff;border-radius:3px;padding:0 3px;margin-left:4px;white-space:nowrap">手排</span>':''}</td>
+    <td class="plan-date-range">${n.planStart?fmtDate(n.planStart)+' — '+fmtDate(n.planEnd):'—'}${n.manual?' <span style="font-size:10px;color:#1677ff;border:1px solid #91caff;border-radius:3px;padding:0 3px;margin-left:4px;white-space:nowrap">手排</span><span class="plan-reset-btn" onclick="resetSingleNode('+i+')" title="恢复初始时间">↺</span>':''}</td>
     <td style="text-align:center">
       <span class="plan-op-btn" onclick="moveWizPlanNode(${i},-1)" title="上移"${i===0?' style="opacity:.3;pointer-events:none"':''}>↑</span>
       <span class="plan-op-btn" onclick="moveWizPlanNode(${i},1)" title="下移"${i===wizPlanNodes.length-1?' style="opacity:.3;pointer-events:none"':''}>↓</span>
