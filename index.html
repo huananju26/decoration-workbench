@@ -4035,6 +4035,30 @@ function _normalizeGanttLabelWidth(root){
   if(maxW>0) root.style.setProperty('--pg-label-w', maxW+'px');
 }
 
+/** 修正甘特图溢出标签：检测每个 .pg-bar-label 右缘是否超出 .pg-track 容器，
+ *  超出则自动挪到对应条形的左侧（left = barLeft - labelWidth - 6px）。 */
+function _fixOverflowLabels(root){
+  if(!root) return;
+  var labels=root.querySelectorAll('.pg-bar-label');
+  if(!labels.length) return;
+  labels.forEach(function(label){
+    var track=label.closest('.pg-track');
+    if(!track) return;
+    var tw=track.clientWidth;
+    if(tw<=0) return; // 不可见时跳过
+    var rightEdge=label.offsetLeft + label.offsetWidth;
+    if(rightEdge <= tw + 2) return; // 未溢出（+2px 容差）
+    // 溢出了——找到同行的条形，把标签挪到条形左侧
+    var bar=label.previousElementSibling;
+    while(bar && !bar.classList.contains('pg-bar')){
+      bar=bar.previousElementSibling;
+    }
+    if(!bar){ label.style.left='0'; return; }
+    var barLeft=parseFloat(bar.style.left)||0; // 百分比数值
+    label.style.left='calc('+barLeft+'% - '+Math.max(label.offsetWidth+6, 40)+'px)';
+  });
+}
+
 /** 渲染 Step2 施工计划甘特图（内嵌）：按每个节点的 planStart/planEnd 绘制条形，
  *  节点名称+日期显示在条形上（够长）或旁边（不够长）；支持鼠标拖动平移。 */
 function renderPlanGantt(){
@@ -4096,6 +4120,7 @@ function renderPlanGantt(){
     +`<div class="pg-grid"><div class="pg-axis-label">节点 / 状态</div><div class="pg-axis-track">${axisBands}</div></div>`
     +`<div class="pg-rows">${rows}</div>`;
   _normalizeGanttLabelWidth(box);
+  _fixOverflowLabels(box);
   _bindGanttPan(box);
 }
 
@@ -7417,6 +7442,7 @@ function exportClientTimeline(){
   if(steps.length===0){alert('当前项目还没有施工流程节点，无法导出。');return;}
   $('clientTimelineBody').innerHTML='<div class="gs-zoom-pad" id="clientTimelineSheetPad">'+renderClientTimelineSheet(p,steps)+'</div>';
   _normalizeGanttLabelWidth($('clientTimelineBody'));
+  _fixOverflowLabels($('clientTimelineBody'));
   _bindSheetPan($('clientTimelineBody'));
   showModal('clientTimelineModal');
   /* 同步立即计算一次尺寸（保证 jsdom 测试也能命中），再用 rAF 校正一次 */
@@ -7558,6 +7584,7 @@ function exportPlanVsActualImage(){
   if(steps.length===0){alert('当前项目还没有施工流程节点，无法导出。');return;}
   $('planVsActualBody').innerHTML='<div class="gs-zoom-pad" id="planVsActualSheetPad">'+renderPlanVsActualSheet(p,steps)+'</div>';
   _normalizeGanttLabelWidth($('planVsActualBody'));
+  _fixOverflowLabels($('planVsActualBody'));
   _bindSheetPan($('planVsActualBody'));
   showModal('planVsActualModal');
   const el=$('planVsActualSheet');
