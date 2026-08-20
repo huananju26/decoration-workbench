@@ -6023,12 +6023,6 @@ function renderProcess(){
             <span class="step-action-more" onclick="event.stopPropagation();toggleStepExpand(${i})">查看详情 ▾</span>
           </div>
         </div>
-        <!-- 排序+删除按钮（紧贴右侧） -->
-        <div class="step-actions" style="margin-left:6px;flex-shrink:0">
-          <button class="step-act-btn" title="上移" ${i===0?'disabled':''} onclick="event.stopPropagation();moveStep(${i},-1)">↑</button>
-          <button class="step-act-btn" title="下移" ${i===steps.length-1?'disabled':''} onclick="event.stopPropagation();moveStep(${i},1)">↓</button>
-          <button class="step-act-btn del" title="删除此节点" onclick="event.stopPropagation();deleteStep(${i})">✕</button>
-        </div>
         <span class="step-arrow">▾</span>
       </div>
       <div class="step-body">
