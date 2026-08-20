@@ -1015,6 +1015,7 @@ a{color:#003a8c;text-decoration:none}
 .pg-badge.done{background:#0050b3;color:#fff}
 .pg-badge.overdue{background:#ff4d4f;color:#fff}
 .pg-badge.none{background:#f0f0f0;color:#999}
+.pg-actual-days{font-size:10px;color:#666;margin-left:4px;white-space:nowrap}
 .pg-track{position:relative;height:38px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 22px,#e8e8e8 22px,#e8e8e8 23px,transparent 23px,transparent 24px),repeating-linear-gradient(180deg,transparent 0,transparent 16px,#e8e8e8 16px,#e8e8e8 17px,transparent 17px,transparent 38px);margin-left:0}
 .pg-bar{position:absolute;top:9px;height:20px;border-radius:6px;font-size:0;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;display:flex;align-items:center;padding:0;white-space:nowrap;overflow:visible;cursor:default;box-sizing:border-box;touch-action:none;z-index:2;user-select:none;-webkit-user-select:none}
 .pg-bar.dragging{z-index:4;box-shadow:0 4px 12px rgba(0,0,0,.18)}
@@ -4106,7 +4107,9 @@ function renderPlanGantt(){
   const rows=wizPlanNodes.map((n,i)=>{
     const scheduled=n.planStart&&n.planEnd;
     const st=n.status||(scheduled?'pending':'none');
-    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(n.name||'')}</span><span class="pg-badge ${st}">${STXT[st]||'待开始'}</span></div>`;
+    const actDays=(st==='done'&&n.completedAtStart&&n.completedAt)?(Math.round((Date.parse(n.completedAt)-Date.parse(n.completedAtStart))/86400000)+1):0;
+    const actDaysHtml=actDays>0?`<span class="pg-actual-days">${actDays}天</span>`:'';
+    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(n.name||'')}</span><span class="pg-badge ${st}">${STXT[st]||'待开始'}</span>${actDaysHtml}</div>`;
     if(!scheduled){
       return `<div class="pg-row">${nameCell}<div class="pg-track"><span class="pg-bar-label" style="left:0;top:50%;transform:translateY(-50%)"><span class="pg-label-name">${escHtml(n.name||'')}</span></span></div></div>`;
     }
@@ -7506,8 +7509,10 @@ function renderClientTimelineSheet(p,steps){
     const wPct=Math.max(rightPct-leftPct,0.6);
     const done=isStepChecked(s.id);
     const cls=_gsPgStatusClass(done,today,r);
+    const actDays2=(done&&s.completedAtStart&&s.completedAt)?(Math.round((Date.parse(s.completedAt)-Date.parse(s.completedAtStart))/86400000)+1):0;
+    const actDaysHtml2=actDays2>0?`<span class="pg-actual-days">${actDays2}天</span>`:'';
     const barLabel=`${fmtDateMd(r.s)} — ${fmtDateMd(r.e)}`;
-    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${cls}">${_gsPgStatusLabel(cls)}</span></div>`;
+    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${cls}">${_gsPgStatusLabel(cls)}</span>${actDaysHtml2}</div>`;
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${wPct}%"></div><span class="pg-bar-label" style="left:calc(${leftPct}% + ${wPct}% + 6px)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${barLabel}</span></span></div></div>`;
   });
   return `<div class="gs-sheet" id="clientTimelineSheet" style="width:920px">
@@ -7636,7 +7641,9 @@ function renderPlanVsActualSheet(p,steps){
     const actW=Math.max(actRightPct-actLeftPct,0.4);
     /* 标签紧跟实际条形（下方条）右边缘外侧 */
     const labelLeft=Math.max(planLeftPct+planW, actLeftPct+actW);
-    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span></div>`;
+    const actDays3=(isDone&&s.completedAtStart&&s.completedAt)?(Math.round((Date.parse(s.completedAt)-Date.parse(s.completedAtStart))/86400000)+1):0;
+    const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
+    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</div>`;
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:40px">${todayEl}`
       +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:11px;font-size:9px;padding:0;opacity:.9"></div>`
       +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:18px;height:11px;font-size:9px;padding:0">实际</div>`
