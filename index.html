@@ -997,12 +997,12 @@ a{color:#003a8c;text-decoration:none}
 .plan-gantt.dragging{cursor:grabbing}
 .plan-gantt-title{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:8px;display:flex;align-items:center;gap:8px}
 .plan-gantt-title small{font-size:11px;font-weight:400;color:#999}
-.pg-grid{display:grid;grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);align-items:stretch;column-gap:12px}
+.pg-grid{display:grid;grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);align-items:stretch;column-gap:12px;width:100%}
 .pg-rows{display:flex;flex-direction:column}
 .pg-axis-label{font-size:11px;color:#999;padding:4px 8px 6px 0;display:flex;align-items:flex-end}
 .pg-axis-track{position:relative;height:26px;border-bottom:1px solid #eaeaea}
 .pg-month{position:absolute;top:0;height:26px;font-size:11px;color:#888;border-left:1px solid #e3e3e3;padding-left:5px;display:flex;align-items:center;white-space:nowrap;overflow:hidden}
-.pg-row{display:grid;grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);align-items:center;border-top:1px dashed #f0f0f0;min-height:28px;column-gap:12px}
+.pg-row{display:grid;grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);align-items:center;border-top:1px dashed #f0f0f0;min-height:28px;width:100%;column-gap:12px}
 .pg-row:nth-child(even){background:#f7f8fa;border-radius:4px}
 .pg-row-label{display:flex;flex-direction:column;gap:1px;padding:3px 4px 3px 0;min-width:0;box-sizing:border-box;border-right:1px solid #f0f0f0}
 .pg-row-label .pg-name{font-size:12px;color:#333;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1713,11 +1713,11 @@ a{color:#003a8c;text-decoration:none}
 .ppe-item:hover .ppe-icon{background:#003a8c;color:#fff}
 
 /* ── 客户版施工进度表(甘特图) ── */
-.gs-zoom-pad{position:relative;margin:0 auto;transform-origin:top left}
+.gs-zoom-pad{position:relative;width:100%;transform-origin:top left}
 #clientTimelineBody,#planVsActualBody{cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
 #clientTimelineBody img,#planVsActualBody img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
 #clientTimelineBody.dragging,#planVsActualBody.dragging{cursor:grabbing}
-.gs-sheet{background:#fff;padding:30px 34px 26px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#1a1a1a;line-height:1.6}
+.gs-sheet{background:#fff;padding:30px 34px 26px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#1a1a1a;line-height:1.6;width:100%;box-sizing:border-box}
 .gs-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:20px}
 .gs-brand{display:flex;align-items:center;gap:14px}
 .gs-logo{width:56px;height:56px;border-radius:0;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
