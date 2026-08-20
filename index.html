@@ -1624,6 +1624,87 @@ a{color:#003a8c;text-decoration:none}
   .cpr-table th,.cpr-table td{padding:8px 8px}
   .cpr-foot{flex-direction:column;gap:8px}
 }
+
+/* ── 项目统计行-计划与导出下拉 ── */
+.proj-plan-export{position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end;padding-left:24px;border-left:1px solid #eeeef2;margin-left:auto}
+.proc-plan-export-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:1.5px solid #d9d9d9;background:#fff;border-radius:10px;color:#1a1a1a;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;line-height:1}
+.proc-plan-export-btn:hover{border-color:#003a8c;color:#003a8c}
+.proc-plan-export-btn .ppe-chev{font-size:11px;color:#999;transition:transform .15s}
+.proc-plan-export-btn[aria-expanded="true"]{border-color:#003a8c;color:#003a8c;background:#e6f4ff}
+.proc-plan-export-btn[aria-expanded="true"] .ppe-chev{transform:rotate(180deg);color:#003a8c}
+.proc-plan-export-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;min-width:200px;background:#fff;border:1px solid #e8e8e8;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);padding:6px;z-index:200}
+.proc-plan-export-menu.open{display:block;animation:ppe-fade-in .15s ease}
+@keyframes ppe-fade-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.ppe-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:8px;font-size:13.5px;color:#333;cursor:pointer;transition:background .12s;line-height:1.4}
+.ppe-item:hover{background:#e6f4ff;color:#003a8c}
+.ppe-icon{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;background:#f0f5ff;color:#003a8c;font-size:14px;flex-shrink:0}
+.ppe-item:hover .ppe-icon{background:#003a8c;color:#fff}
+
+/* ── 客户版施工进度表(甘特图) ── */
+.gs-sheet{background:#fff;padding:30px 34px 26px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#1a1a1a;line-height:1.6}
+.gs-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:20px}
+.gs-brand{display:flex;align-items:center;gap:12px}
+.gs-logo{width:44px;height:44px;border-radius:10px;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
+.gs-company{font-size:15px;font-weight:700;color:#003a8c}
+.gs-tagline{font-size:11px;color:#999;margin-top:1px}
+.gs-title-area{text-align:right}
+.gs-main-title{font-size:22px;font-weight:800;color:#003a8c;letter-spacing:1px}
+.gs-sub-title{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;margin-top:2px}
+.gs-project-name{font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:6px}
+.gs-project-meta{font-size:12px;color:#666;display:flex;flex-wrap:wrap;gap:4px 24px;margin-bottom:14px}
+.gs-meta-item{white-space:nowrap}
+.gs-meta-item b{color:#333;font-weight:600}
+.gs-summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.gs-sum-card{background:#f8fafc;border:1px solid #e8e8e8;border-radius:10px;padding:12px 14px}
+.gs-sum-label{font-size:11px;color:#999;margin-bottom:4px}
+.gs-sum-val{font-size:17px;font-weight:700;color:#1a1a1a}
+.gs-sum-val.ok{color:#003a8c}
+.gs-sum-val.warn{color:#ff4d4f}
+.gs-sum-val.muted{color:#999}
+.gs-chart{position:relative;background:#fbfdff;border:1px solid #e8e8e8;border-radius:12px;padding:16px 14px 12px;overflow:hidden}
+.gs-axis{display:flex;border-bottom:1px solid #d9e3f0;margin-bottom:6px;padding-left:124px;position:relative}
+.gs-axis-month{flex:1;text-align:center;font-size:11px;font-weight:600;color:#666;padding:4px 0;border-right:1px dashed #d9e3f0}
+.gs-axis-month:last-child{border-right:none}
+.gs-axis-weekdays{display:grid;padding-left:124px;border-bottom:1px solid #eee;margin-bottom:4px}
+.gs-rows{position:relative}
+.gs-row{position:relative;display:flex;align-items:center;height:38px;border-bottom:1px dashed #f0f0f0}
+.gs-row:last-child{border-bottom:none}
+.gs-row-label{position:absolute;left:0;top:0;bottom:0;width:124px;padding:0 10px 0 4px;display:flex;flex-direction:column;justify-content:center;background:#fbfdff;border-right:1px solid #eeeef2;z-index:2}
+.gs-row-name{font-size:12.5px;font-weight:600;color:#1a1a1a;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gs-row-meta{font-size:10px;color:#999;margin-top:2px;line-height:1.1}
+.gs-track{position:absolute;left:124px;right:14px;top:6px;bottom:6px;overflow:hidden}
+.gs-bar{position:absolute;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;line-height:1;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.gs-bar.done{background:linear-gradient(180deg,#52a8ff,#1a73e8)}
+.gs-bar.active{background:linear-gradient(180deg,#34d399,#059669);position:relative}
+.gs-bar.active::after{content:'';position:absolute;left:0;right:0;bottom:-4px;height:6px;background:repeating-linear-gradient(45deg,#059669 0 4px,transparent 4px 8px)}
+.gs-bar.pending{background:linear-gradient(180deg,#a8c8ee,#8aabd8)}
+.gs-bar.overdue{background:linear-gradient(180deg,#ff7875,#f5222d)}
+.gs-bar-no-date{height:3px;background:#bbb;border-radius:2px;bottom:50%;position:absolute}
+/* 计划 vs 实际 - 今日虚线 */
+.gs-today-line{position:absolute;top:0;bottom:0;width:0;border-left:1.5px dashed #ff4d4f;z-index:3;pointer-events:none}
+.gs-today-line::before{content:'今天';position:absolute;top:-2px;left:-22px;font-size:10px;color:#fff;background:#ff4d4f;padding:1px 6px;border-radius:8px;line-height:1.4;white-space:nowrap}
+.gs-grid-week{position:absolute;top:0;bottom:0;width:0;border-left:1px dotted #eaeef5;z-index:1}
+.gs-grid-row-alt{background:rgba(0,58,140,.025)}
+.gs-foot{margin-top:14px;display:flex;align-items:flex-start;justify-content:space-between;font-size:11px;color:#999;line-height:1.7;gap:18px}
+.gs-foot-note b{color:#003a8c}
+.gs-legend{display:flex;gap:10px 16px;flex-wrap:wrap;font-size:11px;color:#666;margin-bottom:14px;padding:10px 14px;background:#f8fafc;border:1px solid #eef1f5;border-radius:8px}
+.gs-legend-item{display:flex;align-items:center;gap:6px}
+.gs-legend-dot{width:14px;height:10px;border-radius:3px}
+.gs-legend-dot.done{background:linear-gradient(180deg,#52a8ff,#1a73e8)}
+.gs-legend-dot.active{background:linear-gradient(180deg,#34d399,#059669)}
+.gs-legend-dot.pending{background:linear-gradient(180deg,#a8c8ee,#8aabd8)}
+.gs-legend-dot.overdue{background:linear-gradient(180deg,#ff7875,#f5222d)}
+.gs-legend-line{width:0;height:12px;border-left:1.5px dashed #ff4d4f;position:relative}
+@media(max-width:780px){
+  .proj-plan-export{border-left:none;padding-left:0;margin-top:12px;width:100%;justify-content:flex-end}
+  .gs-sheet{padding:18px 14px 14px}
+  .gs-top{flex-direction:column;gap:12px}
+  .gs-title-area{text-align:left}
+  .gs-summary-row{grid-template-columns:1fr 1fr}
+  .gs-foot{flex-direction:column;gap:8px}
+  .gs-axis{padding-left:0}
+  .gs-axis-weekdays{padding-left:0}
+}
 </style>
 </head>
 <body>
@@ -1857,6 +1938,27 @@ a{color:#003a8c;text-decoration:none}
         <div class="proj-stat-item"><div class="proj-stat-label">节点完成</div><div class="proj-stat-val" id="pdhNodeDone">—</div></div>
         <div class="proj-stat-item"><div class="proj-stat-label">风险节点</div><div class="proj-stat-val" id="pdhRiskCount">0</div></div>
         <div class="proj-stat-item"><div class="proj-stat-label">项目现金余额</div><div class="proj-stat-val" id="pdhCashBalance">¥0</div></div>
+        <!-- 计划与导出下拉（项目现金余额之后） -->
+        <div class="proj-plan-export" id="procPlanExportWrap">
+          <button type="button" class="proc-plan-export-btn" id="procPlanExportBtn" onclick="togglePlanExportMenu(event)" aria-haspopup="menu" aria-expanded="false">
+            <span>计划与导出</span>
+            <span class="ppe-chev" aria-hidden="true">▾</span>
+          </button>
+          <div class="proc-plan-export-menu" id="procPlanExportMenu" role="menu">
+            <div class="ppe-item" role="menuitem" onclick="editConstructionPlan()">
+              <span class="ppe-icon" aria-hidden="true">✎</span>
+              <span>编辑施工计划</span>
+            </div>
+            <div class="ppe-item" role="menuitem" onclick="exportClientTimeline()">
+              <span class="ppe-icon" aria-hidden="true">▦</span>
+              <span>导出客户版进度表</span>
+            </div>
+            <div class="ppe-item" role="menuitem" onclick="exportPlanVsActualImage()">
+              <span class="ppe-icon" aria-hidden="true">⌗</span>
+              <span>导出计划/实际图片</span>
+            </div>
+          </div>
+        </div>
       </div>
       <!-- 流程内容区（Tab=施工执行 时显示） -->
       <div class="process-content-wrapper" id="processContentWrapper">
@@ -2666,6 +2768,58 @@ a{color:#003a8c;text-decoration:none}
       <div style="display:flex;gap:8px">
         <button class="btn-outline" onclick="closeModal('customerPayModal')" style="padding:8px 20px;font-size:13px">关闭预览</button>
         <button class="btn-primary" onclick="downloadCustomerPayPNG()" style="padding:8px 20px;font-size:13px;background:#003a8c;border-color:#003a8c">下载高清 PNG 图片</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 客户版施工进度表（甘特图）═══ -->
+<div class="modal-overlay" id="clientTimelineModal">
+  <div class="modal" style="max-width:980px;max-height:92vh;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0;padding:16px 24px;border-bottom:1px solid #f0f0f0;background:#fafafa;gap:12px">
+      <div style="flex:1;min-width:0">
+        <div class="modal-title" style="font-size:16px">客户版施工进度表</div>
+        <div style="font-size:12px;color:#999;margin-top:2px">横轴日期周期样式，带企业抬头。导给业主，可不后点击直接发送给客户。</div>
+      </div>
+      <div class="gs-zoom-ctrl" style="display:flex;gap:6px;flex-shrink:0">
+        <button type="button" class="btn-outline" style="padding:4px 10px;font-size:13px" onclick="zoomGsSheet('clientTimelineSheet',-0.1)" title="缩小">－</button>
+        <button type="button" class="btn-outline" style="padding:4px 10px;font-size:13px" onclick="zoomGsReset('clientTimelineSheet')" title="实际尺寸">100%</button>
+        <button type="button" class="btn-outline" style="padding:4px 10px;font-size:13px" onclick="zoomGsSheet('clientTimelineSheet',0.1)" title="放大">＋</button>
+      </div>
+      <div class="modal-close" onclick="closeModal('clientTimelineModal');zoomGsReset('clientTimelineSheet')" style="margin-left:0">✕</div>
+    </div>
+    <div id="clientTimelineBody" style="flex:1;min-height:0;overflow:auto;padding:0;background:#f5f7fa"></div>
+    <div style="padding:12px 20px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fafafa">
+      <span id="clientTimelineSize" style="font-size:11px;color:#bbb"></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn-outline" onclick="closeModal('clientTimelineModal');zoomGsReset('clientTimelineSheet')" style="padding:8px 20px;font-size:13px">关闭预览</button>
+        <button class="btn-primary" onclick="downloadClientTimelinePNG()" style="padding:8px 20px;font-size:13px;background:#003a8c;border-color:#003a8c">下载高清 PNG 图片</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 客户版计划 vs 实际进度表（双轨甘特）═══ -->
+<div class="modal-overlay" id="planVsActualModal">
+  <div class="modal" style="max-width:980px;max-height:92vh;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0;padding:16px 24px;border-bottom:1px solid #f0f0f0;background:#fafafa;gap:12px">
+      <div style="flex:1;min-width:0">
+        <div class="modal-title" style="font-size:16px">客户版计划与实际进度表</div>
+        <div style="font-size:12px;color:#999;margin-top:2px">计划起止与实际进度对比，带企业抬头。可下幕后直接发送给客户。</div>
+      </div>
+      <div class="gs-zoom-ctrl" style="display:flex;gap:6px;flex-shrink:0">
+        <button type="button" class="btn-outline" style="padding:4px 10px;font-size:13px" onclick="zoomGsSheet('planVsActualSheet',-0.1)" title="缩小">－</button>
+        <button type="button" class="btn-outline" style="padding:4px 10px;font-size:13px" onclick="zoomGsReset('planVsActualSheet')" title="实际尺寸">100%</button>
+        <button type="button" class="btn-outline" style="padding:4px 10px;font-size:13px" onclick="zoomGsSheet('planVsActualSheet',0.1)" title="放大">＋</button>
+      </div>
+      <div class="modal-close" onclick="closeModal('planVsActualModal');zoomGsReset('planVsActualSheet')" style="margin-left:0">✕</div>
+    </div>
+    <div id="planVsActualBody" style="flex:1;min-height:0;overflow:auto;padding:0;background:#f5f7fa"></div>
+    <div style="padding:12px 20px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fafafa">
+      <span id="planVsActualSize" style="font-size:11px;color:#bbb"></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn-outline" onclick="closeModal('planVsActualModal');zoomGsReset('planVsActualSheet')" style="padding:8px 20px;font-size:13px">关闭预览</button>
+        <button class="btn-primary" onclick="downloadPlanVsActualPNG()" style="padding:8px 20px;font-size:13px;background:#003a8c;border-color:#003a8c">下载高清 PNG 图片</button>
       </div>
     </div>
   </div>
@@ -4991,7 +5145,7 @@ function renderHome(){
 /* ── 指标卡：跨项目 8 张 ── */
 function renderMetricCardsAll(projects){
   let noStage=0, overdueTasks=0, overStep=0, overIncomeAmt=0, overExpenseAmt=0, overPurchase=0;
-  let totalProgress=0, totalBudget=0, totalPaid=0;
+  let totalProgress=0, totalBudget=0, totalPaid=0, totalReceived=0;
   projects.forEach(p=>{
     noStage+=p.tasks.filter(t=>!t.stage).length;
     overdueTasks+=p.tasks.filter(t=>t.due&&t.due<todayISO()&&!t.done).length;
@@ -5001,12 +5155,13 @@ function renderMetricCardsAll(projects){
     overPurchase+=p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).length;
     totalProgress+=engProgress(p);
     totalBudget+=(p.profile.totalBudget||0);
-    const pf=projFinance(p); totalPaid+=pf.paid;
+    const pf=projFinance(p); totalPaid+=pf.paid; totalReceived+=pf.received;
   });
   const avgProg=projects.length?Math.round(totalProgress/projects.length):0;
   const delayedTotal=overdueTasks+overStep; /* 任务+节点 总延期数 */
-  /* 7 张指标卡：在建项目 / 工程总进度 / 项目已延期 / 进度款已逾期 / 款项已逾期 / 材料已逾期 / 剩余项目款 */
-  const allTotalIncome=projects.reduce((s,p)=>s+projTotalAm(p),0);
+  /* 7 张指标卡：在建项目 / 工程总进度 / 项目已延期 / 进度款已逾期 / 款项已逾期 / 材料已逾期 / 剩余项目款
+     剩余项目款 = 总项目累计已收 − 总项目实际已支出（账面毛利口径），与装修记账-项目汇总看板口径完全一致，统一取自 allProjectsFinance() */
+  const afAll=allProjectsFinance();
   const cards=[
     {l:'在建项目',v:String(projects.length),h:projects.length>0?'当前有 '+projects.length+' 个项目进行中':'暂无项目',c:''},
     {l:'工程总进度',v:avgProg+'%',h:avgProg>=100?'全部完成':'进行中',c:avgProg>=100?'ok':''},
@@ -5014,7 +5169,7 @@ function renderMetricCardsAll(projects){
     {l:'进度款已逾期',v:'¥'+fmt(overIncomeAmt),h:overIncomeAmt>0?'有待收进度款尚未支付':'款项正常',c:overIncomeAmt>0?'orange':''},
     {l:'款项已逾期',v:'¥'+fmt(overExpenseAmt),h:overExpenseAmt>0?'有待付款项未支付':'付款正常',c:overExpenseAmt>0?'orange':''},
     {l:'材料已逾期',v:String(overPurchase),h:overPurchase>0?'计划到货但未收到':'材料正常',c:overPurchase>0?'red':''},
-    {l:'剩余项目款',v:'¥'+fmt(allTotalIncome-totalPaid),h:'项目总款减去已付款',c:(allTotalIncome-totalPaid)<0?'red':''},
+    {l:'剩余项目款',v:'¥'+fmt(afAll.received-afAll.paid),h:'总项目累计已收 − 总项目实际已支出',c:(afAll.received-afAll.paid)<0?'red':''},
   ];
   $('metricCardsRow').innerHTML=cards.map(c=>
     `<div class="metric-card"><div class="metric-card-label">${c.l}</div><div class="metric-card-value ${c.c||''}">${c.v}</div><div class="metric-card-hint">${c.h}</div></div>`
@@ -6521,6 +6676,424 @@ function downloadCustomerPayPNG(){
 }
 
 /* ════════════════════════════════════════
+   「计划与导出」下拉菜单
+   ════════════════════════════════════════ */
+function togglePlanExportMenu(ev){
+  ev=ev||window.event;
+  if(ev&&ev.stopPropagation)ev.stopPropagation();
+  const btn=$('procPlanExportBtn');
+  const menu=$('procPlanExportMenu');
+  const open=menu.classList.contains('open');
+  if(open){
+    menu.classList.remove('open');btn.setAttribute('aria-expanded','false');
+    return;
+  }
+  menu.classList.add('open');btn.setAttribute('aria-expanded','true');
+}
+function closePlanExportMenu(){
+  const menu=$('procPlanExportMenu');
+  const btn=$('procPlanExportBtn');
+  if(menu){menu.classList.remove('open');}
+  if(btn){btn.setAttribute('aria-expanded','false');}
+}
+function editConstructionPlan(){
+  closePlanExportMenu();
+  const p=cur();if(!p){alert('请先在「今日总览」选择要编辑的项目。');return;}
+  /* 直接复用项目编辑向导，进去后自动跳到「Step2 施工计划」 */
+  openProjectModal(p.id);
+  setTimeout(()=>{try{goWizardStep(2);}catch(e){}},80);
+}
+
+/* ════════════════════════════════════════
+   客户版施工进度表（甘特图）
+   ════════════════════════════════════════ */
+/* 根据施工流程节点计算时间范围（含必要的兜底），返回 {startISO, endISO, totalDays, byId{}} */
+function _ganttDateRange(steps){
+  let minISO='',maxISO='',today=todayISO();
+  const byId={};
+  steps.forEach(s=>{
+    /* 优先 planStartDate / planEndDate；缺失时回退到 completedAtStart / completedAt；最后兜底到当前 */
+    let s_start=s.planStartDate||s.completedAtStart||'';
+    let s_end=s.planEndDate||s.completedAt||'';
+    /* 若只给 end 没给 start，按工期天数推断 start */
+    if(!s_start&&s_end&&s.days){s_start=shiftDate(s_end,-Math.max(0,(+s.days)-1));}
+    /* 若只给 start 没给 end，按工期天数推断 end */
+    if(s_start&&!s_end&&s.days){s_end=shiftDate(s_start,Math.max(0,(+s.days)-1));}
+    /* 若都没有日期，用今天兜底画一个点 */
+    if(!s_start&&!s_end){s_start=today;s_end=today;}
+    byId[s.id]={s:s_start,e:s_end,done:!!(s.checkedMark||isStepChecked(s.id))};
+    if(!minISO||s_start<minISO)minISO=s_start;
+    if(!maxISO||s_end>maxISO)maxISO=s_end;
+  });
+  /* 把「今天」也夹进时间轴，确保今日虚线有位置 */
+  if(today<minISO)minISO=today;
+  if(today>maxISO)maxISO=today;
+  if(!minISO||!maxISO)return null;
+  /* 时间轴向左右各扩展 3 天，留出空白边距 */
+  const startISO=shiftDate(minISO,-3);
+  const endISO=shiftDate(maxISO,3);
+  const totalDays=Math.max(1,Math.round((Date.parse(endISO)-Date.parse(startISO))/(24*3600*1000)));
+  return{startISO,endISO,totalDays,byId};
+}
+/* 计算横轴月份带（每个月的起点 ISO + label） */
+function _ganttMonthBands(startISO,endISO){
+  const out=[];
+  let y=parseInt(startISO.slice(0,4),10);
+  let m=parseInt(startISO.slice(5,7),10);
+  const ey=parseInt(endISO.slice(0,4),10);
+  const em=parseInt(endISO.slice(5,7),10);
+  while(y<ey||(y===ey&&m<=em)){
+    const firstISO=y+'-'+String(m).padStart(2,'0')+'-01';
+    /* 下个月第一天 */
+    const ny=m===12?y+1:y;
+    const nm=m===12?1:m+1;
+    const nextFirstISO=ny+'-'+String(nm).padStart(2,'0')+'-01';
+    /* 月的最后一天 = 下月首日 - 1 */
+    const monthEndISO=shiftDate(nextFirstISO,-1);
+    const firstClamped=firstISO<startISO?startISO:firstISO;
+    const lastClamped=monthEndISO>endISO?endISO:monthEndISO;
+    out.push({label:`${y}年${m}月`,firstISO:firstClamped,lastISO:lastClamped});
+    m=nm;if(m>12){m=1;y++;}
+  }
+  return out;
+}
+function _pctFromISO(iso,startISO,totalDays){
+  const off=Math.round((Date.parse(iso)-Date.parse(startISO))/(24*3600*1000));
+  return Math.max(0,Math.min(100,(off/totalDays)*100));
+}
+function _escGsText(s,n){
+  s=String(s||'');
+  return s.length>n?s.slice(0,n-1)+'…':s;
+}
+function exportClientTimeline(){
+  closePlanExportMenu();
+  const p=cur();if(!p){alert('请先选择项目');return;}
+  ensureProjectSteps(p);
+  const steps=(p.processSteps||[]).slice();
+  if(steps.length===0){alert('当前项目还没有施工流程节点，无法导出。');return;}
+  $('clientTimelineBody').innerHTML=renderClientTimelineSheet(p,steps);
+  showModal('clientTimelineModal');
+  /* 同步立即计算一次尺寸（保证 jsdom 测试也能命中），再用 rAF 校正一次 */
+  const el=$('clientTimelineSheet');
+  if(el)$('clientTimelineSize').textContent=el.scrollWidth+' × '+el.scrollHeight+'px · PNG · 高清图片';
+  requestAnimationFrame(()=>{
+    const sheetEl=$('clientTimelineSheet');
+    if(sheetEl)$('clientTimelineSize').textContent=sheetEl.scrollWidth+' × '+sheetEl.scrollHeight+'px · PNG · 高清图片';
+  });
+}
+function renderClientTimelineSheet(p,steps){
+  const today=todayISO();
+  const range=_ganttDateRange(steps);if(!range)return'<div class="gs-empty">节点日期不完整，无法生成进度表。</div>';
+  const bands=_ganttMonthBands(range.startISO,range.endISO);
+  const totalDays=range.totalDays;
+  const projName=p.name||'未命名项目';
+  const code=p.code||'—';
+  const addr=p.address||'';
+  const startISO=p.profile&&p.profile.startDate||'';
+  /* 汇总指标 */
+  let doneCount=0,activeCount=0,overdueCount=0,pendingCount=0;
+  steps.forEach(s=>{if(!isStepChecked(s.id))return;
+    const pe=s.planEndDate||s.completedAt||'';const d=isStepChecked(s.id);
+    if(d&&!s.completedAt)activeCount++;
+  });
+  steps.forEach(s=>{
+    const done=isStepChecked(s.id);
+    if(done)doneCount++;
+    else{
+      const pe=s.planEndDate||s.completedAt||'';
+      if(pe&&pe<today)overdueCount++;
+      else activeCount=1,pendingCount++; /* mixed bucket */
+    }
+  });
+  /* 更细分：当前激活 + 待办 + 逾期 */
+  doneCount=0;activeCount=0;pendingCount=0;overdueCount=0;
+  steps.forEach(s=>{
+    const done=isStepChecked(s.id);
+    if(done){doneCount++;return;}
+    const pe=s.planEndDate||s.completedAt||'';
+    if(pe&&pe<today)overdueCount++;
+    else{
+      /* 是否已有下一个节点开始 = 当前 */
+      const ps=s.planStartDate||range.byId[s.id].s||'';
+      if(!ps||ps<=today)activeCount++;
+      else pendingCount++;
+    }
+  });
+  const totalCount=steps.length;
+  const ratioPct=totalCount?Math.round(doneCount/totalCount*100):0;
+  /* 横轴：月份带（按等宽铺） */
+  const axisBands=bands.map((b,i)=>`<div class="gs-axis-month" style="flex:${b.lastISO>=b.firstISO?(Date.parse(b.lastISO)-Date.parse(b.firstISO))/(24*3600*1000)+1:1}">${escHtml(b.label)}</div>`).join('');
+  /* 周末虚列分隔（每 7 天画一条淡线） */
+  let weekSep='';
+  let cursor=range.startISO;
+  while(cursor<range.endISO){
+    const w=new Date(cursor+'T00:00:00').getDay();
+    if(w===0&&cursor>range.startISO){
+      const pct=_pctFromISO(cursor,range.startISO,totalDays);
+      weekSep+=`<div class="gs-grid-week" style="left:calc(124px + ${pct}% * (100% - 124px - 14px) / 100%)"></div>`;
+    }
+    cursor=shiftDate(cursor,1);
+  }
+  /* 今日虚线 */
+  const todayPct=_pctFromISO(today,range.startISO,totalDays);
+  const todayLine=`<div class="gs-today-line" style="left:calc(124px + ${todayPct}% * (100% - 124px - 14px) / 100%)"></div>`;
+  /* 节点行 */
+  let rowsHtml='';
+  steps.forEach((s,idx)=>{
+    const r=range.byId[s.id];if(!r)return;
+    const leftPct=_pctFromISO(r.s,range.startISO,totalDays);
+    const rightPct=_pctFromISO(r.e,range.startISO,totalDays);
+    const barLeft=`calc(124px + ${leftPct}% * (100% - 124px - 14px) / 100%)`;
+    const barWidth=`calc(${Math.max(rightPct-leftPct,0.6)}% * (100% - 124px - 14px) / 100%)`;
+    const done=isStepChecked(s.id);
+    let cls='pending';
+    if(done)cls='done';
+    else if(r.e<today)cls='overdue';
+    else if((r.s||'') <= today)cls='active';
+    /* 显示日期 */
+    const fmtShot=(d)=>{if(!d)return '';const t=new Date(d);return (t.getMonth()+1)+'/'+t.getDate()};
+    const dateLabel=(s.planStartDate||s.completedAtStart) && (s.planEndDate||s.completedAt)
+      ? fmtShot(s.planStartDate||s.completedAtStart)+' - '+fmtShot(s.planEndDate||s.completedAt)
+      : (s.planEndDate?fmtShot(s.planEndDate):'');
+    /* 验收/标准仍提取 (s.acceptance) 描述第一条作为行子标签 */
+    const desc=s.desc?s.desc.slice(0,16):'';
+    const daysTxt=s.days?`工期 ${s.days} 天`:'';
+    const sub=[dateLabel,daysTxt,desc].filter(Boolean).join(' · ');
+    rowsHtml+=`<div class="gs-row ${idx%2?'gs-grid-row-alt':''}">
+      <div class="gs-row-label">
+        <div class="gs-row-name">${escHtml(s.name||('节点'+(idx+1)))}</div>
+        <div class="gs-row-meta">${escHtml(sub)}</div>
+      </div>
+      <div class="gs-track">
+        <div class="gs-bar ${cls}" style="left:${barLeft};width:${barWidth}" title="${escHtml((s.name||'')+' · '+(dateLabel||'未排期'))}">${escHtml(_escGsText(s.name||'',8))}</div>
+      </div>
+    </div>`;
+  });
+  return `<div class="gs-sheet" id="clientTimelineSheet" style="width:920px">
+    <div class="gs-top">
+      <div class="gs-brand">
+        <div class="gs-logo">D</div>
+        <div>
+          <div class="gs-company">DCspace</div>
+          <div class="gs-tagline">专业施工 · 透明交付 · 节点验收</div>
+        </div>
+      </div>
+      <div class="gs-title-area">
+        <div class="gs-main-title">施工进度表</div>
+        <div class="gs-sub-title">CONSTRUCTION TIMELINE</div>
+      </div>
+    </div>
+    <div class="gs-project-name">${escHtml(projName)}</div>
+    <div class="gs-project-meta">
+      <span class="gs-meta-item">合同号：<b>${escHtml(code)}</b></span>
+      ${addr?'<span class="gs-meta-item">地址：'+escHtml(addr)+'</span>':''}
+      ${startISO?'<span class="gs-meta-item">开工日期：<b>'+fmtDate(startISO)+'</b></span>':''}
+      <span class="gs-meta-item">生成日期：${fmtDate(today)}</span>
+    </div>
+    <div class="gs-summary-row">
+      <div class="gs-sum-card"><div class="gs-sum-label">总节点</div><div class="gs-sum-val">${totalCount}</div></div>
+      <div class="gs-sum-card"><div class="gs-sum-label ok">已完成</div><div class="gs-sum-val ok">${doneCount}</div></div>
+      <div class="gs-sum-card"><div class="gs-sum-label">进行中</div><div class="gs-sum-val">${activeCount}</div></div>
+      <div class="gs-sum-card"><div class="gs-sum-label">逾期/未完成</div><div class="gs-sum-val ${overdueCount>0?'warn':'muted'}">${overdueCount}</div></div>
+    </div>
+    <div class="gs-legend">
+      <div class="gs-legend-item"><span class="gs-legend-dot done"></span>已完成</div>
+      <div class="gs-legend-item"><span class="gs-legend-dot active"></span>进行中</div>
+      <div class="gs-legend-item"><span class="gs-legend-dot pending"></span>未开始</div>
+      <div class="gs-legend-item"><span class="gs-legend-dot overdue"></span>已逾期</div>
+      <div class="gs-legend-item"><span class="gs-legend-line"></span>今日</div>
+      <div class="gs-legend-item" style="margin-left:auto">完成率 <b style="color:#003a8c">${ratioPct}%</b></div>
+    </div>
+    <div class="gs-chart">
+      <div class="gs-axis">${axisBands}</div>
+      <div class="gs-rows">${weekSep}${rowsHtml}${todayLine}</div>
+    </div>
+    <div class="gs-foot">
+      <div class="gs-foot-note">
+        <b>表说明</b>&nbsp; 节点工期以「施工计划」配置为准；今日线为导出当天的实际进度参照；客户可根据此表自行验收项目节点。
+      </div>
+      <div class="gs-foot-sign">由 DCspace 生成 · ${fmtDate(today)}</div>
+    </div>
+  </div>`;
+}
+function _downloadSheetPNG(sheetId,fileBase){
+  const el=$(sheetId);if(!el)return;
+  const w=el.scrollWidth,h=el.scrollHeight;
+  const scale=2;
+  const clone=el.cloneNode(true);
+  clone.style.width=w+'px';clone.style.height=h+'px';clone.style.position='absolute';clone.style.left='-9999px';clone.style.top='0';clone.style.background='#fff';
+  document.body.appendChild(clone);
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w*scale}" height="${h*scale}">
+    <foreignObject width="100%" height="100%">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="transform:scale(${scale});transform-origin:0 0;width:${w}px;height:${h}px">
+        ${clone.innerHTML}
+      </div>
+    </foreignObject>
+  </svg>`;
+  document.body.removeChild(clone);
+  const img=new Image();
+  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}));
+  img.onload=function(){
+    URL.revokeObjectURL(url);
+    const c=document.createElement('canvas');
+    c.width=w*scale;c.height=h*scale;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+    ctx.drawImage(img,0,0,c.width,c.height);
+    c.toBlob(function(blob){
+      if(!blob){alert('PNG 生成失败，请重试');return;}
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download=(cur().name||'项目')+'_'+fileBase+'_'+todayISO()+'.png';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    },'image/png');
+  };
+  img.onerror=function(){URL.revokeObjectURL(url);alert('图片生成失败，请重试。');};
+  img.src=url;
+}
+function downloadClientTimelinePNG(){_downloadSheetPNG('clientTimelineSheet','客户版施工进度表');}
+
+function exportPlanVsActualImage(){
+  closePlanExportMenu();
+  const p=cur();if(!p){alert('请先选择项目');return;}
+  ensureProjectSteps(p);
+  const steps=(p.processSteps||[]).slice();
+  if(steps.length===0){alert('当前项目还没有施工流程节点，无法导出。');return;}
+  $('planVsActualBody').innerHTML=renderPlanVsActualSheet(p,steps);
+  showModal('planVsActualModal');
+  const el=$('planVsActualSheet');
+  if(el)$('planVsActualSize').textContent=el.scrollWidth+' × '+el.scrollHeight+'px · PNG · 高清图片';
+  requestAnimationFrame(()=>{
+    const sheetEl=$('planVsActualSheet');
+    if(sheetEl)$('planVsActualSize').textContent=sheetEl.scrollWidth+' × '+sheetEl.scrollHeight+'px · PNG · 高清图片';
+  });
+}
+function renderPlanVsActualSheet(p,steps){
+  const today=todayISO();
+  const range=_ganttDateRange(steps);if(!range)return'<div class="gs-empty">节点日期不完整，无法生成进度对比。</div>';
+  const bands=_ganttMonthBands(range.startISO,range.endISO);
+  const totalDays=range.totalDays;
+  const projName=p.name||'未命名项目';
+  const code=p.code||'—';
+  /* 上下轨：上行=计划，下行=实际（已完成用 completedAtStart/completedAt；未完成按计划长度截到今日） */
+  let plannedDone=0,actualDone=0,actualHasDates=0;
+  steps.forEach(s=>{if(isStepChecked(s.id))actualDone++;plannedDone++;});
+  steps.forEach(s=>{if(isStepChecked(s.id)&&(s.completedAt||s.completedAtStart))actualHasDates++;});
+  const axisBands=bands.map((b)=>`<div class="gs-axis-month" style="flex:${Math.max(1,Math.round((Date.parse(b.lastISO)-Date.parse(b.firstISO))/(24*3600*1000))+1)}">${escHtml(b.label)}</div>`).join('');
+  let rowsHtml='';
+  steps.forEach((s,idx)=>{
+    const r=range.byId[s.id];if(!r)return;
+    /* 上轨：计划，固定 planStartDate/planEndDate（或推断） */
+    const planS=s.planStartDate||r.s;
+    const planE=s.planEndDate||r.e;
+    const planLeftPct=_pctFromISO(planS,range.startISO,totalDays);
+    const planRightPct=_pctFromISO(planE,range.startISO,totalDays);
+    /* 下轨：实际（已完成 → completedAtStart/End；未完成 → 截到今日，跟计划同色） */
+    const isDone=isStepChecked(s.id);
+    let actS,actE,actClass;
+    if(isDone&&s.completedAtStart&&s.completedAt){
+      actS=s.completedAtStart;actE=s.completedAt;actClass='done';
+    } else if(isDone&&(s.completedAtStart||s.completedAt)){
+      actS=s.completedAtStart||planS;actE=s.completedAt||planE;actClass='done';
+    } else {
+      /* 未完成：从 planStart 到 today（或 planStart，无日期无 rendered） */
+      actS=planS;actE=(planS<=today?today:planE);
+      if((planE||planS)<today)actClass='overdue';
+      else actClass='active';
+    }
+    const actLeftPct=_pctFromISO(actS,range.startISO,totalDays);
+    const actRightPct=_pctFromISO(actE,range.startISO,totalDays);
+    const fmtShot=(d)=>{if(!d)return '';const t=new Date(d);return (t.getMonth()+1)+'/'+t.getDate()};
+    const planLabel=`计划 ${fmtShot(planS)} → ${fmtShot(planE)}`;
+    const actLabel=isDone
+      ? `实际 ${fmtShot(actS)} → ${fmtShot(actE)}`
+      : (actS<today?`已延期至 ${fmtShot(today)}`:(`计划 ${fmtShot(planS)} → ${fmtShot(planE)}`));
+    rowsHtml+=`<div class="gs-row ${idx%2?'gs-grid-row-alt':''}">
+      <div class="gs-row-label" style="width:160px">
+        <div class="gs-row-name">${escHtml(s.name||('节点'+(idx+1)))}</div>
+        <div class="gs-row-meta">${escHtml(planLabel)}</div>
+        <div class="gs-row-meta" style="color:${isDone?'#003a8c':actClass==='overdue'?'#ff4d4f':'#666'}">${escHtml(actLabel)}${isDone?' · 已完成':''}</div>
+      </div>
+      <div class="gs-track" style="left:160px">
+        <!-- 计划条：固定颜色 (pending=浅) -->
+        <div class="gs-bar pending" style="left:${planLeftPct}%;width:${Math.max(planRightPct-planLeftPct,0.4)}%;opacity:.85;height:14px;top:4px;background:linear-gradient(180deg,#cfe0fa,#a4c2ed)" title="${escHtml('计划：'+planLabel)}">计划</div>
+        <!-- 实际条 -->
+        <div class="gs-bar ${actClass}" style="left:${actLeftPct}%;width:${Math.max(actRightPct-actLeftPct,0.4)}%;height:14px;top:20px" title="${escHtml(actLabel)}">实际</div>
+      </div>
+    </div>`;
+  });
+  /* 今日虚线 */
+  const todayPct=_pctFromISO(today,range.startISO,totalDays);
+  const todayLine=`<div class="gs-today-line" style="left:calc(160px + ${todayPct}% * (100% - 160px - 14px) / 100%)"></div>`;
+  return `<div class="gs-sheet" id="planVsActualSheet" style="width:980px">
+    <div class="gs-top">
+      <div class="gs-brand">
+        <div class="gs-logo">D</div>
+        <div>
+          <div class="gs-company">DCspace</div>
+          <div class="gs-tagline">专业施工 · 透明交付 · 节点验收</div>
+        </div>
+      </div>
+      <div class="gs-title-area">
+        <div class="gs-main-title">计划与实际进度表</div>
+        <div class="gs-sub-title">PLAN vs ACTUAL TIMELINE</div>
+      </div>
+    </div>
+    <div class="gs-project-name">${escHtml(projName)}</div>
+    <div class="gs-project-meta">
+      <span class="gs-meta-item">合同号：<b>${escHtml(code)}</b></span>
+      <span class="gs-meta-item">合同节点总数：<b>${steps.length}</b></span>
+      <span class="gs-meta-item">计划完工率：<b>${steps.length?Math.round(steps.length/steps.length*100):0}%</b></span>
+      <span class="gs-meta-item">实际完成率：<b>${steps.length?Math.round(actualDone/steps.length*100):0}%</b></span>
+      <span class="gs-meta-item">生成日期：<b>${fmtDate(today)}</b></span>
+    </div>
+    <div class="gs-summary-row">
+      <div class="gs-sum-card"><div class="gs-sum-label">计划节点</div><div class="gs-sum-val">${steps.length}</div></div>
+      <div class="gs-sum-card"><div class="gs-sum-label ok">已完成节点</div><div class="gs-sum-val ok">${actualDone}</div></div>
+      <div class="gs-sum-card"><div class="gs-sum-label">有实际标注</div><div class="gs-sum-val">${actualHasDates}</div></div>
+      <div class="gs-sum-card"><div class="gs-sum-label">进度差距</div><div class="gs-sum-val ${(actualDone>=plannedDone)?'ok':'warn'}">${actualDone-plannedDone>=0?'+':''}${actualDone-plannedDone}</div></div>
+    </div>
+    <div class="gs-legend">
+      <div class="gs-legend-item"><span class="gs-legend-dot pending" style="opacity:.85"></span>计划轨</div>
+      <div class="gs-legend-item"><span class="gs-legend-dot done"></span>实际已完成</div>
+      <div class="gs-legend-item"><span class="gs-legend-dot active"></span>实际进行中</div>
+      <div class="gs-legend-item"><span class="gs-legend-dot overdue"></span>实际已逾期</div>
+      <div class="gs-legend-item"><span class="gs-legend-line"></span>今日</div>
+    </div>
+    <div class="gs-chart">
+      <div class="gs-axis" style="padding-left:160px">${axisBands}</div>
+      <div class="gs-rows">${rowsHtml}${todayLine}</div>
+    </div>
+    <div class="gs-foot">
+      <div class="gs-foot-note">
+        <b>对比说明</b>&nbsp; 每个节点上下两条：上为计划区间，下为实际区间。红色虚线为今日。实际条带颜色：已完成=蓝、进行中=绿、已逾期=红。客户可据此核对施工实际进度 vs 计划进度的偏差。
+      </div>
+      <div class="gs-foot-sign">由 DCspace 生成 · ${fmtDate(today)}</div>
+    </div>
+  </div>`;
+}
+function downloadPlanVsActualPNG(){_downloadSheetPNG('planVsActualSheet','客户版计划与实际进度表');}
+
+/* 缩放控制（适用于所有 gantt 预览）*/
+function zoomGsSheet(sheetId,delta){
+  const sheet=$(sheetId);if(!sheet)return;
+  const cur=parseFloat(sheet.dataset.zoom||'1');
+  const next=Math.max(0.5,Math.min(2.5,cur+delta));
+  sheet.dataset.zoom=String(next);
+  sheet.style.transform=`scale(${next})`;
+  sheet.style.transformOrigin='top left';
+  sheet.style.marginBottom=(sheet.scrollHeight*(next-1))+'px';
+}
+function zoomGsReset(sheetId){
+  const sheet=$(sheetId);if(!sheet)return;
+  sheet.dataset.zoom='1';
+  sheet.style.transform='scale(1)';
+  sheet.style.transformOrigin='top left';
+  sheet.style.marginBottom='0';
+}
+
+/* ════════════════════════════════════════
    材料成本子页面（参照截图2）
    ════════════════════════════════════════ */
 function renderProcessPurchase(){
@@ -6987,8 +7560,10 @@ function updateProcProgress(){
   }
   const doneEl=$('pdhNodeDone');if(doneEl)doneEl.textContent=done+'/'+total;
   const riskEl=$('pdhRiskCount');if(riskEl){
+    /* 风险节点 = 施工流程逾期节点 + 任务/采购逾期项（与项目脉搏「节点逾期」徽标口径一致） */
+    const stepOv=(p.processSteps||[]).filter(s=>{const pe=s.planEndDate||'';return pe&&pe<todayISO()&&!(p.checked&&p.checked[s.id]);}).length;
     const ov=handleItems(p).filter(isOverdue).length;
-    riskEl.textContent=ov;
+    riskEl.textContent=stepOv+ov;
   }
   const cashEl=$('pdhCashBalance');if(cashEl){
     const pf=projFinance(p);
@@ -7921,18 +8496,18 @@ function renderFinance(){
   const sumEstGross=af.totalIncome-af.totalCost;
   $('finSummaryCard').innerHTML=`<div class="fin-proj-header"><div class="fin-proj-title">项目汇总看板</div><div class="fin-sum-count">共 ${App.projects.length} 个项目</div></div>
     <div class="fin-dash-row1">
-      <div class="fin-dash-big"><div class="fin-dash-big-val">¥${fmt(af.totalIncome)}</div><div class="fin-dash-big-label">合同金额</div></div>
-      <div class="fin-dash-big"><div class="fin-dash-big-val blue">¥${fmt(af.received)}</div><div class="fin-dash-big-label">累计已收</div></div>
-      <div class="fin-dash-big"><div class="fin-dash-big-val" style="color:${af.pendingReceive>0?'#f5222d':'#003a8c'}">¥${fmt(af.pendingReceive)}</div><div class="fin-dash-big-label">剩余应收</div></div>
-      <div class="fin-dash-big" style="cursor:pointer" onclick="showPendingPayments()" title="点击查看逾期收款明细"><div class="fin-dash-big-val" style="color:${sumOverdueCount>0?'#f5222d':'#1a1a1a'}">${sumOverdueCount}</div><div class="fin-dash-big-label">逾期收款</div><div class="fin-dash-big-sub">${sumOverdueAmt>0?'¥'+fmt(sumOverdueAmt):'¥0.00'}</div></div>
-      <div class="fin-dash-big" style="cursor:pointer" onclick="showPendingPayments()" title="点击查看待付款账单"><div class="fin-dash-big-val" style="color:${af.pendingPay>0?'#f5222d':'#1a1a1a'}">¥${fmt(af.pendingPay)}</div><div class="fin-dash-big-label">待付款项</div><div class="fin-dash-big-sub">共 ${sumPendingPayCount} 笔</div></div>
+      <div class="fin-dash-big"><div class="fin-dash-big-val">¥${fmt(af.totalIncome)}</div><div class="fin-dash-big-label">总项目合同金额</div></div>
+      <div class="fin-dash-big"><div class="fin-dash-big-val blue">¥${fmt(af.received)}</div><div class="fin-dash-big-label">总项目累计已收</div></div>
+      <div class="fin-dash-big"><div class="fin-dash-big-val" style="color:${af.pendingReceive>0?'#f5222d':'#003a8c'}">¥${fmt(af.pendingReceive)}</div><div class="fin-dash-big-label">总项目剩余应收</div></div>
+      <div class="fin-dash-big" style="cursor:pointer" onclick="showPendingPayments()" title="点击查看逾期收款明细"><div class="fin-dash-big-val" style="color:${sumOverdueCount>0?'#f5222d':'#1a1a1a'}">${sumOverdueCount}</div><div class="fin-dash-big-label">总项目逾期收款</div><div class="fin-dash-big-sub">${sumOverdueAmt>0?'¥'+fmt(sumOverdueAmt):'¥0.00'}</div></div>
+      <div class="fin-dash-big" style="cursor:pointer" onclick="showPendingPayments()" title="点击查看待付款账单"><div class="fin-dash-big-val" style="color:${af.pendingPay>0?'#f5222d':'#1a1a1a'}">¥${fmt(af.pendingPay)}</div><div class="fin-dash-big-label">总项目待付款项</div><div class="fin-dash-big-sub">共 ${sumPendingPayCount} 笔</div></div>
     </div>
     <div class="fin-dash-row2">
-      <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(af.totalCost)}</div><div class="fin-dash-sm-label">预计成本</div></div>
-      <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(af.paid)}</div><div class="fin-dash-sm-label">实际已支出</div></div>
-      <div class="fin-dash-sm"><div class="fin-dash-sm-val">¥${fmt(sumEstGross)}</div><div class="fin-dash-sm-label">预计毛利</div></div>
-      <div class="fin-dash-sm"><div class="fin-dash-sm-val ${af.grossProfit>=0?'blue':'red'}">¥${fmt(af.grossProfit)}</div><div class="fin-dash-sm-label">账面毛利</div></div>
-      <div class="fin-dash-sm"><div class="fin-dash-sm-val ${sumMarginRate>=0?'blue':'red'}">${sumMarginRate}%</div><div class="fin-dash-sm-label">账面毛利率</div></div>
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(af.totalCost)}</div><div class="fin-dash-sm-label">总项目预计成本</div></div>
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(af.paid)}</div><div class="fin-dash-sm-label">总项目实际已支出</div></div>
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val">¥${fmt(sumEstGross)}</div><div class="fin-dash-sm-label">总项目预计毛利</div></div>
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val ${af.grossProfit>=0?'blue':'red'}">¥${fmt(af.grossProfit)}</div><div class="fin-dash-sm-label">总项目账面毛利</div></div>
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val ${sumMarginRate>=0?'blue':'red'}">${sumMarginRate}%</div><div class="fin-dash-sm-label">总项目账面毛利率</div></div>
     </div>
     <div class="fin-dash-note">账面毛利 = 累计已收 − 实际已支出，仅反映当前账面情况，不代表项目最终利润。毛利率 = 账面毛利 ÷ 累计已收。</div>`;
 
@@ -9549,6 +10124,12 @@ document.addEventListener('click',function(e){
   if(picker&&!picker.contains(e.target)){
     const dd=$('calYmDropdown');if(dd)dd.classList.remove('show');
   }
+  /* 「计划与导出」下拉菜单：点击菜单外区域自动收起 */
+  const menu=$('procPlanExportMenu');
+  const wrap=$('procPlanExportWrap');
+  if(menu&&menu.classList.contains('open')&&wrap&&!wrap.contains(e.target)){
+    closePlanExportMenu();
+  }
 });
 
 function buildCalCell(y,m,d,key,events,isTodayDate){
@@ -9679,7 +10260,7 @@ function getCurrentStageIndex(){
 }
 function getCurrentStage(){return STAGES[getCurrentStageIndex()]||null}
 function getStageName(key){const s=STAGES.find(x=>x.id===key);return s?s.name:key||''}
-function engProgress(p){let total=0,done=0;STAGES.forEach(st=>(st.tasks||[]).forEach(t=>{total++;if(isTaskChecked(t.id))done++}));return total?Math.round(done/total*100):0;}
+function engProgress(p){const steps=p.processSteps||[];const total=steps.length;if(!total)return 0;const done=p.checked?steps.filter(s=>p.checked[s.id]).length:0;return Math.round(done/total*100);}
 function purchasePending(p){return p.purchases.filter(x=>x.status!=='已到货'&&x.status!=='已下单').length;}
 function pendingCount(p){return p.tasks.filter(t=>!t.done).length+purchasePending(p);}
 function populateStageSelect(id){const sel=$(id);sel.innerHTML='<option value="">无</option>'+STAGES.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');}
