@@ -1005,13 +1005,9 @@ a{color:#003a8c;text-decoration:none}
 .pg-row{display:block;position:relative;border-top:1px dashed #f0f0f0;padding:4px 12px;min-height:38px}
 .pg-row:nth-child(even){background:#f7f8fa;border-radius:4px}
 .pg-row-label{display:none}
-.pg-bar-label{position:absolute;top:50%;transform:translateY(-50%);font-size:11.5px;line-height:1.3;pointer-events:none;z-index:3;white-space:nowrap;display:flex;flex-direction:row;align-items:center;gap:4px;min-width:0}
+.pg-bar-label{position:absolute;top:50%;transform:translateY(-50%);font-size:11.5px;line-height:1.35;pointer-events:none;z-index:3;white-space:nowrap;display:flex;flex-direction:row;align-items:center;gap:5px}
 .pg-bar-label .pg-label-name{font-weight:600;color:#003a8c}
 .pg-bar-label .pg-label-date{font-size:10.5px;color:#666}
-.pg-bar-label.inside .pg-label-name,.pg-bar-label.inside.done .pg-label-name,.pg-bar-label.inside.inprogress .pg-label-name,.pg-bar-label.inside.overlap .pg-label-name{color:inherit}
-.pg-bar-label.inside .pg-label-date{color:inherit;opacity:.75}
-.pg-bar-label.left{text-align:right;right:100%;margin-right:6px}
-.pg-bar-label.right{text-align:left;left:100%;margin-left:6px}
 .pg-badge.pending{background:#e6f4ff;color:#003a8c}
 .pg-badge.inprogress{background:#003a8c;color:#fff}
 .pg-badge.done{background:#0050b3;color:#fff}
@@ -1217,8 +1213,8 @@ a{color:#003a8c;text-decoration:none}
   .plan-mytpl-row .plan-tpl-btn{font-size:11px;padding:5px 8px}
   .plan-stats-hint{font-size:10.5px;text-align:left}
   /* ── 甘特图：移动端压缩 ── */
-  .pg-bar-label{font-size:10.5px;gap:3px}
-  .pg-bar-label .pg-label-name{font-size:11px}
+  .pg-bar-label{font-size:10px;gap:3px}
+  .pg-bar-label .pg-label-name{font-size:10.5px}
   .pg-bar-label .pg-label-date{font-size:9px}
   .pg-track{margin-left:8px}
   .pg-row{padding:3px 8px;min-height:34px}
@@ -4044,23 +4040,17 @@ function renderPlanGantt(){
     const tp=pct(today);
     todayEl=`<div class="pg-today" style="left:${tp}%"><span class="pg-today-flag">今日</span></div>`;
   }
-  /* 智能标签定位：条形宽度% → 判断文字能否放入条形内部
-   * 阈值：约 7%（约 25 天 / 365 天 * 100% ≈ 6.8%，对应约 100px 在典型容器宽度下）
-   * 放入条件：w >= 7% 且 名称不超过 6 个字；否则放左侧（bar 左边缘 < 50%）或右侧 */
-  const MIN_BAR_PCT=7;
+  /* 标签统一紧跟条形右边缘外侧：名称+日期一行显示 */
   const rows=wizPlanNodes.map((n,i)=>{
     if(!n.planStart||!n.planEnd){
-      return `<div class="pg-row"><div class="pg-track"></div><span class="pg-bar-label left" style="top:50%;transform:translateY(-50%)"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date" style="color:#999">未排期</span></span></div>`;
+      return `<div class="pg-row"><div class="pg-track"></div><span class="pg-bar-label" style="left:12px"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date" style="color:#999">未排期</span></span></div>`;
     }
     const leftPct=pct(n.planStart),wPct=Math.max(pct(n.planEnd)-leftPct,0.5);
     const st=n.status||'pending';
     const ov=overlapSet.has(n.id||('n'+i))?' overlap':'';
     const dateLabel=`${fmtDateMd(n.planStart)} — ${fmtDateMd(n.planEnd)}`;
-    const nameLen=(n.name||'').length;
-    /* 判断标签位置 */
-    let labelPos='inside';
-    if(wPct<MIN_BAR_PCT || nameLen>6){labelPos=(leftPct<50)?'left':'right';}
-    return `<div class="pg-row"><div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" data-idx="${i}" title="${escHtml(n.name+' · '+dateLabel)}" style="left:${leftPct}%;width:${wPct}%"><span class="pg-handle pg-handle-l" data-idx="${i}" data-side="left" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span><span class="pg-handle pg-handle-r" data-idx="${i}" data-side="right" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span></div><span class="pg-bar-label ${labelPos}" style="${labelPos==='inside'?`left:${leftPct}%;width:${wPct}%`:labelPos==='left'?`right:calc(${12}px + ${leftPct}%)`:`left:calc(${12}px + ${leftPct+ wPct}%)`}"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date">${dateLabel}</span></span></div></div>`;
+    /* 标签统一紧跟条形右边缘外侧 */
+    return `<div class="pg-row"><div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" data-idx="${i}" title="${escHtml(n.name+' · '+dateLabel)}" style="left:${leftPct}%;width:${wPct}%"><span class="pg-handle pg-handle-l" data-idx="${i}" data-side="left" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span><span class="pg-handle pg-handle-r" data-idx="${i}" data-side="right" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span></div><span class="pg-bar-label" style="left:calc(12px + ${leftPct}% + ${wPct}%)"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date">${dateLabel}</span></span></div></div>`;
   }).join('');
   box.innerHTML=
     '<div class="plan-gantt-title">施工计划甘特图 <small>按节点起止日期绘制 · 橙色描边=交叉作业 · 虚线=今日 · 拖动可平移</small></div>'
@@ -7449,9 +7439,7 @@ function renderClientTimelineSheet(p,steps){
     const done=isStepChecked(s.id);
     const cls=_gsPgStatusClass(done,today,r);
     const barLabel=`${fmtDateMd(r.s)} — ${fmtDateMd(r.e)}`;
-    const nameLen=(s.name||'').length;
-    let labelPos='inside';if(wPct<7||nameLen>6){labelPos=(leftPct<50)?'left':'right';}
-    rowsHtml+=`<div class="pg-row"><div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${wPct}%"></div><span class="pg-bar-label ${labelPos}" style="${labelPos==='inside'?`left:${leftPct}%;width:${wPct}%`:labelPos==='left'?`right:calc(${leftPct}%)`:`left:calc(${leftPct+ wPct}%)`}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${barLabel}</span></span></div></div>`;
+    rowsHtml+=`<div class="pg-row"><div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${wPct}%"></div><span class="pg-bar-label" style="left:calc(12px + ${leftPct}% + ${wPct}%)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${barLabel}</span></span></div></div>`;
   });
   return `<div class="gs-sheet" id="clientTimelineSheet" style="width:920px">
     <div class="gs-top">
@@ -7572,13 +7560,14 @@ function renderPlanVsActualSheet(p,steps){
     const planLabel=`${fmtDateMd(planS)} — ${fmtDateMd(planE)}`;
     const actLabel=isDone?`${fmtDateMd(actS)} — ${fmtDateMd(actE)}`:(actS<today?`${fmtDateMd(actS)} — ${fmtDateMd(today)}`:planLabel);
     const badgeCls=isDone?'done':actClass;
-    const nameLen=(s.name||'').length;
     const planW=Math.max(planRightPct-planLeftPct,0.4);
-    let labelPos='inside';if(planW<7||nameLen>6){labelPos=(planLeftPct<50)?'left':'right';}
+    const actW=Math.max(actRightPct-actLeftPct,0.4);
+    /* 标签紧跟实际条形（下方条）右边缘外侧 */
+    const labelLeft=Math.max(planLeftPct+planW, actLeftPct+actW);
     rowsHtml+=`<div class="pg-row"><div class="pg-track" style="height:40px">${todayEl}`
       +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:11px;font-size:9px;padding:0;opacity:.9"></div>`
-      +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${Math.max(actRightPct-actLeftPct,0.4)}%;top:18px;height:11px;font-size:9px;padding:0">实际</div>`
-      +`<span class="pg-bar-label ${labelPos}" style="${labelPos==='inside'?`left:${planLeftPct}%;width:${planW}%;top:8px`:labelPos==='left'?`right:calc(${planLeftPct}%);top:8px`:`left:calc(${planLeftPct+planW}%);top:8px`}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
+      +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:18px;height:11px;font-size:9px;padding:0">实际</div>`
+      +`<span class="pg-bar-label" style="left:calc(12px + ${labelLeft}%)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
       +`</div></div>`;
   });
   return `<div class="gs-sheet" id="planVsActualSheet" style="width:980px">
