@@ -373,9 +373,9 @@ a{color:#003a8c;text-decoration:none}
 
 /* ── 中栏：日期信息区（弹性居中，自适应页面中间） ── */
 .step-mid-col{flex:1;min-width:140px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px;padding:0 20px;border-left:1px dashed #f0f0f0}
-.step-date-area{font-size:12px;line-height:1.7;text-align:left;align-self:flex-start}
-.step-date-actual{color:#1a1a1a;font-weight:500}
-.step-date-plan{color:#bfbfbf;font-size:11.5px}
+.step-date-area{font-size:12px;line-height:1.7;text-align:left;align-self:flex-start;display:flex;flex-wrap:nowrap;align-items:center;gap:12px}
+.step-date-actual{color:#1a1a1a;font-weight:500;display:inline;white-space:nowrap}
+.step-date-plan{color:#bfbfbf;font-size:11.5px;display:inline;white-space:nowrap}
 .step-card.pending .step-date-actual,
 .step-card.pending .step-date-plan{color:#d9d9d9}
 
@@ -5984,10 +5984,10 @@ function renderProcess(){
       const a=new Date(s),b=new Date(e);
       return Math.ceil((b-a)/(86400000))+1;
     };
-    /* 格式化日期区间：2026/08/10-08/15 */
+    /* 格式化日期区间：03/10-08/15（无年份） */
     const fmtRange=(s,e)=>{if(!s&&!e)return '';if(!s)return fmtShort(e);if(!e)return fmtShort(s);
       const ds=new Date(s),de=new Date(e);
-      return `${ds.getFullYear()}/${String(ds.getMonth()+1).padStart(2,'0')}/${String(ds.getDate()).padStart(2,'0')}-${String(de.getMonth()+1).padStart(2,'0')}/${String(de.getDate()).padStart(2,'0')}`};
+      return `${String(ds.getMonth()+1).padStart(2,'0')}/${String(ds.getDate()).padStart(2,'0')}-${String(de.getMonth()+1).padStart(2,'0')}/${String(de.getDate()).padStart(2,'0')}`};
     /* 实际完成天数 */
     const actDays=calcDays(actStart,actEnd);
     /* 计划天数（优先用日期区间计算，fallback 到 days 字段） */
@@ -6005,9 +6005,9 @@ function renderProcess(){
         <!-- 中栏：日期信息 -->
         <div class="step-mid-col">
           <div class="step-date-area">
-            ${done?`<div class="step-date-actual">实际完成 ${fmtRange(actStart,actEnd)}${actDays?' 共 '+actDays+' 天':''}</div>`:(planStart||planEnd)?`<div class="step-date-actual">计划完成 ${fmtRange(planStart,planEnd)}${planDays?' 共 '+planDays+' 天':''}</div>`:`<div class="step-date-actual">${planStr?'计划 '+planStr.replace(/天/g,''):'—'}</div>`}
-            ${(done&&(planStart||planEnd))?`<div class="step-date-plan">计划完成 ${fmtRange(planStart,planEnd)}${planDays?' 共 '+planDays+' 天':''}</div>`:(!done&&(planStart||planEnd))?'':planStr?`<div class="step-date-plan">${pending?'相差 '+planDays+' 天':'计划 '+planStr.replace(/天/g,'')}</div>`:''}
-            ${overdue?`<div class="step-date-overdue" style="color:#ff4d4f;font-weight:600;margin-top:3px">⚠ 已逾期 ${daysOver} 天 · 计划 ${fmtShort(planEnd)} 完成</div>`:''}
+            <span class="step-date-actual">${done?`实际完成 ${fmtRange(actStart,actEnd)}${actDays?' 共 '+actDays+' 天':''}`:(planStart||planEnd)?`计划完成 ${fmtRange(planStart,planEnd)}${planDays?' 共 '+planDays+' 天':''}`:(planStr?`计划 ${planStr.replace(/天/g,'')}`:'—')}</span>
+            ${(done&&(planStart||planEnd))?`<span class="step-date-plan">计划完成 ${fmtRange(planStart,planEnd)}${planDays?' 共 '+planDays+' 天':''}</span>`:(!done&&(planStart||planEnd))?'':(planStr?`<span class="step-date-plan">${pending?'相差 '+planDays+' 天':'计划 '+planStr.replace(/天/g,'')}</span>`:'')}
+            ${overdue?`<span class="step-date-overdue" style="color:#ff4d4f;font-weight:600;margin-left:12px">⚠ 已逾期 ${daysOver} 天 · 计划 ${fmtShort(planEnd)} 完成</span>`:''}
           </div>
         </div>
         <!-- 右栏：操作统计+状态+详情 -->
