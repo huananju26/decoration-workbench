@@ -1834,7 +1834,7 @@ a{color:#003a8c;text-decoration:none}
 <main class="main">
   <header class="top-bar">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div class="breadcrumb"><span id="bc-root">我的装修</span> / <span id="bc-page">装修工作台</span></div>
+      <div class="breadcrumb"><span id="bc-root">装修工作台</span> / <span id="bc-page">今日总览</span></div>
       <div class="project-switcher" id="topProjectSwitcher">
         <select id="projectSelect" onchange="switchProject(this.value)"></select>
       </div>
@@ -4611,7 +4611,7 @@ function switchPage(page){
   $('page-'+page).classList.add('active');
   document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
   document.querySelectorAll('.mtab').forEach(t=>t.classList.toggle('active',t.dataset.page===page));
-  const bcMap={home:'装修工作台',process:'装修管理',purchase:'采购清单',finance:'装修账簿',ledger:'收支流水',compare:'预算与选品',tools:'工具中心',quote:'报价系统',diary:'过程记录',knowledge:'水电知识'};
+  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识'};
   const btnMap={home:'新增待办',process:'编辑顺序',purchase:'新增待购物品',finance:'记一笔',ledger:'',compare:'导出比价',tools:'',quote:'',diary:'写日记',knowledge:'返回总览'};
   $('bc-page').textContent=bcMap[page]||'';
   const tp=$('topPrimaryBtn');
