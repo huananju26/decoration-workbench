@@ -2303,7 +2303,7 @@ a{color:#003a8c;text-decoration:none}
             <span>预计 <span class="plan-stat-val" id="statEnd">—</span> 完工</span>
           </div>
           <button class="plan-add-btn" onclick="openWizardNodeAdd()">＋ 自定义节点</button>
-          <button class="plan-action-btn" title="从「计划开工日期」起把所有节点依次顺排，会清空手动设置的空档期/交叉作业" onclick="recalcPlanSchedule();renderPlanTable();">↻ 自动紧凑排期</button>
+          <button class="plan-action-btn" title="仅对「未手动排期、且排在最后一个手动节点之后」的节点依次紧凑顺排；已手动设置的节点（含空档期/交叉作业）保持不变" onclick="recalcPlanSchedule();renderPlanTable();">↻ 自动紧凑排期</button>
         </div>
         <!-- 提示 + 模板选择：底色块，随内容滚动 -->
         <div class="plan-top-block">
@@ -3685,7 +3685,7 @@ function closeProjectWizard(){
 function initPlanNodesFromTemplate(){
   wizPlanNodes=PROCESS_STEPS.map(s=>({
     id:s.id,name:s.name,days:s.days,
-    status:'pending',planStart:'',planEnd:'',
+    status:'pending',planStart:'',planEnd:'',manual:false,
     desc:s.desc,acceptance:(s.acceptance||[]).map(a=>({...a})),
     articles:(s.articles||[]).map(a=>({...a}))
   }));
@@ -3729,7 +3729,7 @@ function confirmTplEdit(){
   /* 将编辑后的节点转为 wizPlanNodes 格式 */
   wizPlanNodes=_tplEditNodes.map(n=>({
     id:n.id,name:n.name,days:n.days,
-    status:'pending',planStart:'',planEnd:'',
+    status:'pending',planStart:'',planEnd:'',manual:false,
     desc:'',acceptance:[],articles:[]
   }));
   recalcPlanSchedule();
@@ -3809,14 +3809,29 @@ function recalcPlanSchedule(){
     $('statNodes').textContent='0';$('statWorkDays').textContent='0';$('statDays').textContent='0';$('statEnd').textContent='—';
     renderPlanTable();return;
   }
-  let cur=new Date(startStr+'T00:00:00');
-  wizPlanNodes.forEach(n=>{
+  /* 找出最后一个「手动排期」节点作为分界：自动紧凑排期只填充该节点之后、且尚未手动排期的节点 */
+  let lastManualIdx=-1;
+  wizPlanNodes.forEach((n,i)=>{ if(n.manual===true) lastManualIdx=i; });
+  /* 锚点结束日 = 所有手动节点中最晚的 planEnd；无手动节点则从计划开工日期起顺排 */
+  let anchorEnd='';
+  wizPlanNodes.forEach(n=>{ if(n.manual===true && n.planEnd && (!anchorEnd||n.planEnd>anchorEnd)) anchorEnd=n.planEnd; });
+  let cur;
+  if(lastManualIdx<0){
+    cur=new Date(startStr+'T00:00:00');
+  }else{
+    cur=anchorEnd?new Date(shiftDate(anchorEnd,1)+'T00:00:00'):new Date(startStr+'T00:00:00');
+  }
+  wizPlanNodes.forEach((n,idx)=>{
+    /* 手动节点及其上方（分界之上）原样保留，不做自动顺排，从而保留手动设定的空档期/交叉作业 */
+    if(idx<=lastManualIdx) return;
+    if(n.manual===true) return;
     const d=Math.max(1,Math.round(parseDays(n.days)));
     const nodeStart=new Date(cur);
     n.planStart=localISODate(nodeStart);
     /* 自然日排期：d 个自然日（含周末节假日，不受其影响），planEnd = 开始 + (d-1) 天 */
     cur=new Date(cur.getTime()+(d-1)*86400000);
     n.planEnd=localISODate(cur);
+    n.manual=false;
     /* 下一节点从次日（自然日）开始 */
     cur=new Date(cur.getTime()+86400000);
   });
@@ -3846,7 +3861,7 @@ function renderPlanTable(){
       <option value="inprogress" ${n.status==='inprogress'?'selected':''}>进行中</option>
       <option value="done" ${n.status==='done'?'selected':''}>已完成</option>
     </select></td>
-    <td class="plan-date-range">${n.planStart?fmtDate(n.planStart)+' — '+fmtDate(n.planEnd):'—'}</td>
+    <td class="plan-date-range">${n.planStart?fmtDate(n.planStart)+' — '+fmtDate(n.planEnd):'—'}${n.manual?' <span style="font-size:10px;color:#1677ff;border:1px solid #91caff;border-radius:3px;padding:0 3px;margin-left:4px;white-space:nowrap">手排</span>':''}</td>
     <td style="text-align:center">
       <span class="plan-op-btn" onclick="moveWizPlanNode(${i},-1)" title="上移"${i===0?' style="opacity:.3;pointer-events:none"':''}>↑</span>
       <span class="plan-op-btn" onclick="moveWizPlanNode(${i},1)" title="下移"${i===wizPlanNodes.length-1?' style="opacity:.3;pointer-events:none"':''}>↓</span>
@@ -4054,7 +4069,7 @@ function ganttResizeEnd(e){
     const finalW=parseFloat(_ganttDrag.bar.style.width)||_ganttDrag.barWidthPct;
     const newStart=_isoFromPct(finalLeft,range.startISO,range.totalDays);
     const newEnd=_isoFromPct(finalLeft+finalW,range.startISO,range.totalDays);
-    if(newStart<=newEnd){n.planStart=newStart;n.planEnd=newEnd;}
+    if(newStart<=newEnd){n.planStart=newStart;n.planEnd=newEnd;n.manual=true;} /* 拖拽/缩放视为手动排期 */
   }
   _ganttDrag={active:false,mode:'move',idx:null,bar:null,track:null,startX:0,startLeftPct:0,barWidthPct:0,range:null,onMove:null,onUp:null};
   renderPlanTable();
@@ -4085,6 +4100,7 @@ function applyNodeDays(i){
     const s=new Date(n.planStart+'T00:00:00');
     const e=new Date(s.getTime()+(d-1)*86400000);
     n.planEnd=localISODate(e);
+    n.manual=true; /* 手动调整工期天数，视为手动排期 */
   }else{
     recalcPlanSchedule();
   }
@@ -4124,7 +4140,7 @@ function deletePlanNode(i){
 
 /** 添加自定义节点 */
 function addPlanCustomNode(){
-  wizPlanNodes.push({id:'custom_'+uid(),name:'新节点',days:'3',status:'pending',planStart:'',planEnd:'',desc:'',acceptance:[],articles:[]});
+  wizPlanNodes.push({id:'custom_'+uid(),name:'新节点',days:'3',status:'pending',planStart:'',planEnd:'',manual:false,desc:'',acceptance:[],articles:[]});
   recalcPlanSchedule();
   /* 滚动表格到底部 */
   const wrap=document.querySelector('.plan-table-wrap');
@@ -4147,7 +4163,8 @@ function openProjectModal(id){
       wizPlanNodes=(p.processSteps&&p.processSteps.length?p.processSteps:[]).map(s=>({
         id:s.id||('ps_'+uid()),
         name:s.name,days:s.days||'1',status:s.status||'pending',
-        planStart:s.planStartDate||'',planEnd:s.planEndDate||'',desc:s.desc||'',
+        planStart:s.planStartDate||'',planEnd:s.planEndDate||'',manual:!!(s.planStartDate&&s.planEndDate),
+        desc:s.desc||'',
         acceptance:(s.acceptance||[]).map(a=>({...a})),articles:(s.articles||[]).map(a=>({...a}))
       }));
       if(wizPlanNodes.length===0)initPlanNodesFromTemplate();
@@ -6353,6 +6370,7 @@ function confirmPlanDuration(){
   const nd=Math.round((new Date(_pdmEndISO)-new Date(_pdmStartISO))/86400000)+1;
   n.days=String(Math.max(1,nd));
   n.planEnd=_pdmEndISO;
+  n.manual=true; /* 标记为手动排期，自动紧凑排期将跳过该节点 */
   /* 仅重绘，不再全量顺推：保留手动设定的起止日期（可形成空档期/交叉作业） */
   renderPlanTable();
   closePlanDurationPicker();
