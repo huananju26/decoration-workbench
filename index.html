@@ -4108,7 +4108,8 @@ function renderPlanGantt(){
   const rows=wizPlanNodes.map((n,i)=>{
     const scheduled=n.planStart&&n.planEnd;
     const st=n.status||(scheduled?'pending':'none');
-    const actDays=(st==='done'&&n.completedAtStart&&n.completedAt)?(Math.round((Date.parse(n.completedAt)-Date.parse(n.completedAtStart))/86400000)+1):0;
+    const isDone=st==='done';
+    const actDays=isDone?(Math.round((Date.parse(n.completedAt||n.planEnd||'')-Date.parse(n.completedAtStart||n.planStart||''))/86400000)+1):0;
     const actDaysHtml=actDays>0?`<span class="pg-actual-days">${actDays}天</span>`:'';
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(n.name||'')}</span><span class="pg-badge-row"><span class="pg-badge ${st}">${STXT[st]||'待开始'}</span>${actDaysHtml}</span></div>`;
     if(!scheduled){
@@ -7514,7 +7515,7 @@ function renderClientTimelineSheet(p,steps){
     const wPct=Math.max(rightPct-leftPct,0.6);
     const done=isStepChecked(s.id);
     const cls=_gsPgStatusClass(done,today,r);
-    const actDays2=(done&&s.completedAtStart&&s.completedAt)?(Math.round((Date.parse(s.completedAt)-Date.parse(s.completedAtStart))/86400000)+1):0;
+    const actDays2=done?(Math.round((Date.parse(s.completedAt||r.e||'')-Date.parse(s.completedAtStart||r.s||''))/86400000)+1):0;
     const actDaysHtml2=actDays2>0?`<span class="pg-actual-days">${actDays2}天</span>`:'';
     const barLabel=`${fmtDateMd(r.s)} — ${fmtDateMd(r.e)}`;
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${cls}">${_gsPgStatusLabel(cls)}</span>${actDaysHtml2}</span></div>`;
@@ -7651,7 +7652,7 @@ function renderPlanVsActualSheet(p,steps){
     const labelLeft=Math.max(planLeftPct+planW, actLeftPct+actW);
     const labelOnLeft3=labelLeft>72;
     const labelStyle3=labelOnLeft3?`left:calc(${labelLeft}% - 6px);transform:translateX(-100%)`:`left:calc(${labelLeft}% + 6px)`;
-    const actDays3=(isDone&&s.completedAtStart&&s.completedAt)?(Math.round((Date.parse(s.completedAt)-Date.parse(s.completedAtStart))/86400000)+1):0;
+    const actDays3=isDone?(Math.round((Date.parse(s.completedAt||planE||'')-Date.parse(s.completedAtStart||planS||''))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</span></div>`;
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:28px">${todayEl}`
