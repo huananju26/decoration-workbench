@@ -4003,23 +4003,36 @@ function _ganttRangeLocal(nodes){
 }
 function _ganttShift(iso,d){const t=new Date(iso+'T00:00:00');t.setDate(t.getDate()+d);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
 
-/** 统一甘特图左侧名称列宽度：测量所有 .pg-row-label 最宽的自然宽度，
- *  写入祖先元素的 --pg-label-w，使表头与所有行共用同一固定宽度（按最长节点名自适应）。 */
+/** 统一甘特图左侧名称列宽度：用 canvas measureText 测量所有 .pg-row-label 中最宽的
+ *  节点名/状态徽章文字宽度（不依赖元素是否可见、不受 display:none 影响），写入祖先元素的
+ *  --pg-label-w，使表头与所有行共用同一固定宽度（按当前项目最长节点名自适应）。 */
+var _gtMeasureCanvas=null;
+function _gtMeasureTextW(text,fontSize,fontWeight){
+  if(!_gtMeasureCanvas){ try{ _gtMeasureCanvas=document.createElement('canvas'); }catch(e){ _gtMeasureCanvas=null; } }
+  if(_gtMeasureCanvas){
+    var ctx=_gtMeasureCanvas.getContext?_gtMeasureCanvas.getContext('2d'):null;
+    if(ctx){ ctx.font=(fontWeight?fontWeight+' ':'')+fontSize+'px -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif'; return ctx.measureText(text||'').width; }
+  }
+  // 无 canvas 环境兜底估算：中文约 fontSize*0.95/字，ASCII 约 fontSize*0.55/字
+  var t=text||''; var cjk=(t.match(/[一-龥]/g)||[]).length; var other=t.length-cjk;
+  return cjk*fontSize*0.95 + other*fontSize*0.55;
+}
 function _normalizeGanttLabelWidth(root){
   if(!root) return;
   var labels=root.querySelectorAll('.pg-row-label');
   if(!labels.length) return;
-  // 临时移除约束并禁止换行，测自然宽度
-  labels.forEach(function(l){ l.style.minWidth=''; l.style.maxWidth=''; l.style.width=''; l.style.whiteSpace='nowrap'; });
   var maxW=0;
   labels.forEach(function(l){
-    var w=l.scrollWidth;
-    if(w>maxW) maxW=w;
+    var nameEl=l.querySelector('.pg-name');
+    var badgeEl=l.querySelector('.pg-badge');
+    var nameW=_gtMeasureTextW(nameEl?nameEl.textContent:'',12,500);
+    var badgeW=_gtMeasureTextW(badgeEl?badgeEl.textContent:'',10,400);
+    // 行宽 = max(节点名, 状态徽章文字+徽章左右padding12) + 标签左右padding(4+4) + 右边框1 + 冗余2
+    var cellW=Math.max(nameW, badgeW+12) + 11;
+    if(cellW>maxW) maxW=cellW;
   });
-  // 上限保护，避免超长名撑爆布局
-  maxW=Math.min(maxW, 260);
+  maxW=Math.min(Math.ceil(maxW), 260);   // 上限保护，避免超长名撑爆布局
   if(maxW>0) root.style.setProperty('--pg-label-w', maxW+'px');
-  labels.forEach(function(l){ l.style.whiteSpace=''; });
 }
 
 /** 渲染 Step2 施工计划甘特图（内嵌）：按每个节点的 planStart/planEnd 绘制条形，
