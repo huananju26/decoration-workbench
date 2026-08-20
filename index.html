@@ -1711,6 +1711,10 @@ a{color:#003a8c;text-decoration:none}
 .ppe-item:hover .ppe-icon{background:#003a8c;color:#fff}
 
 /* ── 客户版施工进度表(甘特图) ── */
+.gs-zoom-pad{position:relative;margin:0 auto;transform-origin:top left}
+#clientTimelineBody,#planVsActualBody{cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
+#clientTimelineBody img,#planVsActualBody img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
+#clientTimelineBody.dragging,#planVsActualBody.dragging{cursor:grabbing}
 .gs-sheet{background:#fff;padding:30px 34px 26px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#1a1a1a;line-height:1.6}
 .gs-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:20px}
 .gs-brand{display:flex;align-items:center;gap:14px}
@@ -7378,7 +7382,8 @@ function exportClientTimeline(){
   ensureProjectSteps(p);
   const steps=(p.processSteps||[]).slice();
   if(steps.length===0){alert('当前项目还没有施工流程节点，无法导出。');return;}
-  $('clientTimelineBody').innerHTML=renderClientTimelineSheet(p,steps);
+  $('clientTimelineBody').innerHTML='<div class="gs-zoom-pad" id="clientTimelineSheetPad">'+renderClientTimelineSheet(p,steps)+'</div>';
+  _bindSheetPan($('clientTimelineBody'));
   showModal('clientTimelineModal');
   /* 同步立即计算一次尺寸（保证 jsdom 测试也能命中），再用 rAF 校正一次 */
   const el=$('clientTimelineSheet');
@@ -7517,7 +7522,8 @@ function exportPlanVsActualImage(){
   ensureProjectSteps(p);
   const steps=(p.processSteps||[]).slice();
   if(steps.length===0){alert('当前项目还没有施工流程节点，无法导出。');return;}
-  $('planVsActualBody').innerHTML=renderPlanVsActualSheet(p,steps);
+  $('planVsActualBody').innerHTML='<div class="gs-zoom-pad" id="planVsActualSheetPad">'+renderPlanVsActualSheet(p,steps)+'</div>';
+  _bindSheetPan($('planVsActualBody'));
   showModal('planVsActualModal');
   const el=$('planVsActualSheet');
   if(el)$('planVsActualSize').textContent=el.scrollWidth+' × '+el.scrollHeight+'px · A4 横版 · 可打印 / PDF';
@@ -7630,19 +7636,44 @@ function downloadPlanVsActualPNG(){_downloadSheetPNG('planVsActualSheet','客户
 /* 缩放控制（适用于所有 gantt 预览）*/
 function zoomGsSheet(sheetId,delta){
   const sheet=$(sheetId);if(!sheet)return;
+  const pad=sheet.parentElement;if(!pad||!pad.classList.contains('gs-zoom-pad'))return;
   const cur=parseFloat(sheet.dataset.zoom||'1');
   const next=Math.max(0.5,Math.min(2.5,cur+delta));
   sheet.dataset.zoom=String(next);
-  sheet.style.transform=`scale(${next})`;
+  sheet.style.position='absolute';
+  sheet.style.top='0';sheet.style.left='0';
   sheet.style.transformOrigin='top left';
-  sheet.style.marginBottom=(sheet.scrollHeight*(next-1))+'px';
+  sheet.style.transform=`scale(${next})`;
+  pad.style.width=(sheet.offsetWidth*next)+'px';
+  pad.style.height=(sheet.offsetHeight*next)+'px';
 }
 function zoomGsReset(sheetId){
   const sheet=$(sheetId);if(!sheet)return;
+  const pad=sheet.parentElement;
   sheet.dataset.zoom='1';
-  sheet.style.transform='scale(1)';
+  sheet.style.position='absolute';
+  sheet.style.top='0';sheet.style.left='0';
   sheet.style.transformOrigin='top left';
-  sheet.style.marginBottom='0';
+  sheet.style.transform='scale(1)';
+  if(pad&&pad.classList.contains('gs-zoom-pad')){
+    pad.style.width=(sheet.offsetWidth)+'px';
+    pad.style.height=(sheet.offsetHeight)+'px';
+  }
+}
+/* 弹窗内甘特表：鼠标拖拽平移（缩放后可自由查看） */
+function _bindSheetPan(body){
+  if(!body||body.dataset.panBound)return;
+  body.dataset.panBound='1';
+  let dragging=false,sx=0,sy=0,sl=0,st=0;
+  function down(x,y){dragging=true;sx=x;sy=y;sl=body.scrollLeft;st=body.scrollTop;body.classList.add('dragging');body.style.userSelect='none';}
+  function move(x,y){if(!dragging)return;body.scrollLeft=sl-(x-sx);body.scrollTop=st-(y-sy);}
+  function up(){if(dragging){dragging=false;body.classList.remove('dragging');body.style.userSelect='';}}
+  body.addEventListener('mousedown',function(e){if(e.button!==0)return;down(e.clientX,e.clientY);});
+  document.addEventListener('mousemove',function(e){move(e.clientX,e.clientY);});
+  document.addEventListener('mouseup',up);
+  body.addEventListener('touchstart',function(e){down(e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
+  body.addEventListener('touchmove',function(e){if(!dragging)return;move(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();},{passive:false});
+  body.addEventListener('touchend',up);
 }
 
 /* ════════════════════════════════════════
