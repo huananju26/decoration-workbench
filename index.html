@@ -997,14 +997,16 @@ a{color:#003a8c;text-decoration:none}
 .plan-gantt.dragging{cursor:grabbing}
 .plan-gantt-title{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:8px;display:flex;align-items:center;gap:8px}
 .plan-gantt-title small{font-size:11px;font-weight:400;color:#999}
-.pg-grid{display:block}
+.pg-grid{display:grid;grid-template-columns:172px 1fr;align-items:stretch}
 .pg-rows{display:flex;flex-direction:column}
-.pg-axis-label{font-size:11px;color:#999;padding:4px 8px 6px 12px;display:flex;align-items:flex-end}
-.pg-axis-track{position:relative;height:26px;border-bottom:1px solid #eaeaea;padding-left:12px}
+.pg-axis-label{font-size:11px;color:#999;padding:4px 8px 6px 0;display:flex;align-items:flex-end}
+.pg-axis-track{position:relative;height:26px;border-bottom:1px solid #eaeaea}
 .pg-month{position:absolute;top:0;height:26px;font-size:11px;color:#888;border-left:1px solid #e3e3e3;padding-left:5px;display:flex;align-items:center;white-space:nowrap;overflow:hidden}
-.pg-row{display:block;position:relative;border-top:1px dashed #f0f0f0;padding:4px 12px;min-height:38px}
+.pg-row{display:grid;grid-template-columns:172px 1fr;align-items:center;border-top:1px dashed #f0f0f0;min-height:38px}
 .pg-row:nth-child(even){background:#f7f8fa;border-radius:4px}
-.pg-row-label{display:none}
+.pg-row-label{display:flex;flex-direction:column;gap:2px;padding:5px 8px 5px 0;min-width:0;border-right:1px solid #f0f0f0}
+.pg-row-label .pg-name{font-size:12px;color:#333;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-row-label .pg-badge{font-size:10px;padding:1px 6px;border-radius:6px;align-self:flex-start;line-height:1.5}
 .pg-bar-label{position:absolute;top:50%;transform:translateY(-50%);font-size:11.5px;line-height:1.35;pointer-events:none;z-index:3;white-space:nowrap;display:flex;flex-direction:row;align-items:center;gap:5px}
 .pg-bar-label .pg-label-name{font-weight:600;color:#003a8c}
 .pg-bar-label .pg-label-date{font-size:10.5px;color:#666}
@@ -1012,7 +1014,8 @@ a{color:#003a8c;text-decoration:none}
 .pg-badge.inprogress{background:#003a8c;color:#fff}
 .pg-badge.done{background:#0050b3;color:#fff}
 .pg-badge.overdue{background:#ff4d4f;color:#fff}
-.pg-track{position:relative;height:38px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 22px,#e8e8e8 22px,#e8e8e8 23px,transparent 23px,transparent 24px),repeating-linear-gradient(180deg,transparent 0,transparent 16px,#e8e8e8 16px,#e8e8e8 17px,transparent 17px,transparent 38px);margin-left:12px}
+.pg-badge.none{background:#f0f0f0;color:#999}
+.pg-track{position:relative;height:38px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 22px,#e8e8e8 22px,#e8e8e8 23px,transparent 23px,transparent 24px),repeating-linear-gradient(180deg,transparent 0,transparent 16px,#e8e8e8 16px,#e8e8e8 17px,transparent 17px,transparent 38px);margin-left:0}
 .pg-bar{position:absolute;top:9px;height:20px;border-radius:6px;font-size:0;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;display:flex;align-items:center;padding:0;white-space:nowrap;overflow:visible;cursor:default;box-sizing:border-box;touch-action:none;z-index:2;user-select:none;-webkit-user-select:none}
 .pg-bar.dragging{z-index:4;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 .pg-bar.inprogress{background:#1677ff;color:#fff;border-color:#1677ff}
@@ -1216,11 +1219,11 @@ a{color:#003a8c;text-decoration:none}
   .pg-bar-label{font-size:10px;gap:3px}
   .pg-bar-label .pg-label-name{font-size:10.5px}
   .pg-bar-label .pg-label-date{font-size:9px}
-  .pg-track{margin-left:8px}
-  .pg-row{padding:3px 8px;min-height:34px}
-  .pg-axis-track{padding-left:8px}
-  .pg-axis-label{padding-left:6px}
-  .pg-row-label{font-size:11px}
+  .pg-grid{grid-template-columns:116px 1fr}
+  .pg-row{grid-template-columns:116px 1fr;min-height:34px}
+  .pg-track{margin-left:0}
+  .pg-axis-track{padding-left:0}
+  .pg-row-label{font-size:11px;border-right:none;padding:4px 6px 4px 0}
   .pg-bar{font-size:9.5px;padding:0 4px}
   /* ── 项目收支仪表盘：平板/手机自适应 ── */
   .fin-dash-row1{grid-template-columns:repeat(2,1fr);gap:8px}
@@ -4040,21 +4043,23 @@ function renderPlanGantt(){
     const tp=pct(today);
     todayEl=`<div class="pg-today" style="left:${tp}%"><span class="pg-today-flag">今日</span></div>`;
   }
-  /* 标签统一紧跟条形右边缘外侧：名称+日期一行显示 */
+  /* 左侧固定名称列 + 右侧条形旁「名称 日期」标签（紧跟条形右边缘） */
+  const STXT={pending:'待开始',inprogress:'进行中',done:'已完成',overdue:'逾期',none:'未排期'};
   const rows=wizPlanNodes.map((n,i)=>{
-    if(!n.planStart||!n.planEnd){
-      return `<div class="pg-row"><div class="pg-track"></div><span class="pg-bar-label" style="left:12px"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date" style="color:#999">未排期</span></span></div>`;
+    const scheduled=n.planStart&&n.planEnd;
+    const st=n.status||(scheduled?'pending':'none');
+    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(n.name||'')}</span><span class="pg-badge ${st}">${STXT[st]||'待开始'}</span></div>`;
+    if(!scheduled){
+      return `<div class="pg-row">${nameCell}<div class="pg-track"><span class="pg-bar-label" style="left:0;top:50%;transform:translateY(-50%)"><span class="pg-label-name">${escHtml(n.name||'')}</span></span></div></div>`;
     }
     const leftPct=pct(n.planStart),wPct=Math.max(pct(n.planEnd)-leftPct,0.5);
-    const st=n.status||'pending';
     const ov=overlapSet.has(n.id||('n'+i))?' overlap':'';
     const dateLabel=`${fmtDateMd(n.planStart)} — ${fmtDateMd(n.planEnd)}`;
-    /* 标签统一紧跟条形右边缘外侧 */
-    return `<div class="pg-row"><div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" data-idx="${i}" title="${escHtml(n.name+' · '+dateLabel)}" style="left:${leftPct}%;width:${wPct}%"><span class="pg-handle pg-handle-l" data-idx="${i}" data-side="left" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span><span class="pg-handle pg-handle-r" data-idx="${i}" data-side="right" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span></div><span class="pg-bar-label" style="left:calc(12px + ${leftPct}% + ${wPct}%)"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date">${dateLabel}</span></span></div></div>`;
+    return `<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" data-idx="${i}" title="${escHtml(n.name+' · '+dateLabel)}" style="left:${leftPct}%;width:${wPct}%"><span class="pg-handle pg-handle-l" data-idx="${i}" data-side="left" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span><span class="pg-handle pg-handle-r" data-idx="${i}" data-side="right" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span></div><span class="pg-bar-label" style="left:calc(${leftPct}% + ${wPct}%)"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date">${dateLabel}</span></span></div></div>`;
   }).join('');
   box.innerHTML=
     '<div class="plan-gantt-title">施工计划甘特图 <small>按节点起止日期绘制 · 橙色描边=交叉作业 · 虚线=今日 · 拖动可平移</small></div>'
-    +`<div class="pg-grid"><div class="pg-axis-label">日期轴</div><div class="pg-axis-track">${axisBands}</div></div>`
+    +`<div class="pg-grid"><div class="pg-axis-label">节点 / 状态</div><div class="pg-axis-track">${axisBands}</div></div>`
     +`<div class="pg-rows">${rows}</div>`;
   _bindGanttPan(box);
 }
@@ -7439,7 +7444,8 @@ function renderClientTimelineSheet(p,steps){
     const done=isStepChecked(s.id);
     const cls=_gsPgStatusClass(done,today,r);
     const barLabel=`${fmtDateMd(r.s)} — ${fmtDateMd(r.e)}`;
-    rowsHtml+=`<div class="pg-row"><div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${wPct}%"></div><span class="pg-bar-label" style="left:calc(12px + ${leftPct}% + ${wPct}%)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${barLabel}</span></span></div></div>`;
+    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${cls}">${_gsPgStatusLabel(cls)}</span></div>`;
+    rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${wPct}%"></div><span class="pg-bar-label" style="left:calc(${leftPct}% + ${wPct}%)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${barLabel}</span></span></div></div>`;
   });
   return `<div class="gs-sheet" id="clientTimelineSheet" style="width:920px">
     <div class="gs-top">
@@ -7564,10 +7570,11 @@ function renderPlanVsActualSheet(p,steps){
     const actW=Math.max(actRightPct-actLeftPct,0.4);
     /* 标签紧跟实际条形（下方条）右边缘外侧 */
     const labelLeft=Math.max(planLeftPct+planW, actLeftPct+actW);
-    rowsHtml+=`<div class="pg-row"><div class="pg-track" style="height:40px">${todayEl}`
+    const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span></div>`;
+    rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:40px">${todayEl}`
       +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:11px;font-size:9px;padding:0;opacity:.9"></div>`
       +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:18px;height:11px;font-size:9px;padding:0">实际</div>`
-      +`<span class="pg-bar-label" style="left:calc(12px + ${labelLeft}%)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
+      +`<span class="pg-bar-label" style="left:calc(${labelLeft}%)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
       +`</div></div>`;
   });
   return `<div class="gs-sheet" id="planVsActualSheet" style="width:980px">
