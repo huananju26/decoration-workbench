@@ -4057,7 +4057,7 @@ function renderPlanGantt(){
     const leftPct=pct(n.planStart),wPct=Math.max(pct(n.planEnd)-leftPct,0.5);
     const ov=overlapSet.has(n.id||('n'+i))?' overlap':'';
     const dateLabel=`${fmtDateMd(n.planStart)} — ${fmtDateMd(n.planEnd)}`;
-    return `<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" data-idx="${i}" title="${escHtml(n.name+' · '+dateLabel)}" style="left:${leftPct}%;width:${wPct}%"><span class="pg-handle pg-handle-l" data-idx="${i}" data-side="left" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span><span class="pg-handle pg-handle-r" data-idx="${i}" data-side="right" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span></div><span class="pg-bar-label" style="left:calc(${leftPct}% + ${wPct}%)"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date">${dateLabel}</span></span></div></div>`;
+    return `<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" data-idx="${i}" title="${escHtml(n.name+' · '+dateLabel)}" style="left:${leftPct}%;width:${wPct}%"><span class="pg-handle pg-handle-l" data-idx="${i}" data-side="left" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span><span class="pg-handle pg-handle-r" data-idx="${i}" data-side="right" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span></div><span class="pg-bar-label" style="left:calc(${leftPct}% + ${wPct}% + 6px)"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date">${dateLabel}</span></span></div></div>`;
   }).join('');
   box.innerHTML=
     '<div class="plan-gantt-title">施工计划甘特图 <small>按节点起止日期绘制 · 橙色描边=交叉作业 · 虚线=今日 · 拖动可平移</small></div>'
@@ -7448,7 +7448,7 @@ function renderClientTimelineSheet(p,steps){
     const cls=_gsPgStatusClass(done,today,r);
     const barLabel=`${fmtDateMd(r.s)} — ${fmtDateMd(r.e)}`;
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${cls}">${_gsPgStatusLabel(cls)}</span></div>`;
-    rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${wPct}%"></div><span class="pg-bar-label" style="left:calc(${leftPct}% + ${wPct}%)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${barLabel}</span></span></div></div>`;
+    rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${wPct}%"></div><span class="pg-bar-label" style="left:calc(${leftPct}% + ${wPct}% + 6px)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${barLabel}</span></span></div></div>`;
   });
   return `<div class="gs-sheet" id="clientTimelineSheet" style="width:920px">
     <div class="gs-top">
@@ -7578,7 +7578,7 @@ function renderPlanVsActualSheet(p,steps){
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:40px">${todayEl}`
       +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:11px;font-size:9px;padding:0;opacity:.9"></div>`
       +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:18px;height:11px;font-size:9px;padding:0">实际</div>`
-      +`<span class="pg-bar-label" style="left:calc(${labelLeft}%)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
+      +`<span class="pg-bar-label" style="left:calc(${labelLeft}% + 6px)"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
       +`</div></div>`;
   });
   return `<div class="gs-sheet" id="planVsActualSheet" style="width:980px">
