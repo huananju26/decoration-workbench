@@ -349,19 +349,23 @@ a{color:#003a8c;text-decoration:none}
 /* PROCESS - Step Cards (vertical expandable list) */
 .process-layout{display:flex;flex-direction:column;gap:0}
 /* ── 节点卡片：三栏横向布局（左-中-右） ── */
-.step-card{background:#fff;border-radius:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden;transition:all .2s;border:1px solid #f0f0f0;scroll-margin-top:84px}
-.step-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.step-card.completed{border-left:4px solid #003a8c}
-.step-card.overdue{border-left:4px solid #ff4d4f;background:#fffafa}
-.step-card.overdue .step-num{background:#ffccc7;color:#cf1322}
+/* ── 节点卡片：扁平列表行样式（无背景/无圆角/无阴影，仅底部分隔线） ── */
+.step-card{background:transparent;margin-bottom:0;box-shadow:none;transition:none;border:none;border-bottom:1px solid #f0f0f0;scroll-margin-top:84px}
+.step-card:hover{background:#fafafa}
+.step-card.completed{border-left:none;background:transparent}
+.step-card.completed:hover{background:#fafffe}
+.step-card.overdue{border-left:none;background:transparent}
+.step-card.overdue:hover{background:#fffafa}
+.step-card.overdue .step-num{background:#ff4d4f}
 .step-card.overdue .step-date-actual{color:#ff4d4f}
-.step-card-header{display:flex;align-items:center;padding:14px 20px;cursor:pointer;user-select:none;gap:16px;overflow:hidden}
-.step-num{width:28px;height:28px;border-radius:50%;background:#e6f4ff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#003a8c;flex-shrink:0}
-.step-card.completed .step-num{background:#003a8c;color:#fff}
+.step-card-header{display:flex;align-items:center;padding:10px 16px;cursor:pointer;user-select:none;gap:16px;overflow:hidden;min-height:48px}
+.step-num{width:8px;height:8px;border-radius:50%;background:#c0c0c0;display:flex;align-items:center;justify-content:center;font-size:0;flex-shrink:0}
+.step-card.completed .step-num{background:#003a8c}
 
-/* ── 左栏：编号+名称+状态标签+DCSpace副行（固定宽度确保竖向对齐） ── */
-.step-left-col{width:220px;min-width:160px;flex:1 0 220px;display:flex;flex-direction:column;gap:2px}
+/* ── 左栏：圆点+编号文本+名称+状态标签+DCSpace副行 ── */
+.step-left-col{width:200px;min-width:150px;flex:0 0 200px;display:flex;flex-direction:column;gap:1px}
 .step-name-wrap{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;line-height:1.3}
+.step-idx{font-size:12px;font-weight:500;color:#999;flex-shrink:0;min-width:18px}
 .step-name{font-size:14px;font-weight:600;color:#1a1a1a;line-height:1.3}
 .step-card.pending .step-name{color:#bfbfbf}
 .step-status-badge{font-size:11px;padding:1px 8px;border-radius:10px;font-weight:500;flex-shrink:0;line-height:1.6}
@@ -369,28 +373,27 @@ a{color:#003a8c;text-decoration:none}
 .step-status-badge.wait{background:#fff7e6;color:#fa8c16}
 .step-status-badge.active{background:#e6f4ff;color:#003a8c}
 .step-status-badge.overdue{background:#fff1f0;color:#ff4d4f}
-.step-subtitle{font-size:11.5px;color:#999;margin-top:3px;overflow:hidden;text-overflow:ellipsis}
+.step-subtitle{font-size:11px;color:#bbb;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* ── 中栏：日期信息区（弹性居中，自适应页面中间） ── */
-.step-mid-col{flex:1;min-width:140px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px;padding:0 20px;border-left:1px dashed #f0f0f0}
-.step-date-area{font-size:12px;line-height:1.7;text-align:left;align-self:flex-start}
+/* ── 中栏：日期信息区（紧凑，左对齐） ── */
+.step-mid-col{flex:1;min-width:140px;display:flex;flex-direction:column;justify-content:center;gap:0;padding:0 16px}
+.step-date-area{font-size:12px;line-height:1.6;text-align:left;align-self:flex-start}
 .step-date-actual{color:#1a1a1a;font-weight:500}
 .step-date-plan{color:#bfbfbf;font-size:11.5px}
 .step-card.pending .step-date-actual,
 .step-card.pending .step-date-plan{color:#d9d9d9}
 
-/* ── 右栏：操作统计+状态+详情（贴紧右侧，自适应剩余空间） ── */
-.step-right-col{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+/* ── 右栏：操作统计+状态+详情（横向紧凑排列） ── */
+.step-right-col{flex:1 1 auto;min-width:0;display:flex;flex-direction:row;align-items:center;gap:12px}
 .step-action-row{display:flex;align-items:center;gap:10px;font-size:11.5px;color:#999}
 .step-action-item{display:inline-flex;align-items:center;gap:2px;cursor:pointer;padding:2px 6px;border-radius:6px;transition:all .15s}
 .step-action-item:hover{background:#f5f5f5;color:#555}
 .step-action-num{color:#fa541c;font-weight:600;margin-left:1px}
 .step-status-row{display:flex;align-items:center;gap:10px;font-size:11.5px;color:#bfbfbf}
-.step-action-more{cursor:pointer;padding:3px 10px;border:1px solid #e8e8e8;border-radius:6px;font-size:11.5px;color:#666;background:#fafafa;display:inline-flex;align-items:center;gap:4px;transition:all .15s}
+.step-action-more{cursor:pointer;padding:3px 10px;border:1px solid #e8e8e8;border-radius:6px;font-size:11.5px;color:#666;background:#fff;display:inline-flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap}
 .step-action-more:hover{border-color:#003a8c;color:#003a8c}
-.step-arrow{color:#bbb;font-size:12px;transition:transform .2s;flex-shrink:0}
-.step-card.expanded .step-arrow{transform:rotate(180deg)}
-.step-body{padding:0 20px 18px 66px;display:none;border-top:1px solid #f5f5f5;padding-top:16px}
+.step-arrow{display:none}
+.step-body{padding:0 16px 18px 36px;display:none;border-top:1px solid #f0f0f0;padding-top:14px;background:#fff}
 .step-card.expanded .step-body{display:block}
 .step-desc{font-size:13px;color:#666;line-height:1.8;margin-bottom:16px}
 .step-section-title{font-size:12px;color:#999;font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
@@ -405,8 +408,9 @@ a{color:#003a8c;text-decoration:none}
 .step-complete-checkbox{width:20px;height:20px;border-radius:6px;border:2px solid #d9d9d9;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
 .step-complete-checkbox.checked{background:#003a8c;border-color:#003a8c;color:#fff}
 .step-complete-label{font-size:13px;color:#003a8c;font-weight:500;cursor:pointer}
-/* 节点操作按钮（编辑/删除） */
-.step-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-right:4px}
+/* 节点操作按钮（编辑/删除）——默认隐藏，hover 显示 */
+.step-actions{display:none;align-items:center;gap:6px;flex-shrink:0;margin-right:4px}
+.step-card:hover .step-actions{display:flex}
 .step-act-btn{width:28px;height:28px;border:none;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;padding:0}
 .step-act-btn:hover{background:#e6f4ff}
 .step-act-btn.del:hover{background:#fff1f0}
@@ -5994,13 +5998,15 @@ function renderProcess(){
     const planDays=planStart&&planEnd?calcDays(planStart,planEnd):(planStr?parseInt(planStr.match(/\d+/g)?.pop()||'0'):0);
     return `<div class="step-card ${done?'completed':''} ${pending?'pending':''} ${overdue?'overdue':''} ${expanded?'expanded':''}" id="stepCard-${i}" data-index="${i}" data-name="${escHtml(step.name)}">
       <div class="step-card-header" onclick="toggleStepExpand(${i})">
-        <!-- 左栏：编号+名称+状态 -->
+        <!-- 左栏：圆点+编号+名称+状态 -->
         <div class="step-left-col">
           <div class="step-name-wrap">
-            <span class="step-num">${i+1}</span>
+            <span class="step-num"></span>
+            <span class="step-idx">${String(i+1).padStart(2,'0')}</span>
             <span class="step-name">${escHtml(step.name)}</span>
             ${done?'<span class="step-status-badge done">已完成</span>':overdue?'<span class="step-status-badge overdue">逾期 '+daysOver+'天</span>':pending?'<span class="step-status-badge wait">待开始</span>':'<span class="step-status-badge active">进行中</span>'}
           </div>
+          <div class="step-subtitle">DCSpace · 按施工计划执行</div>
         </div>
         <!-- 中栏：日期信息 -->
         <div class="step-mid-col">
