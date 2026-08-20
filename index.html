@@ -7578,7 +7578,7 @@ function renderPlanVsActualSheet(p,steps){
     rowsHtml+=`<div class="pg-row"><div class="pg-track" style="height:40px">${todayEl}`
       +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:11px;font-size:9px;padding:0;opacity:.9"></div>`
       +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${Math.max(actRightPct-actLeftPct,0.4)}%;top:18px;height:11px;font-size:9px;padding:0">实际</div>`
-      +`<span class="pg-bar-label ${labelPos}" style="${labelPos==='inside'?`left:${planLeftPct}%;width:${planW}%;top:8px`:labelPos==='left'?`right:calc(${planLeftPct}%)`:`left:calc(${planLeftPct+planW}%)`;top:8px`}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
+      +`<span class="pg-bar-label ${labelPos}" style="${labelPos==='inside'?`left:${planLeftPct}%;width:${planW}%;top:8px`:labelPos==='left'?`right:calc(${planLeftPct}%);top:8px`:`left:calc(${planLeftPct+planW}%);top:8px`}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
       +`</div></div>`;
   });
   return `<div class="gs-sheet" id="planVsActualSheet" style="width:980px">
