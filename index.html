@@ -993,7 +993,7 @@ a{color:#003a8c;text-decoration:none}
 .plan-mytpl-row{background:#fafcff;border:1px dashed #bcd4ff;border-radius:8px;padding:10px 12px;margin-top:2px}
 
 /* ── 施工计划甘特图（向导内嵌） ── */
-.plan-gantt{border:1px solid #e8e8e8;border-radius:10px;background:#fff;padding:12px 14px;margin:0 0 14px;overflow:hidden;cursor:grab;user-select:none}
+.plan-gantt{border:1px solid #e8e8e8;border-radius:10px;background:#fff;padding:8px 12px;margin:0 0 14px;overflow:hidden;cursor:grab;user-select:none}
 .plan-gantt.dragging{cursor:grabbing}
 .plan-gantt-title{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:8px;display:flex;align-items:center;gap:8px}
 .plan-gantt-title small{font-size:11px;font-weight:400;color:#999}
@@ -1002,9 +1002,9 @@ a{color:#003a8c;text-decoration:none}
 .pg-axis-label{font-size:11px;color:#999;padding:4px 8px 6px 0;display:flex;align-items:flex-end}
 .pg-axis-track{position:relative;height:26px;border-bottom:1px solid #eaeaea}
 .pg-month{position:absolute;top:0;height:26px;font-size:11px;color:#888;border-left:1px solid #e3e3e3;padding-left:5px;display:flex;align-items:center;white-space:nowrap;overflow:hidden}
-.pg-row{display:grid;grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);align-items:center;border-top:1px dashed #f0f0f0;min-height:38px;column-gap:12px}
+.pg-row{display:grid;grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);align-items:center;border-top:1px dashed #f0f0f0;min-height:28px;column-gap:12px}
 .pg-row:nth-child(even){background:#f7f8fa;border-radius:4px}
-.pg-row-label{display:flex;flex-direction:column;gap:2px;padding:5px 4px 5px 0;min-width:0;box-sizing:border-box;border-right:1px solid #f0f0f0}
+.pg-row-label{display:flex;flex-direction:column;gap:1px;padding:3px 4px 3px 0;min-width:0;box-sizing:border-box;border-right:1px solid #f0f0f0}
 .pg-row-label .pg-name{font-size:12px;color:#333;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pg-row-label .pg-badge{font-size:10px;padding:1px 6px;border-radius:6px;align-self:flex-start;line-height:1.5}
 .pg-bar-label{position:absolute;top:50%;transform:translateY(-50%);font-size:11.5px;line-height:1.35;pointer-events:none;z-index:3;white-space:nowrap;display:flex;flex-direction:row;align-items:center;gap:5px}
@@ -1016,8 +1016,8 @@ a{color:#003a8c;text-decoration:none}
 .pg-badge.overdue{background:#ff4d4f;color:#fff}
 .pg-badge.none{background:#f0f0f0;color:#999}
 .pg-actual-days{display:inline;margin-left:4px;font-size:10px;color:#666;white-space:nowrap}
-.pg-track{position:relative;height:38px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 22px,#e8e8e8 22px,#e8e8e8 23px,transparent 23px,transparent 24px),repeating-linear-gradient(180deg,transparent 0,transparent 16px,#e8e8e8 16px,#e8e8e8 17px,transparent 17px,transparent 38px);margin-left:0}
-.pg-bar{position:absolute;top:9px;height:20px;border-radius:6px;font-size:0;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;display:flex;align-items:center;padding:0;white-space:nowrap;overflow:visible;cursor:default;box-sizing:border-box;touch-action:none;z-index:2;user-select:none;-webkit-user-select:none}
+.pg-track{position:relative;height:26px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 22px,#e8e8e8 22px,#e8e8e8 23px,transparent 23px,transparent 24px),repeating-linear-gradient(180deg,transparent 0,transparent 12px,#e8e8e8 12px,#e8e8e8 13px,transparent 13px,transparent 26px);margin-left:0}
+.pg-bar{position:absolute;top:6px;height:14px;border-radius:4px;font-size:0;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;display:flex;align-items:center;padding:0;white-space:nowrap;overflow:visible;cursor:default;box-sizing:border-box;touch-action:none;z-index:2;user-select:none;-webkit-user-select:none}
 .pg-bar.dragging{z-index:4;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 .pg-bar.inprogress{background:#1677ff;color:#fff;border-color:#1677ff}
 .pg-bar.done{background:#0050b3;color:#fff;border-color:#0050b3}
@@ -1221,8 +1221,8 @@ a{color:#003a8c;text-decoration:none}
   .pg-bar-label .pg-label-name{font-size:10.5px}
   .pg-bar-label .pg-label-date{font-size:9px}
   .pg-grid{grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);column-gap:8px}
-  .pg-row{grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);min-height:34px;column-gap:8px}
-  .pg-row-label{font-size:11px;border-right:none;padding:4px 4px 4px 0}
+  .pg-row{grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);min-height:24px;column-gap:8px}
+  .pg-row-label{font-size:11px;border-right:none;padding:2px 4px 2px 0}
   .pg-bar{font-size:9.5px;padding:0 4px}
   /* ── 项目收支仪表盘：平板/手机自适应 ── */
   .fin-dash-row1{grid-template-columns:repeat(2,1fr);gap:8px}
@@ -7653,9 +7653,9 @@ function renderPlanVsActualSheet(p,steps){
     const actDays3=(isDone&&s.completedAtStart&&s.completedAt)?(Math.round((Date.parse(s.completedAt)-Date.parse(s.completedAtStart))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}${actDaysHtml3}</span></div>`;
-    rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:40px">${todayEl}`
-      +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:11px;font-size:9px;padding:0;opacity:.9"></div>`
-      +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:18px;height:11px;font-size:9px;padding:0">实际</div>`
+    rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:28px">${todayEl}`
+      +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:2px;height:10px;font-size:9px;padding:0;opacity:.9"></div>`
+      +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:15px;height:10px;font-size:9px;padding:0">实际</div>`
       +`<span class="pg-bar-label" style="${labelStyle3}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
       +`</div></div>`;
   });
