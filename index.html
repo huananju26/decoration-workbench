@@ -967,6 +967,8 @@ a{color:#003a8c;text-decoration:none}
 .plan-stats-hint{font-size:11px;color:#bbb;width:100%;text-align:right;margin-top:2px}
 .plan-add-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 14px;border:1px dashed #d9d9d9;border-radius:6px;font-size:12.5px;color:#666;background:#fff;cursor:pointer;transition:all .15s;white-space:nowrap}
 .plan-add-btn:hover{border-color:#003a8c;color:#003a8c;background:#e6f4ff}
+.plan-action-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 14px;border:1px solid #91caff;border-radius:6px;font-size:12.5px;color:#003a8c;background:#e6f4ff;cursor:pointer;transition:all .15s;white-space:nowrap}
+.plan-action-btn:hover{background:#003a8c;color:#fff}
 
 /* 模板选择 */
 .plan-template-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;background:#fafafa;padding:12px 14px;border-radius:8px}
@@ -984,6 +986,31 @@ a{color:#003a8c;text-decoration:none}
 .plan-tpl-btn.success{background:#003a8c;color:#fff;border-color:#003a8c}
 .plan-tpl-btn.success:hover{background:#003a8c}
 .plan-mytpl-row{background:#fafcff;border:1px dashed #bcd4ff;border-radius:8px;padding:10px 12px;margin-top:2px}
+
+/* ── 施工计划甘特图（向导内嵌） ── */
+.plan-gantt{border:1px solid #e8e8e8;border-radius:10px;background:#fff;padding:12px 14px;margin:0 0 14px;overflow-x:auto}
+.plan-gantt-title{font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.plan-gantt-title small{font-size:11px;font-weight:400;color:#999}
+.pg-grid{display:grid;grid-template-columns:160px 1fr;align-items:stretch}
+.pg-rows{display:flex;flex-direction:column}
+.pg-axis-label{font-size:11px;color:#999;padding:4px 8px 6px 0;display:flex;align-items:flex-end}
+.pg-axis-track{position:relative;height:26px;border-bottom:1px solid #eaeaea}
+.pg-month{position:absolute;top:0;height:26px;font-size:11px;color:#888;border-left:1px solid #e3e3e3;padding-left:5px;display:flex;align-items:center;white-space:nowrap;overflow:hidden}
+.pg-row{display:grid;grid-template-columns:160px 1fr;align-items:center;border-top:1px dashed #f0f0f0}
+.pg-row-label{font-size:12px;color:#333;padding:6px 8px 6px 0;line-height:1.35;display:flex;flex-direction:column;gap:2px;min-width:0}
+.pg-row-label .pg-name{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-row-label .pg-badge{font-size:10px;padding:1px 6px;border-radius:6px;align-self:flex-start;line-height:1.5}
+.pg-badge.pending{background:#e6f4ff;color:#003a8c}
+.pg-badge.inprogress{background:#003a8c;color:#fff}
+.pg-badge.done{background:#0050b3;color:#fff}
+.pg-track{position:relative;height:34px}
+.pg-bar{position:absolute;top:7px;height:20px;border-radius:5px;font-size:10.5px;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;display:flex;align-items:center;padding:0 6px;white-space:nowrap;overflow:hidden;cursor:default;box-sizing:border-box}
+.pg-bar.inprogress{background:#1677ff;color:#fff;border-color:#1677ff}
+.pg-bar.done{background:#0050b3;color:#fff;border-color:#0050b3}
+.pg-bar.overlap{box-shadow:0 0 0 2px #fa8c16;background:#fff7e6;border-color:#fa8c16;color:#d46b08;z-index:3}
+.pg-today{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #ff4d4f;z-index:2}
+.pg-today-flag{position:absolute;top:-1px;transform:translateX(-50%);font-size:9px;color:#ff4d4f;background:#fff;padding:0 3px;white-space:nowrap}
+.pg-empty{font-size:12px;color:#bbb;text-align:center;padding:18px 0}
 
 /* 节点表格 */
 .plan-table-wrap{border:1px solid #e8e8e8;border-radius:8px}
@@ -1156,6 +1183,11 @@ a{color:#003a8c;text-decoration:none}
   .plan-tpl-btn{flex:0 0 auto;text-align:center}
   .plan-mytpl-row .plan-tpl-btn{font-size:11px;padding:5px 8px}
   .plan-stats-hint{font-size:10.5px;text-align:left}
+  /* ── 甘特图：移动端压缩标签列 ── */
+  .pg-grid{grid-template-columns:104px 1fr}
+  .pg-row{grid-template-columns:104px 1fr}
+  .pg-row-label{font-size:11px}
+  .pg-bar{font-size:9.5px;padding:0 4px}
   /* ── 项目收支仪表盘：平板/手机自适应 ── */
   .fin-dash-row1{grid-template-columns:repeat(2,1fr);gap:8px}
   .fin-dash-big-val{font-size:19px}
@@ -2259,6 +2291,7 @@ a{color:#003a8c;text-decoration:none}
             <span>预计 <span class="plan-stat-val" id="statEnd">—</span> 完工</span>
           </div>
           <button class="plan-add-btn" onclick="openWizardNodeAdd()">＋ 自定义节点</button>
+          <button class="plan-action-btn" title="从「计划开工日期」起把所有节点依次顺排，会清空手动设置的空档期/交叉作业" onclick="recalcPlanSchedule();renderPlanTable();">↻ 自动紧凑排期</button>
         </div>
         <!-- 提示 + 模板选择：底色块，随内容滚动 -->
         <div class="plan-top-block">
@@ -2275,6 +2308,9 @@ a{color:#003a8c;text-decoration:none}
           <span class="plan-tpl-hint" id="planTplHint">当前使用系统标准施工流程</span>
         </div>
         </div><!-- /plan-top-block -->
+
+        <!-- 施工计划甘特图（向导内嵌：按节点起止日期绘制，允许空档期/交叉作业） -->
+        <div class="plan-gantt" id="planGantt"></div>
 
         <!-- 我的施工模板（另存后复用） -->
         <div class="plan-template-row plan-mytpl-row">
@@ -3817,6 +3853,82 @@ function renderPlanTable(){
   if(_sn)_sn.textContent=wizPlanNodes.length;
   if(_sd)_sd.textContent=_nd;if(_sw)_sw.textContent=_wd;
   if(_se)_se.textContent=_lastEnd?fmtDate(_lastEnd):'—';
+  /* 同步重绘甘特图 */
+  renderPlanGantt();
+}
+
+/** 计算内嵌甘特图的时间范围：仅取已排期节点的 min/max，向两侧各扩展 3 天留白；
+ *  不强制把「今日」拉入范围（避免计划排期早于/晚于今日时产生大片空白），
+ *  今日线只在今日恰好落在范围内时才绘制。 */
+function _ganttRangeLocal(nodes){
+  if(!nodes.length)return null;
+  let minISO='',maxISO='';
+  nodes.forEach(s=>{
+    if(!minISO||s.planStartDate<minISO)minISO=s.planStartDate;
+    if(!maxISO||s.planEndDate>maxISO)maxISO=s.planEndDate;
+  });
+  if(!minISO||!maxISO)return null;
+  const startISO=_ganttShift(minISO,-3),endISO=_ganttShift(maxISO,3);
+  const totalDays=Math.max(1,Math.round((Date.parse(endISO)-Date.parse(startISO))/(24*3600*1000)));
+  return{startISO,endISO,totalDays};
+}
+function _ganttShift(iso,d){const t=new Date(iso+'T00:00:00');t.setDate(t.getDate()+d);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
+
+/** 渲染 Step2 施工计划甘特图（内嵌）：按每个节点的 planStart/planEnd 绘制条形，
+ *  允许空档期与交叉作业；交叉的节点高亮橙色描边。随节点增删改/排期实时重绘。 */
+function renderPlanGantt(){
+  const box=$('planGantt');if(!box)return;
+  if(!wizPlanNodes.length){box.innerHTML='<div class="plan-gantt-title">施工计划甘特图 <small>按节点起止日期绘制，支持空档期与交叉作业</small></div><div class="pg-empty">暂无节点</div>';return;}
+  const today=todayISO();
+  /* 适配为 _ganttDateRange 需要的字段（planStartDate/planEndDate） */
+  const steps=wizPlanNodes.map((n,i)=>({id:n.id||('n'+i),name:n.name,planStartDate:n.planStart||'',planEndDate:n.planEnd||'',days:n.days,status:n.status}));
+  const nodes=steps.filter(s=>s.planStartDate&&s.planEndDate);
+  if(!nodes.length){
+    box.innerHTML='<div class="plan-gantt-title">施工计划甘特图 <small>按节点起止日期绘制，支持空档期与交叉作业</small></div><div class="pg-empty">设置「计划开工日期」并排期后将自动显示甘特图</div>';
+    return;
+  }
+  const range=_ganttRangeLocal(nodes);
+  if(!range){box.innerHTML='<div class="plan-gantt-title">施工计划甘特图</div><div class="pg-empty">节点日期不完整</div>';return;}
+  const bands=_ganttMonthBands(range.startISO,range.endISO);
+  const totalDays=range.totalDays;
+  /* 计算交叉作业：节点区间 [s,e] 与其他节点区间相交 */
+  const overlapSet=new Set();
+  for(let a=0;a<nodes.length;a++){
+    for(let b=a+1;b<nodes.length;b++){
+      if(nodes[a].planStartDate<=nodes[b].planEndDate && nodes[b].planStartDate<=nodes[a].planEndDate){
+        overlapSet.add(nodes[a].id);overlapSet.add(nodes[b].id);
+      }
+    }
+  }
+  const pct=iso=>_pctFromISO(iso,range.startISO,totalDays);
+  /* 月份刻度带 */
+  const axisBands=bands.map(b=>{
+    const left=pct(b.firstISO),w=pct(b.lastISO)-left;
+    return `<div class="pg-month" style="left:${left}%;width:${w}%">${escHtml(b.label)}</div>`;
+  }).join('');
+  /* 今日线（仅当今日在范围内） */
+  let todayEl='';
+  if(today>=range.startISO&&today<=range.endISO){
+    const tp=pct(today);
+    todayEl=`<div class="pg-today" style="left:${tp}%"><span class="pg-today-flag">今日</span></div>`;
+  }
+  /* 节点条 */
+  const statusLabel={pending:'待开始',inprogress:'进行中',done:'已完成'};
+  const rows=wizPlanNodes.map((n,i)=>{
+    if(!n.planStart||!n.planEnd){
+      return `<div class="pg-row"><div class="pg-row-label"><span class="pg-name">${escHtml(n.name||'')}</span><span class="pg-badge pending">未排期</span></div><div class="pg-track"></div></div>`;
+    }
+    const left=pct(n.planStart),w=pct(n.planEnd)-left;
+    const st=n.status||'pending';
+    const ov=overlapSet.has(n.id||('n'+i))?' overlap':'';
+    const barLabel=`${fmtDate(n.planStart)}~${fmtDate(n.planEnd)}`;
+    return `<div class="pg-row"><div class="pg-row-label"><span class="pg-name">${escHtml(n.name||'')}</span><span class="pg-badge ${st}">${statusLabel[st]||'待开始'}</span></div>`
+      +`<div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" title="${escHtml(barLabel)}" style="left:${left}%;width:${w}%">${escHtml(barLabel)}</div></div></div>`;
+  }).join('');
+  box.innerHTML=
+    '<div class="plan-gantt-title">施工计划甘特图 <small>按节点起止日期绘制 · 橙色描边=交叉作业 · 虚线=今日</small></div>'
+    +`<div class="pg-grid"><div class="pg-axis-label">节点 / 日期</div><div class="pg-axis-track">${axisBands}</div></div>`
+    +`<div class="pg-rows">${rows}</div>`;
 }
 
 /** 刷新施工计划顶部统计（节点数/工作日/自然日/完工日期）——从 wizPlanNodes 实时计算
@@ -3843,11 +3955,26 @@ function refreshPlanStats(){
   se.textContent=lastEnd?fmtDate(lastEnd):'—';
 }
 
+/** 调整单个节点的工期天数：仅影响该节点自身的 planEnd（保留其 planStart），
+ *  不串联后续节点，从而在手动改工期后仍能保留空档期/交叉作业；
+ *  若节点尚未排期（无 planStart）则回退到默认顺排。 */
+function applyNodeDays(i){
+  const n=wizPlanNodes[i];if(!n)return;
+  const d=Math.max(1,Math.round(parseDays(n.days)));
+  if(n.planStart){
+    const s=new Date(n.planStart+'T00:00:00');
+    const e=new Date(s.getTime()+(d-1)*86400000);
+    n.planEnd=localISODate(e);
+  }else{
+    recalcPlanSchedule();
+  }
+}
+
 /** 更新单个节点属性 */
 function updatePlanNode(i,key,val){
   if(!wizPlanNodes[i])return;
   wizPlanNodes[i][key]=val;
-  if(key==='days')recalcPlanSchedule();
+  if(key==='days'){applyNodeDays(i);renderPlanTable();}
 }
 
 /** 调整节点工期天数（+/-按钮） */
@@ -3856,7 +3983,8 @@ function adjustPlanNodeDays(i,delta){
   let v=parseInt(wizPlanNodes[i].days)||1;
   v=Math.max(1,v+delta);
   wizPlanNodes[i].days=String(v);
-  recalcPlanSchedule();
+  applyNodeDays(i);
+  renderPlanTable();
 }
 
 /** 上移/下移节点（施工计划） */
@@ -6105,7 +6233,8 @@ function confirmPlanDuration(){
   const nd=Math.round((new Date(_pdmEndISO)-new Date(_pdmStartISO))/86400000)+1;
   n.days=String(Math.max(1,nd));
   n.planEnd=_pdmEndISO;
-  recalcPlanSchedule();
+  /* 仅重绘，不再全量顺推：保留手动设定的起止日期（可形成空档期/交叉作业） */
+  renderPlanTable();
   closePlanDurationPicker();
 }
 
