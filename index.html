@@ -6780,7 +6780,23 @@ function sbDelAcceptItem(i,idx){
   const step=(p.processSteps||[])[i];if(!step)return;
   ensureProjectSteps(p);
   if(!step.acceptance)return;
+  const stepId=step.id;
+  // 1. 找出该必检项对应的全部整改记录并一并删除，同时同步删除关联待办
+  if(p.siteRecords){
+    const rectifyRecs=p.siteRecords.filter(r=>r.tag==='整改'&&r.stepId===stepId&&r.acceptanceKey===idx);
+    rectifyRecs.forEach(rec=>{
+      if(rec.taskId&&p.tasks){ p.tasks=p.tasks.filter(t=>t.id!==rec.taskId); }
+    });
+    p.siteRecords=p.siteRecords.filter(r=>!(r.tag==='整改'&&r.stepId===stepId&&r.acceptanceKey===idx));
+  }
+  // 2. 删除该必检项
   step.acceptance.splice(idx,1);
+  // 3. 重新对齐：后续必检项的整改记录 acceptanceKey 减 1，保持正确指向（避免错位）
+  if(p.siteRecords){
+    p.siteRecords.forEach(r=>{
+      if(r.tag==='整改'&&r.stepId===stepId&&typeof r.acceptanceKey==='number'&&r.acceptanceKey>idx){ r.acceptanceKey-=1; }
+    });
+  }
   persist();renderProcessKeepExpanded();
 }
 // 从模板导入必检项（默认土建·水电·防水·油漆 4 个，可扩展）
