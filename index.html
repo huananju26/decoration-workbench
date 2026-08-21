@@ -443,7 +443,7 @@ a{color:#003a8c;text-decoration:none}
 
 /* ── 节点详情：左右两栏布局（可拖拽分割） ── */
 .step-body-grid{display:flex;align-items:flex-start;gap:14px;width:100%}
-.step-body-left{flex:2 1 0;min-width:240px;display:flex;flex-direction:column}
+.step-body-left{flex:2 1 0;min-width:0;display:flex;flex-direction:column}
 .step-body-split{flex:0 0 8px;align-self:stretch;cursor:col-resize;display:flex;align-items:center;justify-content:center;height:auto;position:relative;user-select:none;-webkit-user-select:none}
 .step-body-split::before{content:'';width:2px;min-height:48px;background:#d9e2f3;border-radius:2px;transition:background .15s,height .15s}
 .step-body-split:hover::before,.step-body-split.dragging::before{background:#1677ff;min-height:80px}
@@ -1253,7 +1253,7 @@ a{color:#003a8c;text-decoration:none}
   .step-actions{margin-left:2px}
   .step-act-btn{width:22px;height:22px;font-size:12px}
   /* 节点详情左右布局：中等屏允许右栏最小变 240 */
-  .step-body-left{flex:2 1 0;min-width:220px}
+  .step-body-left{flex:2 1 0;min-width:0}
   .step-body-right{flex:1 1 0;min-width:220px}
 }
 
