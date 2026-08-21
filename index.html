@@ -6492,9 +6492,26 @@ async function saveRectify(){
     createdAt:new Date().toISOString()
   };
   p.siteRecords.push(record);
-  // 标记必检项为 issue（如尚未标记）
+  // 同步关联待办：创建一条与该节点（stage=节点名）关联的整改任务，便于在「关联任务」和「今日总览」同步跟踪
+  if(!p.tasks)p.tasks=[];
+  const taskId='tk_'+Date.now()+'_'+Math.floor(Math.random()*1e4);
+  p.tasks.push({
+    id:taskId,
+    title:title,
+    kind:'task',
+    prio:({紧急:'P0',重要:'P1',普通:'P2'})[priority]||'P2',
+    due:deadline,
+    note:'关联整改：'+(ctx.label||'必检项')+(owner?(' · 负责人：'+owner):''),
+    stage:ctx.stepName,
+    done:false,
+    rectifyId:record.id,
+    rectifyOwner:owner
+  });
+  record.taskId=taskId;
+  // 标记必检项为 issue（如尚未标记），并写入回链引用，便于撤销时同步验收记录
   if(step&&step.acceptance&&step.acceptance[ctx.itemIndex]){
     step.acceptance[ctx.itemIndex].status='issue';
+    step.acceptance[ctx.itemIndex].rectifyId=record.id;
   }
   persist();
   window._rectifyCtx=null;
@@ -6520,19 +6537,58 @@ function ryDeleteRectify(recordId){
   const p=cur();if(!p)return;
   const rec=(p.siteRecords||[]).find(r=>r.id===recordId);
   if(!rec)return;
+  const stepId=rec.stepId;
+  // 同步删除关联待办
+  if(rec.taskId&&p.tasks){
+    p.tasks=(p.tasks||[]).filter(t=>t.id!==rec.taskId);
+  }
   // 删除记录
   p.siteRecords=(p.siteRecords||[]).filter(r=>r.id!==recordId);
-  // 如该必检项没有其他整改记录，将 status 回退为 pending
-  if(rec.stepId&&rec.acceptanceKey){
+  // 如该必检项没有其他整改记录，将 status 回退为 pending 并清除回链引用
+  if(rec.stepId&&rec.acceptanceKey!=null){
     const step=(p.processSteps||[]).find(s=>s.id===rec.stepId);
     if(step&&step.acceptance&&step.acceptance[rec.acceptanceKey]){
       const stillHasRectify=(p.siteRecords||[]).some(r=>r.stepId===rec.stepId&&r.tag==='整改'&&r.acceptanceKey===rec.acceptanceKey);
-      if(!stillHasRectify)step.acceptance[rec.acceptanceKey].status='pending';
+      if(!stillHasRectify){
+        step.acceptance[rec.acceptanceKey].status='pending';
+        step.acceptance[rec.acceptanceKey].rectifyId='';
+      }
     }
   }
   persist();
   if(typeof rerenderProcessKeepStep==='function'){
-    rerenderProcessKeepStep(rec.stepId);
+    rerenderProcessKeepStep(stepId);
+  }else{
+    renderProcessKeepExpanded();
+  }
+}
+/* 撤销整改：本条整改记录自动删除，并同步关联待办、关联验收记录 */
+function ryRevokeRectify(recordId){
+  if(!confirm('确认撤销该整改？\n撤销后：本条整改记录自动删除、关联待办同步删除、验收状态重置为待检查。'))return;
+  const p=cur();if(!p)return;
+  const rec=(p.siteRecords||[]).find(r=>r.id===recordId);
+  if(!rec)return;
+  const stepId=rec.stepId;
+  // 1. 同步删除关联待办
+  if(rec.taskId&&p.tasks){
+    p.tasks=(p.tasks||[]).filter(t=>t.id!==rec.taskId);
+  }
+  // 2. 删除整改记录本身
+  p.siteRecords=(p.siteRecords||[]).filter(r=>r.id!==recordId);
+  // 3. 同步关联验收记录：若该必检项已无其他整改，则重置为待检查并清除回链
+  if(rec.stepId&&rec.acceptanceKey!=null){
+    const step=(p.processSteps||[]).find(s=>s.id===rec.stepId);
+    if(step&&step.acceptance&&step.acceptance[rec.acceptanceKey]){
+      const stillHasRectify=(p.siteRecords||[]).some(r=>r.stepId===rec.stepId&&r.tag==='整改'&&r.acceptanceKey===rec.acceptanceKey);
+      if(!stillHasRectify){
+        step.acceptance[rec.acceptanceKey].status='pending';
+        step.acceptance[rec.acceptanceKey].rectifyId='';
+      }
+    }
+  }
+  persist();
+  if(typeof rerenderProcessKeepStep==='function'){
+    rerenderProcessKeepStep(stepId);
   }else{
     renderProcessKeepExpanded();
   }
@@ -6895,7 +6951,7 @@ function renderProcess(){
                   <button class="ry-act" onclick="ryPreviewRectifyPdf('${r.id}')">预览整改 PDF</button>
                   <button class="ry-act" onclick="ryExportRectifyPdf('${r.id}')">导出整改 PDF</button>
                   <button class="ry-act warn" onclick="alert('编辑整改：可在右侧必检项的「有问题·发整改」入口再次填写；或在后续版本完善。')">编辑整改</button>
-                  ${status!=='已撤销'?`<button class="ry-act outline-danger" onclick="ryChangeStatus('${r.id}','已撤销')">撤销整改</button>`:`<button class="ry-act" disabled style="opacity:.5;cursor:not-allowed">已撤销</button>`}
+                  <button class="ry-act outline-danger" onclick="ryRevokeRectify('${r.id}')">撤销整改</button>
                   ${status==='待处理'?`<button class="ry-act primary" onclick="ryChangeStatus('${r.id}','进行中')">开始整改</button>`:''}
                   ${status==='进行中'?`<button class="ry-act primary" onclick="ryChangeStatus('${r.id}','已完成')">标记完成</button>`:''}
                   <button class="ry-act danger" onclick="ryDeleteRectify('${r.id}')">删除整改</button>
