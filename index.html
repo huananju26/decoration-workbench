@@ -392,6 +392,54 @@ a{color:#003a8c;text-decoration:none}
 .step-card.expanded .step-arrow{transform:rotate(180deg)}
 .step-body{padding:0 20px 18px 66px;display:none;border-top:1px solid #f5f5f5;padding-top:16px}
 .step-card.expanded .step-body{display:block}
+/* ── 节点详情改造：分区卡片 + 可编辑 + 关联 ── */
+.sb-section{margin-top:16px;background:#fafcff;border:1px solid #e6f0ff;border-radius:10px;padding:14px 16px}
+.sb-sec-title{font-size:13px;font-weight:600;color:#003a8c;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sb-sec-hint{font-size:11px;font-weight:400;color:#999;margin-left:auto}
+.sb-sec-sub{font-size:12px;font-weight:600;color:#555;margin:10px 0 6px}
+.sb-edit-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+.sb-field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#666}
+.sb-field-name{grid-column:1 / -1}
+.sb-field-block{grid-column:1 / -1}
+.sb-input,.sb-textarea{width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:13px;color:#1a1a1a;background:#fff;font-family:inherit}
+.sb-input:focus,.sb-textarea:focus{outline:none;border-color:#1677ff;box-shadow:0 0 0 2px rgba(22,119,255,.12)}
+.sb-textarea{min-height:58px;resize:vertical;line-height:1.5}
+.sb-field-days{flex-direction:row;align-items:center;gap:4px;color:#666}
+.sb-days{font-weight:700;color:#003a8c;font-size:16px;margin:0 2px}
+.sb-accept{margin-top:10px}
+.sb-accept-list{display:flex;flex-direction:column;gap:6px}
+.sb-accept-row{display:flex;gap:6px;align-items:center}
+.sb-acc-label{flex:0 0 110px;padding:6px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:12px;background:#fff;color:#1a1a1a}
+.sb-acc-text{flex:1;min-width:0;padding:6px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:12px;background:#fff;color:#1a1a1a}
+.sb-acc-del{flex:0 0 auto;cursor:pointer;color:#ff4d4f;font-weight:700;padding:0 6px;font-size:16px;user-select:none}
+.sb-mini-btn{font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid #91caff;color:#003a8c;background:#e6f4ff;cursor:pointer;transition:background .15s}
+.sb-mini-btn:hover{background:#d6ebff}
+.sb-save-btn{margin-top:14px;width:100%}
+.sb-compare{display:flex;flex-direction:column;gap:8px}
+.sb-compare-row{display:flex;align-items:center;gap:10px}
+.sb-compare-tag{flex:0 0 44px;text-align:center;font-size:12px;padding:4px 0;border-radius:6px;color:#fff}
+.sb-compare-tag.plan{background:#1677ff}
+.sb-compare-tag.actual{background:#003a8c}
+.sb-compare-val{font-size:13px;color:#333}
+.sb-compare-diff{font-size:12px;padding:6px 10px;border-radius:6px}
+.sb-compare-diff.late{background:#fff2f0;color:#fa541c}
+.sb-compare-diff.early{background:#e6f4ff;color:#003a8c}
+.sb-badge{font-size:11px;font-weight:600;color:#003a8c;background:#e6f4ff;border-radius:10px;padding:1px 8px;min-width:18px;text-align:center}
+.sb-rel-list{display:flex;flex-direction:column;gap:8px}
+.sb-rel-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:#fff;border:1px solid #eef2f7;border-radius:8px}
+.sb-rel-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sb-rel-name{font-size:13px;color:#1a1a1a;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-rel-sub{font-size:11px;color:#999}
+.sb-rel-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.sb-rel-amt{font-size:13px;color:#003a8c;font-weight:600;white-space:nowrap}
+.sb-status{font-size:11px;padding:1px 8px;border-radius:10px;white-space:nowrap}
+.sb-status.done{background:#e6f4ff;color:#003a8c;border:1px solid #91caff}
+.sb-status.pending{background:#fff7e6;color:#d48806;border:1px solid #ffd591}
+.sb-status.wait{background:#f5f5f5;color:#888;border:1px solid #e8e8e8}
+.sb-status.default{background:#f5f5f5;color:#888;border:1px solid #e8e8e8}
+.sb-empty{font-size:12px;color:#999;padding:4px 0}
+.sb-empty a{color:#1677ff;cursor:pointer}
+.sb-rel-add{margin-top:8px}
 .step-desc{font-size:13px;color:#666;line-height:1.8;margin-bottom:16px}
 .step-section-title{font-size:12px;color:#999;font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
 .step-acceptance-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
@@ -6024,48 +6072,104 @@ function renderProcess(){
         </div>
       </div>
       <div class="step-body">
-        <div class="step-desc">${escHtml(step.desc||'')}</div>
-        ${step.acceptance&&step.acceptance.length?`<div><div class="step-section-title">验收标准</div><div class="step-acceptance-list">${step.acceptance.map(a=>`<span class="step-acceptance-item"><span class="step-acceptance-label">${a.label}</span>${escHtml(a.text)}</span>`).join('')}</div></div>`:''}
-        ${step.articles&&step.articles.length?`<div><div class="step-section-title">攻略文章</div><div class="step-articles-list">${step.articles.map(a=>`<span class="step-article-item" onclick="alert('攻略文章详情开发中，敬请期待')"><span class="step-article-label">${a.label}</span>${escHtml(a.text)}</span>`).join('')}</div></div>`:''}
-        ${(function(){
-          const p=cur();
-          const records=(p.siteRecords||[]).filter(r=>r.stepId===step.id);
-          if(!records.length)return '';
-          const logCount=records.length;
-          const totalPhotos=records.reduce((s,r)=>s+(r.photos?r.photos.length:0),0);
-          return `<div style="margin-top:16px;border:1px solid #e8e8e8;border-radius:10px;overflow:hidden;background:#fff">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e8e8e8;background:#fafafa">
-              <div style="font-size:14px;font-weight:600;color:#1a1a1a">现场照片、日志与整改</div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <button class="btn-primary" style="font-size:12px;padding:5px 14px;border-radius:16px" onclick="openSiteRecordModal();setTimeout(()=>$('srStepId').value='${step.id}';updateSiteRecordTitle(),50)">＋ 添加现场</button>
-                <button class="btn-outline" style="font-size:12px;padding:5px 12px;border-radius:16px;color:#999;border-color:#d9d9d9">发起整改</button>
-                <span style="font-size:12px;color:#888">${logCount} 条日志 · 0 项整改</span>
-              </div>
+        <!-- ① 可编辑节点信息 -->
+        <div class="sb-section">
+          <div class="sb-sec-title">节点信息<span class="sb-sec-hint">可直接修改后点保存</span></div>
+          <div class="sb-edit-grid">
+            <label class="sb-field sb-field-name">节点名称
+              <input id="sb_name_${i}" class="sb-input" value="${escAttr(step.name)}">
+            </label>
+            <label class="sb-field">计划开始
+              <input id="sb_start_${i}" type="date" class="sb-input" value="${escAttr(planStart)}" onchange="recalcStepDays(${i})">
+            </label>
+            <label class="sb-field">计划结束
+              <input id="sb_end_${i}" type="date" class="sb-input" value="${escAttr(planEnd)}" onchange="recalcStepDays(${i})">
+            </label>
+            <div class="sb-field sb-field-days">计划工期<span class="sb-days" id="sb_days_${i}">${planDays||'—'}</span> 天</div>
+          </div>
+          <label class="sb-field sb-field-block">节点描述
+            <textarea id="sb_desc_${i}" class="sb-textarea" placeholder="补充说明该节点的施工要点、注意事项…">${escHtml(step.desc||'')}</textarea>
+          </label>
+          <div class="sb-accept">
+            <div class="sb-sec-sub">验收标准</div>
+            <div id="sb_accept_${i}" class="sb-accept-list">
+              ${(step.acceptance&&step.acceptance.length?step.acceptance:[]).map(a=>`<div class="sb-accept-row"><input class="sb-acc-label" placeholder="项（如：防水）" value="${escAttr(a.label||'')}"><input class="sb-acc-text" placeholder="标准说明" value="${escAttr(a.text||'')}"><span class="sb-acc-del" title="删除" onclick="this.parentNode.remove()">×</span></div>`).join('')}
             </div>
-            <div style="padding:4px 0">${records.map(r=>{
-              const rPhotos=r.photos?r.photos.length:0;
-              const rDate=r.date?r.date.replace('T',' '):'';
-              return `<div style="padding:12px 16px;border-bottom:1px solid #f5f5f5">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                  <span style="font-size:13px;color:#999">${rDate}${rPhotos?' · '+rPhotos+' 张照片':''}</span>
-                  <div style="display:flex;gap:6px;flex-shrink:0">
-                    <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:6px;color:#ff4d4f;border-color:#ffd4d2;background:#fff2f0" onclick="deleteSiteRecord('${r.id}')">删除日志</button>
-                    <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:6px" onclick="editSiteRecord('${r.id}')">编辑日志</button>
+            <button class="sb-mini-btn" type="button" onclick="addAcceptRow(${i})">＋ 增加验收项</button>
+          </div>
+          <button class="btn-primary sb-save-btn" type="button" onclick="saveStepDetail(${i})">保存节点信息</button>
+        </div>
+
+        <!-- ② 计划 vs 实际 -->
+        <div class="sb-section">
+          <div class="sb-sec-title">计划 vs 实际</div>
+          <div class="sb-compare">
+            <div class="sb-compare-row">
+              <span class="sb-compare-tag plan">计划</span>
+              <span class="sb-compare-val">${planStart||planEnd?`${fmtRange(planStart,planEnd)||'—'}${planDays?' · '+planDays+' 天':''}`:'未排期'}</span>
+            </div>
+            <div class="sb-compare-row">
+              <span class="sb-compare-tag actual">实际</span>
+              <span class="sb-compare-val">${done?`${fmtRange(actStart,actEnd)||'—'}${actDays?' · '+actDays+' 天':''}`:'<span style="color:#999">未完成</span>'}</span>
+            </div>
+            ${planDays&&actDays?`<div class="sb-compare-diff ${actDays>planDays?'late':'early'}">${actDays>planDays?('⏱ 工期比计划延长 '+(actDays-planDays)+' 天'):actDays<planDays?('✓ 工期比计划缩短 '+(planDays-actDays)+' 天'):'◎ 工期与计划一致'}</div>`:''}
+          </div>
+        </div>
+
+        <!-- ③ 关联采购 -->
+        <div class="sb-section">
+          <div class="sb-sec-title">关联采购<span class="sb-badge">${(p.purchases||[]).filter(x=>(x.stageId||'')===step.id||(x.stage||'')===step.name).length}</span></div>
+          ${(function(){const rel=(p.purchases||[]).filter(x=>(x.stageId||'')===step.id||(x.stage||'')===step.name);if(!rel.length)return `<div class="sb-empty">暂无关联采购 · <a href="javascript:void(0)" onclick="openPurchaseModalForStep('${step.id}')">去添加</a></div>`;return `<div class="sb-rel-list">${rel.map(x=>`<div class="sb-rel-item"><div class="sb-rel-main"><span class="sb-rel-name">${escHtml(x.name||'')}</span>${x.qty?`<span class="sb-rel-sub">${escHtml(x.qty+'')}${escAttr(x.unit||'项')}</span>`:''}</div><div class="sb-rel-right"><span class="sb-rel-amt">¥${fmt(x.budget||0)}</span><span class="sb-status ${statusCls(x.status)}">${escHtml(x.status||'待购')}</span></div></div>`).join('')}</div><div class="sb-rel-add"><button class="sb-mini-btn" type="button" onclick="openPurchaseModalForStep('${step.id}')">＋ 关联采购</button></div>`})()}
+        </div>
+
+        <!-- ④ 关联任务 -->
+        <div class="sb-section">
+          <div class="sb-sec-title">关联任务<span class="sb-badge">${(p.tasks||[]).filter(t=>(t.stage||'')===step.name).length}</span></div>
+          ${(function(){const rel=(p.tasks||[]).filter(t=>(t.stage||'')===step.name);if(!rel.length)return `<div class="sb-empty">暂无关联任务 · <a href="javascript:void(0)" onclick="openTaskModalForStep(${i})">去添加</a></div>`;return `<div class="sb-rel-list">${rel.map(t=>`<div class="sb-rel-item"><div class="sb-rel-main"><span class="sb-rel-name">${escHtml(t.title||'')}</span>${t.due?`<span class="sb-rel-sub">${fmtShort(t.due)}</span>`:''}</div><div class="sb-rel-right"><span class="sb-status ${t.done?'done':'wait'}">${t.done?'已完成':'待办'}</span></div></div>`).join('')}</div><div class="sb-rel-add"><button class="sb-mini-btn" type="button" onclick="openTaskModalForStep(${i})">＋ 关联任务</button></div>`})()}
+        </div>
+
+        <!-- ⑤ 现场照片、日志与整改（原逻辑保留） -->
+        <div class="sb-section">
+          <div class="sb-sec-title">现场照片、日志与整改</div>
+          ${(function(){
+            const p=cur();
+            const records=(p.siteRecords||[]).filter(r=>r.stepId===step.id);
+            if(!records.length)return '<div class="sb-empty">暂无现场记录 · <a href="javascript:void(0)" onclick="openSiteRecordModal();setTimeout(()=>$(\'srStepId\').value=\''+step.id+'\';updateSiteRecordTitle(),50)">去添加</a></div>';
+            const logCount=records.length;
+            return `<div style="border:1px solid #e8e8e8;border-radius:10px;overflow:hidden;background:#fff">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e8e8e8;background:#fafafa">
+                <div style="font-size:14px;font-weight:600;color:#1a1a1a">现场记录</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <button class="btn-primary" style="font-size:12px;padding:5px 14px;border-radius:16px" onclick="openSiteRecordModal();setTimeout(()=>$('srStepId').value='${step.id}';updateSiteRecordTitle(),50)">＋ 添加现场</button>
+                  <span style="font-size:12px;color:#888">${logCount} 条日志</span>
+                </div>
+              </div>
+              <div style="padding:4px 0">${records.map(r=>{
+                const rPhotos=r.photos?r.photos.length:0;
+                const rDate=r.date?r.date.replace('T',' '):'';
+                return `<div style="padding:12px 16px;border-bottom:1px solid #f5f5f5">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:13px;color:#999">${rDate}${rPhotos?' · '+rPhotos+' 张照片':''}</span>
+                    <div style="display:flex;gap:6px;flex-shrink:0">
+                      <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:6px;color:#ff4d4f;border-color:#ffd4d2;background:#fff2f0" onclick="deleteSiteRecord('${r.id}')">删除日志</button>
+                      <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:6px" onclick="editSiteRecord('${r.id}')">编辑日志</button>
+                    </div>
                   </div>
-                </div>
-                <div style="font-size:13px;color:#333;line-height:1.6">${escHtml(r.content||'无说明')}</div>
-                ${r.photos&&r.photos.length?`<div class="ph-strip" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${r.photos.map((ph,i)=>{
-                  if(ph.data){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img src="${ph.data}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除此照片">×</div></div>`;}
-                  if(ph.stored==='fs'&&ph.path){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img class="fs-photo" data-fs-path="${ph.path}" src="${_FS_PLACEHOLDER}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除此照片">×</div></div>`;}
-                  return '';
-                }).join('')}</div>`:''}
-                <div style="margin-top:8px">
-                  <button class="btn-outline" style="font-size:11px;padding:4px 12px;border-radius:6px;background:#333;color:#fff;border:none" onclick="addPhotosToRecord('${r.id}','${step.id}')">＋ 继续添加照片</button>
-                </div>
-              </div>`;
-            }).join('')}</div>
-          </div>`;
-        })()}
+                  <div style="font-size:13px;color:#333;line-height:1.6">${escHtml(r.content||'无说明')}</div>
+                  ${r.photos&&r.photos.length?`<div class="ph-strip" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${r.photos.map((ph,i)=>{
+                    if(ph.data){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img src="${ph.data}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除此照片">×</div></div>`;}
+                    if(ph.stored==='fs'&&ph.path){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img class="fs-photo" data-fs-path="${ph.path}" src="${_FS_PLACEHOLDER}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除此照片">×</div></div>`;}
+                    return '';
+                  }).join('')}</div>`:''}
+                  <div style="margin-top:8px">
+                    <button class="btn-outline" style="font-size:11px;padding:4px 12px;border-radius:6px;background:#333;color:#fff;border:none" onclick="addPhotosToRecord('${r.id}','${step.id}')">＋ 继续添加照片</button>
+                  </div>
+                </div>`;
+              }).join('')}</div>
+            </div>`;
+          })()}
+        </div>
+
         <div class="step-complete-row">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="event.stopPropagation();toggleStepCheck('${step.id}')">
             <div class="step-complete-checkbox ${done?'checked':''}">${done?'✓':''}</div>
@@ -6146,6 +6250,66 @@ function syncNavActiveStates(){
 function expandAllSteps(){
   document.querySelectorAll('.step-card').forEach(c=>c.classList.add('expanded'));
   syncNavActiveStates();
+}
+/* ── 节点详情：保存后保持展开态重新渲染 ── */
+function renderProcessKeepExpanded(){
+  const open=Array.from(document.querySelectorAll('.step-card.expanded')).map(c=>c.dataset.index);
+  renderProcess();
+  open.forEach(idx=>{const c=document.getElementById('stepCard-'+idx);if(c)c.classList.add('expanded');});
+  syncNavActiveStates();
+}
+/* 采购状态 → 深蓝主题色类（不使用绿色） */
+function statusCls(s){
+  s=(s||'');
+  if(s.indexOf('到货')>=0)return 'done';
+  if(s.indexOf('付款')>=0||s==='待采购'||s==='已下单')return 'pending';
+  return 'default';
+}
+/* 输入计划起止时实时刷新“计划工期”显示 */
+function recalcStepDays(i){
+  const s=$('sb_start_'+i).value, e=$('sb_end_'+i).value;
+  const el=$('sb_days_'+i);if(!el)return;
+  if(s&&e){const a=new Date(s),b=new Date(e);el.textContent=Math.max(0,Math.ceil((b-a)/86400000)+1);}else el.textContent='—';
+}
+/* 增加一条验收标准输入框 */
+function addAcceptRow(i){
+  const box=$('sb_accept_'+i);if(!box)return;
+  const row=document.createElement('div');row.className='sb-accept-row';
+  row.innerHTML='<input class="sb-acc-label" placeholder="项（如：防水）" value=""><input class="sb-acc-text" placeholder="标准说明" value=""><span class="sb-acc-del" title="删除" onclick="this.parentNode.remove()">×</span>';
+  box.appendChild(row);
+}
+/* 保存节点可编辑信息（名称/计划起止/描述/验收标准）到项目并持久化 */
+function saveStepDetail(i){
+  const p=cur();if(!p)return;
+  const step=(p.processSteps||[])[i];if(!step)return;
+  const name=$('sb_name_'+i).value.trim();
+  if(!name){alert('节点名称不能为空');return;}
+  step.name=name;
+  step.planStartDate=$('sb_start_'+i).value;
+  step.planEndDate=$('sb_end_'+i).value;
+  step.desc=$('sb_desc_'+i).value.trim();
+  const acc=[];
+  document.querySelectorAll('#sb_accept_'+i+' .sb-accept-row').forEach(row=>{
+    const label=row.querySelector('.sb-acc-label').value.trim();
+    const text=row.querySelector('.sb-acc-text').value.trim();
+    if(label||text)acc.push({label,text});
+  });
+  step.acceptance=acc;
+  persist();
+  renderProcessKeepExpanded();
+  alert('节点信息已保存');
+}
+/* 从节点详情快捷新增采购（预填所属阶段） */
+function openPurchaseModalForStep(stepId){
+  openPurchaseModal();
+  const p=cur();const step=(p.processSteps||[]).find(s=>s.id===stepId);
+  if(step&&$('pStage'))$('pStage').value=step.name;
+}
+/* 从节点详情快捷新增任务（预填所属阶段） */
+function openTaskModalForStep(idx){
+  openTaskModal();
+  const p=cur();const step=(p.processSteps||[])[idx];
+  if(step&&$('tStage'))$('tStage').value=step.name;
 }
 /* 全部折叠 */
 function collapseAllSteps(){
