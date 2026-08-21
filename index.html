@@ -7035,15 +7035,15 @@ function renderCustomerPayReport(p,incList,contractTotal){
     </tr>`;
   });
   return `<div class="cpr-sheet" id="cprSheet">
-    <!-- 顶部：企业抬头 + 标题 -->
-    <div class="cpr-top">
-      <div class="cpr-brand">
+    <!-- 顶部：企业抬头（有设置时显示）+ 标题 -->
+    <div class="cpr-top"${companyName()?'':' style="justify-content:flex-end"'}>
+      ${companyName()?`<div class="cpr-brand">
         ${companyLogo()?'<img class="cpr-logo-img" src="'+companyLogo()+'">':'<div class="cpr-logo">D</div>'}
         <div>
           <div class="cpr-company">${escHtml(companyName())}</div>
           <div class="cpr-tagline">专业施工 · 透明交付 · 节点验收</div>
         </div>
-      </div>
+      </div>`:''}
       <div class="cpr-title-area">
         <div class="cpr-main-title">合同收款计划表</div>
         <div class="cpr-sub-title">PAYMENT SCHEDULE</div>
@@ -7077,23 +7077,23 @@ function renderCustomerPayReport(p,incList,contractTotal){
       <div class="cpr-foot-note">
         <b>计算说明</b>&nbsp; 节点目标金额 = 合同价 × 合同占比；累计到账截至已扣除定金，具体付款以双方签署的合同及补充协议为准。
       </div>
-      <div class="cpr-foot-sign">由 ${escHtml(companyName())} 生成</div>
+      <div class="cpr-foot-sign">${companyName()?`由 ${escHtml(companyName())} 生成`:'自动生成'}</div>
     </div>
   </div>`;
 }
 
 /* ── 企业抬头配置（企业名称 + Logo PNG，零依赖，localStorage 持久化）── */
 function companyCfg(){
-  try{ const s=localStorage.getItem('xzgz_company'); if(s){ const o=JSON.parse(s); if(o&&typeof o==='object') return {name:(o.name||'DCspace').toString(),logo:(o.logo||'').toString()}; } }catch(e){}
-  return {name:'DCspace',logo:''};
+  try{ const s=localStorage.getItem('xzgz_company'); if(s){ const o=JSON.parse(s); if(o&&typeof o==='object') return {name:(o.name||'').toString(),logo:(o.logo||'').toString()}; } }catch(e){}
+  return {name:'',logo:''};
 }
-function companyName(){ return companyCfg().name||'DCspace'; }
+function companyName(){ return companyCfg().name||''; }
 function companyLogo(){ return companyCfg().logo||''; }
-function saveCompanyCfg(name,logo){ try{ localStorage.setItem('xzgz_company',JSON.stringify({name:name||'DCspace',logo:logo||''})); }catch(e){ alert('保存企业抬头失败：'+(e&&e.message||e)); } }
+function saveCompanyCfg(name,logo){ try{ localStorage.setItem('xzgz_company',JSON.stringify({name:(name||'').trim(),logo:logo||''})); }catch(e){ alert('保存企业抬头失败：'+(e&&e.message||e)); } }
 let _cfgLogoTemp='';
 function openCompanyCfgModal(){
   const cfg=companyCfg();
-  const nI=$('cfgCompanyName'); if(nI)nI.value=cfg.name||'DCspace';
+  const nI=$('cfgCompanyName'); if(nI)nI.value=cfg.name||'';
   _cfgLogoTemp=cfg.logo||'';
   _renderCfgLogoPreview();
   showModal('companyCfgModal');
@@ -7124,7 +7124,7 @@ function onCfgLogoChange(input){
 }
 function clearCfgLogo(){ _cfgLogoTemp=''; _renderCfgLogoPreview(); }
 function saveCompanyCfgFromUI(){
-  const nI=$('cfgCompanyName'); const name=((nI&&nI.value)||'DCspace').trim()||'DCspace';
+  const nI=$('cfgCompanyName'); const name=((nI&&nI.value)||'').trim()||'';
   saveCompanyCfg(name,_cfgLogoTemp);
   closeModal('companyCfgModal');
   rerenderOpenGsSheets();
@@ -7519,14 +7519,14 @@ function renderClientTimelineSheet(p,steps){
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${wPct}%"></div><span class="pg-bar-label" style="${labelStyle2}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${barLabel}</span></span></div></div>`;
   });
   return `<div class="gs-sheet" id="clientTimelineSheet" style="width:920px">
-    <div class="gs-top">
-      <div class="gs-brand">
+    <div class="gs-top"${companyName()?'':' style="justify-content:flex-end"'}>
+      ${companyName()?`<div class="gs-brand">
         ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">D</div>'}
         <div>
           <div class="gs-company">${escHtml(companyName())}</div>
           <div class="gs-tagline">专业施工 · 透明交付 · 节点验收</div>
         </div>
-      </div>
+      </div>`:''}
       <div class="gs-title-area">
         <div class="gs-main-title">施工进度表</div>
         <div class="gs-sub-title">CONSTRUCTION TIMELINE</div>
@@ -7656,14 +7656,14 @@ function renderPlanVsActualSheet(p,steps){
       +`</div></div>`;
   });
   return `<div class="gs-sheet" id="planVsActualSheet" style="width:980px">
-    <div class="gs-top">
-      <div class="gs-brand">
+    <div class="gs-top"${companyName()?'':' style="justify-content:flex-end"'}>
+      ${companyName()?`<div class="gs-brand">
         ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">D</div>'}
         <div>
           <div class="gs-company">${escHtml(companyName())}</div>
           <div class="gs-tagline">专业施工 · 透明交付 · 节点验收</div>
         </div>
-      </div>
+      </div>`:''}
       <div class="gs-title-area">
         <div class="gs-main-title">计划与实际进度表</div>
         <div class="gs-sub-title">PLAN vs ACTUAL TIMELINE</div>
