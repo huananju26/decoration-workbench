@@ -495,6 +495,49 @@ a{color:#003a8c;text-decoration:none}
 .sb-mini-add{font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid #91caff;background:#e6f4ff;color:#003a8c;cursor:pointer;transition:background .15s;min-height:0;min-width:0}
 .sb-mini-add:hover{background:#d6ebff}
 
+/* 整改弹窗（发起问题整改） */
+.ry-form-row{display:flex;gap:12px}
+.ry-form-row>.form-group{flex:1 1 0;min-width:0}
+.ry-form-row>.form-group+.form-group{margin-top:0}
+.ry-help{font-size:11.5px;color:#999;margin-top:6px;line-height:1.5}
+.ry-dropzone{border:1px dashed #c2d5f0;border-radius:8px;padding:14px;text-align:center;color:#a8b6cf;background:#f8fbff;font-size:12px}
+
+/* 整改记录卡（左侧现场照片·日志·整改 区域） */
+.ry-card{background:#fff;border:1px solid #fae3d3;border-left:3px solid #fa8c16;border-radius:8px;padding:14px 16px;margin:10px 0;position:relative}
+.ry-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px}
+.ry-card-head-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ry-tag-fix{display:inline-flex;align-items:center;gap:4px;background:#fff7e6;color:#d46b08;border:1px solid #ffd591;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:600}
+.ry-tag-status{font-size:11px;padding:2px 10px;border-radius:10px;border:1px solid;background:#fff;color:#666}
+.ry-tag-status[data-st='待处理']{color:#d46b08;border-color:#ffd591;background:#fff7e6}
+.ry-tag-status[data-st='进行中']{color:#0958d9;border-color:#91caff;background:#e6f4ff}
+.ry-tag-status[data-st='已完成']{color:#389e0d;border-color:#b7eb8f;background:#f6ffed}
+.ry-tag-status[data-st='已撤销']{color:#999;border-color:#e8e8e8;background:#fafafa}
+.ry-card-date{font-size:12px;color:#999}
+.ry-card-title{font-size:14px;color:#1a1a1a;font-weight:600;margin:4px 0 2px}
+.ry-card-desc{font-size:13px;color:#555;line-height:1.6;margin-bottom:8px;white-space:pre-wrap;word-break:break-word}
+.ry-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.ry-pill{font-size:11.5px;padding:3px 10px;border-radius:12px;background:#fff7e6;color:#d46b08;border:1px solid #ffd591}
+.ry-pill.gray{background:#fafafa;color:#888;border-color:#e8e8e8}
+.ry-photo-row{display:flex;gap:10px;margin-top:8px}
+.ry-photo-cell{flex:1 1 0;border:1px dashed #c2d5f0;border-radius:8px;background:#f8fbff;padding:10px 12px;min-width:0}
+.ry-photo-cell-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#003a8c;font-weight:600;margin-bottom:6px}
+.ry-photo-cell-count{font-size:11px;color:#888;font-weight:400}
+.ry-photo-empty{text-align:center;color:#a8b6cf;font-size:12px;padding:14px 0;border-top:1px dashed #d9e2f3;border-bottom:1px dashed #d9e2f3;margin:2px 0}
+.ry-photo-strip{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ry-photo-thumb{position:relative;width:64px;height:64px;flex-shrink:0}
+.ry-photo-thumb img{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block}
+.ry-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:10px}
+.ry-act{font-size:12px;padding:4px 12px;border-radius:6px;cursor:pointer;background:#fff;border:1px solid #d9d9d9;color:#555;transition:all .15s}
+.ry-act:hover{background:#f5f5f5;border-color:#999;color:#333}
+.ry-act.primary{background:#003a8c;color:#fff;border-color:#003a8c}
+.ry-act.primary:hover{background:#002766;border-color:#002766}
+.ry-act.danger{color:#ff4d4f;border-color:#ffd4d2}
+.ry-act.danger:hover{background:#fff2f0}
+.ry-act.outline-danger{color:#fa541c;border-color:#ffccc7;background:#fff2f0}
+.ry-act.outline-danger:hover{background:#ffeae6}
+.ry-act.warn{color:#d46b08;border-color:#ffd591}
+.ry-act.warn:hover{background:#fff7e6}
+
 /* 右侧：D 验收单图片区 */
 .sb-photo-empty{margin-top:10px;padding:28px 12px;border:1.5px dashed #d9e2f3;border-radius:8px;text-align:center;font-size:12.5px;color:#999;background:#fafcff}
 
@@ -2827,6 +2870,65 @@ a{color:#003a8c;text-decoration:none}
     <div class="form-actions" style="flex-shrink:0;padding:14px 20px;border-top:1px solid #f0f0f0">
       <button class="btn-outline" onclick="window._editingSiteRecordId=null;closeModal('siteRecordModal')">取消</button>
       <button class="btn-primary" onclick="saveSiteRecord()">一次提交并发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 发起问题整改 ═══ -->
+<div class="modal-overlay" id="rectifyModal">
+  <div class="modal" style="max-width:760px;width:94%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0">
+      <div class="modal-title" id="rectifyModalTitle">发起问题整改</div>
+      <div class="modal-close" onclick="window._rectifyCtx=null;closeModal('rectifyModal')">✕</div>
+    </div>
+    <div class="adj-subtitle" style="flex-shrink:0">整改创建成功后，该必检项会自动标记为"不通过"；整改闭环后请重新检查并打勾。</div>
+    <div class="modal-body" style="overflow-y:auto;padding:16px 22px">
+      <div class="form-group">
+        <label class="form-label">问题标题 <b style="color:#ff4d4f">*</b></label>
+        <input id="ryTitle" type="text" placeholder="如：必检项整改：防水层施工" style="width:100%;padding:10px 14px;border:1px solid #d9d9d9;border-radius:8px;font-size:14px">
+      </div>
+      <div class="form-group">
+        <label class="form-label">整改要求</label>
+        <textarea id="ryRequirement" rows="3" placeholder="请描述需整改的具体问题与验收标准" style="width:100%;padding:10px 14px;border:1px solid #d9d9d9;border-radius:8px;font-size:14px;resize:vertical"></textarea>
+      </div>
+      <div class="ry-form-row">
+        <div class="form-group">
+          <label class="form-label">优先级</label>
+          <select id="ryPriority" style="width:100%;padding:10px 14px;border:1px solid #d9d9d9;border-radius:8px;font-size:14px;background:#fff">
+            <option value="普通">普通</option>
+            <option value="重要">重要</option>
+            <option value="紧急">紧急</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">整改负责人 <b style="color:#ff4d4f">*</b></label>
+          <input id="ryOwner" type="text" placeholder="如：张师傅 / 班组A" style="width:100%;padding:10px 14px;border:1px solid #d9d9d9;border-radius:8px;font-size:14px">
+        </div>
+      </div>
+      <div class="ry-form-row">
+        <div class="form-group">
+          <label class="form-label">整改截止时间</label>
+          <input id="ryDeadline" type="datetime-local" style="width:100%;padding:10px 14px;border:1px solid #d9d9d9;border-radius:8px;font-size:14px;background:#fff">
+          <div class="ry-help">可随时调整；创建、提交、复核等操作时间由系统自动保留。</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">关联现场日志（可选）</label>
+          <select id="ryLinkedLog" style="width:100%;padding:10px 14px;border:1px solid #d9d9d9;border-radius:8px;font-size:14px;background:#fff">
+            <option value="">不关联现场日志</option>
+          </select>
+          <div class="ry-help">仅用于标记问题来源，不会带入日志中的照片。</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">整改前图片（仅此问题）</label>
+        <input id="ryBeforePhotos" type="file" multiple accept="image/*">
+        <div id="ryBeforePreview" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+        <div class="ry-help">这里只上传能够说明当前整改问题的图片。</div>
+      </div>
+    </div>
+    <div class="form-actions" style="flex-shrink:0;padding:14px 22px;border-top:1px solid #f0f0f0;justify-content:flex-end">
+      <button class="btn-outline" onclick="window._rectifyCtx=null;closeModal('rectifyModal')">取消</button>
+      <button class="btn-primary" onclick="saveRectify()">创建整改</button>
     </div>
   </div>
 </div>
@@ -6170,7 +6272,7 @@ function renderStepRightPanel(p,step,i){
     `<div class="sb-rel-list sb-acc-items">${ac.items.map((a,idx)=>{
       const st=a.status||'pending';
       const tagCls=st==='passed'?'done':(st==='issue'?'issue':'wait');
-      const tagLabel=st==='passed'?'检查无问题':(st==='issue'?'有问题 · 整改中':'待检查');
+      const tagLabel=st==='passed'?'本必检项通过':(st==='issue'?'有问题 · 整改中':'待检查');
       const opRight=
         `<button class="sb-acc-act ${st==='passed'?'on':(st==='issue'?'muted':'')}" type="button" onclick="sbMarkItemOK(${i},${idx})">检查无问题</button>`+
         `<button class="sb-acc-act issue ${st==='issue'?'on':(st==='passed'?'muted':'')}" type="button" onclick="sbMarkItemIssue(${i},${idx})">有问题 · 发整改</button>`;
@@ -6284,25 +6386,162 @@ function sbMarkItemOK(i,idx){
   persist();renderProcessKeepExpanded();
 }
 function sbMarkItemIssue(i,idx){
+  // 改为打开「发起问题整改」弹窗，由用户在弹窗内填写并创建整改记录
+  openRectifyModal(i,idx);
+}
+/* 打开「发起问题整改」弹窗（预填必检项内容） */
+function openRectifyModal(i,idx){
   const p=cur();if(!p)return;
   const step=(p.processSteps||[])[i];if(!step)return;
   ensureProjectSteps(p);
   if(!step.acceptance||!step.acceptance[idx])return;
-  const prevStatus=step.acceptance[idx].status;
-  step.acceptance[idx].status='issue';
-  // 仅在从未标记过问题时追加一条整改记录，避免反复切换产生多条重复
-  if(prevStatus!=='issue'){
-    if(!p.siteRecords)p.siteRecords=[];
-    p.siteRecords.push({
-      id:'sr_'+Date.now()+'_'+Math.floor(Math.random()*1e4),
-      stepId:step.id,
-      date:new Date().toISOString(),
-      tag:'整改',
-      content:'【必检项问题】'+step.acceptance[idx].label+'：'+step.acceptance[idx].text,
-      photos:[]
+  const item=step.acceptance[idx];
+  // 记录上下文（创建后用于标记该必检项为 issue）
+  window._rectifyCtx={stepIndex:i,itemIndex:idx,stepId:step.id,stepName:step.name||'',label:item.label||''};
+  // 标题
+  const titleEl=$('rectifyModalTitle');
+  if(titleEl)titleEl.textContent=(step.name||'节点')+' · 发起问题整改';
+  // 预填字段
+  $('ryTitle').value='必检项整改：'+(item.label||'未命名项');
+  $('ryRequirement').value='检查发现"'+(item.label||'该必检项')+'"存在问题，请按验收标准完成整改并提交复核。';
+  // 优先级默认 普通
+  const priSel=$('ryPriority');if(priSel)priSel.value='普通';
+  // 整改负责人默认 = 企业负责人（公司名）或项目 owner
+  const defaultOwner=(p.profile&&p.profile.owner)||(window.companyName&&companyName())||'';
+  $('ryOwner').value=defaultOwner;
+  // 截止时间默认留空
+  $('ryDeadline').value='';
+  // 整改前图片清空
+  $('ryBeforePhotos').value='';
+  const previewEl=$('ryBeforePreview');if(previewEl)previewEl.innerHTML='';
+  // 关联现场日志下拉：当前节点的 siteRecords（不含已整改记录）
+  const logSel=$('ryLinkedLog');
+  if(logSel){
+    let opts='<option value="">不关联现场日志</option>';
+    const logs=(p.siteRecords||[]).filter(r=>r.stepId===step.id&&(!r.tag||r.tag!=='整改'));
+    logs.forEach(l=>{
+      const d=l.date?l.date.replace('T',' ').slice(0,16):'';
+      const txt=(l.content||'(无内容)').slice(0,30);
+      opts+=`<option value="${l.id}">${escHtml((d?d+' · ':'')+txt)}</option>`;
     });
+    logSel.innerHTML=opts;
   }
-  persist();renderProcessKeepExpanded();
+  showModal('rectifyModal');
+  setTimeout(()=>{try{$('ryTitle').focus();$('ryTitle').select&&$('ryTitle').select();}catch(e){}},80);
+}
+/* 读取整改前图片为 base64，返回 photo 数组 */
+async function readRectifyBeforePhotos(){
+  const fileInput=$('ryBeforePhotos');
+  const out=[];
+  if(!fileInput||!fileInput.files||!fileInput.files.length)return out;
+  const fsDir=await getFsDirSilent();
+  for(let i=0;i<Math.min(fileInput.files.length,20);i++){
+    const f=fileInput.files[i];
+    if(f.size>50*1024*1024){alert(`图片「${f.name}」超过50MB，请先压缩后再上传`);continue;}
+    try{
+      const data=await readPhotoAsDataURL(f);
+      const photo={name:f.name,size:Math.round(data.length*0.75),type:'image/jpeg',data:data,stored:'base64'};
+      if(fsDir){
+        try{photo.path=await writePhotoToFs(fsDir,cur().id,'rectify_'+Date.now(),f);photo.stored='fs';}catch(e){}
+      }
+      out.push(photo);
+    }catch(e){}
+  }
+  return out;
+}
+/* 保存整改：写入 siteRecord + 标记必检项 issue */
+async function saveRectify(){
+  const ctx=window._rectifyCtx;
+  if(!ctx){closeModal('rectifyModal');return;}
+  const p=cur();if(!p){closeModal('rectifyModal');return;}
+  const title=$('ryTitle').value.trim();
+  const requirement=$('ryRequirement').value.trim();
+  const priority=$('ryPriority').value||'普通';
+  const owner=$('ryOwner').value.trim();
+  const deadline=$('ryDeadline').value||'';
+  const linkedLogId=$('ryLinkedLog').value||'';
+  if(!title){alert('请填写问题标题');$('ryTitle').focus();return;}
+  if(!owner){alert('请填写整改负责人');$('ryOwner').focus();return;}
+  ensureProjectSteps(p);
+  if(!p.siteRecords)p.siteRecords=[];
+  // 读图
+  const beforePhotos=await readRectifyBeforePhotos();
+  // 创建整改记录
+  const step=(p.processSteps||[])[ctx.stepIndex];
+  const stepId=ctx.stepId;
+  const record={
+    id:'ry_'+Date.now()+'_'+Math.floor(Math.random()*1e4),
+    type:'rectify',
+    tag:'整改',
+    rectifyStatus:'待处理',
+    title:title,
+    stepId:stepId,
+    stepName:ctx.stepName,
+    author:p.name||'现场记录',
+    date:new Date().toISOString(),
+    priority:priority,
+    owner:owner,
+    deadline:deadline,
+    linkedLogId:linkedLogId,
+    content:requirement,
+    photos:beforePhotos,
+    beforePhotos:beforePhotos,
+    afterPhotos:[],
+    acceptanceKey:ctx.itemIndex,
+    acceptanceLabel:ctx.label,
+    createdAt:new Date().toISOString()
+  };
+  p.siteRecords.push(record);
+  // 标记必检项为 issue（如尚未标记）
+  if(step&&step.acceptance&&step.acceptance[ctx.itemIndex]){
+    step.acceptance[ctx.itemIndex].status='issue';
+  }
+  persist();
+  window._rectifyCtx=null;
+  closeModal('rectifyModal');
+  rerenderProcessKeepStep(stepId);
+}
+/* 整改记录状态流转 / 操作 */
+function ryChangeStatus(recordId,newStatus){
+  const p=cur();if(!p)return;
+  const rec=(p.siteRecords||[]).find(r=>r.id===recordId);
+  if(!rec)return;
+  rec.rectifyStatus=newStatus;
+  rec.updatedAt=new Date().toISOString();
+  persist();
+  if(typeof rerenderProcessKeepStep==='function'){
+    rerenderProcessKeepStep(rec.stepId);
+  }else{
+    renderProcessKeepExpanded();
+  }
+}
+function ryDeleteRectify(recordId){
+  if(!confirm('确认删除该整改记录？此操作不可撤销。'))return;
+  const p=cur();if(!p)return;
+  const rec=(p.siteRecords||[]).find(r=>r.id===recordId);
+  if(!rec)return;
+  // 删除记录
+  p.siteRecords=(p.siteRecords||[]).filter(r=>r.id!==recordId);
+  // 如该必检项没有其他整改记录，将 status 回退为 pending
+  if(rec.stepId&&rec.acceptanceKey){
+    const step=(p.processSteps||[]).find(s=>s.id===rec.stepId);
+    if(step&&step.acceptance&&step.acceptance[rec.acceptanceKey]){
+      const stillHasRectify=(p.siteRecords||[]).some(r=>r.stepId===rec.stepId&&r.tag==='整改'&&r.acceptanceKey===rec.acceptanceKey);
+      if(!stillHasRectify)step.acceptance[rec.acceptanceKey].status='pending';
+    }
+  }
+  persist();
+  if(typeof rerenderProcessKeepStep==='function'){
+    rerenderProcessKeepStep(rec.stepId);
+  }else{
+    renderProcessKeepExpanded();
+  }
+}
+function ryPreviewRectifyPdf(recordId){
+  alert('整改 PDF 预览（占位）：后续可生成对比图 + 文字版报告');
+}
+function ryExportRectifyPdf(recordId){
+  alert('整改 PDF 导出（占位）：当前以浏览器打印代替；后续将内置 PDF 导出');
 }
 function sbEditAcceptItem(i,idx){
   sbEditStep(i);
@@ -6605,17 +6844,79 @@ function renderProcess(){
           ${(function(){
             const p=cur();
             const records=(p.siteRecords||[]).filter(r=>r.stepId===step.id);
-            if(!records.length)return '<div class="sb-empty">暂无现场记录 · <a href="javascript:void(0)" onclick="openSiteRecordModal();setTimeout(()=>$(\'srStepId\').value=\''+step.id+'\';updateSiteRecordTitle(),50)">去添加</a></div>';
-            const logCount=records.length;
-            return `<div style="border:1px solid #e8e8e8;border-radius:10px;overflow:hidden;background:#fff">
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e8e8e8;background:#fafafa">
-                <div style="font-size:14px;font-weight:600;color:#1a1a1a">现场记录</div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <button class="btn-primary" style="font-size:12px;padding:5px 14px;border-radius:16px" onclick="openSiteRecordModal();setTimeout(()=>$('srStepId').value='${step.id}';updateSiteRecordTitle(),50)">＋ 添加现场</button>
-                  <span style="font-size:12px;color:#888">${logCount} 条日志</span>
+            const fixRecords=records.filter(r=>r.tag==='整改');
+            const logRecords=records.filter(r=>r.tag!=='整改');
+            const logCount=logRecords.length;
+            const fixCount=fixRecords.length;
+            /* 整改记录卡渲染（截图2 样式） */
+            const renderFixCard=(r)=>{
+              const status=r.rectifyStatus||'待处理';
+              const rDate=r.date?r.date.replace('T',' ').slice(0,16):'';
+              const beforeCnt=(r.beforePhotos||r.photos||[]).length;
+              const afterCnt=(r.afterPhotos||[]).length;
+              const title=r.title||'必检项整改';
+              const tags=[];
+              if(r.owner)tags.push(`<span class="ry-pill">负责人：${escHtml(r.owner)}</span>`);
+              else tags.push(`<span class="ry-pill gray">未指派负责人</span>`);
+              if(r.deadline)tags.push(`<span class="ry-pill">截止：${escHtml(r.deadline.replace('T',' ').slice(0,16))}</span>`);
+              else tags.push(`<span class="ry-pill gray">未设置截止时间</span>`);
+              if(r.linkedLogId)tags.push(`<span class="ry-pill">已关联现场日志</span>`);
+              else tags.push(`<span class="ry-pill gray">独立整改记录</span>`);
+              const renderThumbs=(arr)=>{
+                if(!arr||!arr.length)return '';
+                return `<div class="ry-photo-strip">${arr.map(ph=>{
+                  const src=ph.data||(ph.stored==='fs'&&ph.path?_FS_PLACEHOLDER:'');
+                  const fsAttr=ph.stored==='fs'&&ph.path?`class="fs-photo" data-fs-path="${ph.path}"`:'';
+                  return src?`<div class="ry-photo-thumb"><img ${fsAttr} src="${src}" onclick="openPhotoLightbox(this)" title="点击查看原图"></div>`:'';
+                }).join('')}</div>`;
+              };
+              return `<div class="ry-card">
+                <div class="ry-card-head">
+                  <div class="ry-card-head-left">
+                    <span class="ry-tag-fix">⚠ 整改记录</span>
+                    <span class="ry-card-date">${rDate}</span>
+                    <span class="ry-tag-status" data-st="${status}">${status}</span>
+                  </div>
                 </div>
+                <div class="ry-card-title">${escHtml(title)}</div>
+                ${r.content?`<div class="ry-card-desc">${escHtml(r.content)}</div>`:''}
+                <div class="ry-tags">${tags.join('')}</div>
+                <div class="ry-photo-row">
+                  <div class="ry-photo-cell">
+                    <div class="ry-photo-cell-head"><span>整改前图片</span><span class="ry-photo-cell-count">${beforeCnt} 张</span></div>
+                    ${beforeCnt?renderThumbs(r.beforePhotos||r.photos):`<div class="ry-photo-empty">未上传整改前图片</div>`}
+                  </div>
+                  <div class="ry-photo-cell">
+                    <div class="ry-photo-cell-head"><span>整改后图片</span><span class="ry-photo-cell-count">${afterCnt} 张</span></div>
+                    ${afterCnt?renderThumbs(r.afterPhotos):`<div class="ry-photo-empty">整改完成后再上传</div>`}
+                  </div>
+                </div>
+                <div class="ry-actions">
+                  <button class="ry-act" onclick="ryPreviewRectifyPdf('${r.id}')">预览整改 PDF</button>
+                  <button class="ry-act" onclick="ryExportRectifyPdf('${r.id}')">导出整改 PDF</button>
+                  <button class="ry-act warn" onclick="alert('编辑整改：可在右侧必检项的「有问题·发整改」入口再次填写；或在后续版本完善。')">编辑整改</button>
+                  ${status!=='已撤销'?`<button class="ry-act outline-danger" onclick="ryChangeStatus('${r.id}','已撤销')">撤销整改</button>`:`<button class="ry-act" disabled style="opacity:.5;cursor:not-allowed">已撤销</button>`}
+                  ${status==='待处理'?`<button class="ry-act primary" onclick="ryChangeStatus('${r.id}','进行中')">开始整改</button>`:''}
+                  ${status==='进行中'?`<button class="ry-act primary" onclick="ryChangeStatus('${r.id}','已完成')">标记完成</button>`:''}
+                  <button class="ry-act danger" onclick="ryDeleteRectify('${r.id}')">删除整改</button>
+                </div>
+              </div>`;
+            };
+            if(!records.length)return '<div class="sb-empty">暂无现场记录 · <a href="javascript:void(0)" onclick="openSiteRecordModal();setTimeout(()=>$(\'srStepId\').value=\''+step.id+'\';updateSiteRecordTitle(),50)">去添加</a></div>';
+            /* 顶部：统计 + 添加按钮 */
+            const head=`<div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;margin-bottom:8px;font-size:12px;color:#888">
+              <span>${logCount} 条日志 · <b style="color:#d46b08">${fixCount} 项整改</b></span>
+              <button class="btn-outline" style="font-size:12px;padding:4px 12px;border-radius:16px" onclick="openSiteRecordModal();setTimeout(()=>$('srStepId').value='${step.id}';updateSiteRecordTitle(),50)">＋ 添加现场</button>
+            </div>`;
+            /* 整改记录区（优先展示） */
+            const fixHtml=fixRecords.length?`<div style="margin-bottom:14px">${fixRecords.map(renderFixCard).join('')}</div>`:'';
+            /* 普通日志区（原样式保留） */
+            const logHtml=logRecords.length?`<div style="border:1px solid #e8e8e8;border-radius:10px;overflow:hidden;background:#fff">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #e8e8e8;background:#fafafa">
+                <div style="font-size:13px;font-weight:600;color:#1a1a1a">日常现场记录</div>
+                <span style="font-size:12px;color:#888">${logCount} 条</span>
               </div>
-              <div style="padding:4px 0">${records.map(r=>{
+              <div style="padding:4px 0">${logRecords.map(r=>{
                 const rPhotos=r.photos?r.photos.length:0;
                 const rDate=r.date?r.date.replace('T',' '):'';
                 return `<div style="padding:12px 16px;border-bottom:1px solid #f5f5f5">
@@ -6628,8 +6929,8 @@ function renderProcess(){
                   </div>
                   <div style="font-size:13px;color:#333;line-height:1.6">${escHtml(r.content||'无说明')}</div>
                   ${r.photos&&r.photos.length?`<div class="ph-strip" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${r.photos.map((ph,i)=>{
-                    if(ph.data){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img src="${ph.data}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除此照片">×</div></div>`;}
-                    if(ph.stored==='fs'&&ph.path){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img class="fs-photo" data-fs-path="${ph.path}" src="${_FS_PLACEHOLDER}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除此照片">×</div></div>`;}
+                    if(ph.data){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img src="${ph.data}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除照片">×</div></div>`;}
+                    if(ph.stored==='fs'&&ph.path){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img class="fs-photo" data-fs-path="${ph.path}" src="${_FS_PLACEHOLDER}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除照片">×</div></div>`;}
                     return '';
                   }).join('')}</div>`:''}
                   <div style="margin-top:8px">
@@ -6637,7 +6938,8 @@ function renderProcess(){
                   </div>
                 </div>`;
               }).join('')}</div>
-            </div>`;
+            </div>`:'';
+            return head+fixHtml+logHtml;
           })()}
         </div>
 
