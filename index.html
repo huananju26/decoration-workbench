@@ -4122,7 +4122,7 @@ function renderPlanGantt(){
     const dateLabel=`${fmtDateMd(n.planStart)} — ${fmtDateMd(n.planEnd)}`;
     /* 条形靠右(>72%)时标签放左侧，否则放右侧 */
     const labelOnLeft=barRight>72;
-    const _lc=({done:'#003a8c',inprogress:'#003a8c',overdue:'#ff4d4f',overlap:'#d48806'})[st]||'#003a8c';
+    const _lc=ov?'#d48806':({done:'#003a8c',inprogress:'#003a8c',overdue:'#ff4d4f'})[st]||'#003a8c';
     const labelStyle=labelOnLeft?`left:calc(${leftPct}% - 2px);transform:translateX(-100%) translateY(-50%);color:${_lc}`:`left:calc(${leftPct}% + ${wPct}% + 2px);transform:translateY(-50%);color:${_lc}`;
     return `<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" data-idx="${i}" title="${escHtml(n.name+' · '+dateLabel)}" style="left:${leftPct}%;width:${wPct}%"><span class="pg-handle pg-handle-l" data-idx="${i}" data-side="left" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span><span class="pg-handle pg-handle-r" data-idx="${i}" data-side="right" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span></div><span class="pg-bar-label" style="${labelStyle}"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date">${dateLabel}</span></span></div></div>`;
   }).join('');
