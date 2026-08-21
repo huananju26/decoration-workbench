@@ -486,6 +486,12 @@ a{color:#003a8c;text-decoration:none}
 .sb-acc-act.issue:hover{background:#fff2f0}
 .sb-acc-act.del{color:#ff4d4f;border-color:#ffd4d2}
 .sb-acc-act.del:hover{background:#fff2f0}
+.sb-acc-act.on{background:#1677ff;color:#fff;border-color:#1677ff}
+.sb-acc-act.on:hover{background:#0958d9}
+.sb-acc-act.issue.on{background:#fa541c;color:#fff;border-color:#fa541c}
+.sb-acc-act.issue.on:hover{background:#d4380d}
+.sb-acc-act.muted{background:#f5f5f5;color:#bcbcbc;border-color:#ededed}
+.sb-acc-act.muted:hover{background:#f0f0f0;color:#a6a6a6;border-color:#e4e4e4}
 .sb-mini-add{font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid #91caff;background:#e6f4ff;color:#003a8c;cursor:pointer;transition:background .15s;min-height:0;min-width:0}
 .sb-mini-add:hover{background:#d6ebff}
 
@@ -6165,9 +6171,9 @@ function renderStepRightPanel(p,step,i){
       const st=a.status||'pending';
       const tagCls=st==='passed'?'done':(st==='issue'?'issue':'wait');
       const tagLabel=st==='passed'?'检查无问题':(st==='issue'?'有问题 · 整改中':'待检查');
-      const opRight=st==='passed'?
-        `<button class="sb-acc-act issue" type="button" onclick="sbMarkItemIssue(${i},${idx})">有问题 · 发整改</button>`:
-        `<button class="sb-acc-act" type="button" onclick="sbMarkItemOK(${i},${idx})">检查无问题</button>`;
+      const opRight=
+        `<button class="sb-acc-act ${st==='passed'?'on':(st==='issue'?'muted':'')}" type="button" onclick="sbMarkItemOK(${i},${idx})">检查无问题</button>`+
+        `<button class="sb-acc-act issue ${st==='issue'?'on':(st==='passed'?'muted':'')}" type="button" onclick="sbMarkItemIssue(${i},${idx})">有问题 · 发整改</button>`;
       return `<div class="sb-rel-item">
         <div class="sb-rel-main">
           <span class="sb-acc-item-tag ${tagCls}">${tagLabel}</span>
@@ -6282,17 +6288,20 @@ function sbMarkItemIssue(i,idx){
   const step=(p.processSteps||[])[i];if(!step)return;
   ensureProjectSteps(p);
   if(!step.acceptance||!step.acceptance[idx])return;
+  const prevStatus=step.acceptance[idx].status;
   step.acceptance[idx].status='issue';
-  // 顺手追加一条整改记录（标记字段 tag='整改'，方便后续统计）
-  if(!p.siteRecords)p.siteRecords=[];
-  p.siteRecords.push({
-    id:'sr_'+Date.now()+'_'+Math.floor(Math.random()*1e4),
-    stepId:step.id,
-    date:new Date().toISOString(),
-    tag:'整改',
-    content:'【必检项问题】'+step.acceptance[idx].label+'：'+step.acceptance[idx].text,
-    photos:[]
-  });
+  // 仅在从未标记过问题时追加一条整改记录，避免反复切换产生多条重复
+  if(prevStatus!=='issue'){
+    if(!p.siteRecords)p.siteRecords=[];
+    p.siteRecords.push({
+      id:'sr_'+Date.now()+'_'+Math.floor(Math.random()*1e4),
+      stepId:step.id,
+      date:new Date().toISOString(),
+      tag:'整改',
+      content:'【必检项问题】'+step.acceptance[idx].label+'：'+step.acceptance[idx].text,
+      photos:[]
+    });
+  }
   persist();renderProcessKeepExpanded();
 }
 function sbEditAcceptItem(i,idx){
