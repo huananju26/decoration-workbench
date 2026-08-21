@@ -380,12 +380,12 @@ a{color:#003a8c;text-decoration:none}
 .step-card.pending .step-date-plan{color:#d9d9d9}
 
 /* ── 右栏：扁平按钮组（固定 1/4 宽度） ── */
-.step-right-col{flex:0 0 25%;max-width:25%;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px;padding-left:12px}
-.step-action-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.step-right-col{flex:0 0 25%;max-width:25%;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end;gap:4px;padding-left:12px}
+.step-action-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;justify-content:flex-end}
 .step-action-item{display:inline-flex;align-items:center;gap:3px;cursor:pointer;padding:3px 8px;border-radius:4px;font-size:11px;color:#666;background:#f5f7fa;border:1px solid #e8e8e8;transition:all .15s;white-space:nowrap;line-height:1.4}
 .step-action-item:hover{background:#e6f4ff;border-color:#91caff;color:#003a8c}
 .step-action-num{color:#fa541c;font-weight:600;margin-left:1px}
-.step-status-row{display:flex;align-items:center;gap:6px;font-size:11px;color:#bfbfbf}
+.step-status-row{display:flex;align-items:center;gap:6px;font-size:11px;color:#bfbfbf;justify-content:flex-end}
 .step-action-more{cursor:pointer;padding:3px 10px;border-radius:4px;font-size:11px;color:#666;background:#f5f7fa;border:1px solid #e8e8e8;display:inline-flex;align-items:center;gap:3px;transition:all .15s;white-space:nowrap}
 .step-action-more:hover{border-color:#003a8c;color:#003a8c;background:#e6f4ff}
 .step-arrow{color:#bbb;font-size:12px;transition:transform .2s;flex-shrink:0}
@@ -6023,7 +6023,6 @@ function renderProcess(){
             <span class="step-action-more" onclick="event.stopPropagation();toggleStepExpand(${i})">查看详情 ▾</span>
           </div>
         </div>
-        <span class="step-arrow">▾</span>
       </div>
       <div class="step-body">
         <div class="step-desc">${escHtml(step.desc||'')}</div>
