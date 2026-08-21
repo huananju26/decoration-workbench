@@ -442,13 +442,13 @@ a{color:#003a8c;text-decoration:none}
 .sb-rel-add{margin-top:8px}
 
 /* ── 节点详情：左右两栏布局（可拖拽分割） ── */
-.step-body-grid{display:flex;align-items:flex-start;gap:14px;width:100%}
-.step-body-left{flex:2 1 0;min-width:0;display:flex;flex-direction:column}
-.step-body-split{flex:0 0 8px;align-self:stretch;cursor:col-resize;display:flex;align-items:center;justify-content:center;height:auto;position:relative;user-select:none;-webkit-user-select:none}
-.step-body-split::before{content:'';width:2px;min-height:48px;background:#d9e2f3;border-radius:2px;transition:background .15s,height .15s}
+.step-body-grid{display:grid;grid-template-columns:var(--sb-left-w,1fr) 8px minmax(260px,1fr);gap:14px;width:100%;align-items:flex-start}
+.step-body-left{display:flex;flex-direction:column;min-width:0}
+.step-body-split{display:flex;align-items:flex-start;justify-content:center;cursor:col-resize;user-select:none;-webkit-user-select:none;position:relative;padding-top:24px}
+.step-body-split::before{content:'';width:2px;height:48px;background:#d9e2f3;border-radius:2px;transition:background .15s,height .15s}
 .step-body-split:hover::before,.step-body-split.dragging::before{background:#1677ff;min-height:80px}
 .step-body.dragging-col{cursor:col-resize;user-select:none}
-.step-body-right{flex:1 1 0;min-width:240px;max-width:560px;display:flex;flex-direction:column}
+.step-body-right{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
 
 /* 右侧：A 编辑节点提示横幅 */
 .sb-banner-edit{display:flex;align-items:center;gap:10px;background:#e6f4ff;border:1px solid #91caff;padding:10px 14px;border-radius:8px;margin:0 0 14px;cursor:pointer;transition:background .15s}
@@ -6380,7 +6380,7 @@ function sbPreviewReport(i){
 /* ── 详情左右布局：拖拽分割条（持久化） ── */
 function getStepSplitRatio(){
   const v=parseFloat(localStorage.getItem('xzgz_step_split')||'');
-  if(!isFinite(v)||v<.42||v>.82)return 0.667;
+  if(!isFinite(v)||v<.42||v>.82)return 0.62;
   return v;
 }
 function setStepSplitRatio(v){localStorage.setItem('xzgz_step_split',String(v));}
@@ -6420,12 +6420,8 @@ function bindStepSplitter(){
       const ratio=newLeft/totalWidth;
       const grid=handle.closest('.step-body-grid');
       if(grid){
-        const left=grid.querySelector('.step-body-left');
-        const right=grid.querySelector('.step-body-right');
-        if(left&&right){
-          left.style.flex=`${ratio} 1 0`;
-          right.style.flex=`${1-ratio} 1 0`;
-        }
+        // 用 CSS 变量驱动 grid 列宽
+        grid.style.setProperty('--sb-left-w', (ratio*100).toFixed(2)+'%');
       }
     };
     const onUp=()=>{
@@ -6435,14 +6431,16 @@ function bindStepSplitter(){
       const body=handle.closest('.step-body');
       if(body)body.classList.remove('dragging-col');
       document.body.style.cursor='';
-      // 把当前 left 的实际宽度算成 ratio 持久化
+      // 读取 grid 模板第一列实际占比
       const grid=handle.closest('.step-body-grid');
       if(grid){
-        const left=grid.querySelector('.step-body-left');
-        const rect=left.getBoundingClientRect();
-        const gridRect=grid.getBoundingClientRect();
-        const ratio=rect.width/gridRect.width;
-        setStepSplitRatio(ratio);
+        const cs=getComputedStyle(grid);
+        const cols=cs.gridTemplateColumns.split(' ');
+        const cont=grid.getBoundingClientRect().width;
+        if(cols[0]&&cont){
+          const leftPx=parseFloat(cols[0]);
+          if(isFinite(leftPx)&&leftPx>0)setStepSplitRatio(leftPx/cont);
+        }
       }
     };
     handle.addEventListener('mousedown',onDown);
@@ -6457,12 +6455,8 @@ function bindStepSplitter(){
 function applyStepSplitToAll(){
   if(window.innerWidth<=1100)return;
   const ratio=getStepSplitRatio();
-  const flexLeft=`${ratio} 1 0`, flexRight=`${1-ratio} 1 0`;
   document.querySelectorAll('.step-body-grid').forEach(grid=>{
-    const left=grid.querySelector('.step-body-left');
-    const right=grid.querySelector('.step-body-right');
-    if(left)left.style.flex=flexLeft;
-    if(right)right.style.flex=flexRight;
+    grid.style.setProperty('--sb-left-w', (ratio*100).toFixed(2)+'%');
   });
 }
 // 简易 companyName 公司名（若未定义则不暴露）
