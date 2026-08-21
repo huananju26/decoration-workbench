@@ -494,6 +494,13 @@ a{color:#003a8c;text-decoration:none}
 .sb-acc-act.muted:hover{background:#f0f0f0;color:#a6a6a6;border-color:#e4e4e4}
 .sb-mini-add{font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid #91caff;background:#e6f4ff;color:#003a8c;cursor:pointer;transition:background .15s;min-height:0;min-width:0}
 .sb-mini-add:hover{background:#d6ebff}
+/* 必检项模块折叠收起 */
+.sb-collapse-btn{margin-left:6px;width:22px;height:22px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e6f0ff;background:#fff;border-radius:6px;color:#003a8c;cursor:pointer;transition:background .15s,border-color .15s;font-size:12px;line-height:1;padding:0}
+.sb-collapse-btn:hover{background:#e6f4ff;border-color:#91caff}
+.sb-collapse-btn .chev{display:inline-block;transition:transform .18s ease}
+.sb-section.collapsed .sb-collapse-btn .chev{transform:rotate(-90deg)}
+.sb-sec-body{}
+.sb-section.collapsed .sb-sec-body{display:none}
 
 /* 整改弹窗（发起问题整改） */
 .ry-form-row{display:flex;gap:12px}
@@ -6342,14 +6349,16 @@ function renderStepRightPanel(p,step,i){
     </div>
 
     <!-- C. 节点必检项 -->
-    <div class="sb-section">
-      <div class="sb-sec-title">节点必检项 <span class="sb-status ${ac.total&&ac.passed===ac.total?'done':(ac.passed?'pending':'wait')}" style="margin-left:auto">${ac.total?`${ac.passed}/${ac.total} 已通过`:'未配置'}</span></div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-        <button type="button" class="sb-mini-add" onclick="addAcceptRow(${i})">＋ 添加必检项</button>
-        <button type="button" class="sb-mini-add" onclick="sbImportAcceptTemplate(${i})">从模板导入</button>
-        <button type="button" class="sb-mini-add" onclick="sbManageAcceptTemplates()">管理企业模板</button>
+    <div class="sb-section ${isSbCollapsed(i)?'collapsed':''}" id="sbAcceptSec_${i}">
+      <div class="sb-sec-title">节点必检项 <span class="sb-status ${ac.total&&ac.passed===ac.total?'done':(ac.passed?'pending':'wait')}" style="margin-left:auto">${ac.total?`${ac.passed}/${ac.total} 已通过`:'未配置'}</span><button type="button" class="sb-collapse-btn" onclick="toggleSbCollapse(${i})" title="折叠 / 展开必检项"><span class="chev">▾</span></button></div>
+      <div class="sb-sec-body">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          <button type="button" class="sb-mini-add" onclick="addAcceptRow(${i})">＋ 添加必检项</button>
+          <button type="button" class="sb-mini-add" onclick="sbImportAcceptTemplate(${i})">从模板导入</button>
+          <button type="button" class="sb-mini-add" onclick="sbManageAcceptTemplates()">管理企业模板</button>
+        </div>
+        ${acceptListHtml}
       </div>
-      ${acceptListHtml}
     </div>
 
     <!-- D. 验收单图片 -->
@@ -6401,6 +6410,16 @@ function sbEditStep(i){
   if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
   const input=document.getElementById('sb_name_'+i);
   if(input){setTimeout(()=>{input.focus();input.select&&input.select();},260);}
+}
+// 右栏：必检项模块折叠 / 展开（按节点持久化）
+function isSbCollapsed(i){
+  try{return localStorage.getItem('xzgz_collapse_accept_'+i)==='1';}catch(e){return false;}
+}
+function toggleSbCollapse(i){
+  var sec=document.getElementById('sbAcceptSec_'+i);
+  if(!sec)return;
+  var collapsed=sec.classList.toggle('collapsed');
+  try{localStorage.setItem('xzgz_collapse_accept_'+i, collapsed?'1':'0');}catch(e){}
 }
 // 右栏：把必检项标记为 通过 / 有问题
 function sbMarkItemOK(i,idx){
