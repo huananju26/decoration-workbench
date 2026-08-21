@@ -7522,7 +7522,7 @@ function renderClientTimelineSheet(p,steps){
     const labelStyle2=labelOnLeft2?`left:calc(${leftPct}% - 2px);transform:translateX(-100%) translateY(-50%)`:`left:calc(${leftPct}% + ${wPct}% + 2px);transform:translateY(-50%)`;
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${wPct}%"></div><span class="pg-bar-label" style="${labelStyle2}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${barLabel}</span></span></div></div>`;
   });
-  return `<div class="gs-sheet" id="clientTimelineSheet" style="width:920px">
+  return `<div class="gs-sheet" id="clientTimelineSheet">
     <div class="gs-top"${companyName()?'':' style="justify-content:flex-end"'}>
       ${companyName()?`<div class="gs-brand">
         ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">'+(companyName()||'').charAt(0)+'</div>'}
@@ -7659,7 +7659,7 @@ function renderPlanVsActualSheet(p,steps){
       +`<span class="pg-bar-label" style="${labelStyle3}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
       +`</div></div>`;
   });
-  return `<div class="gs-sheet" id="planVsActualSheet" style="width:980px">
+  return `<div class="gs-sheet" id="planVsActualSheet">
     <div class="gs-top"${companyName()?'':' style="justify-content:flex-end"'}>
       ${companyName()?`<div class="gs-brand">
         ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">'+(companyName()||'').charAt(0)+'</div>'}
