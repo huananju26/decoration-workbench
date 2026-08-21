@@ -7039,7 +7039,7 @@ function renderCustomerPayReport(p,incList,contractTotal){
     <!-- 顶部：企业抬头（有设置时显示）+ 标题 -->
     <div class="cpr-top"${companyName()?'':' style="justify-content:flex-end"'}>
       ${companyName()?`<div class="cpr-brand">
-        ${companyLogo()?'<img class="cpr-logo-img" src="'+companyLogo()+'">':'<div class="cpr-logo">D</div>'}
+        ${companyLogo()?'<img class="cpr-logo-img" src="'+companyLogo()+'">':'<div class="cpr-logo">'+(companyName()||'').charAt(0)+'</div>'}
         <div>
           <div class="cpr-company">${escHtml(companyName())}</div>
           <div class="cpr-tagline">${escHtml(companyTagline()||'专业施工 · 透明交付 · 节点验收')}</div>
@@ -7525,7 +7525,7 @@ function renderClientTimelineSheet(p,steps){
   return `<div class="gs-sheet" id="clientTimelineSheet" style="width:920px">
     <div class="gs-top"${companyName()?'':' style="justify-content:flex-end"'}>
       ${companyName()?`<div class="gs-brand">
-        ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">D</div>'}
+        ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">'+(companyName()||'').charAt(0)+'</div>'}
         <div>
           <div class="gs-company">${escHtml(companyName())}</div>
           <div class="gs-tagline">${escHtml(companyTagline()||'专业施工 · 透明交付 · 节点验收')}</div>
@@ -7662,7 +7662,7 @@ function renderPlanVsActualSheet(p,steps){
   return `<div class="gs-sheet" id="planVsActualSheet" style="width:980px">
     <div class="gs-top"${companyName()?'':' style="justify-content:flex-end"'}>
       ${companyName()?`<div class="gs-brand">
-        ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">D</div>'}
+        ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">'+(companyName()||'').charAt(0)+'</div>'}
         <div>
           <div class="gs-company">${escHtml(companyName())}</div>
           <div class="gs-tagline">${escHtml(companyTagline()||'专业施工 · 透明交付 · 节点验收')}</div>
