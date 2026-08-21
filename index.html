@@ -6305,7 +6305,7 @@ function renderStepRightPanel(p,step,i){
     `<div class="sb-rel-list sb-acc-items">${ac.items.map((a,idx)=>{
       const st=a.status||'pending';
       const tagCls=st==='passed'?'done':(st==='issue'?'issue':'wait');
-      const tagLabel=st==='passed'?'本必检项通过':(st==='issue'?'有问题 · 整改中':'待检查');
+      const tagLabel=st==='passed'?(a.rectifyPassed?'已完成整改，本必检项通过':'本必检项通过'):(st==='issue'?'有问题 · 整改中':'待检查');
       const opRight=
         `<button class="sb-acc-act ${st==='passed'?'on':(st==='issue'?'muted':'')}" type="button" onclick="sbMarkItemOK(${i},${idx})">检查无问题</button>`+
         `<button class="sb-acc-act issue ${st==='issue'?'on':(st==='passed'?'muted':'')}" type="button" onclick="sbMarkItemIssue(${i},${idx})">有问题 · 发整改</button>`;
@@ -6428,6 +6428,7 @@ function sbMarkItemOK(i,idx){
   ensureProjectSteps(p);
   if(!step.acceptance||!step.acceptance[idx])return;
   step.acceptance[idx].status='passed';
+  step.acceptance[idx].rectifyPassed=false;
   persist();renderProcessKeepExpanded();
 }
 function sbMarkItemIssue(i,idx){
@@ -6638,6 +6639,7 @@ async function saveRectify(){
   if(step&&step.acceptance&&step.acceptance[ctx.itemIndex]){
     step.acceptance[ctx.itemIndex].status='issue';
     step.acceptance[ctx.itemIndex].rectifyId=record.id;
+    step.acceptance[ctx.itemIndex].rectifyPassed=false;
   }
   persist();
   window._rectifyCtx=null;
@@ -6651,6 +6653,14 @@ function ryChangeStatus(recordId,newStatus){
   if(!rec)return;
   rec.rectifyStatus=newStatus;
   rec.updatedAt=new Date().toISOString();
+  // 整改记录标记完成后，联动所在必检项为「通过」（显示「已完成整改，本必检项通过」）
+  if(newStatus==='已完成' && rec.stepId && rec.acceptanceKey!=null){
+    const step=(p.processSteps||[]).find(s=>s.id===rec.stepId);
+    if(step && step.acceptance && step.acceptance[rec.acceptanceKey]){
+      step.acceptance[rec.acceptanceKey].status='passed';
+      step.acceptance[rec.acceptanceKey].rectifyPassed=true;
+    }
+  }
   persist();
   if(typeof rerenderProcessKeepStep==='function'){
     rerenderProcessKeepStep(rec.stepId);
@@ -6679,6 +6689,7 @@ function ryRevokeRectify(recordId){
       if(!stillHasRectify){
         step.acceptance[rec.acceptanceKey].status='pending';
         step.acceptance[rec.acceptanceKey].rectifyId='';
+        step.acceptance[rec.acceptanceKey].rectifyPassed=false;
       }
     }
   }
