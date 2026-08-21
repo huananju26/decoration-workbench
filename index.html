@@ -2927,6 +2927,7 @@ a{color:#003a8c;text-decoration:none}
     <div class="modal-header"><div class="modal-title" style="font-size:16px">企业抬头设置</div><div class="modal-close" onclick="closeModal('companyCfgModal')">✕</div></div>
     <div class="modal-body">
       <div class="form-group"><label class="form-label">企业名称</label><input id="cfgCompanyName" class="form-input" placeholder="如：DCspace / 某某装饰" maxlength="20"></div>
+      <div class="form-group"><label class="form-label">企业标语</label><input id="cfgCompanyTagline" class="form-input" placeholder="如：专业施工 · 透明交付 · 节点验收" maxlength="30"></div>
       <div class="form-group">
         <label class="form-label">企业 Logo（PNG，推荐透明背景、正方形）</label>
         <div style="display:flex;align-items:center;gap:14px">
@@ -7041,7 +7042,7 @@ function renderCustomerPayReport(p,incList,contractTotal){
         ${companyLogo()?'<img class="cpr-logo-img" src="'+companyLogo()+'">':'<div class="cpr-logo">D</div>'}
         <div>
           <div class="cpr-company">${escHtml(companyName())}</div>
-          <div class="cpr-tagline">专业施工 · 透明交付 · 节点验收</div>
+          <div class="cpr-tagline">${escHtml(companyTagline()||'专业施工 · 透明交付 · 节点验收')}</div>
         </div>
       </div>`:''}
       <div class="cpr-title-area">
@@ -7082,18 +7083,20 @@ function renderCustomerPayReport(p,incList,contractTotal){
   </div>`;
 }
 
-/* ── 企业抬头配置（企业名称 + Logo PNG，零依赖，localStorage 持久化）── */
+/* ── 企业抬头配置（企业名称 + 标语 + Logo PNG，零依赖，localStorage 持久化）── */
 function companyCfg(){
-  try{ const s=localStorage.getItem('xzgz_company'); if(s){ const o=JSON.parse(s); if(o&&typeof o==='object') return {name:(o.name||'').toString(),logo:(o.logo||'').toString()}; } }catch(e){}
-  return {name:'',logo:''};
+  try{ const s=localStorage.getItem('xzgz_company'); if(s){ const o=JSON.parse(s); if(o&&typeof o==='object') return {name:(o.name||'').toString(),tagline:(o.tagline||'').toString(),logo:(o.logo||'').toString()}; } }catch(e){}
+  return {name:'',tagline:'',logo:''};
 }
 function companyName(){ return companyCfg().name||''; }
+function companyTagline(){ return companyCfg().tagline||''; }
 function companyLogo(){ return companyCfg().logo||''; }
-function saveCompanyCfg(name,logo){ try{ localStorage.setItem('xzgz_company',JSON.stringify({name:(name||'').trim(),logo:logo||''})); }catch(e){ alert('保存企业抬头失败：'+(e&&e.message||e)); } }
+function saveCompanyCfg(name,tagline,logo){ try{ localStorage.setItem('xzgz_company',JSON.stringify({name:(name||'').trim(),tagline:(tagline||'').trim(),logo:logo||''})); }catch(e){ alert('保存企业抬头失败：'+(e&&e.message||e)); } }
 let _cfgLogoTemp='';
 function openCompanyCfgModal(){
   const cfg=companyCfg();
   const nI=$('cfgCompanyName'); if(nI)nI.value=cfg.name||'';
+  const tI=$('cfgCompanyTagline'); if(tI)tI.value=cfg.tagline||'';
   _cfgLogoTemp=cfg.logo||'';
   _renderCfgLogoPreview();
   showModal('companyCfgModal');
@@ -7125,7 +7128,8 @@ function onCfgLogoChange(input){
 function clearCfgLogo(){ _cfgLogoTemp=''; _renderCfgLogoPreview(); }
 function saveCompanyCfgFromUI(){
   const nI=$('cfgCompanyName'); const name=((nI&&nI.value)||'').trim()||'';
-  saveCompanyCfg(name,_cfgLogoTemp);
+  const tI=$('cfgCompanyTagline'); const tagline=((tI&&tI.value)||'').trim()||'';
+  saveCompanyCfg(name,tagline,_cfgLogoTemp);
   closeModal('companyCfgModal');
   rerenderOpenGsSheets();
 }
@@ -7524,7 +7528,7 @@ function renderClientTimelineSheet(p,steps){
         ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">D</div>'}
         <div>
           <div class="gs-company">${escHtml(companyName())}</div>
-          <div class="gs-tagline">专业施工 · 透明交付 · 节点验收</div>
+          <div class="gs-tagline">${escHtml(companyTagline()||'专业施工 · 透明交付 · 节点验收')}</div>
         </div>
       </div>`:''}
       <div class="gs-title-area">
@@ -7661,7 +7665,7 @@ function renderPlanVsActualSheet(p,steps){
         ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">D</div>'}
         <div>
           <div class="gs-company">${escHtml(companyName())}</div>
-          <div class="gs-tagline">专业施工 · 透明交付 · 节点验收</div>
+          <div class="gs-tagline">${escHtml(companyTagline()||'专业施工 · 透明交付 · 节点验收')}</div>
         </div>
       </div>`:''}
       <div class="gs-title-area">
