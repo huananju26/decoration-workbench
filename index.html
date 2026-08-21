@@ -440,6 +440,79 @@ a{color:#003a8c;text-decoration:none}
 .sb-empty{font-size:12px;color:#999;padding:4px 0}
 .sb-empty a{color:#1677ff;cursor:pointer}
 .sb-rel-add{margin-top:8px}
+
+/* ── 节点详情：左右两栏布局（可拖拽分割） ── */
+.step-body-grid{display:flex;align-items:flex-start;gap:14px;width:100%}
+.step-body-left{flex:2 1 0;min-width:280px;display:flex;flex-direction:column}
+.step-body-split{flex:0 0 10px;align-self:stretch;cursor:col-resize;display:flex;align-items:center;justify-content:center;height:auto;position:relative;user-select:none;-webkit-user-select:none}
+.step-body-split::before{content:'';width:2px;min-height:48px;background:#d9e2f3;border-radius:2px;transition:background .15s,height .15s}
+.step-body-split:hover::before,.step-body-split.dragging::before{background:#1677ff;min-height:80px}
+.step-body.dragging-col{cursor:col-resize;user-select:none}
+.step-body-right{flex:1 1 0;min-width:260px;max-width:520px;display:flex;flex-direction:column}
+
+/* 右侧：A 编辑节点提示横幅 */
+.sb-banner-edit{display:flex;align-items:center;gap:10px;background:#e6f4ff;border:1px solid #91caff;padding:10px 14px;border-radius:8px;margin:0 0 14px;cursor:pointer;transition:background .15s}
+.sb-banner-edit:hover{background:#d6ebff}
+.sb-banner-edit-icon{flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.sb-banner-edit-text{font-size:12.5px;color:#003a8c;line-height:1.5;flex:1;min-width:0}
+.sb-banner-edit-btn{flex:0 0 auto;font-size:12px;padding:5px 14px;border-radius:16px;border:1px solid #003a8c;background:#fff;color:#003a8c;cursor:pointer;transition:all .15s;min-height:0;min-width:0}
+.sb-banner-edit-btn:hover{background:#003a8c;color:#fff}
+
+/* 右侧：B 验收条件清单 */
+.sb-sec-desc{font-size:11.5px;color:#888;margin:-4px 0 12px;line-height:1.5}
+.sb-check-list{display:flex;flex-direction:column;gap:0}
+.sb-check-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed #f0f2f5}
+.sb-check-row:last-child{border-bottom:none}
+.sb-check-icon{flex:0 0 18px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.sb-check-icon.done{background:#e6f4ff;color:#003a8c;border:1.5px solid #003a8c}
+.sb-check-icon.pending{background:#fff;color:#fa8c16;border:1.5px solid #fa8c16}
+.sb-check-icon.wait{background:#fafafa;color:#bbb;border:1.5px solid #d9d9d9}
+.sb-check-text{flex:1;font-size:12.5px;color:#1a1a1a;min-width:0}
+.sb-check-row.pending .sb-check-text{color:#666}
+.sb-check-state{flex:0 0 auto;font-size:11px;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.sb-check-state.done{background:#e6f4ff;color:#003a8c;border:1px solid #91caff}
+.sb-check-state.pending{background:#fff7e6;color:#d48806;border:1px solid #ffd591}
+.sb-check-state.wait{background:#f5f5f5;color:#888;border:1px solid #e8e8e8}
+
+/* 右侧：C 必检项卡片 */
+.sb-acc-items .sb-rel-item{align-items:flex-start}
+.sb-acc-item-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 10px;border-radius:10px;background:#e6f4ff;color:#003a8c;border:1px solid #91caff;font-weight:600}
+.sb-acc-item-tag.issue{background:#fff2f0;color:#fa541c;border-color:#ffccc7}
+.sb-acc-item-tag.wait{background:#fafafa;color:#888;border-color:#e8e8e8}
+.sb-acc-actions{display:flex;flex-wrap:wrap;gap:6px;flex-shrink:0}
+.sb-acc-act{font-size:11px;padding:3px 10px;border-radius:14px;border:1px solid #d9e2f3;background:#fff;color:#666;cursor:pointer;min-height:0;min-width:0;transition:all .15s}
+.sb-acc-act:hover{background:#f0f4ff;border-color:#91caff;color:#003a8c}
+.sb-acc-act.issue{color:#fa541c;border-color:#ffccc7}
+.sb-acc-act.issue:hover{background:#fff2f0}
+.sb-acc-act.del{color:#ff4d4f;border-color:#ffd4d2}
+.sb-acc-act.del:hover{background:#fff2f0}
+.sb-mini-add{font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid #91caff;background:#e6f4ff;color:#003a8c;cursor:pointer;transition:background .15s;min-height:0;min-width:0}
+.sb-mini-add:hover{background:#d6ebff}
+
+/* 右侧：D 验收单图片区 */
+.sb-photo-empty{margin-top:10px;padding:28px 12px;border:1.5px dashed #d9e2f3;border-radius:8px;text-align:center;font-size:12.5px;color:#999;background:#fafcff}
+
+/* 右侧：E 双栏（问题整改 / 客户同步） */
+.sb-twocol{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sb-twocol .sb-section{margin-top:0}
+.sb-twoval{font-size:13px;font-weight:700;color:#003a8c;margin-top:4px;display:flex;align-items:center;gap:6px}
+.sb-twoval.wait{color:#888;font-weight:600}
+.sb-twoval-mini{font-size:11px;color:#999;font-weight:400;margin-left:auto}
+
+/* 右侧：F 验收图文报告卡片 */
+.sb-report-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.sb-report-icon{flex:0 0 32px;width:32px;height:36px;background:#fff7e6;color:#fa541c;border:1.5px solid #fa541c;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;letter-spacing:.5px}
+.sb-report-main{flex:1;min-width:0}
+.sb-report-title{font-size:13px;font-weight:600;color:#1a1a1a}
+.sb-report-sub{font-size:11.5px;color:#888;line-height:1.5;margin-top:2px}
+.sb-report-stats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.sb-stat-chip{display:inline-flex;align-items:center;font-size:11.5px;color:#666;background:#f5f7fa;border:1px solid #e8e8e8;padding:4px 10px;border-radius:14px;white-space:nowrap}
+.sb-report-warn{display:flex;align-items:center;gap:6px;background:#fffbe6;border:1px solid #ffe58f;color:#d48806;border-radius:6px;padding:8px 12px;font-size:12px;line-height:1.5;margin-bottom:10px}
+.sb-report-warn .sb-report-warn-icon{flex:0 0 14px;width:14px;height:14px;border-radius:50%;border:1.5px solid #d48806;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+.sb-report-preview{width:100%;font-size:13px;padding:8px 14px;border-radius:18px;background:#003a8c;color:#fff;border:1px solid #003a8c;cursor:pointer;transition:background .15s;min-height:0;min-width:0}
+.sb-report-preview:hover{background:#002a6e}
+.sb-report-tip{font-size:11.5px;color:#999;line-height:1.6;margin-top:8px}
+
 .step-desc{font-size:13px;color:#666;line-height:1.8;margin-bottom:16px}
 .step-section-title{font-size:12px;color:#999;font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
 .step-acceptance-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
@@ -1179,6 +1252,18 @@ a{color:#003a8c;text-decoration:none}
   .step-status-row{gap:6px;font-size:11px;flex-wrap:wrap}
   .step-actions{margin-left:2px}
   .step-act-btn{width:22px;height:22px;font-size:12px}
+  /* 节点详情左右布局：中等屏允许右栏最小变 260 */
+  .step-body-left{flex:2 1 0;min-width:240px}
+  .step-body-right{flex:1 1 0;min-width:240px}
+}
+
+@media(max-width:1100px){
+  /* 较窄屏：左右堆叠（避免双栏挤在一起） */
+  .step-body-grid{flex-direction:column;gap:0}
+  .step-body-split{display:none}
+  .step-body-left,.step-body-right{flex:1 1 auto;max-width:none}
+  .step-body-right{margin-top:6px}
+  .sb-twocol{grid-template-columns:1fr;gap:10px}
 }
 
 @media(max-width:768px){
@@ -2654,6 +2739,21 @@ a{color:#003a8c;text-decoration:none}
     <div class="form-actions" style="flex-shrink:0;padding:14px 20px;border-top:1px solid #f0f0f0">
       <button class="btn-outline" onclick="closeModal('expenseNodeModal')">取消</button>
       <button class="btn-primary" onclick="saveExpenseNode()">保存支出节点</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 节点验收图文报告·预览 ═══ -->
+<div class="modal-overlay" id="sbReportModal">
+  <div class="modal" style="max-width:560px;width:94%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0"><div class="modal-title">节点验收图文报告 · 预览</div><div class="modal-close" onclick="closeModal('sbReportModal')">✕</div></div>
+    <div class="adj-subtitle" style="flex-shrink:0">示意正式生成的客户版 PDF 排版，按节点汇总照片、整改、验收与客户同步记录。</div>
+    <div class="modal-body" id="sbReportBody" style="overflow-y:auto;padding:20px;background:#fff">
+      <div style="text-align:center;color:#888;font-size:13px">正在生成预览…</div>
+    </div>
+    <div class="modal-footer" style="flex-shrink:0">
+      <button class="btn-outline" onclick="closeModal('sbReportModal')">关闭预览</button>
+      <button class="btn-primary" onclick="alert('PDF 导出接入开发中，请先用「数据备份」截图节点报告')">导出 PDF（待开发）</button>
     </div>
   </div>
 </div>
@@ -6004,6 +6104,371 @@ function setItemStatus(id,kind,pid,status){
 // ============================================================
 // PROCESS
 // ============================================================
+/* ── 节点详情·右栏：节点验收与交付 ── */
+// 验收项统计（passed / total）
+function getAcceptStats(step){
+  const list=(step.acceptance&&step.acceptance.length)?step.acceptance:[];
+  const total=list.length;
+  const passed=list.filter(a=>a.status==='passed').length;
+  const issue=list.filter(a=>a.status==='issue').length;
+  return {total,passed,issue,items:list};
+}
+// 节点关联现场照片总数（去重）
+function getStepPhotoCount(p,step){
+  const records=(p.siteRecords||[]).filter(r=>r.stepId===step.id);
+  return records.reduce((s,r)=>s+((r.photos&&r.photos.length)||0),0);
+}
+// 节点关联整改条数
+function getStepFixCount(p,step){
+  return (p.siteRecords||[]).filter(r=>r.stepId===step.id&&(r.tag==='整改')).length;
+}
+// 节点关联客户意见条数
+function getStepClientOpinionCount(p,step){
+  return (p.siteRecords||[]).filter(r=>r.stepId===step.id&&(r.tag==='客户意见')).length;
+}
+// 节点已发布到客户的次数（暂存于 step.clientSyncLog）
+function getStepClientSyncCount(step){
+  return (step.clientSyncLog&&step.clientSyncLog.length)||0;
+}
+// 节点计划照片数（默认 3，可被 step.photosRequired 覆盖）
+function getStepRequiredPhotoCount(step){return step.photosRequired||3;}
+// 节点验收归档图片数（来自 p.acceptDocs）
+function getStepAcceptDocCount(p,step){
+  return (p.acceptDocs||[]).filter(d=>d.stepId===step.id).length;
+}
+
+// 渲染节点详情右栏
+function renderStepRightPanel(p,step,i){
+  const done=isStepChecked(step.id);
+  const ac=getAcceptStats(step);
+  const photoCnt=getStepPhotoCount(p,step);
+  const photoReq=getStepRequiredPhotoCount(step);
+  const fixCnt=getStepFixCount(p,step);
+  const fixClosed=fixCnt; // 默认按已闭环计数（明细已闭环可后续接具体状态）
+  const cliOpinCnt=getStepClientOpinionCount(p,step);
+  const cliSyncCnt=getStepClientSyncCount(step);
+  const accDocCnt=getStepAcceptDocCount(p,step);
+  const stepId=escAttr(step.id);
+
+  // 验收条件清单（5 行）
+  const checks=[
+    {state:done?'done':'pending', text:'节点标记为已完成', label:done?'已完成':'待完成'},
+    {state:ac.total&&ac.passed===ac.total?'done':(ac.passed?'pending':'wait'), text:'必检项全部通过', label:ac.total?`${ac.passed}/${ac.total} 已通过`:'未配置'},
+    {state:photoCnt>=photoReq?'done':'pending', text:'现场照片达到计划要求', label:`${photoCnt}/${photoReq} 张`},
+    {state:fixClosed>0?'done':'wait', text:'整改问题全部闭环', label:fixClosed>0?'已闭环':'无整改'},
+    {state:cliOpinCnt?'pending':'done', text:'客户意见已处理', label:cliOpinCnt?cliOpinCnt+' 条待处理':'无待处理意见'}
+  ];
+
+  // 节点必检项列表（来自 step.acceptance，每项带 status）
+  const acceptListHtml = ac.items.length?
+    `<div class="sb-rel-list sb-acc-items">${ac.items.map((a,idx)=>{
+      const st=a.status||'pending';
+      const tagCls=st==='passed'?'done':(st==='issue'?'issue':'wait');
+      const tagLabel=st==='passed'?'检查无问题':(st==='issue'?'有问题 · 整改中':'待检查');
+      const opRight=st==='passed'?
+        `<button class="sb-acc-act issue" type="button" onclick="sbMarkItemIssue(${i},${idx})">有问题 · 发整改</button>`:
+        `<button class="sb-acc-act" type="button" onclick="sbMarkItemOK(${i},${idx})">检查无问题</button>`;
+      return `<div class="sb-rel-item">
+        <div class="sb-rel-main">
+          <span class="sb-acc-item-tag ${tagCls}">${tagLabel}</span>
+          <span class="sb-rel-name">${escHtml(a.label||'(未命名项)')}</span>
+          ${a.text?`<span class="sb-rel-sub">${escHtml(a.text)}</span>`:''}
+        </div>
+        <div class="sb-acc-actions">
+          ${opRight}
+          <button class="sb-acc-act" type="button" onclick="sbEditAcceptItem(${i},${idx})">编辑</button>
+          <button class="sb-acc-act del" type="button" onclick="sbDelAcceptItem(${i},${idx})">删除</button>
+        </div>
+      </div>`;
+    }).join('')}</div>`
+    : `<div class="sb-empty">未配置必检项 · <a href="javascript:void(0)" onclick="sbFocusName(${i});setTimeout(()=>addAcceptRow(${i}),100)">去添加</a></div>`;
+
+  // 报告还差哪些项（红色提示）
+  const missing=[];
+  if(!done)missing.push('标记节点为已完成');
+  if(ac.passed<ac.total)missing.push(`完成全部必检验收项 (${ac.passed}/${ac.total})`);
+  if(photoCnt<photoReq)missing.push(`补齐现场照片 (${photoCnt}/${photoReq})`);
+  const missingTxt = missing.length? missing.join('、') : '所有条件已满足，可直接生成客户报告';
+
+  return `
+    <!-- A. 编辑节点提示横幅 -->
+    <div class="sb-banner-edit" onclick="sbEditStep(${i})" title="跳到左侧节点信息区">
+      <span class="sb-banner-edit-icon">✎</span>
+      <span class="sb-banner-edit-text">已完成节点也可以随时调整计划、负责人和状态</span>
+      <button type="button" class="sb-banner-edit-btn" onclick="event.stopPropagation();sbEditStep(${i})">编辑节点</button>
+    </div>
+
+    <!-- B. 节点验收与交付 -->
+    <div class="sb-section">
+      <div class="sb-sec-title">节点验收与交付 <span class="sb-status ${done?'done':'pending'}" style="margin-left:auto;font-weight:600">${done?'已完成':'进行中'}</span></div>
+      <div class="sb-sec-desc">完成条件后生成留企业抬头给客户的客户报告</div>
+      <div class="sb-check-list">
+        ${checks.map(c=>`<div class="sb-check-row ${c.state}"><span class="sb-check-icon ${c.state}">${c.state==='done'?'✓':''}</span><span class="sb-check-text">${c.text}</span><span class="sb-check-state ${c.state}">${c.label}</span></div>`).join('')}
+      </div>
+    </div>
+
+    <!-- C. 节点必检项 -->
+    <div class="sb-section">
+      <div class="sb-sec-title">节点必检项 <span class="sb-status ${ac.total&&ac.passed===ac.total?'done':(ac.passed?'pending':'wait')}" style="margin-left:auto">${ac.total?`${ac.passed}/${ac.total} 已通过`:'未配置'}</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        <button type="button" class="sb-mini-add" onclick="addAcceptRow(${i})">＋ 添加必检项</button>
+        <button type="button" class="sb-mini-add" onclick="sbImportAcceptTemplate(${i})">从模板导入</button>
+        <button type="button" class="sb-mini-add" onclick="sbManageAcceptTemplates()">管理企业模板</button>
+      </div>
+      ${acceptListHtml}
+    </div>
+
+    <!-- D. 验收单图片 -->
+    <div class="sb-section">
+      <div class="sb-sec-title">验收单图片 <span class="sb-rel-sub" style="margin-left:auto">现场签字单、验收凭据与交付照片将纳入节点报告</span> <button type="button" class="sb-mini-add" style="margin-left:6px" onclick="sbAddAcceptDoc(${i})">＋ 添加图片</button></div>
+      ${accDocCnt?`<div class="sb-rel-sub" style="margin-top:6px">已添加 ${accDocCnt} 张验收单图片</div>`:`<div class="sb-photo-empty">尚未添加验收单图片</div>`}
+    </div>
+
+    <!-- E. 双栏：问题整改 / 客户同步 -->
+    <div class="sb-twocol">
+      <div class="sb-section sb-twocol-item">
+        <div class="sb-sec-title">问题整改</div>
+        <div class="sb-twoval ${fixClosed>0?'done':'wait'}">${fixClosed>0?`✓ 全部已闭环`:'尚无整改'}</div>
+        ${fixClosed>0?`<div class="sb-rel-sub" style="margin-top:4px">共 ${fixClosed} 项整改记录</div>`:''}
+      </div>
+      <div class="sb-section sb-twocol-item">
+        <div class="sb-sec-title">客户同步</div>
+        <div class="sb-twoval ${cliSyncCnt?'done':'wait'}">${cliSyncCnt?`已同步 ${cliSyncCnt} 次`:'等待同步'}</div>
+        <div class="sb-sec-desc" style="margin:6px 0 0">审核现场日志后可发布给客户</div>
+      </div>
+    </div>
+
+    <!-- F. 节点验收图文报告 -->
+    <div class="sb-section">
+      <div class="sb-report-head">
+        <div class="sb-report-icon">PDF</div>
+        <div class="sb-report-main">
+          <div class="sb-report-title">节点验收图文报告</div>
+          <div class="sb-report-sub">将使用「${escHtml((window.companyName&&companyName())||'企业')}'抬头，仅汇总本节点的照片、整改、验收和客户同步记录</div>
+        </div>
+      </div>
+      <div class="sb-report-stats">
+        <span class="sb-stat-chip">${photoCnt} 张现场照片</span>
+        <span class="sb-stat-chip">${accDocCnt} 张验收图片</span>
+        <span class="sb-stat-chip">${fixCnt} 项整改记录</span>
+        <span class="sb-stat-chip">${ac.total} 项验收结果</span>
+        <span class="sb-stat-chip">${cliSyncCnt} 次客户同步</span>
+      </div>
+      ${missing.length?`<div class="sb-report-warn"><span class="sb-report-warn-icon">!</span><span>还差 ${missing.length} 项：${escHtml(missingTxt)}</span></div>`:''}
+      <button type="button" class="sb-report-preview" onclick="sbPreviewReport(${i})">预览报告样式</button>
+      <div class="sb-report-tip">节点完成、照片达标、验收通过、整改闭环且客户意见处理完成后，可生成客户版 PDF</div>
+    </div>
+  `;
+}
+
+// 右上：编辑节点（聚焦左侧名称输入框 + 滚动到卡片顶部）
+function sbEditStep(i){
+  const card=document.getElementById('stepCard-'+i);
+  if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
+  const input=document.getElementById('sb_name_'+i);
+  if(input){setTimeout(()=>{input.focus();input.select&&input.select();},260);}
+}
+// 右栏：把必检项标记为 通过 / 有问题
+function sbMarkItemOK(i,idx){
+  const p=cur();if(!p)return;
+  const step=(p.processSteps||[])[i];if(!step)return;
+  ensureProjectSteps(p);
+  if(!step.acceptance||!step.acceptance[idx])return;
+  step.acceptance[idx].status='passed';
+  persist();renderProcessKeepExpanded();
+}
+function sbMarkItemIssue(i,idx){
+  const p=cur();if(!p)return;
+  const step=(p.processSteps||[])[i];if(!step)return;
+  ensureProjectSteps(p);
+  if(!step.acceptance||!step.acceptance[idx])return;
+  step.acceptance[idx].status='issue';
+  // 顺手追加一条整改记录（标记字段 tag='整改'，方便后续统计）
+  if(!p.siteRecords)p.siteRecords=[];
+  p.siteRecords.push({
+    id:'sr_'+Date.now()+'_'+Math.floor(Math.random()*1e4),
+    stepId:step.id,
+    date:new Date().toISOString(),
+    tag:'整改',
+    content:'【必检项问题】'+step.acceptance[idx].label+'：'+step.acceptance[idx].text,
+    photos:[]
+  });
+  persist();renderProcessKeepExpanded();
+}
+function sbEditAcceptItem(i,idx){
+  sbEditStep(i);
+  // 滚动到验收区后高亮该项的 label 输入框
+  setTimeout(()=>{
+    const input=document.querySelector('#sb_accept_'+i+' .sb-accept-row:nth-child('+(idx+1)+') .sb-acc-label');
+    if(input){input.focus();input.select&&input.select();}
+  },320);
+}
+function sbDelAcceptItem(i,idx){
+  if(!confirm('确认删除该必检项？'))return;
+  const p=cur();if(!p)return;
+  const step=(p.processSteps||[])[i];if(!step)return;
+  ensureProjectSteps(p);
+  if(!step.acceptance)return;
+  step.acceptance.splice(idx,1);
+  persist();renderProcessKeepExpanded();
+}
+// 从模板导入必检项（默认土建·水电·防水·油漆 4 个，可扩展）
+function sbImportAcceptTemplate(i){
+  const tmpl=[
+    {label:'材料进场验收', text:'核对规格、品牌、数量与合同一致', status:'pending'},
+    {label:'隐蔽工程验收', text:'水电管线、防水层拍照留档', status:'pending'},
+    {label:'工序自检', text:'工完场清，无遗留问题', status:'pending'},
+    {label:'成品保护', text:'门窗、瓷砖、地板已完成保护', status:'pending'}
+  ];
+  const p=cur();if(!p)return;
+  const step=(p.processSteps||[])[i];if(!step)return;
+  ensureProjectSteps(p);
+  if(!step.acceptance)step.acceptance=[];
+  step.acceptance=step.acceptance.concat(JSON.parse(JSON.stringify(tmpl)));
+  persist();renderProcessKeepExpanded();
+}
+function sbManageAcceptTemplates(){
+  alert('企业必检项模板管理（开发中）\n后续将支持：按施工类型预设、水电/木工/油漆/瓦工 不同阶段模板。');
+}
+// 验收单图片：直接复用现场记录添加 + 自动锁定 stepId
+function sbAddAcceptDoc(i){
+  const p=cur();if(!p||!p.processSteps||!p.processSteps[i])return;
+  const step=p.processSteps[i];
+  openSiteRecordModal();
+  setTimeout(()=>{
+    const sel=document.getElementById('srStepId');
+    if(sel){sel.value=step.id;updateSiteRecordTitle();}
+  },50);
+}
+// 预览报告样式：弹窗显示按当前节点的统计卡片示意
+function sbPreviewReport(i){
+  const p=cur();if(!p||!p.processSteps||!p.processSteps[i])return;
+  const step=p.processSteps[i];
+  const ac=getAcceptStats(step);
+  const photoCnt=getStepPhotoCount(p,step);
+  const photoReq=getStepRequiredPhotoCount(step);
+  const accDocCnt=getStepAcceptDocCount(p,step);
+  const fixCnt=getStepFixCount(p,step);
+  const cliSyncCnt=getStepClientSyncCount(step);
+  const done=isStepChecked(step.id);
+  const company=(window.companyName&&companyName())||'企业';
+  const body=document.getElementById('sbReportBody');
+  if(body){
+    body.innerHTML=`
+      <div style="text-align:center;padding:14px 0 12px;border-bottom:2px solid #003a8c">
+        <div style="font-size:18px;font-weight:700;color:#003a8c">${escHtml(company)}</div>
+        <div style="font-size:12px;color:#888;margin-top:4px">节点验收图文报告 · ${escHtml((window.companyTagline&&companyTagline())||'真实记录每一处施工细节')}</div>
+      </div>
+      <div style="padding:14px 0">
+        <div style="font-size:15px;font-weight:600;color:#1a1a1a">${i+1}. ${escHtml(step.name)}</div>
+        <div style="font-size:12px;color:#888;margin-top:4px">状态：${done?'✓ 已完成':'进行中'} · 客户同步：${cliSyncCnt} 次</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;color:#333">
+        <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff;width:30%">现场照片</td><td style="padding:8px;border:1px solid #eee">${photoCnt} 张 ${photoCnt<photoReq?`(未达标 ${photoReq-photoCnt} 张)`:''}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff">验收单图片</td><td style="padding:8px;border:1px solid #eee">${accDocCnt} 张</td></tr>
+        <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff">整改记录</td><td style="padding:8px;border:1px solid #eee">${fixCnt} 项</td></tr>
+        <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff">必检项</td><td style="padding:8px;border:1px solid #eee">${ac.total} 项 · 通过 ${ac.passed} 项 · 有 ${ac.issue} 项整改中</td></tr>
+        <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff">客户同步</td><td style="padding:8px;border:1px solid #eee">${cliSyncCnt} 次</td></tr>
+      </table>
+      <div style="margin-top:14px;padding:10px 12px;background:#e6f4ff;border:1px solid #91caff;border-radius:6px;font-size:12px;color:#003a8c">
+        报告由「${escHtml(company)}」自动汇总 · 仅含本节点公开记录
+      </div>`;
+  }
+  openModal('sbReportModal');
+}
+
+/* ── 详情左右布局：拖拽分割条（持久化） ── */
+function getStepSplitRatio(){
+  const v=parseFloat(localStorage.getItem('xzgz_step_split')||'');
+  if(!isFinite(v)||v<.42||v>.82)return 0.667;
+  return v;
+}
+function setStepSplitRatio(v){localStorage.setItem('xzgz_step_split',String(v));}
+function bindStepSplitter(){
+  const handles=document.querySelectorAll('.step-body-split');
+  handles.forEach(handle=>{
+    if(handle.__sbBound)return;
+    handle.__sbBound=true;
+    let dragging=false,startX=0,startLeft=0,totalWidth=0;
+    const onDown=e=>{
+      const body=handle.closest('.step-body');
+      if(!body)return;
+      const grid=body.querySelector('.step-body-grid');
+      if(!grid)return;
+      // 中等屏以下不启用
+      if(window.innerWidth<=1100)return;
+      dragging=true;
+      const rect=grid.getBoundingClientRect();
+      totalWidth=rect.width;
+      const cur=getStepSplitRatio();
+      startLeft=cur*totalWidth;
+      startX=(e.touches?e.touches[0].clientX:e.clientX);
+      handle.classList.add('dragging');
+      body.classList.add('dragging-col');
+      document.body.style.cursor='col-resize';
+      e.preventDefault();
+    };
+    const onMove=e=>{
+      if(!dragging)return;
+      const cx=(e.touches?e.touches[0].clientX:e.clientX);
+      const dx=cx-startX;
+      let newLeft=startLeft+dx;
+      // 限制范围：左 42%-82%
+      const minLeft=totalWidth*0.42, maxLeft=totalWidth*0.82;
+      if(newLeft<minLeft)newLeft=minLeft;
+      if(newLeft>maxLeft)newLeft=maxLeft;
+      const ratio=newLeft/totalWidth;
+      const grid=handle.closest('.step-body-grid');
+      if(grid){
+        const left=grid.querySelector('.step-body-left');
+        const right=grid.querySelector('.step-body-right');
+        if(left&&right){
+          left.style.flex=`${ratio} 1 0`;
+          right.style.flex=`${1-ratio} 1 0`;
+        }
+      }
+    };
+    const onUp=()=>{
+      if(!dragging)return;
+      dragging=false;
+      handle.classList.remove('dragging');
+      const body=handle.closest('.step-body');
+      if(body)body.classList.remove('dragging-col');
+      document.body.style.cursor='';
+      // 把当前 left 的实际宽度算成 ratio 持久化
+      const grid=handle.closest('.step-body-grid');
+      if(grid){
+        const left=grid.querySelector('.step-body-left');
+        const rect=left.getBoundingClientRect();
+        const gridRect=grid.getBoundingClientRect();
+        const ratio=rect.width/gridRect.width;
+        setStepSplitRatio(ratio);
+      }
+    };
+    handle.addEventListener('mousedown',onDown);
+    handle.addEventListener('touchstart',onDown,{passive:false});
+    window.addEventListener('mousemove',onMove);
+    window.addEventListener('touchmove',onMove,{passive:false});
+    window.addEventListener('mouseup',onUp);
+    window.addEventListener('touchend',onUp);
+  });
+}
+// 在 renderProcess 完成时同步所有展开卡片的 split 比例
+function applyStepSplitToAll(){
+  if(window.innerWidth<=1100)return;
+  const ratio=getStepSplitRatio();
+  const flexLeft=`${ratio} 1 0`, flexRight=`${1-ratio} 1 0`;
+  document.querySelectorAll('.step-body-grid').forEach(grid=>{
+    const left=grid.querySelector('.step-body-left');
+    const right=grid.querySelector('.step-body-right');
+    if(left)left.style.flex=flexLeft;
+    if(right)right.style.flex=flexRight;
+  });
+}
+// 简易 companyName 公司名（若未定义则不暴露）
+function companyName(){return (window._companyName_||localStorage.getItem('xzgz_company')||'').toString();}
+function companyTagline(){return (window._companyTagline_||'').toString();}
+
 function renderProcess(){
   const p=cur();if(!p){showNoProject('process');return;}hideNoProject();
   /* 渲染项目详情顶栏 */
@@ -6071,7 +6536,10 @@ function renderProcess(){
           </div>
         </div>
       </div>
-      <div class="step-body">
+      <div class="step-body" data-index="${i}">
+        <div class="step-body-grid">
+        <!-- 左栏：5 大分区（保留原改造内容） -->
+        <div class="step-body-left">
         <!-- ① 可编辑节点信息 -->
         <div class="sb-section">
           <div class="sb-sec-title">节点信息<span class="sb-sec-hint">可直接修改后点保存</span></div>
@@ -6176,6 +6644,14 @@ function renderProcess(){
             <span class="step-complete-label">标记完成</span>
           </label>
         </div>
+        </div><!-- /step-body-left -->
+
+        <!-- 中间：可拖拽分割条 -->
+        <div class="step-body-split" data-handle="${i}" title="左右拖动调整宽度"></div>
+
+        <!-- 右栏：节点验收与交付（占比 1/3，可拖动调整） -->
+        <div class="step-body-right">${renderStepRightPanel(p,step,i)}</div>
+        </div><!-- /step-body-grid -->
       </div>
     </div>`;
   }).join('');
@@ -6186,6 +6662,9 @@ function renderProcess(){
   syncNavActiveStates();
   /* 绑定滚动监听（scroll spy） */
   bindProcessScrollSpy();
+  /* 详情左右栏：应用持久化的分栏比例 + 绑定拖拽分割条 */
+  applyStepSplitToAll();
+  setTimeout(bindStepSplitter,0);
 }
 /* 渲染左侧阶段导航列表 */
 function renderProcessNav(){
@@ -6257,6 +6736,8 @@ function renderProcessKeepExpanded(){
   renderProcess();
   open.forEach(idx=>{const c=document.getElementById('stepCard-'+idx);if(c)c.classList.add('expanded');});
   syncNavActiveStates();
+  applyStepSplitToAll();
+  setTimeout(bindStepSplitter,0);
 }
 /* 采购状态 → 深蓝主题色类（不使用绿色） */
 function statusCls(s){
