@@ -572,20 +572,32 @@ a{color:#003a8c;text-decoration:none}
 
 /* ═══ 问题整改记录单：打印 / 导出 PDF（隔离只打印文档本体） ═══ */
 @media print{
+  html.gs-printing-rectify,html.gs-printing-rectify body{margin:0!important;padding:0!important}
+  /* 打印时保留背景色/徽章色 */
+  html.gs-printing-rectify *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   html.gs-printing-rectify body>*:not(#rectifyPreviewModal){display:none!important}
   html.gs-printing-rectify #rectifyPreviewModal{
-    position:absolute!important;left:0!important;top:0!important;width:100%!important;height:auto!important;
-    background:#fff!important;display:flex!important;overflow:visible!important;z-index:auto!important
+    position:absolute!important;left:0!important;top:0!important;right:auto!important;bottom:auto!important;
+    width:100%!important;height:auto!important;min-height:0!important;
+    background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;z-index:auto!important
   }
   html.gs-printing-rectify #rectifyPreviewModal .modal{
-    max-width:none!important;width:100%!important;max-height:none!important;box-shadow:none!important;
-    display:block!important;border-radius:0!important
+    max-width:none!important;width:100%!important;max-height:none!important;min-height:0!important;
+    height:auto!important;box-shadow:none!important;border-radius:0!important;display:block!important;
+    overflow:visible!important
   }
   html.gs-printing-rectify #rectifyPreviewModal .modal-header,
   html.gs-printing-rectify #rectifyPreviewModal .form-actions{display:none!important}
-  html.gs-printing-rectify #rectifyPreviewModal .modal-body{overflow:visible!important;max-height:none!important;padding:0!important}
-  html.gs-printing-rectify #rectifyPreviewModal .rp-section{break-inside:avoid!important;page-break-inside:avoid!important;margin-bottom:10px!important}
-  html.gs-printing-rectify #rectifyPreviewModal .rp-photo-grid img{break-inside:avoid!important}
+  html.gs-printing-rectify #rectifyPreviewModal .modal-body{
+    overflow:visible!important;max-height:none!important;max-width:none!important;height:auto!important;
+    padding:12px 16px!important;background:#fff!important
+  }
+  html.gs-printing-rectify #rectifyPreviewModal .rp-section{
+    break-inside:auto!important;page-break-inside:auto!important;margin-bottom:10px!important
+  }
+  html.gs-printing-rectify #rectifyPreviewModal .rp-photo-grid,
+  html.gs-printing-rectify #rectifyPreviewModal .rp-table{break-inside:avoid!important;page-break-inside:avoid!important}
+  html.gs-printing-rectify #rectifyPreviewModal img{max-width:100%!important;height:auto!important;break-inside:avoid!important;page-break-inside:avoid!important}
 }
 
 /* 右侧：D 验收单图片区 */
