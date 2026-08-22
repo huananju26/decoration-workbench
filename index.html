@@ -7495,14 +7495,15 @@ function renderProcess(){
             const p=cur();
             const records=(p.siteRecords||[]).filter(r=>r.stepId===step.id);
             const fixRecords=records.filter(r=>r.tag==='整改');
-            const logRecords=records.filter(r=>r.tag!=='整改');
+            /* 日常现场记录：仅"写了装修日志"（有非空文字内容）的记录；纯照片记录不计入 */
+            const logRecords=records.filter(r=>r.tag!=='整改' && (r.content||'').trim()!=='');
             const logCount=logRecords.length;
             const fixCount=fixRecords.length;
             /* 现场照片：所有含照片的记录（去重汇总展示） */
             const photoReq=getStepRequiredPhotoCount(step);
             const allPhotos=records.reduce((s,r)=>s+((r.photos&&r.photos.length)||0),0);
-            /* 有照片的记录按时间倒序 */
-            const photoRecords=records.filter(r=>(r.photos&&r.photos.length)>0).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+            /* 有照片的"纯照片记录"（无文字日志）按时间倒序，避免与日常记录重复展示照片 */
+            const photoRecords=records.filter(r=>(r.photos&&r.photos.length)>0 && (r.content||'').trim()==='').sort((a,b)=>(b.date||'').localeCompare(a.date||''));
             /* 整改记录卡渲染（截图2 样式） */
             const renderFixCard=(r)=>{
               const status=r.rectifyStatus||'待处理';
