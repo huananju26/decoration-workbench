@@ -569,6 +569,17 @@ a{color:#003a8c;text-decoration:none}
 .rp-sign-label{font-size:12px;color:#888;margin-bottom:6px}
 .rp-sign-line{border-bottom:1.5px solid #ccc;height:28px;margin-bottom:4px}
 .rp-sign-name{font-size:12px;color:#999}
+/* 整改确认表格（截图样式） */
+.rp-confirm-title{font-size:16px;font-weight:700;color:#333;margin-bottom:10px;padding-left:4px}
+.rp-confirm-table{width:100%;border-collapse:collapse;border:1px solid #e0d8c8;background:#faf8f0}
+.rp-confirm-table td{border:1px solid #e0d8c8;vertical-align:top;padding:14px 16px;font-size:13px;color:#444;line-height:1.7}
+.rp-confirm-head{background:#f5f0e4;font-weight:600;font-size:13px;color:#555;width:33.33%}
+.rp-confirm-cell{background:#fffdf8;font-size:12.5px}
+.rp-confirm-label{color:#666;display:inline-block;min-width:56px}
+.rp-confirm-line{display:inline-block;border-bottom:1.5px solid #aaa;width:100px;height:22px;vertical-align:bottom;margin-bottom:2px}
+.rp-confirm-line-short{display:inline-block;border-bottom:1.5px solid #aaa;width:60px;height:22px;vertical-align:bottom;margin-bottom:2px}
+.rp-confirm-date{margin-top:8px;color:#777;font-size:11.5px}
+.rp-confirm-note{margin-top:8px;color:#999;font-size:11.5px}
 
 /* ═══ 问题整改记录单：打印 / 导出 PDF（隔离只打印文档本体） ═══ */
 @media print{
@@ -596,7 +607,8 @@ a{color:#003a8c;text-decoration:none}
     break-inside:auto!important;page-break-inside:auto!important;margin-bottom:10px!important
   }
   html.gs-printing-rectify #rectifyPreviewModal .rp-photo-grid,
-  html.gs-printing-rectify #rectifyPreviewModal .rp-table{break-inside:avoid!important;page-break-inside:avoid!important}
+  html.gs-printing-rectify #rectifyPreviewModal .rp-table,
+  html.gs-printing-rectify #rectifyPreviewModal .rp-confirm-table{break-inside:avoid!important;page-break-inside:avoid!important}
   html.gs-printing-rectify #rectifyPreviewModal img{max-width:100%!important;height:auto!important;break-inside:avoid!important;page-break-inside:avoid!important}
 }
 
@@ -3094,13 +3106,32 @@ a{color:#003a8c;text-decoration:none}
         <div id="rpNote" class="rp-text-block" style="color:#888;font-style:italic"></div>
       </div>
 
-      <!-- 签字确认 -->
+      <!-- 整改确认 -->
       <div class="rp-section" style="border:none;padding-top:20px">
-        <div class="rp-sign-row">
-          <div class="rp-sign-item"><div class="rp-sign-label">施工方确认</div><div class="rp-sign-line"></div><div id="rpSignContractor" class="rp-sign-name"></div></div>
-          <div class="rp-sign-item"><div class="rp-sign-label">监理方确认</div><div class="rp-sign-line"></div><div id="rpSignSupervisor" class="rp-sign-name"></div></div>
-          <div class="rp-sign-item"><div class="rp-sign-label">业主确认</div><div class="rp-sign-line"></div><div id="rpSignOwner" class="rp-sign-name"></div></div>
-        </div>
+        <div class="rp-confirm-title">整改确认</div>
+        <table class="rp-confirm-table">
+          <tbody>
+            <tr>
+              <td class="rp-confirm-head">整改负责人确认</td>
+              <td class="rp-confirm-head">项目负责人复核</td>
+              <td class="rp-confirm-head">企业确认</td>
+            </tr>
+            <tr>
+              <td class="rp-confirm-cell">
+                <span class="rp-confirm-label">签字：</span><span class="rp-confirm-line"></span>
+                <div class="rp-confirm-date">完成日期：<span id="rpSignContractorDate">____年__月__日</span></div>
+              </td>
+              <td class="rp-confirm-cell">
+                <span class="rp-confirm-label">签字：</span><span class="rp-confirm-line"></span>
+                <div class="rp-confirm-date">复核日期：<span id="rpSignSupervisorDate">____年__月__日</span></div>
+              </td>
+              <td class="rp-confirm-cell">
+                <span class="rp-confirm-label">盖章（如需）：</span><span class="rp-confirm-line-short"></span>
+                <div class="rp-confirm-note">本报告为系统生成的整改记录</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -7030,10 +7061,10 @@ function ryPreviewRectifyPdf(recordId){
   /* 备注 */
   $('rpNote').textContent=rec.note||'无';
 
-  /* 签字确认 */
-  $('rpSignContractor').textContent=p.profile?p.profile.owner:'施工方';
-  $('rpSignSupervisor').textContent='—';
-  $('rpSignOwner').textContent=p.profile?p.profile.owner:'业主';
+  /* 整改确认日期 */
+  const fmtD=function(d){ if(!d)return'____年__月__日'; return d.replace('T',' ').slice(0,10).replace(/-/g,'/').replace(/\//g,'年',1).replace(/\//g,'月')+'日'; };
+  $('rpSignContractorDate').textContent=fmtD(rec.updatedAt);
+  $('rpSignSupervisorDate').textContent='____年__月__日';
 
   showModal('rectifyPreviewModal');
 }
