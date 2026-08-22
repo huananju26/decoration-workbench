@@ -921,8 +921,10 @@ a{color:#003a8c;text-decoration:none}
 .ledger-table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
 .ledger-table thead{background:#003a8c;color:#fff}
 .ledger-table thead th{padding:10px 12px;text-align:center;font-weight:600;white-space:nowrap;font-size:13px;position:sticky;top:0;z-index:2}
-.ledger-table thead th.sortable{cursor:pointer;user-select:none}
-.ledger-table thead th.sortable:hover{background:#003a8c}
+.ledger-table thead th.sortable{cursor:pointer;user-select:none;color:#595959}
+.ledger-table thead th.sortable:hover{background:#003a8c;color:#fff}
+.ledger-table thead th.sortable.sort-active{color:#fff;background:#003a8c}
+.ledger-table thead th.sortable:not(.sort-active){opacity:.92}
 .ledger-table tbody tr{border-bottom:1px solid #f0f0f0;transition:background .15s}
 .ledger-table tbody tr:nth-child(even){background:#fafbfc}
 .ledger-table tbody tr:hover{background:#e6f4ff}
@@ -2450,14 +2452,14 @@ a{color:#003a8c;text-decoration:none}
         <table class="ledger-table" id="ledgerTable">
           <thead>
             <tr>
-              <th class="sortable" onclick="sortLedger('idx')">序号 ▼</th>
-              <th class="sortable" onclick="sortLedger('date')">收支日期 ▼</th>
+              <th class="sortable" data-sort="idx" data-label="序号" onclick="sortLedger('idx')">序号 ▼</th>
+              <th class="sortable" data-sort="date" data-label="收支日期" onclick="sortLedger('date')">收支日期 ▼</th>
               <th>属性</th>
               <th>项目名称</th>
               <th>简要内容</th>
               <th>收付款人</th>
-              <th class="sortable" onclick="sortLedger('incomeAmt')">收入金额 ▼</th>
-              <th class="sortable" onclick="sortLedger('expenseAmt')">支出金额 ▼</th>
+              <th class="sortable" data-sort="incomeAmt" data-label="收入金额" onclick="sortLedger('incomeAmt')">收入金额 ▼</th>
+              <th class="sortable" data-sort="expenseAmt" data-label="支出金额" onclick="sortLedger('expenseAmt')">支出金额 ▼</th>
               <th>结余金额</th>
               <th>备注</th>
             </tr>
@@ -10758,10 +10760,24 @@ function renderLedger(){
       '</tr>';
   });
   tbody.innerHTML=html;
+  updateLedgerSortIndicators();
 }
 function sortLedger(field){
   if(ledgerSortField===field){ledgerSortDir*=-1;}else{ledgerSortField=field;ledgerSortDir=-1;}
   renderLedger();
+}
+/* 根据当前排序字段/方向更新表头三角形指示（▲升序 / ▼降序 / ↕可排序未激活） */
+function updateLedgerSortIndicators(){
+  document.querySelectorAll('#ledgerTable thead th[data-sort]').forEach(th=>{
+    const f=th.getAttribute('data-sort');
+    const label=th.getAttribute('data-label')||th.textContent.replace(/[▲▼↕]/g,'').trim();
+    let ind='';
+    if(f===ledgerSortField){ ind = (ledgerSortDir===1) ? ' ▲' : ' ▼'; }
+    else { ind=' ↕'; }
+    th.innerHTML=label+ind;
+    th.classList.toggle('sort-active', f===ledgerSortField);
+    th.classList.toggle('sort-asc', f===ledgerSortField && ledgerSortDir===1);
+  });
 }
 /* 手动编辑年度余额 */
 function editLedgerBalance(currentVal){
