@@ -493,6 +493,11 @@ a{color:#003a8c;text-decoration:none}
 .sb-section.collapsed .sb-collapse-btn .chev{transform:rotate(-90deg)}
 .sb-sec-body{}
 .sb-section.collapsed .sb-sec-body{display:none}
+/* 点击标题整行折叠 / 展开（节点信息、节点必检项） */
+.sb-sec-clickable{cursor:pointer;border-radius:6px;transition:background .15s}
+.sb-sec-clickable:hover{background:#eef4ff}
+.sb-sec-title .chev{display:inline-block;transition:transform .18s ease;color:#003a8c;font-size:12px;line-height:1}
+.sb-section.collapsed .sb-sec-title .chev{transform:rotate(-90deg)}
 
 /* 整改弹窗（发起问题整改） */
 .ry-form-row{display:flex;gap:12px}
@@ -6555,7 +6560,7 @@ function renderStepRightPanel(p,step,i){
 
     <!-- C. 节点必检项 -->
     <div class="sb-section ${isSbCollapsed(i)?'collapsed':''}" id="sbAcceptSec_${i}">
-      <div class="sb-sec-title">节点必检项 <span class="sb-status ${ac.total&&ac.passed===ac.total?'done':(ac.passed?'pending':'wait')}" style="margin-left:auto">${ac.total?`${ac.passed}/${ac.total} 已通过`:'未配置'}</span><button type="button" class="sb-collapse-btn" onclick="toggleSbCollapse(${i})" title="折叠 / 展开必检项"><span class="chev">▾</span></button></div>
+      <div class="sb-sec-title sb-sec-clickable" onclick="toggleSbCollapse(${i})">节点必检项 <span class="sb-status ${ac.total&&ac.passed===ac.total?'done':(ac.passed?'pending':'wait')}" style="margin-left:auto">${ac.total?`${ac.passed}/${ac.total} 已通过`:'未配置'}</span><span class="sb-collapse-btn" style="pointer-events:none" title="折叠 / 展开必检项"><span class="chev">▾</span></span></div>
       <div class="sb-sec-body">
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
           <button type="button" class="sb-mini-add" onclick="addAcceptRow(${i})">＋ 添加必检项</button>
@@ -6629,6 +6634,16 @@ function toggleSbCollapse(i){
   if(!sec)return;
   var collapsed=sec.classList.toggle('collapsed');
   try{localStorage.setItem('xzgz_collapse_accept_'+i, collapsed?'1':'0');}catch(e){}
+}
+// 左栏：节点信息卡片折叠 / 展开（按节点持久化）
+function isSbInfoCollapsed(i){
+  try{return localStorage.getItem('xzgz_collapse_info_'+i)==='1';}catch(e){return false;}
+}
+function toggleSbInfoCollapse(i){
+  var sec=document.getElementById('sbInfoSec_'+i);
+  if(!sec)return;
+  var collapsed=sec.classList.toggle('collapsed');
+  try{localStorage.setItem('xzgz_collapse_info_'+i, collapsed?'1':'0');}catch(e){}
 }
 // 右栏：把必检项标记为 通过 / 有问题
 function sbMarkItemOK(i,idx){
@@ -7416,8 +7431,9 @@ function renderProcess(){
         <!-- 左栏：5 大分区（保留原改造内容） -->
         <div class="step-body-left">
         <!-- ① 可编辑节点信息 -->
-        <div class="sb-section">
-          <div class="sb-sec-title">节点信息<span class="sb-sec-hint">可直接修改后点保存</span></div>
+        <div class="sb-section ${isSbInfoCollapsed(i)?'collapsed':''}" id="sbInfoSec_${i}">
+          <div class="sb-sec-title sb-sec-clickable" onclick="toggleSbInfoCollapse(${i})">节点信息<span class="sb-sec-hint" style="margin-left:0">可直接修改后点保存</span><span class="chev" style="margin-left:auto">▾</span></div>
+          <div class="sb-sec-body">
           <div class="sb-edit-grid">
             <label class="sb-field sb-field-name">节点名称
               <input id="sb_name_${i}" class="sb-input" value="${escAttr(step.name)}">
@@ -7441,6 +7457,7 @@ function renderProcess(){
             <button class="sb-mini-btn" type="button" onclick="addAcceptRow(${i})">＋ 增加验收项</button>
           </div>
           <button class="btn-primary sb-save-btn" type="button" onclick="saveStepDetail(${i})">保存节点信息</button>
+          </div><!-- /sb-sec-body -->
         </div>
 
         <!-- ② 计划 vs 实际 -->
