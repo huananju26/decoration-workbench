@@ -7061,9 +7061,8 @@ function ryPreviewRectifyPdf(recordId){
   /* 备注 */
   $('rpNote').textContent=rec.note||'无';
 
-  /* 整改确认日期 */
-  const fmtD=function(d){ if(!d)return'____年__月__日'; return d.replace('T',' ').slice(0,10).replace(/-/g,'/').replace(/\//g,'年',1).replace(/\//g,'月')+'日'; };
-  $('rpSignContractorDate').textContent=fmtD(rec.updatedAt);
+  /* 整改确认日期（留白供手写签字） */
+  $('rpSignContractorDate').textContent='____年__月__日';
   $('rpSignSupervisorDate').textContent='____年__月__日';
 
   showModal('rectifyPreviewModal');
