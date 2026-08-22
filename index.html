@@ -3066,7 +3066,7 @@ a{color:#003a8c;text-decoration:none}
       <!-- 企业抬头（与导出进度表一致） -->
       <div class="rp-doc-header">
         <div class="rp-brand">
-          <div id="rpLogoBig" class="rp-logo">装</div>
+          <div id="rpLogoBig"></div>
           <div>
             <div id="rpCompanyName" class="rp-company"></div>
             <div id="rpCompanyTagline" class="rp-tagline"></div>
@@ -6986,19 +6986,12 @@ function ryPreviewRectifyPdf(recordId){
 
   /* 抬头 Logo */
   /* 企业抬头（与导出进度表一致） */
-  const logoBig=$('rpLogoBig');
   const cLogo=companyLogo();
   const cName=companyName();
-  if(cLogo){
-    logoBig.className='rp-logo-img';
-    logoBig.style.background='none';
-    logoBig.textContent='';
-    logoBig.innerHTML='<img src="'+cLogo+'" style="height:56px;width:auto;max-width:220px;object-fit:contain">';
-  }else{
-    logoBig.className='rp-logo';
-    logoBig.style.background='#003a8c';
-    logoBig.textContent=(cName||'装').charAt(0);
-  }
+  /* 与导出进度表完全一致：logo 直接挂类、无嵌套包裹、动态按高度 56px 等比伸缩 */
+  $('rpLogoBig').innerHTML = cLogo
+    ? '<img class="rp-logo-img" src="'+cLogo+'">'
+    : '<div class="rp-logo">'+(cName||'装').charAt(0)+'</div>';
   $('rpCompanyName').textContent=cName||'焕安居';
   $('rpCompanyTagline').textContent=companyTagline()||'专业施工 · 透明交付 · 节点验收';
 
