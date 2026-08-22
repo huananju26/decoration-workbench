@@ -450,14 +450,6 @@ a{color:#003a8c;text-decoration:none}
 .step-body.dragging-col{cursor:col-resize;user-select:none}
 .step-body-right{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
 
-/* 右侧：A 编辑节点提示横幅 */
-.sb-banner-edit{display:flex;align-items:center;gap:10px;background:#e6f4ff;border:1px solid #91caff;padding:10px 14px;border-radius:8px;margin:0 0 14px;cursor:pointer;transition:background .15s}
-.sb-banner-edit:hover{background:#d6ebff}
-.sb-banner-edit-icon{flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
-.sb-banner-edit-text{font-size:12.5px;color:#003a8c;line-height:1.5;flex:1;min-width:0}
-.sb-banner-edit-btn{flex:0 0 auto;font-size:12px;padding:5px 14px;border-radius:16px;border:1px solid #003a8c;background:#fff;color:#003a8c;cursor:pointer;transition:all .15s;min-height:0;min-width:0}
-.sb-banner-edit-btn:hover{background:#003a8c;color:#fff}
-
 /* 右侧：B 验收条件清单 */
 .sb-sec-desc{font-size:11.5px;color:#888;margin:-4px 0 12px;line-height:1.5}
 .sb-check-list{display:flex;flex-direction:column;gap:0}
@@ -6530,13 +6522,6 @@ function renderStepRightPanel(p,step,i){
   const missingTxt = missing.length? missing.join('、') : '所有条件已满足，可直接生成客户报告';
 
   return `
-    <!-- A. 编辑节点提示横幅 -->
-    <div class="sb-banner-edit" onclick="sbEditStep(${i})" title="跳到左侧节点信息区">
-      <span class="sb-banner-edit-icon">✎</span>
-      <span class="sb-banner-edit-text">已完成节点也可以随时调整计划、负责人和状态</span>
-      <button type="button" class="sb-banner-edit-btn" onclick="event.stopPropagation();sbEditStep(${i})">编辑节点</button>
-    </div>
-
     <!-- B. 节点验收与交付 -->
     <div class="sb-section">
       <div class="sb-sec-title">节点验收与交付 <span class="sb-status ${done?'done':'pending'}" style="margin-left:auto;font-weight:600">${done?'已完成':'进行中'}</span></div>
