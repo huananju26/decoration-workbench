@@ -3155,6 +3155,7 @@ a{color:#003a8c;text-decoration:none}
 
     <!-- 底部操作 -->
     <div class="form-actions" style="flex-shrink:0;padding:12px 24px;border-top:1px solid #e8e8e8;background:#fff">
+      <button class="btn-outline" onclick="openCompanyCfgFromRectify()" style="display:inline-flex;align-items:center;gap:4px">⚙ 企业抬头</button>
       <button class="btn-outline" onclick="closeModal('rectifyPreviewModal')">关闭预览</button>
       <button class="btn-primary" onclick="printRectifyRecord()" style="margin-left:auto">导出 PDF</button>
       <button class="btn-primary" onclick="printRectifyRecord()" style="background:#1677ff">打印</button>
@@ -8621,6 +8622,10 @@ function openCompanyCfgModal(){
   _renderCfgLogoPreview();
   showModal('companyCfgModal');
 }
+function openCompanyCfgFromRectify(){
+  /* 整改预览弹窗里的「企业抬头」设置，与导出进度表一致 */
+  openCompanyCfgModal();
+}
 function _renderCfgLogoPreview(){
   const box=$('cfgLogoPreview'); if(!box)return;
   if(_cfgLogoTemp){ box.innerHTML='<img src="'+_cfgLogoTemp+'" style="max-width:100%;max-height:100%;display:block">'; }
@@ -8657,6 +8662,7 @@ function rerenderOpenGsSheets(){
   const cb=document.getElementById('clientTimelineModal'); if(cb&&cb.classList.contains('show')){ exportClientTimeline(); }
   const pv=document.getElementById('planVsActualModal'); if(pv&&pv.classList.contains('show')){ exportPlanVsActualImage(); }
   const cp=document.getElementById('customerPayModal'); if(cp&&cp.classList.contains('show')){ exportFinanceTable(); }
+  const rp=document.getElementById('rectifyPreviewModal'); if(rp&&rp.classList.contains('show')&&window._previewRectifyId){ ryPreviewRectifyPdf(window._previewRectifyId); }
 }
 
 /* ── DOM → PNG（零外部依赖，SVG foreignObject + canvas）── */
