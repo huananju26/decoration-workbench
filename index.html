@@ -3065,7 +3065,7 @@ a{color:#003a8c;text-decoration:none}
     <div class="modal-body" style="overflow-y:auto;padding:16px 24px 20px;background:#fafbfc">
       <!-- 企业抬头（与导出进度表一致） -->
       <div class="rp-doc-header">
-        <div class="rp-brand">
+        <div class="rp-brand" id="rpBrandBlock">
           <div id="rpLogoBig"></div>
           <div>
             <div id="rpCompanyName" class="rp-company"></div>
@@ -6985,15 +6985,25 @@ function ryPreviewRectifyPdf(recordId){
   const stCfg=stMap[status]||stMap['待处理'];
 
   /* 抬头 Logo */
-  /* 企业抬头（与导出进度表一致） */
+  /* 企业抬头（与导出进度表一致，无设置时不显示预设） */
   const cLogo=companyLogo();
   const cName=companyName();
-  /* 与导出进度表完全一致：logo 直接挂类、无嵌套包裹、动态按高度 56px 等比伸缩 */
-  $('rpLogoBig').innerHTML = cLogo
-    ? '<img class="rp-logo-img" src="'+cLogo+'">'
-    : '<div class="rp-logo">'+(cName||'装').charAt(0)+'</div>';
-  $('rpCompanyName').textContent=cName||'焕安居';
-  $('rpCompanyTagline').textContent=companyTagline()||'专业施工 · 透明交付 · 节点验收';
+  const cTag=companyTagline();
+  /* 无企业名称时隐藏整块品牌抬头（与导出进度表一致：未设置则不显示），避免空白/预设 */
+  const brandEl=document.getElementById('rpBrandBlock');
+  if(brandEl){ brandEl.style.display = cName ? '' : 'none'; }
+  if(cName){
+    /* 有 logo 用图，无 logo 以企业名称首个字为头像（取消"装"预设） */
+    $('rpLogoBig').innerHTML = cLogo
+      ? '<img class="rp-logo-img" src="'+cLogo+'">'
+      : '<div class="rp-logo">'+cName.charAt(0)+'</div>';
+    $('rpCompanyName').textContent=cName;
+    $('rpCompanyTagline').textContent=cTag||'';
+  }else{
+    $('rpLogoBig').innerHTML='';
+    $('rpCompanyName').textContent='';
+    $('rpCompanyTagline').textContent='';
+  }
 
   /* 项目信息栏 */
   $('rpInfoBar').innerHTML=
