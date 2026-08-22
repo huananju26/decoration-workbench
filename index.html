@@ -3040,6 +3040,28 @@ a{color:#003a8c;text-decoration:none}
   </div>
 </div>
 
+<!-- ═══ 整改标记完成（选择完成日期） ═══ -->
+<div class="modal-overlay" id="rectifyCompleteModal">
+  <div class="modal" style="max-width:420px;width:94%">
+    <div class="modal-header" style="flex-shrink:0">
+      <div class="modal-title">确认整改完成</div>
+      <div class="modal-close" onclick="closeModal('rectifyCompleteModal')">✕</div>
+    </div>
+    <div class="modal-body" style="padding:18px 22px">
+      <div style="font-size:13px;color:#555;margin-bottom:14px;line-height:1.6">请选择整改完成日期。确认后该整改将标记为「已完成」，并同步节点验收中的「整改问题全部闭环」。</div>
+      <div class="date-field" id="ryCompleteField" onclick="openRectifyCompletePop(event)">
+        <span class="date-field-icon">📅</span>
+        <span id="ryCompleteText" class="placeholder">选择完成日期</span>
+        <input type="hidden" id="ryCompleteDate" value="">
+      </div>
+    </div>
+    <div class="form-actions" style="flex-shrink:0;padding:14px 22px;border-top:1px solid #f0f0f0;justify-content:flex-end">
+      <button class="btn-outline" onclick="closeModal('rectifyCompleteModal')">取消</button>
+      <button class="btn-primary" onclick="ryConfirmComplete()">确认完成</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ 问题整改记录单（预览弹窗） ═══ -->
 <div class="modal-overlay" id="rectifyPreviewModal">
   <div class="modal rp-modal" style="max-width:820px;width:96%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
@@ -6475,7 +6497,7 @@ function renderStepRightPanel(p,step,i){
   const photoCnt=getStepPhotoCount(p,step);
   const photoReq=getStepRequiredPhotoCount(step);
   const fixCnt=getStepFixCount(p,step);
-  const fixClosed=fixCnt; // 默认按已闭环计数（明细已闭环可后续接具体状态）
+  const fixClosed=(p.siteRecords||[]).filter(r=>r.stepId===step.id&&r.tag==='整改'&&r.rectifyStatus==='已完成').length; // 仅统计已闭环（已完成）的整改
   const cliOpinCnt=getStepClientOpinionCount(p,step);
   const cliSyncCnt=getStepClientSyncCount(step);
   const accDocCnt=getStepAcceptDocCount(p,step);
@@ -6486,7 +6508,7 @@ function renderStepRightPanel(p,step,i){
     {state:done?'done':'pending', text:'节点标记为已完成', label:done?'已完成':'待完成'},
     {state:ac.total&&ac.passed===ac.total?'done':(ac.passed?'pending':'wait'), text:'必检项全部通过', label:ac.total?`${ac.passed}/${ac.total} 已通过`:'未配置'},
     {state:photoCnt>=photoReq?'done':'pending', text:'现场照片达到计划要求', label:`${photoCnt}/${photoReq} 张`},
-    {state:fixClosed>0?'done':'wait', text:'整改问题全部闭环', label:fixClosed>0?'已闭环':'无整改'},
+    {state:(fixCnt>0&&fixClosed===fixCnt)?'done':(fixCnt?'pending':'wait'), text:'整改问题全部闭环', label:fixCnt?(fixClosed===fixCnt?'已闭环':(fixClosed+'/'+fixCnt+' 已闭环')):'无整改'},
     {state:cliOpinCnt?'pending':'done', text:'客户意见已处理', label:cliOpinCnt?cliOpinCnt+' 条待处理':'无待处理意见'}
   ];
 
@@ -6554,8 +6576,12 @@ function renderStepRightPanel(p,step,i){
     <div class="sb-twocol">
       <div class="sb-section sb-twocol-item">
         <div class="sb-sec-title">问题整改</div>
-        <div class="sb-twoval ${fixClosed>0?'done':'wait'}">${fixClosed>0?`✓ 全部已闭环`:'尚无整改'}</div>
-        ${fixClosed>0?`<div class="sb-rel-sub" style="margin-top:4px">共 ${fixClosed} 项整改记录</div>`:''}
+        ${fixCnt===0
+          ? `<div class="sb-twoval wait">尚无整改</div>`
+          : (fixClosed===fixCnt
+            ? `<div class="sb-twoval done">✓ 全部已闭环</div>`
+            : `<div class="sb-twoval ${fixClosed>0?'pending':'wait'}">${fixClosed>0?('已闭环 '+fixClosed+'/'+fixCnt):'整改中 · 待闭环'}</div>`)}
+        ${fixCnt>0?`<div class="sb-rel-sub" style="margin-top:4px">共 ${fixCnt} 项整改记录${fixClosed<fixCnt?('，'+fixClosed+' 项已闭环'):''}</div>`:''}
       </div>
       <div class="sb-section sb-twocol-item">
         <div class="sb-sec-title">客户同步</div>
@@ -6952,6 +6978,45 @@ async function rySubmitAfterPhotos(){
   persist();
   window._ryAfterCtx=null;
   closeModal('ryAfterPhotoModal');
+  if(typeof rerenderProcessKeepStep==='function'){rerenderProcessKeepStep(rec.stepId);}else{renderProcessKeepExpanded();}
+}
+/* 打开「标记完成」弹窗：选择完成日期 */
+let _ryCompleteCtx=null;
+function openRectifyCompleteModal(recordId){
+  const p=cur();if(!p)return;
+  const rec=(p.siteRecords||[]).find(r=>r.id===recordId);
+  if(!rec){alert('未找到整改记录');return;}
+  _ryCompleteCtx=recordId;
+  /* 预填：优先已有完成日期，否则默认今天 */
+  const def=rec.completedAt?String(rec.completedAt).slice(0,10):todayISO();
+  const inp=$('ryCompleteDate');if(inp)inp.value=def;
+  const t=$('ryCompleteText');if(t){t.textContent=def;t.classList.remove('placeholder');}
+  showModal('rectifyCompleteModal');
+}
+function openRectifyCompletePop(e){
+  if(e&&e.stopPropagation)e.stopPropagation();
+  openDatePopSingle('ryCompleteDate','ryCompleteField','ryCompleteText');
+}
+/* 确认完成：写入完成日期 + 状态置已完成，并联动必检项与节点验收 */
+function ryConfirmComplete(){
+  const recordId=_ryCompleteCtx;if(!recordId)return;
+  const iso=$('ryCompleteDate').value.trim();
+  if(!iso){alert('请先选择整改完成日期');return;}
+  const p=cur();if(!p)return;
+  const rec=(p.siteRecords||[]).find(r=>r.id===recordId);if(!rec)return;
+  rec.rectifyStatus='已完成';
+  rec.completedAt=iso+'T00:00:00.000Z';
+  rec.updatedAt=new Date().toISOString();
+  /* 联动所在必检项为「通过」（显示「已完成整改，本必检项通过」） */
+  if(rec.stepId&&rec.acceptanceKey!=null){
+    const step=(p.processSteps||[]).find(s=>s.id===rec.stepId);
+    if(step&&step.acceptance&&step.acceptance[rec.acceptanceKey]){
+      step.acceptance[rec.acceptanceKey].status='passed';
+      step.acceptance[rec.acceptanceKey].rectifyPassed=true;
+    }
+  }
+  persist();
+  closeModal('rectifyCompleteModal');
   if(typeof rerenderProcessKeepStep==='function'){rerenderProcessKeepStep(rec.stepId);}else{renderProcessKeepExpanded();}
 }
 function ryPreviewRectifyPdf(recordId){
@@ -7466,7 +7531,7 @@ function renderProcess(){
                   <button class="ry-act outline-danger" onclick="ryRevokeRectify('${r.id}')">撤销整改</button>
                   ${status==='待处理'?`<button class="ry-act primary" onclick="ryChangeStatus('${r.id}','进行中')">开始整改</button>`:''}
                   ${status==='进行中'?`<button class="ry-act primary" onclick="ryUploadAfterPhotos('${r.id}')">上传整改后照片并提交审核</button>`:''}
-                  ${status==='待审核'?`<button class="ry-act primary" onclick="ryChangeStatus('${r.id}','已完成')">标记完成</button>`:''}
+                  ${status==='待审核'?`<button class="ry-act primary" onclick="openRectifyCompleteModal('${r.id}')">标记完成</button>`:''}
                 </div>
               </div>`;
             };
@@ -7767,6 +7832,7 @@ function confirmStepComplete(){
 }
 /* ── 自定义日历浮层（标记完成：开始/完成日期） ── */
 let dpField=null,dpYear=0,dpMonth=0,dpHover=null;
+let dpSingleTarget=null,dpSingleText=null; /* 单选模式（整改完成日期） */
 function fmtISO(dt){return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0')}
 function parseISO(s){if(!s)return null;const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2])}
 function refreshDateFieldText(){
@@ -7814,6 +7880,20 @@ function openDatePop(field,anchor){
   setTimeout(()=>document.addEventListener('click',dpOutside,true),0);
 }
 function closeDatePop(){dpField=null;$('datePop').classList.remove('show');document.removeEventListener('click',dpOutside,true)}
+/* 单选模式：仅选一个日期（如整改完成日期），不关联开始/结束范围 */
+function openDatePopSingle(targetInputId,anchorId,textId){
+  document.removeEventListener('click',dpOutside,true);
+  dpField='single';
+  dpSingleTarget=targetInputId;
+  dpSingleText=textId||null;
+  const v=$(targetInputId).value.trim();
+  const d=v?new Date(v):new Date(todayISO());
+  dpYear=d.getFullYear();dpMonth=d.getMonth();dpHover=null;
+  renderDatePop();
+  const pop=$('datePop');pop.classList.add('show');
+  positionPopNearAnchor(pop,$(anchorId));
+  setTimeout(()=>document.addEventListener('click',dpOutside,true),0);
+}
 function dpOutside(e){if($('datePop').contains(e.target))return;if(e.target.closest&&e.target.closest('.date-field'))return;closeDatePop()}
 function dpShift(n){dpMonth+=n;if(dpMonth<0){dpMonth=11;dpYear--}else if(dpMonth>11){dpMonth=0;dpYear++}renderDatePop()}
 function renderDatePop(){
@@ -7836,9 +7916,15 @@ function onDateHover(cell){
   const iso=cell.getAttribute('data-iso');
   if(!iso)return;
   dpHover=iso;
-  if(dpField==='end')updateRangeHighlight();
+  if(dpField==='end'||dpField==='single')updateRangeHighlight();
 }
 function updateRangeHighlight(){
+  if(dpField==='single'){
+    const foot=$('dpFoot');
+    const cur=dpHover||$(dpSingleTarget).value.trim();
+    foot.innerHTML=cur?('<div>已选完成日期：<b>'+cur+'</b></div>'):'<span>选择完成日期</span>';
+    return;
+  }
   const startISO=$('scmStart').value.trim();
   const endISO=$('scmEnd').value.trim();
   const endVal=dpField==='end'?(dpHover||endISO):'';
@@ -7879,6 +7965,12 @@ function dpGridClick(e){
   if(iso)dpPick(iso);
 }
 function dpPick(iso){
+  if(dpField==='single'){
+    if(dpSingleTarget)$(dpSingleTarget).value=iso;
+    if(dpSingleText){const t=$(dpSingleText);if(t){t.textContent=iso;t.classList.remove('placeholder');}}
+    closeDatePop();
+    return;
+  }
   if(dpField==='start'){
     $('scmStart').value=iso;
     const endISO=$('scmEnd').value.trim();
