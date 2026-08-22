@@ -7417,13 +7417,13 @@ function renderProcess(){
     /* 卡片右栏徽章：达标题绿色、未达标题红色（用户 2026-08-22 明确要求；注意与项目"禁绿"约定存在冲突，按用户最新指令执行） */
     const phGot=getStepPhotoCount(p,step), phReq=getStepRequiredPhotoCount(step);
     const phOk=phGot>=phReq;
-    const phNumColor=phOk?'#52c41a':'#fa541c';
+    const phNumColor=phOk?'#003a8c':'#fa541c';
     const fixTotal=getStepFixCount(p,step), fixDone=getStepFixClosed(p,step);
     const fixAll=fixTotal>0&&fixDone===fixTotal;
-    const fixNumColor=fixTotal===0?'#999':(fixAll?'#52c41a':'#fa541c');
+    const fixNumColor=fixTotal===0?'#999':(fixAll?'#003a8c':'#fa541c');
     const fixNumStr=fixTotal===0?'0/0':(fixDone+'/'+fixTotal);
     const acceptAll=computeAcceptChecks(p,step).every(c=>c.state==='done');
-    const acceptNumColor=acceptAll?'#52c41a':'#fa541c';
+    const acceptNumColor=acceptAll?'#003a8c':'#fa541c';
     const acceptNumStr=acceptAll?'1/1':'0/1';
     return `<div class="step-card ${done?'completed':''} ${pending?'pending':''} ${overdue?'overdue':''} ${expanded?'expanded':''}" id="stepCard-${i}" data-index="${i}" data-name="${escHtml(step.name)}">
       <div class="step-card-header" onclick="toggleStepExpand(${i})">
@@ -7589,10 +7589,10 @@ function renderProcess(){
             /* 顶部：统计 + 添加按钮 */
             const photoOk=allPhotos>=photoReq;
             const photoStatusHtml=photoOk
-              ?'<span style="color:#52c41a;font-size:11px">✓ 已达标</span>'
+              ?'<span style="color:#003a8c;font-size:11px">✓ 已达标</span>'
               :'<span style="color:#fa541c;font-size:11px">还差 '+(photoReq-allPhotos)+' 张</span>';
             const head=`<div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;margin-bottom:8px;font-size:12px;color:#888">
-              <span>📷 现场照片 <b style="${photoOk?'color:#52c41a':'color:#fa541c'}">${allPhotos}/${photoReq}</b>${photoStatusHtml} · ${logCount} 条日志 · <b style="color:#d46b08">${fixCount} 项整改</b></span>
+              <span>📷 现场照片 <b style="${photoOk?'color:#003a8c':'color:#fa541c'}">${allPhotos}/${photoReq}</b>${photoStatusHtml} · ${logCount} 条日志 · <b style="color:#d46b08">${fixCount} 项整改</b></span>
               <button class="btn-outline" style="font-size:12px;padding:4px 12px;border-radius:16px" onclick="openStepPhotoModal(${i})">📷 添加现场照片</button>
             </div>`;
             /* 现场照片记录区（每条含照片的记录展示为卡片） */
