@@ -10709,13 +10709,21 @@ function renderLedger(){
   });
   rows.forEach((r,i)=>r._idx=i+1);
 
-  // 计算结余（累计）
-  /* 若用户手动编辑了年度余额，用偏移量让每行结余联动 */
-  const balBefore=allProjectsFinance();
-  const autoBal=balBefore.received-balBefore.paid;
-  /* 复用上方已声明的 manualBal */
-  const balanceOffset=(manualBal!==null&&manualBal!==undefined)?(manualBal-autoBal):0;
-  let runningBalance=autoBal+balanceOffset;
+  // 计算结余（按日期升序累计：第一笔=日期最早的一笔，结余=该笔金额，后续逐笔递推）
+  /* 期初余额：若用户手动编辑过年度余额，则作为期初；否则从 0 起算 */
+  const openingBalance=(manualBal!==null&&manualBal!==undefined)?manualBal:0;
+  /* 按日期升序排列（与显示排序无关），依次累加得到每行的累计结余 */
+  const _ascRows=[...rows].sort((a,b)=>{
+    const da=(a.date||''),db=(b.date||'');
+    if(da<db)return -1; if(da>db)return 1;
+    return (a._idx||0)-(b._idx||0);
+  });
+  let _runningBal=openingBalance;
+  _ascRows.forEach(r=>{
+    const _inc=r.type!=='expense';
+    _runningBal += _inc ? r.amt : -r.amt;
+    r._bal=_runningBal;
+  });
 
   // 渲染表格
   const tbody=$('ledgerBody');
@@ -10731,8 +10739,8 @@ function renderLedger(){
   rows.forEach(r=>{
     const isIncome=r.type!=='expense';
     const isPending=r.status==='pending';
-    // 累计结余
-    if(isIncome)runningBalance+=r.amt;else runningBalance-=r.amt;
+    // 累计结余（已按日期升序逐笔计算并写入 r._bal）
+    const bal=r._bal||0;
     const cls=isPending?' row-pending':'';
     const tagCls=isIncome?' tag-income':' tag-expense';
     const tagText=isIncome?'收入':'支出';
@@ -10745,7 +10753,7 @@ function renderLedger(){
       '<td class="ld-person">'+escHtml(r.person)+'</td>'+
       '<td class="amt-in">'+(isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
       '<td class="amt-out">'+(!isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
-      '<td class="amt-bal">¥'+fmt(runningBalance)+'</td>'+
+      '<td class="amt-bal">¥'+fmt(bal)+'</td>'+
       '<td class="note-cell" title="'+escHtml(r.note)+'">'+escHtml(r.note)+'</td>'+
       '</tr>';
   });
