@@ -588,6 +588,9 @@ a{color:#003a8c;text-decoration:none}
 .rp-company{font-size:15px;font-weight:700;color:#003a8c}
 .rp-tagline{font-size:11px;color:#999;margin-top:1px}
 .rp-title-area{text-align:right}
+/* 无企业 logo 时：标题左移，不再孤悬右侧（有 logo 时仍品牌左/标题右平衡布局） */
+.rp-doc-header.rp-no-logo{justify-content:flex-start}
+.rp-doc-header.rp-no-logo .rp-title-area{text-align:left}
 .rp-main-title{font-size:22px;font-weight:800;color:#003a8c;letter-spacing:1px}
 .rp-sub-title{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;margin-top:2px}
 
@@ -6992,6 +6995,9 @@ function ryPreviewRectifyPdf(recordId){
   /* 无企业名称时隐藏整块品牌抬头（与导出进度表一致：未设置则不显示），避免空白/预设 */
   const brandEl=document.getElementById('rpBrandBlock');
   if(brandEl){ brandEl.style.display = cName ? '' : 'none'; }
+  /* 无企业 logo 时：标题左移（不再孤悬右侧）；有 logo 时维持「品牌左 / 标题右」平衡布局 */
+  const headerEl=document.querySelector('.rp-doc-header');
+  if(headerEl){ headerEl.classList.toggle('rp-no-logo', !cLogo); }
   if(cName){
     /* 有 logo 用图，无 logo 以企业名称首个字为头像（取消"装"预设） */
     $('rpLogoBig').innerHTML = cLogo
