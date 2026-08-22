@@ -6495,6 +6495,27 @@ function getStepRequiredPhotoCount(step){return step.photosRequired||3;}
 function getStepAcceptDocCount(p,step){
   return (p.acceptDocs||[]).filter(d=>d.stepId===step.id).length;
 }
+// 节点已闭环整改数（rectifyStatus==='已完成'）
+function getStepFixClosed(p,step){
+  return (p.siteRecords||[]).filter(r=>r.stepId===step.id&&r.tag==='整改'&&r.rectifyStatus==='已完成').length;
+}
+/* 节点验收 5 项条件（与右栏「节点验收与交付」清单完全一致，供徽章复用，避免逻辑漂移） */
+function computeAcceptChecks(p,step){
+  const done=isStepChecked(step.id);
+  const ac=getAcceptStats(step);
+  const photoCnt=getStepPhotoCount(p,step);
+  const photoReq=getStepRequiredPhotoCount(step);
+  const fixCnt=getStepFixCount(p,step);
+  const fixClosed=getStepFixClosed(p,step);
+  const cliOpinCnt=getStepClientOpinionCount(p,step);
+  return [
+    {state:done?'done':'pending', text:'节点标记为已完成', label:done?'已完成':'待完成'},
+    {state:ac.total&&ac.passed===ac.total?'done':(ac.passed?'pending':'wait'), text:'必检项全部通过', label:ac.total?`${ac.passed}/${ac.total} 已通过`:'未配置'},
+    {state:photoCnt>=photoReq?'done':'pending', text:'现场照片达到计划要求', label:`${photoCnt}/${photoReq} 张`},
+    {state:(fixCnt>0&&fixClosed===fixCnt)?'done':(fixCnt?'pending':'wait'), text:'整改问题全部闭环', label:fixCnt?(fixClosed===fixCnt?'已闭环':(fixClosed+'/'+fixCnt+' 已闭环')):'无整改'},
+    {state:cliOpinCnt?'pending':'done', text:'客户意见已处理', label:cliOpinCnt?cliOpinCnt+' 条待处理':'无待处理意见'}
+  ];
+}
 
 // 渲染节点详情右栏
 function renderStepRightPanel(p,step,i){
@@ -6509,14 +6530,8 @@ function renderStepRightPanel(p,step,i){
   const accDocCnt=getStepAcceptDocCount(p,step);
   const stepId=escAttr(step.id);
 
-  // 验收条件清单（5 行）
-  const checks=[
-    {state:done?'done':'pending', text:'节点标记为已完成', label:done?'已完成':'待完成'},
-    {state:ac.total&&ac.passed===ac.total?'done':(ac.passed?'pending':'wait'), text:'必检项全部通过', label:ac.total?`${ac.passed}/${ac.total} 已通过`:'未配置'},
-    {state:photoCnt>=photoReq?'done':'pending', text:'现场照片达到计划要求', label:`${photoCnt}/${photoReq} 张`},
-    {state:(fixCnt>0&&fixClosed===fixCnt)?'done':(fixCnt?'pending':'wait'), text:'整改问题全部闭环', label:fixCnt?(fixClosed===fixCnt?'已闭环':(fixClosed+'/'+fixCnt+' 已闭环')):'无整改'},
-    {state:cliOpinCnt?'pending':'done', text:'客户意见已处理', label:cliOpinCnt?cliOpinCnt+' 条待处理':'无待处理意见'}
-  ];
+  // 验收条件清单（5 行）— 复用 computeAcceptChecks，与卡片徽章一致
+  const checks=computeAcceptChecks(p,step);
 
   // 节点必检项列表（来自 step.acceptance，每项带 status）
   const acceptListHtml = ac.items.length?
@@ -7399,6 +7414,17 @@ function renderProcess(){
     const actDays=calcDays(actStart,actEnd);
     /* 计划天数（优先用日期区间计算，fallback 到 days 字段） */
     const planDays=planStart&&planEnd?calcDays(planStart,planEnd):(planStr?parseInt(planStr.match(/\d+/g)?.pop()||'0'):0);
+    /* 卡片右栏徽章：达标题绿色、未达标题红色（用户 2026-08-22 明确要求；注意与项目"禁绿"约定存在冲突，按用户最新指令执行） */
+    const phGot=getStepPhotoCount(p,step), phReq=getStepRequiredPhotoCount(step);
+    const phOk=phGot>=phReq;
+    const phNumColor=phOk?'#52c41a':'#fa541c';
+    const fixTotal=getStepFixCount(p,step), fixDone=getStepFixClosed(p,step);
+    const fixAll=fixTotal>0&&fixDone===fixTotal;
+    const fixNumColor=fixTotal===0?'#999':(fixAll?'#52c41a':'#fa541c');
+    const fixNumStr=fixTotal===0?'0/0':(fixDone+'/'+fixTotal);
+    const acceptAll=computeAcceptChecks(p,step).every(c=>c.state==='done');
+    const acceptNumColor=acceptAll?'#52c41a':'#fa541c';
+    const acceptNumStr=acceptAll?'1/1':'0/1';
     return `<div class="step-card ${done?'completed':''} ${pending?'pending':''} ${overdue?'overdue':''} ${expanded?'expanded':''}" id="stepCard-${i}" data-index="${i}" data-name="${escHtml(step.name)}">
       <div class="step-card-header" onclick="toggleStepExpand(${i})">
         <!-- 左栏：编号+名称+状态 -->
@@ -7420,9 +7446,9 @@ function renderProcess(){
         <!-- 右栏：四个等宽扁平按钮 -->
         <div class="step-right-col">
           <div class="step-action-row">
-            <span class="step-action-item" onclick="event.stopPropagation();openStepPhotoModal(${i})">📷 现场照片<span class="step-action-num">${getStepPhotoCount(p,step)}/${getStepRequiredPhotoCount(step)}</span></span>
-            <span class="step-action-item" onclick="event.stopPropagation();alert('整改闭环功能开发中')">⚠️ 未闭环整改<span class="step-action-num">0</span></span>
-            <span class="step-action-item" onclick="event.stopPropagation();alert('验收通过功能开发中')">✅ 验收通过<span class="step-action-num">0/1</span></span>
+            <span class="step-action-item" onclick="event.stopPropagation();openStepPhotoModal(${i})">📷 现场照片<span class="step-action-num" style="color:${phNumColor}">${phGot}/${phReq}</span></span>
+            <span class="step-action-item" onclick="event.stopPropagation()">⚠️ 未闭环整改<span class="step-action-num" style="color:${fixNumColor}">${fixNumStr}</span></span>
+            <span class="step-action-item" onclick="event.stopPropagation()">✅ 验收通过<span class="step-action-num" style="color:${acceptNumColor}">${acceptNumStr}</span></span>
             <span class="step-action-item" onclick="event.stopPropagation();toggleStepExpand(${i})">查看详情 ▾</span>
           </div>
         </div>
@@ -7563,10 +7589,10 @@ function renderProcess(){
             /* 顶部：统计 + 添加按钮 */
             const photoOk=allPhotos>=photoReq;
             const photoStatusHtml=photoOk
-              ?'<span style="color:#003a8c;font-size:11px">✓ 已达标</span>'
+              ?'<span style="color:#52c41a;font-size:11px">✓ 已达标</span>'
               :'<span style="color:#fa541c;font-size:11px">还差 '+(photoReq-allPhotos)+' 张</span>';
             const head=`<div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;margin-bottom:8px;font-size:12px;color:#888">
-              <span>📷 现场照片 <b style="${photoOk?'color:#003a8c':'color:#fa541c'}">${allPhotos}/${photoReq}</b>${photoStatusHtml} · ${logCount} 条日志 · <b style="color:#d46b08">${fixCount} 项整改</b></span>
+              <span>📷 现场照片 <b style="${photoOk?'color:#52c41a':'color:#fa541c'}">${allPhotos}/${photoReq}</b>${photoStatusHtml} · ${logCount} 条日志 · <b style="color:#d46b08">${fixCount} 项整改</b></span>
               <button class="btn-outline" style="font-size:12px;padding:4px 12px;border-radius:16px" onclick="openStepPhotoModal(${i})">📷 添加现场照片</button>
             </div>`;
             /* 现场照片记录区（每条含照片的记录展示为卡片） */
