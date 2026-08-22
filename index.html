@@ -7447,7 +7447,7 @@ function renderProcess(){
         <div class="step-right-col">
           <div class="step-action-row">
             <span class="step-action-item" onclick="event.stopPropagation();openStepPhotoModal(${i})">📷 现场照片<span class="step-action-num" style="color:${phNumColor}">${phGot}/${phReq}</span></span>
-            <span class="step-action-item" onclick="event.stopPropagation()">⚠️ 未闭环整改<span class="step-action-num" style="color:${fixNumColor}">${fixNumStr}</span></span>
+            <span class="step-action-item" onclick="event.stopPropagation();locateStepFix(${i})" style="cursor:pointer">⚠️ 未闭环整改<span class="step-action-num" style="color:${fixNumColor}">${fixNumStr}</span></span>
             <span class="step-action-item" onclick="event.stopPropagation()">✅ 验收通过<span class="step-action-num" style="color:${acceptNumColor}">${acceptNumStr}</span></span>
             <span class="step-action-item" onclick="event.stopPropagation();toggleStepExpand(${i})">查看详情 ▾</span>
           </div>
@@ -7632,7 +7632,7 @@ function renderProcess(){
                 <div style="font-size:11px;color:#bbb;margin-top:6px">至少上传 ${photoReq} 张以满足验收要求</div>
               </div>`;
             /* 整改记录区（优先展示） */
-            const fixHtml=fixRecords.length?`<div style="margin-bottom:14px">${fixRecords.map(renderFixCard).join('')}</div>`:'';
+            const fixHtml=fixRecords.length?`<div id="fixArea_${i}" style="margin-bottom:14px">${fixRecords.map(renderFixCard).join('')}</div>`:'';
             /* 普通日志区（原样式保留） */
             const logHtml=logRecords.length?`<div style="border:1px solid #e8e8e8;border-radius:10px;overflow:hidden;background:#fff">
               <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #e8e8e8;background:#fafafa">
@@ -7880,6 +7880,35 @@ function toggleStepExpand(idx){
   if(!wasExpanded){card.classList.add('expanded');const fsImgs=card.querySelectorAll('img.fs-photo');if(fsImgs.length)loadFsPhotos(card);}
   /* 同步左侧导航深蓝高亮 */
   syncNavActiveStates();
+}
+/* 点击"未闭环整改"徽章：展开节点并定位滚动到整改记录区，短暂高亮 */
+function locateStepFix(idx){
+  const card=document.getElementById('stepCard-'+idx);
+  if(!card)return;
+  /* 确保展开 */
+  if(!card.classList.contains('expanded')){
+    document.querySelectorAll('.step-card.expanded').forEach(c=>c.classList.remove('expanded'));
+    card.classList.add('expanded');
+    const fsImgs=card.querySelectorAll('img.fs-photo');if(fsImgs.length)loadFsPhotos(card);
+    syncNavActiveStates();
+  }
+  const fixArea=document.getElementById('fixArea_'+idx);
+  /* 延迟等布局稳定后滚动 */
+  setTimeout(()=>{
+    if(fixArea){
+      fixArea.scrollIntoView({behavior:'smooth',block:'center'});
+      /* 高亮脉冲 */
+      fixArea.style.transition='box-shadow .3s, background .3s';
+      fixArea.style.boxShadow='0 0 0 3px #91caff';
+      fixArea.style.background='#e6f4ff';
+      setTimeout(()=>{fixArea.style.boxShadow='';fixArea.style.background='';},1400);
+    } else {
+      /* 无整改记录时，滚动到现场照片/日志与整改分区并提示 */
+      const leftSec=card.querySelector('.step-body-left');
+      if(leftSec)leftSec.scrollIntoView({behavior:'smooth',block:'start'});
+      alert('该节点暂无整改记录');
+    }
+  },120);
 }
 function isStepChecked(stepId){const p=cur();return p&&p.checked&&p.checked[stepId]}
 function toggleStepCheck(stepId){
