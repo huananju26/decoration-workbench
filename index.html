@@ -570,6 +570,24 @@ a{color:#003a8c;text-decoration:none}
 .rp-sign-line{border-bottom:1.5px solid #ccc;height:28px;margin-bottom:4px}
 .rp-sign-name{font-size:12px;color:#999}
 
+/* ═══ 问题整改记录单：打印 / 导出 PDF（隔离只打印文档本体） ═══ */
+@media print{
+  html.gs-printing-rectify body>*:not(#rectifyPreviewModal){display:none!important}
+  html.gs-printing-rectify #rectifyPreviewModal{
+    position:absolute!important;left:0!important;top:0!important;width:100%!important;height:auto!important;
+    background:#fff!important;display:flex!important;overflow:visible!important;z-index:auto!important
+  }
+  html.gs-printing-rectify #rectifyPreviewModal .modal{
+    max-width:none!important;width:100%!important;max-height:none!important;box-shadow:none!important;
+    display:block!important;border-radius:0!important
+  }
+  html.gs-printing-rectify #rectifyPreviewModal .modal-header,
+  html.gs-printing-rectify #rectifyPreviewModal .form-actions{display:none!important}
+  html.gs-printing-rectify #rectifyPreviewModal .modal-body{overflow:visible!important;max-height:none!important;padding:0!important}
+  html.gs-printing-rectify #rectifyPreviewModal .rp-section{break-inside:avoid!important;page-break-inside:avoid!important;margin-bottom:10px!important}
+  html.gs-printing-rectify #rectifyPreviewModal .rp-photo-grid img{break-inside:avoid!important}
+}
+
 /* 右侧：D 验收单图片区 */
 .sb-photo-empty{margin-top:10px;padding:28px 12px;border:1.5px dashed #d9e2f3;border-radius:8px;text-align:center;font-size:12.5px;color:#999;background:#fafcff}
 
@@ -3077,8 +3095,8 @@ a{color:#003a8c;text-decoration:none}
     <!-- 底部操作 -->
     <div class="form-actions" style="flex-shrink:0;padding:12px 24px;border-top:1px solid #e8e8e8;background:#fff">
       <button class="btn-outline" onclick="closeModal('rectifyPreviewModal')">关闭预览</button>
-      <button class="btn-primary" onclick="ryExportRectifyPdf(window._previewRectifyId)" style="margin-left:auto">导出 PDF</button>
-      <button class="btn-primary" onclick="window.print()" style="background:#1677ff">打印</button>
+      <button class="btn-primary" onclick="printRectifyRecord()" style="margin-left:auto">导出 PDF</button>
+      <button class="btn-primary" onclick="printRectifyRecord()" style="background:#1677ff">打印</button>
     </div>
   </div>
 </div>
@@ -7008,7 +7026,14 @@ function ryPreviewRectifyPdf(recordId){
   showModal('rectifyPreviewModal');
 }
 function ryExportRectifyPdf(recordId){
-  alert('整改 PDF 导出（占位）：当前以浏览器打印代替；后续将内置 PDF 导出');
+  /* 卡片上的「导出整改 PDF」：先打开预览弹窗，渲染后再触发打印（浏览器可另存为 PDF） */
+  ryPreviewRectifyPdf(recordId);
+  setTimeout(function(){ printRectifyRecord(); }, 450);
+}
+/* 打印 / 导出 PDF：隔离只打印整改记录单文档本体 */
+function printRectifyRecord(){
+  document.documentElement.classList.add('gs-printing-rectify');
+  setTimeout(function(){ window.print(); }, 250);
 }
 function sbEditAcceptItem(i,idx){
   sbEditStep(i);
@@ -8731,6 +8756,9 @@ window.addEventListener('afterprint',function(){
   const ov=$('gsPrintOverlay');
   if(ov){ ov.remove(); }
   document.documentElement.classList.remove('gs-printing');
+});
+window.addEventListener('afterprint',function(){
+  document.documentElement.classList.remove('gs-printing-rectify');
 });
 
 function downloadCustomerPayPNG(){
