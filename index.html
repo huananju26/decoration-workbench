@@ -7419,7 +7419,7 @@ function renderProcess(){
         <!-- 右栏：四个等宽扁平按钮 -->
         <div class="step-right-col">
           <div class="step-action-row">
-            <span class="step-action-item" onclick="event.stopPropagation();alert('现场照片功能开发中')">📷 现场照片<span class="step-action-num">0/1</span></span>
+            <span class="step-action-item" onclick="event.stopPropagation();openStepPhotoModal(${i})">📷 现场照片<span class="step-action-num">${getStepPhotoCount(p,step)}/${getStepRequiredPhotoCount(step)}</span></span>
             <span class="step-action-item" onclick="event.stopPropagation();alert('整改闭环功能开发中')">⚠️ 未闭环整改<span class="step-action-num">0</span></span>
             <span class="step-action-item" onclick="event.stopPropagation();alert('验收通过功能开发中')">✅ 验收通过<span class="step-action-num">0/1</span></span>
             <span class="step-action-item" onclick="event.stopPropagation();toggleStepExpand(${i})">查看详情 ▾</span>
@@ -7498,6 +7498,11 @@ function renderProcess(){
             const logRecords=records.filter(r=>r.tag!=='整改');
             const logCount=logRecords.length;
             const fixCount=fixRecords.length;
+            /* 现场照片：所有含照片的记录（去重汇总展示） */
+            const photoReq=getStepRequiredPhotoCount(step);
+            const allPhotos=records.reduce((s,r)=>s+((r.photos&&r.photos.length)||0),0);
+            /* 有照片的记录按时间倒序 */
+            const photoRecords=records.filter(r=>(r.photos&&r.photos.length)>0).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
             /* 整改记录卡渲染（截图2 样式） */
             const renderFixCard=(r)=>{
               const status=r.rectifyStatus||'待处理';
@@ -7552,12 +7557,52 @@ function renderProcess(){
                 </div>
               </div>`;
             };
-            if(!records.length)return '<div class="sb-empty">暂无现场记录 · <a href="javascript:void(0)" onclick="openSiteRecordModal();setTimeout(()=>$(\'srStepId\').value=\''+step.id+'\';updateSiteRecordTitle(),50)">去添加</a></div>';
+            if(!records.length)return `<div class="sb-empty">暂无现场记录 · <a href="javascript:void(0)" onclick="openStepPhotoModal(${i})">去添加现场照片</a></div>`;
             /* 顶部：统计 + 添加按钮 */
+            const photoOk=allPhotos>=photoReq;
+            const photoStatusHtml=photoOk
+              ?'<span style="color:#003a8c;font-size:11px">✓ 已达标</span>'
+              :'<span style="color:#fa541c;font-size:11px">还差 '+(photoReq-allPhotos)+' 张</span>';
             const head=`<div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;margin-bottom:8px;font-size:12px;color:#888">
-              <span>${logCount} 条日志 · <b style="color:#d46b08">${fixCount} 项整改</b></span>
-              <button class="btn-outline" style="font-size:12px;padding:4px 12px;border-radius:16px" onclick="openSiteRecordModal();setTimeout(()=>$('srStepId').value='${step.id}';updateSiteRecordTitle(),50)">＋ 添加现场</button>
+              <span>📷 现场照片 <b style="${photoOk?'color:#003a8c':'color:#fa541c'}">${allPhotos}/${photoReq}</b>${photoStatusHtml} · ${logCount} 条日志 · <b style="color:#d46b08">${fixCount} 项整改</b></span>
+              <button class="btn-outline" style="font-size:12px;padding:4px 12px;border-radius:16px" onclick="openStepPhotoModal(${i})">📷 添加现场照片</button>
             </div>`;
+            /* 现场照片记录区（每条含照片的记录展示为卡片） */
+            const renderPhotoRecordCard=(r)=>{
+              const rDate=r.date?r.date.replace('T',' ').slice(0,16):'';
+              const rPhotos=r.photos||[];
+              const isFix=r.tag==='整改';
+              return `<div style="background:#fff;border:1px solid #e8e8e8;border-radius:10px;overflow:hidden;margin-bottom:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0f0f0;background:${isFix?'#fff7e6':'#f0f7ff'}">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:15px">${isFix?'⚠️':'📷'}</span>
+                    <span style="font-size:13px;font-weight:600;color:#1a1a1a">${isFix?escHtml(r.title||'整改记录'):(r.content?escHtml(r.content.slice(0,40)):'现场照片')}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                    <span style="font-size:11px;color:#999">${rDate}</span>
+                    <span style="font-size:11px;color:#003a8c;font-weight:600;background:#e6f4ff;padding:2px 8px;border-radius:10px">${rPhotos.length} 张</span>
+                  </div>
+                </div>
+                <div style="padding:10px 14px">
+                  <div class="ph-strip" style="display:flex;flex-wrap:wrap;gap:6px">${rPhotos.map((ph,pi)=>{
+                    if(ph.data){return `<div class="ph-thumb" style="position:relative;width:88px;height:88px;flex-shrink:0"><img src="${ph.data}" style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${pi})" title="删除照片">×</div></div>`;}
+                    if(ph.stored==='fs'&&ph.path){return `<div class="ph-thumb" style="position:relative;width:88px;height:88px;flex-shrink:0"><img class="fs-photo" data-fs-path="${ph.path}" src="${_FS_PLACEHOLDER}" style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${pi})" title="删除照片">×</div></div>`;}
+                    return '';
+                  }).join('')}</div>
+                  ${!isFix?`<div style="margin-top:8px;display:flex;gap:6px">
+                    <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:6px" onclick="addPhotosToRecord('${r.id}','${step.id}')">＋ 继续添加照片</button>
+                    <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:6px;color:#ff4d4f;border-color:#ffd4d2;background:#fff2f0" onclick="deleteSiteRecord('${r.id}')">删除此记录</button>
+                  </div>`:''}
+                </div>
+              </div>`;
+            };
+            const photoHtml=photoRecords.length?`<div style="margin-bottom:12px">${photoRecords.map(renderPhotoRecordCard).join('')}</div>`:
+              `<div style="background:#fafafa;border:1px dashed #d9d9d9;border-radius:10px;padding:18px;text-align:center;margin-bottom:12px">
+                <div style="font-size:24px;margin-bottom:6px">📷</div>
+                <div style="font-size:13px;color:#888;margin-bottom:8px">该节点暂无现场照片</div>
+                <button class="btn-primary" style="font-size:12px;padding:6px 18px;border-radius:16px" onclick="openStepPhotoModal(${i})">上传现场照片</button>
+                <div style="font-size:11px;color:#bbb;margin-top:6px">至少上传 ${photoReq} 张以满足验收要求</div>
+              </div>`;
             /* 整改记录区（优先展示） */
             const fixHtml=fixRecords.length?`<div style="margin-bottom:14px">${fixRecords.map(renderFixCard).join('')}</div>`:'';
             /* 普通日志区（原样式保留） */
@@ -7589,7 +7634,7 @@ function renderProcess(){
                 </div>`;
               }).join('')}</div>
             </div>`:'';
-            return head+fixHtml+logHtml;
+            return head+photoHtml+fixHtml+logHtml;
           })()}
         </div>
 
@@ -11491,6 +11536,19 @@ function updateSiteRecordTitle(){
     $('srStepName').textContent=step.name;
     $('siteRecordTitle').textContent='📷 '+step.name+' · 添加现场照片与日志';
   }
+}
+/* 从节点卡片右侧"现场照片 N/M"按钮打开现场照片上传弹窗（预填当前节点） */
+function openStepPhotoModal(i){
+  const p=cur();if(!p){alert('请先选择项目');return;}
+  ensureProjectSteps(p);
+  const step=(p.processSteps||[])[i];
+  if(!step)return;
+  openSiteRecordModal();
+  /* 强制选中目标节点 */
+  $('srStepId').value=step.id;
+  updateSiteRecordTitle();
+  /* 聚焦到照片选择区域（视觉引导） */
+  setTimeout(()=>{$('srPhotos').focus();},100);
 }
 /* 将图片文件读取并压缩为 base64 DataURL（限制最大边长与体积，避免撑爆 localStorage） */
 function readPhotoAsDataURL(file){
