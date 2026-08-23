@@ -7924,13 +7924,15 @@ function renderProcessKeepExpanded(){
     const body=group.querySelector('.step-group-body');
     if(header&&body){header.classList.add('collapsed');body.style.maxHeight='0';}
   });
-  /* 再恢复卡片展开状态（仅恢复未折叠组内的卡片） */
+  /* 再恢复卡片展开状态：编辑语义为"仅展开编辑中的节点"——只展开第一个记录的卡片，
+     其他卡片一律折叠（不受"全部展开"按钮影响，该按钮直接调用 expandAllSteps 不进此分支） */
+  let restored=false;
   openCards.forEach(function(idx){
     const c=document.getElementById('stepCard-'+idx);
     if(!c)return;
     const group=c.closest('.step-group');
     const isGroupCollapsed=group&&group.querySelector('.step-group-header.collapsed');
-    if(!isGroupCollapsed){c.classList.add('expanded');}
+    if(!isGroupCollapsed&&!restored){c.classList.add('expanded');restored=true;}
   });
   syncNavActiveStates();
   applyStepSplitToAll();
@@ -7991,7 +7993,7 @@ function openTaskModalForStep(idx){
 }
 /* 全部折叠 */
 function collapseAllSteps(){
-  document.querySelectorAll('.step-card').forEach(c=>c.classList.remove('expanded'));
+  document.querySelectorAll('.step-card.expanded').forEach(c=>c.classList.remove('expanded'));
   syncNavActiveStates();
 }
 /* 搜索过滤步骤 */
@@ -8043,11 +8045,11 @@ function toggleStepExpand(idx){
   const card=document.getElementById('stepCard-'+idx);
   if(!card)return;
   const wasExpanded=card.classList.contains('expanded');
-  /* close all */
-  document.querySelectorAll('.step-card.expanded').forEach(c=>c.classList.remove('expanded'));
+  /* 单选模式：先折叠所有其他卡片，仅保留编辑中的节点展开 */
+  document.querySelectorAll('.step-card.expanded').forEach(c=>{ if(c!==card) c.classList.remove('expanded'); });
   /* toggle target */
   if(!wasExpanded){card.classList.add('expanded');const fsImgs=card.querySelectorAll('img.fs-photo');if(fsImgs.length)loadFsPhotos(card);}
-  /* 同步左侧导航深蓝高亮 */
+  /* 同步左侧导航深蓝高亮（仅编辑中的节点点亮） */
   syncNavActiveStates();
 }
 /* 点击"未闭环整改"徽章：展开节点并定位滚动到整改记录区，短暂高亮 */
