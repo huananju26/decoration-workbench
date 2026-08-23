@@ -9470,7 +9470,9 @@ function renderPlanVsActualSheet(p,steps){
     /* 标签紧跟实际条形（下方条）右边缘外侧；靠右时自动挪到左侧 */
     const labelLeft=Math.max(planLeftPct+planW, actLeftPct+actW);
     const labelOnLeft3=labelLeft>72;
-    const _lc3=({done:'#003a8c',inprogress:'#003a8c',overdue:'#ff4d4f',overlap:'#d48806'})[badgeCls]||'#003a8c';
+    /* 标签时间：已完成节点显示实际完成时间，未完成显示计划时间；颜色：已完成深蓝、未完成黑色 */
+    const showLabel=isDone?actLabel:planLabel;
+    const _lc3=isDone?'#003a8c':'#000000';
     const labelStyle3=labelOnLeft3?`left:calc(${labelLeft}% - 2px);transform:translateX(-100%) translateY(-50%);color:${_lc3}`:`left:calc(${labelLeft}% + 2px);transform:translateY(-50%);color:${_lc3}`;
     const actDays3=isDone?(Math.round((Date.parse(s.completedAt||planE||'')-Date.parse(s.completedAtStart||planS||''))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
@@ -9478,7 +9480,7 @@ function renderPlanVsActualSheet(p,steps){
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:28px">${todayEl}`
       +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:2px;height:14px;font-size:9px;padding:0;opacity:.9"></div>`
       +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:18px;height:14px;font-size:9px;padding:0">实际</div>`
-      +`<span class="pg-bar-label" style="${labelStyle3}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${planLabel}</span></span>`
+      +`<span class="pg-bar-label" style="${labelStyle3}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${showLabel}</span></span>`
       +`</div></div>`;
   });
   return `<div class="gs-sheet" id="planVsActualSheet">
