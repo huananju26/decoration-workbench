@@ -4037,19 +4037,18 @@ function mergeProject(p){
 function load(){
   // 候选存储键：当前键 + 历史上可能用过的旧键名（防止早期版本命名不同导致"数据丢失"）
   const CANDIDATE_KEYS=[APP_KEY,'xzgz_app_v1','xzgz_app','xzgz_renovation','renovation_app','xzjz_app'];
-  let raw=null, srcKey=null;
+  let d=null, srcKey=null;
   for(const k of CANDIDATE_KEYS){
     try{
       const r=localStorage.getItem(k);
       if(r){
-        const d=JSON.parse(r);
-        if(d&&d.projects&&Array.isArray(d.projects)){ raw=r; srcKey=k; break; }
+        const parsed=JSON.parse(r);   // 仅解析一次：校验与赋值共用同一对象
+        if(parsed&&parsed.projects&&Array.isArray(parsed.projects)){ d=parsed; srcKey=k; break; }
       }
     }catch(e){}
   }
-  if(raw){
+  if(d){
     try{
-      const d=JSON.parse(raw);
       // 合并式加载：以默认骨架为基底，叠加用户数据 —— 手动数据永不丢失，新增项自动补齐
       App=Object.assign({}, APP_DEFAULT, d);
       App.projects=(Array.isArray(d.projects)?d.projects:[]).map(mergeProject);
@@ -6299,16 +6298,22 @@ let curProjTab='process';
 function switchToProject(pid){
   App.currentProjectId=pid;
   persist();
-  // 刷新各页面
-  renderHome();
-  renderProcess();
-  renderPurchase();
-  renderFinance();
-  renderDiary();
-  // 同步刷新当前激活的子页面（合同收款 / 材料成本 / 客户交付）
-  if(curProjTab==='finance')renderProcessFinance();
-  else if(curProjTab==='purchase')renderProcessPurchase();
-  else if(curProjTab==='diary')renderProcessDiary();
+  /* 仅重渲染「当前激活页」+ 其关联子页，避免一次性 5+ 次整页渲染（流程页最重）造成切换卡顿 */
+  const page=typeof currentPage!=='undefined'?currentPage:null;
+  if(page==='process'||(typeof curProjTab!=='undefined'&&curProjTab)){
+    renderProcess();
+  }else if(page){
+    if(page==='home')renderHome();
+    else if(page==='purchase')renderPurchase();
+    else if(page==='finance')renderFinance();
+    else if(page==='diary')renderDiary();
+  }
+  /* 当前若在「施工进度」子页内，同步刷新其激活的子分区（合同收款/材料成本/客户交付） */
+  if(typeof curProjTab!=='undefined'){
+    if(curProjTab==='finance')renderProcessFinance();
+    else if(curProjTab==='purchase')renderProcessPurchase();
+    else if(curProjTab==='diary')renderProcessDiary();
+  }
   // 更新顶部切换器
   const sel=$('projectSelect');
   if(sel){sel.value=pid;}
@@ -7487,6 +7492,29 @@ function renderProcess(){
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
   const container=$('stepCardList');
+  /* 关联数据预索引：把 purchases/tasks/siteRecords 按 stepId/stepName 建立索引，
+     将原本 renderOneCard 内 O(节点×记录) 的嵌套 .filter() 降为 O(节点+记录) 一次遍历 */
+  const purByStep=new Map(), taskByStep=new Map(), recByStep=new Map();
+  (p.purchases||[]).forEach(x=>{
+    const key=(x.stageId||'')+'|'+(x.stage||'');
+    if(!purByStep.has(key))purByStep.set(key,[]);
+    purByStep.get(key).push(x);
+  });
+  (p.tasks||[]).forEach(t=>{
+    const key=(t.stage||'');
+    if(!taskByStep.has(key))taskByStep.set(key,[]);
+    taskByStep.get(key).push(t);
+  });
+  (p.siteRecords||[]).forEach(r=>{
+    const key=(r.stepId||'');
+    if(!recByStep.has(key))recByStep.set(key,[]);
+    recByStep.get(key).push(r);
+  });
+  const getRel=(map,step,useId)=>{
+    if(useId && map.has(step.id)) return map.get(step.id);
+    const key=step.id+'|'+step.name;
+    return map.get(key)||[];
+  };
   /* 分组：已完成 vs 未完成（序号保持原始位置不变） */
   const doneSteps=[], undoneSteps=[];
   steps.forEach((step,i)=>{
@@ -7625,14 +7653,12 @@ function renderProcess(){
 
         <!-- ③ 关联采购 -->
         <div class="sb-section">
-          <div class="sb-sec-title">关联采购<span class="sb-badge">${(p.purchases||[]).filter(x=>(x.stageId||'')===step.id||(x.stage||'')===step.name).length}</span></div>
-          ${(function(){const rel=(p.purchases||[]).filter(x=>(x.stageId||'')===step.id||(x.stage||'')===step.name);if(!rel.length)return `<div class="sb-empty">暂无关联采购 · <a href="javascript:void(0)" onclick="openPurchaseModalForStep('${step.id}')">去添加</a></div>`;return `<div class="sb-rel-list">${rel.map(x=>`<div class="sb-rel-item"><div class="sb-rel-main"><span class="sb-rel-name">${escHtml(x.name||'')}</span>${x.qty?`<span class="sb-rel-sub">${escHtml(x.qty+'')}${escAttr(x.unit||'项')}</span>`:''}</div><div class="sb-rel-right"><span class="sb-rel-amt">¥${fmt(x.budget||0)}</span><span class="sb-status ${statusCls(x.status)}">${escHtml(x.status||'待购')}</span></div></div>`).join('')}</div><div class="sb-rel-add"><button class="sb-mini-btn" type="button" onclick="openPurchaseModalForStep('${step.id}')">＋ 关联采购</button></div>`})()}
+          ${(function(){const rel=getRel(purByStep,step,true);return `<div class="sb-sec-title">关联采购<span class="sb-badge">${rel.length}</span></div>`+((function(){if(!rel.length)return `<div class="sb-empty">暂无关联采购 · <a href="javascript:void(0)" onclick="openPurchaseModalForStep('${step.id}')">去添加</a></div>`;return `<div class="sb-rel-list">${rel.map(x=>`<div class="sb-rel-item"><div class="sb-rel-main"><span class="sb-rel-name">${escHtml(x.name||'')}</span>${x.qty?`<span class="sb-rel-sub">${escHtml(x.qty+'')}${escAttr(x.unit||'项')}</span>`:''}</div><div class="sb-rel-right"><span class="sb-rel-amt">¥${fmt(x.budget||0)}</span><span class="sb-status ${statusCls(x.status)}">${escHtml(x.status||'待购')}</span></div></div>`).join('')}</div><div class="sb-rel-add"><button class="sb-mini-btn" type="button" onclick="openPurchaseModalForStep('${step.id}')">＋ 关联采购</button></div>`})());})()}
         </div>
 
         <!-- ④ 关联任务 -->
         <div class="sb-section">
-          <div class="sb-sec-title">关联任务<span class="sb-badge">${(p.tasks||[]).filter(t=>(t.stage||'')===step.name).length}</span></div>
-          ${(function(){const rel=(p.tasks||[]).filter(t=>(t.stage||'')===step.name);if(!rel.length)return `<div class="sb-empty">暂无关联任务 · <a href="javascript:void(0)" onclick="openTaskModalForStep(${i})">去添加</a></div>`;return `<div class="sb-rel-list">${rel.map(t=>`<div class="sb-rel-item"><div class="sb-rel-main"><span class="sb-rel-name">${escHtml(t.title||'')}</span>${t.due?`<span class="sb-rel-sub">${fmtShort(t.due)}</span>`:''}</div><div class="sb-rel-right"><span class="sb-status ${t.done?'done':'wait'}">${t.done?'已完成':'待办'}</span></div></div>`).join('')}</div><div class="sb-rel-add"><button class="sb-mini-btn" type="button" onclick="openTaskModalForStep(${i})">＋ 关联任务</button></div>`})()}
+          ${(function(){const rel=getRel(taskByStep,step,false);return `<div class="sb-sec-title">关联任务<span class="sb-badge">${rel.length}</span></div>`+((function(){if(!rel.length)return `<div class="sb-empty">暂无关联任务 · <a href="javascript:void(0)" onclick="openTaskModalForStep(${i})">去添加</a></div>`;return `<div class="sb-rel-list">${rel.map(t=>`<div class="sb-rel-item"><div class="sb-rel-main"><span class="sb-rel-name">${escHtml(t.title||'')}</span>${t.due?`<span class="sb-rel-sub">${fmtShort(t.due)}</span>`:''}</div><div class="sb-rel-right"><span class="sb-status ${t.done?'done':'  wait'}">${t.done?'已完成':'待办'}</span></div></div>`).join('')}</div><div class="sb-rel-add"><button class="sb-mini-btn" type="button" onclick="openTaskModalForStep(${i})">＋ 关联任务</button></div>`})());})()}
         </div>
 
         <!-- ⑤ 现场照片、日志与整改（原逻辑保留） -->
@@ -7640,7 +7666,7 @@ function renderProcess(){
           <div class="sb-sec-title">现场照片、日志与整改</div>
           ${(function(){
             const p=cur();
-            const records=(p.siteRecords||[]).filter(r=>r.stepId===step.id);
+            const records=getRel(recByStep,step,true);
             const fixRecords=records.filter(r=>r.tag==='整改');
             /* 日常现场记录：仅"写了装修日志"（有非空文字内容）的记录；纯照片记录不计入 */
             const logRecords=records.filter(r=>r.tag!=='整改' && (r.content||'').trim()!=='');
@@ -7733,8 +7759,8 @@ function renderProcess(){
                 </div>
                 <div style="padding:10px 14px">
                   <div class="ph-strip" style="display:flex;flex-wrap:wrap;gap:6px">${rPhotos.map((ph,pi)=>{
-                    if(ph.data){return `<div class="ph-thumb" style="position:relative;width:88px;height:88px;flex-shrink:0"><img src="${ph.data}" style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${pi})" title="删除照片">×</div></div>`;}
-                    if(ph.stored==='fs'&&ph.path){return `<div class="ph-thumb" style="position:relative;width:88px;height:88px;flex-shrink:0"><img class="fs-photo" data-fs-path="${ph.path}" src="${_FS_PLACEHOLDER}" style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${pi})" title="删除照片">×</div></div>`;}
+                    if(ph.data){return `<div class="ph-thumb" style="position:relative;width:88px;height:88px;flex-shrink:0"><img loading="lazy" src="${ph.data}" style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${pi})" title="删除照片">×</div></div>`;}
+                    if(ph.stored==='fs'&&ph.path){return `<div class="ph-thumb" style="position:relative;width:88px;height:88px;flex-shrink:0"><img class="fs-photo" loading="lazy" data-fs-path="${ph.path}" src="${_FS_PLACEHOLDER}" style="width:88px;height:88px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${pi})" title="删除照片">×</div></div>`;}
                     return '';
                   }).join('')}</div>
                   ${!isFix?`<div style="margin-top:8px;display:flex;gap:6px">
@@ -7772,8 +7798,8 @@ function renderProcess(){
                   </div>
                   <div style="font-size:13px;color:#333;line-height:1.6">${escHtml(r.content||'无说明')}</div>
                   ${r.photos&&r.photos.length?`<div class="ph-strip" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${r.photos.map((ph,i)=>{
-                    if(ph.data){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img src="${ph.data}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除照片">×</div></div>`;}
-                    if(ph.stored==='fs'&&ph.path){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img class="fs-photo" data-fs-path="${ph.path}" src="${_FS_PLACEHOLDER}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除照片">×</div></div>`;}
+                    if(ph.data){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img loading="lazy" src="${ph.data}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除照片">×</div></div>`;}
+                    if(ph.stored==='fs'&&ph.path){return `<div class="ph-thumb" style="position:relative;width:84px;height:84px;flex-shrink:0"><img class="fs-photo" loading="lazy" data-fs-path="${ph.path}" src="${_FS_PLACEHOLDER}" style="width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block" onclick="openPhotoLightbox(this)" title="点击查看原图"><div class="ph-thumb-del" onclick="event.stopPropagation();deleteSinglePhoto('${r.id}',${i})" title="删除照片">×</div></div>`;}
                     return '';
                   }).join('')}</div>`:''}
                   <div style="margin-top:8px">
