@@ -342,6 +342,8 @@ a{color:#003a8c;text-decoration:none}
 .process-nav-item.active{background:#e6f4ff;color:#003a8c;font-weight:600}
 .process-nav-dot{width:8px;height:8px;border-radius:50%;background:#d9d9d9;flex-shrink:0;transition:background .2s}
 .process-nav-item.active .process-nav-dot{background:#003a8c;box-shadow:0 0 0 3px rgba(0,58,140,.15)}
+.process-nav-item.disabled{cursor:not-allowed;opacity:.65;pointer-events:none}
+.process-nav-item.disabled:hover{background:transparent;color:#555}
 .process-nav-num{font-size:12px;color:#999;width:24px;flex-shrink:0;text-align:right}
 .process-nav-num.done{color:#bbb;text-decoration:line-through}
 .process-nav-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -7853,7 +7855,7 @@ function renderProcessNav(){
   navList.innerHTML=steps.map((step,i)=>{
     const done=isStepFullyAccepted(p,step);
     const numStr=String(i+1).padStart(2,'0');
-    return `<li class="process-nav-item" id="processNavItem-${i}" data-index="${i}" onclick="scrollToStep(${i})">
+    return `<li class="process-nav-item${done?' disabled':''}" id="processNavItem-${i}" data-index="${i}"${done?'':' onclick="scrollToStep('+i+')"'}>
       <span class="process-nav-dot${done?' active':''}"></span>
       <span class="process-nav-num${done?' done':''}">${numStr}</span>
       <span class="process-nav-name${done?' done':''}">${escHtml(step.name)}</span>
