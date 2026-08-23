@@ -9467,8 +9467,9 @@ function renderPlanVsActualSheet(p,steps){
       actS=s.completedAtStart||planS;actE=s.completedAt||planE;actClass='done';
     } else {
       actS=planS;actE=(planS<=today?today:planE);
-      if((planE||planS)<today)actClass='overdue';
-      else actClass='inprogress';
+      if(planS > today)actClass='pending';          /* 计划开始日期未到 → 待开始 */
+      else if((planE||planS)<today)actClass='overdue'; /* 已逾期 */
+      else actClass='inprogress';                     /* 进行中 */
     }
     const actLeftPct=_pctFromISO(actS,range.startISO,totalDays);
     const actRightPct=_pctFromISO(actE,range.startISO,totalDays);
