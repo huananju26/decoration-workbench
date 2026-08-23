@@ -12785,6 +12785,10 @@ function handleSearch(q){if(!q)return;}
 // ============================================================
 async function init(){
   load();
+  /* 首屏立即填充问候语与实时时钟：问候语与第二行静态「今天有 0 项需要处理」应同步显示，
+     避免被下方云端 pull 的 await 阻塞几秒才出现（表现为刷新后第一行空白、几秒后才填充） */
+  updateHeroGreeting();
+  startHeroClock();
   if(cloudUser&&CloudSync.configured){
     try{
       const d=await CloudSync.pull();
