@@ -7798,7 +7798,7 @@ function renderProcess(){
     </div>`;
   }
   if(undoneSteps.length){
-    const undoneCards=undoneSteps.map(s=>renderOneCard(s,true)).join('');
+    const undoneCards=undoneSteps.map(s=>renderOneCard(s,false)).join('');
     html+=`<div class="step-group" data-group="undone">
       <div class="step-group-header" onclick="toggleStepGroup(this)">
         <span class="step-group-icon">🔄</span>
@@ -7820,6 +7820,11 @@ function renderProcess(){
   /* 详情左右栏：应用持久化的分栏比例 + 绑定拖拽分割条 */
   applyStepSplitToAll();
   setTimeout(bindStepSplitter,0);
+  /* 初始展开态：如果没有卡片是展开的，自动展开未完成组的第一张卡片 */
+  if(!document.querySelector('.step-card.expanded')){
+    const firstUndone=document.querySelector('.step-group[data-group="undone"] .step-card');
+    if(firstUndone){firstUndone.classList.add('expanded');syncNavActiveStates();}
+  }
 }
 /* 分组折叠/展开：点击分组标题栏切换该组所有卡片的显隐 */
 function toggleStepGroup(header){
@@ -7904,9 +7909,29 @@ function expandAllSteps(){
 }
 /* ── 节点详情：保存后保持展开态重新渲染 ── */
 function renderProcessKeepExpanded(){
-  const open=Array.from(document.querySelectorAll('.step-card.expanded')).map(c=>c.dataset.index);
+  /* 记录当前展开的卡片索引 */
+  const openCards=Array.from(document.querySelectorAll('.step-card.expanded')).map(c=>c.dataset.index);
+  /* 记录当前折叠的分组（done/undone） */
+  const collapsedGroups=Array.from(document.querySelectorAll('.step-group-header.collapsed'))
+    .map(function(h){const g=h.closest('.step-group');return g?g.dataset.group:null;})
+    .filter(Boolean);
   renderProcess();
-  open.forEach(idx=>{const c=document.getElementById('stepCard-'+idx);if(c)c.classList.add('expanded');});
+  /* 先恢复分组折叠状态（必须在恢复卡片展开之前，否则折叠组内的卡片会被错误展开） */
+  collapsedGroups.forEach(function(g){
+    const group=document.querySelector('.step-group[data-group="'+g+'"]');
+    if(!group)return;
+    const header=group.querySelector('.step-group-header');
+    const body=group.querySelector('.step-group-body');
+    if(header&&body){header.classList.add('collapsed');body.style.maxHeight='0';}
+  });
+  /* 再恢复卡片展开状态（仅恢复未折叠组内的卡片） */
+  openCards.forEach(function(idx){
+    const c=document.getElementById('stepCard-'+idx);
+    if(!c)return;
+    const group=c.closest('.step-group');
+    const isGroupCollapsed=group&&group.querySelector('.step-group-header.collapsed');
+    if(!isGroupCollapsed){c.classList.add('expanded');}
+  });
   syncNavActiveStates();
   applyStepSplitToAll();
   setTimeout(bindStepSplitter,0);
