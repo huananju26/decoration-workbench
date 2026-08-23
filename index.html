@@ -9472,7 +9472,7 @@ function renderPlanVsActualSheet(p,steps){
     const labelOnLeft3=labelLeft>72;
     /* 标签时间：已完成节点显示实际完成时间，未完成显示计划时间；颜色：已完成深蓝、未完成黑色 */
     const showLabel=isDone?actLabel:planLabel;
-    const _lc3=isDone?'#003a8c':'#000000';
+    const _lc3=isDone?'#003a8c':'#888888';
     const labelStyle3=labelOnLeft3?`left:calc(${labelLeft}% - 2px);transform:translateX(-100%) translateY(-50%);color:${_lc3}`:`left:calc(${labelLeft}% + 2px);transform:translateY(-50%);color:${_lc3}`;
     const actDays3=isDone?(Math.round((Date.parse(s.completedAt||planE||'')-Date.parse(s.completedAtStart||planS||''))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
