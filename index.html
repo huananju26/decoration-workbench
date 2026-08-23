@@ -1275,7 +1275,7 @@ a{color:#003a8c;text-decoration:none}
 .pg-bar-label{position:absolute;font-size:10.5px;line-height:1.4;pointer-events:none;z-index:3;white-space:nowrap;display:inline-flex;flex-direction:row;align-items:center;gap:4px}
 .pg-bar-label .pg-label-name{font-weight:600}
 .pg-bar-label .pg-label-date{font-size:10.5px}
-.pg-badge.pending{background:#e6f4ff;color:#003a8c}
+.pg-badge.pending{background:#f5f5f5;color:#888888;border:1px solid #e8e8e8}
 .pg-badge.inprogress{background:#003a8c;color:#fff}
 .pg-badge.done{background:#0050b3;color:#fff}
 .pg-badge.overdue{background:#ff4d4f;color:#fff}
@@ -1286,6 +1286,7 @@ a{color:#003a8c;text-decoration:none}
 .pg-bar{position:absolute;top:2px;height:28px;border-radius:4px;font-size:0;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;display:flex;align-items:center;padding:0;white-space:nowrap;overflow:visible;cursor:default;box-sizing:border-box;touch-action:none;z-index:2;user-select:none;-webkit-user-select:none}
 .pg-bar.dragging{z-index:4;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 .pg-bar.inprogress{background:#1677ff;color:#fff;border-color:#1677ff}
+.pg-bar.pending{background:#f0f0f0;color:#888888;border-color:#d9d9d9}
 .pg-bar.done{background:#0050b3;color:#fff;border-color:#0050b3}
 .pg-bar.overlap{box-shadow:0 0 0 2px #fa8c16,inset 0 0 0 1px #fa8c16;background:#fff7e6;border-color:#fa8c16;color:#d46b08;z-index:3}
 .pg-bar.overdue{background:#ff4d4f;color:#fff;border-color:#ff4d4f}
@@ -4584,7 +4585,7 @@ function _normalizeGanttLabelWidth(root){
 }
 
 /** 修正甘特图溢出标签：检测每个 .pg-bar-label 右缘是否超出 .pg-track 容器，
- *  超出则自动挪到实际条形（第二个 pg-bar）的左侧。 */
+ *  超出则自动挪到对应条形的左侧；动态读取条形 top/height 保证垂直对齐。 */
 function _fixOverflowLabels(root){
   if(!root) return;
   var labels=root.querySelectorAll('.pg-bar-label');
@@ -4596,15 +4597,18 @@ function _fixOverflowLabels(root){
     if(tw<=0) return;
     var rightEdge=label.offsetLeft + label.offsetWidth;
     if(rightEdge <= tw + 2) return; // 未溢出（+2px 容差）
-    // 溢出了——找实际条形（第二个 .pg-bar），把标签挪到它左侧
+    // 溢出了——找条形，动态读取其 top/height
     var bars=track.querySelectorAll('.pg-bar');
-    var bar=bars.length>=2 ? bars[1] : bars[0]; // 优先取实际条(下行)
+    var bar=bars.length>=2 ? bars[1] : bars[0];
     if(!bar){ label.style.left='0'; return; }
     var barLeft=parseFloat(bar.style.left)||0;
+    // 从条形读取 top/height（内联优先，否则从 computed）
+    var barTop=bar.style.top?parseFloat(bar.style.top):2;
+    var barH=bar.style.height?parseFloat(bar.style.height):28;
     label.style.left='calc('+barLeft+'% - '+Math.max(label.offsetWidth+6, 44)+'px)';
-    label.style.top='23px';
-    label.style.height='14px';
-    label.style.lineHeight='14px';
+    label.style.top=barTop+'px';
+    label.style.height=barH+'px';
+    label.style.lineHeight=barH+'px';
     label.style.transform='translateX(-100%)';
   });
 }
@@ -4661,7 +4665,7 @@ function renderPlanGantt(){
     const actDaysHtml=actDays>0?`<span class="pg-actual-days">${actDays}天</span>`:'';
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(n.name||'')}</span><span class="pg-badge-row"><span class="pg-badge ${st}">${STXT[st]||'待开始'}</span>${actDaysHtml}</span></div>`;
     if(!scheduled){
-      return `<div class="pg-row">${nameCell}<div class="pg-track"><span class="pg-bar-label" style="left:0;top:50%;transform:translateY(-50%)"><span class="pg-label-name">${escHtml(n.name||'')}</span></span></div></div>`;
+      return `<div class="pg-row">${nameCell}<div class="pg-track"><span class="pg-bar-label" style="left:0;top:2px;height:28px;line-height:28px"><span class="pg-label-name">${escHtml(n.name||'')}</span></span></div></div>`;
     }
     const leftPct=pct(n.planStart),wPct=Math.max(pct(n.planEnd)-leftPct,0.5);
     const barRight=leftPct+wPct;
@@ -4669,8 +4673,10 @@ function renderPlanGantt(){
     const dateLabel=`${fmtDateMd(n.planStart)} — ${fmtDateMd(n.planEnd)}`;
     /* 条形靠右(>72%)时标签放左侧，否则放右侧 */
     const labelOnLeft=barRight>72;
-    const _lc=ov?'#d48806':({done:'#003a8c',inprogress:'#003a8c',overdue:'#ff4d4f'})[st]||'#003a8c';
-    const labelStyle=labelOnLeft?`left:calc(${leftPct}% - 2px);transform:translateX(-100%) translateY(-50%);color:${_lc}`:`left:calc(${leftPct}% + ${wPct}% + 2px);transform:translateY(-50%);color:${_lc}`;
+    const _lc=ov?'#d48806':({done:'#003a8c',inprogress:'#003a8c',pending:'#888888',overdue:'#ff4d4f'})[st]||'#888888';
+    /* height+line-height 锁定 28px = 条形高度，top=2px = 条形 top → 文字与条形水平居中，不用 translateY */
+    const _lb=`top:2px;height:28px;line-height:28px;color:${_lc}`;
+    const labelStyle=labelOnLeft?`left:calc(${leftPct}% - 2px);${_lb};transform:translateX(-100%)`:`left:calc(${leftPct}% + ${wPct}% + 2px);${_lb}`;
     return `<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${st}${ov}" data-idx="${i}" title="${escHtml(n.name+' · '+dateLabel)}" style="left:${leftPct}%;width:${wPct}%"><span class="pg-handle pg-handle-l" data-idx="${i}" data-side="left" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span><span class="pg-handle pg-handle-r" data-idx="${i}" data-side="right" onmousedown="ganttResizeStart(event,this)" ontouchstart="ganttResizeStart(event,this)"></span></div><span class="pg-bar-label" style="${labelStyle}"><span class="pg-label-name">${escHtml(n.name||'')}</span><span class="pg-label-date">${dateLabel}</span></span></div></div>`;
   }).join('');
   box.innerHTML=
