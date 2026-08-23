@@ -1267,12 +1267,12 @@ a{color:#003a8c;text-decoration:none}
 .pg-axis-label{font-size:11px;color:#999;padding:4px 8px 6px 0;display:flex;align-items:flex-end}
 .pg-axis-track{position:relative;height:26px;border-bottom:1px solid #eaeaea}
 .pg-month{position:absolute;top:0;height:26px;font-size:11px;color:#888;border-left:1px solid #e3e3e3;padding-left:5px;display:flex;align-items:center;white-space:nowrap;overflow:hidden}
-.pg-row{display:grid;grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);align-items:center;border-top:1px dashed #f0f0f0;min-height:38px;width:100%;column-gap:12px}
+.pg-row{display:grid;grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);align-items:center;border-top:1px dashed #f0f0f0;min-height:54px;width:100%;column-gap:12px}
 .pg-row:nth-child(even){background:#f7f8fa;border-radius:4px}
 .pg-row-label{display:flex;flex-direction:column;gap:1px;padding:3px 4px 3px 0;min-width:0;box-sizing:border-box;border-right:1px solid #f0f0f0}
 .pg-row-label .pg-name{font-size:12px;color:#333;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pg-row-label .pg-badge{font-size:10px;padding:1px 6px;border-radius:6px;align-self:flex-start;line-height:1.5}
-.pg-bar-label{position:absolute;top:50%;transform:translateY(-50%);font-size:11.5px;line-height:1.35;pointer-events:none;z-index:3;white-space:nowrap;display:flex;flex-direction:row;align-items:center;gap:5px}
+.pg-bar-label{position:absolute;font-size:10.5px;line-height:1.4;pointer-events:none;z-index:3;white-space:nowrap;display:inline-flex;flex-direction:row;align-items:center;gap:4px}
 .pg-bar-label .pg-label-name{font-weight:600}
 .pg-bar-label .pg-label-date{font-size:10.5px}
 .pg-badge.pending{background:#e6f4ff;color:#003a8c}
@@ -1497,11 +1497,10 @@ a{color:#003a8c;text-decoration:none}
   .plan-mytpl-row .plan-tpl-btn{font-size:11px;padding:5px 8px}
   .plan-stats-hint{font-size:10.5px;text-align:left}
   /* ── 甘特图：移动端压缩 ── */
-  .pg-bar-label{font-size:10px;gap:3px}
-  .pg-bar-label .pg-label-name{font-size:10.5px}
+  .pg-bar-label{font-size:9.5px;gap:2px}
   .pg-bar-label .pg-label-date{font-size:9px}
   .pg-grid{grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);column-gap:8px}
-  .pg-row{grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);min-height:24px;column-gap:8px}
+  .pg-row{grid-template-columns:var(--pg-label-w,auto) minmax(0,1fr);min-height:44px;column-gap:8px}
   .pg-row-label{font-size:11px;border-right:none;padding:2px 4px 2px 0}
   .pg-bar{font-size:9.5px;padding:0 4px}
   /* ── 项目收支仪表盘：平板/手机自适应 ── */
@@ -9477,10 +9476,12 @@ function renderPlanVsActualSheet(p,steps){
     const actDays3=isDone?(Math.round((Date.parse(s.completedAt||planE||'')-Date.parse(s.completedAtStart||planS||''))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</span></div>`;
-    rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:28px">${todayEl}`
-      +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:2px;height:14px;font-size:9px;padding:0;opacity:.9"></div>`
-      +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:18px;height:14px;font-size:9px;padding:0">实际</div>`
-      +`<span class="pg-bar-label" style="${labelStyle3}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${showLabel}</span></span>`
+    /* 行高加大：track=44px，上行计划(top:3/h:14) + 下行实际(top:23/h:14) + 6px间距 + 底部日期区 */
+    rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:44px">${todayEl}`
+      +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:14px;font-size:9px;padding:0;opacity:.85"></div>`
+      +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:23px;height:14px;font-size:9px;padding:0"></div>`
+      /* 日期标签放在条形下方右侧，仅显示日期（不含节点名），避免重叠 */
+      +`<span class="pg-bar-label" style="left:calc(${Math.max(planLeftPct+planW,actLeftPct+actW)}% + 4px);top:41px;transform:none;color:${_lc3};font-size:10.5px"><span class="pg-label-date">${showLabel}</span></span>`
       +`</div></div>`;
   });
   return `<div class="gs-sheet" id="planVsActualSheet">
