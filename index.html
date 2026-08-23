@@ -4873,7 +4873,7 @@ function openProjectModal(id){
       $('wizTab3').style.display='';
       /* 预填收款计划（含已收付款项），供第3步编辑 */
       const pTotal=parseFloat($('projTotalAmount').value)||0;
-      wizPayPlanMode='pct';wizPayPlanSplit={laborAmt:pTotal,laborMethod:'pct',materialAmt:0,materialMethod:'pct'};
+      wizPayPlanMode=p.payPlanMode||'pct';wizPayPlanSplit={laborAmt:pTotal,laborMethod:'pct',materialAmt:0,materialMethod:'pct'};
       wizPayPlanNodes=((p.income&&p.income.length)?p.income:[]).map(e=>({
         id:e.id,name:e.name,
         pct:pTotal>0?+((e.amount||0)/pTotal*100).toFixed(2):0,
@@ -5109,6 +5109,7 @@ function createProjectFromWizard(){
   const p={
     id:'p_'+uid(),name:name,code:code,houseType:selectedHouseType,createdAt:todayISO(),
     totalAmount:totalAmount,area:area,signMonth:signMonth,adjustment:0,
+    payPlanMode:wizPayPlanMode,
     profile:{style:'',layout:'',mode:'',startDate:$('wPlanStartDate').value||''},
     tasks:[],purchases:[],income:income,expense:[],diaries:[],compares:[],checked:{},
     processSteps:processSteps
@@ -5138,7 +5139,7 @@ function saveProject(){
     const idx=App.projects.findIndex(x=>x.id===editingProjectId);
     if(idx>=0){
       const p=App.projects[idx];
-      p.name=name;p.code=code;p.totalAmount=totalAmount;p.area=area;p.signMonth=signMonth;p.houseType=selectedHouseType;
+      p.name=name;p.code=code;p.totalAmount=totalAmount;p.area=area;p.signMonth=signMonth;p.houseType=selectedHouseType;p.payPlanMode=wizPayPlanMode;
       p.profile=p.profile||{};p.profile.startDate=$('wPlanStartDate').value||'';
       p.processSteps=processSteps;
       p.income=saveEditIncome(p.income||[], totalAmount);
@@ -10530,7 +10531,8 @@ function openPlanModal(){
   const inc=p.income||[];
   /* 检测是否有人辅/主材分组，有则默认进入 split 模式 */
   const hasGroup=inc.some(i=>i._group==='material'||i._group==='labor');
-  _planMode=hasGroup?'split':'pct';
+  /* 优先定位到创建/上次保存时使用的收款计划类型；旧项目无记录时按分组回退 */
+  _planMode=(p.payPlanMode&&['pct','custom','split'].indexOf(p.payPlanMode)>=0)?p.payPlanMode:(hasGroup?'split':'pct');
   const total=parseFloat(p.totalAmount)||0;
   if(inc.length){
     _planNodes=inc.map(i=>{
