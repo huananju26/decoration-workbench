@@ -9488,7 +9488,7 @@ function renderPlanVsActualSheet(p,steps){
       ?`left:calc(${actLeftPct}% - 4px);${actLabelBase};transform:translateX(-100%)`
       :`left:calc(${actLabelLeft}% + 4px);${actLabelBase}`;
     /* 实际标签文字：未完成 → 显示状态文字(行中/待开始/逾期)；已完成 → "完成 + 日期" */
-    const actLabelText=isDone?`完成 ${actLabel}`:({inprogress:'行中',pending:'待开始',overdue:'逾期'})[actClass]||'行中';
+    const actLabelText=isDone?`完成 ${actLabel}`:({inprogress:'进行中',pending:'待开始',overdue:'逾期'})[actClass]||'进行中';
     /* 计划条标签：所有节点都显示；跟随计划条(top:3px/14px)，右缘>65%时挪到前面(左) */
     const planLabelLeft=planLeftPct+planW;
     const planOnLeft3=planLabelLeft>65;
