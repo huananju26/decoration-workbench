@@ -370,8 +370,9 @@ a{color:#003a8c;text-decoration:none}
 .step-card.pending .step-name{color:#bfbfbf}
 .step-status-badge{font-size:11px;padding:1px 8px;border-radius:10px;font-weight:500;flex-shrink:0;line-height:1.6}
 .step-status-badge.done{background:#e6f4ff;color:#003a8c}
+.step-status-badge.accepting{background:#e6f4ff;color:#003a8c;font-weight:600;border:1px solid #91caff}
 .step-status-badge.wait{background:#fff7e6;color:#fa8c16}
-.step-status-badge.active{background:#e6f4ff;color:#003a8c}
+.step-status-badge.active{background:#e6f4ff;color:#1677ff}
 .step-status-badge.overdue{background:#fff1f0;color:#ff4d4f}
 .step-subtitle{font-size:11.5px;color:#999;margin-top:3px;overflow:hidden;text-overflow:ellipsis}
 
@@ -7535,9 +7536,8 @@ function renderProcess(){
     const planEnd=step.planEndDate||'';
     /* 逾期判定：计划完成日已过 且 节点未完成 → 逾期 */
     const overdue=!done && planEnd && planEnd<todayISO();
-    /* 判断是否"未开始"：当前步骤未完成 且 前一个步骤也未完成（或没有前序）→ 待开始；否则为进行中 */
-    const prevDone=i===0||isStepChecked(steps[i-1].id);
-    const pending=!done&&!prevDone&&!overdue;
+    /* 待开始判定：计划开始日期在未来（基于计划时间，非前序节点完成状态） */
+    const pending=!done && !fullyAccepted && !overdue && (planStart&&planStart>todayISO());
     /* 逾期天数 */
     const daysOver=overdue?Math.ceil((new Date(todayISO())-new Date(planEnd))/(86400000)):0;
     const planStr=step.days||'';
@@ -7575,7 +7575,8 @@ function renderProcess(){
           <div class="step-name-wrap">
             <span class="step-num">${i+1}</span>
             <span class="step-name">${escHtml(step.name)}</span>
-            ${fullyAccepted?'<span class="step-status-badge done">已完成</span>':overdue?'<span class="step-status-badge overdue">逾期 '+daysOver+'天</span>':pending?'<span class="step-status-badge wait">待开始</span>':'<span class="step-status-badge active">进行中</span>'}
+            ${/* 节点状态四态+1特殊态（按优先级从高到低）：已完成 > 待验收 > 逾期 > 待开始 > 进行中 */''}
+            ${fullyAccepted?'<span class="step-status-badge done">已完成</span>':done?'<span class="step-status-badge accepting">当前节点已完成，待节点验收</span>':overdue?'<span class="step-status-badge overdue">逾期 '+daysOver+'天</span>':(planStart&&planStart>todayISO())?'<span class="step-status-badge wait">待开始</span>':'<span class="step-status-badge active">进行中</span>'}
           </div>
           <div class="step-mark-complete">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="event.stopPropagation();toggleStepCheck('${step.id}')">
