@@ -1765,8 +1765,18 @@ a{color:#003a8c;text-decoration:none}
 @keyframes calPulse{0%,100%{opacity:1}50%{opacity:.55}}
 /* 事件容器：竖向排列 */
 .cal-events{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:1px;padding-top:1px}
-/* 更多提示 */
-.cal-more{font-size:9px;color:#003a8c;text-align:left;padding:1px 0;cursor:pointer;font-weight:500}
+/* 更多提示（点击展开下拉） */
+.cal-more{font-size:9px;color:#003a8c;text-align:left;padding:1px 0;cursor:pointer;font-weight:500;user-select:none}
+.cal-more:hover{text-decoration:underline}
+/* 点击 ▲ 后就地下拉的浮层（position:fixed 避免被滚动容器裁剪） */
+.cal-more-pop{position:fixed;z-index:9999;background:#fff;border:1px solid #e8e8e8;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.16);min-width:230px;max-width:320px;padding:10px;max-height:300px;overflow-y:auto}
+.cal-more-pop .cmp-head{font-weight:600;font-size:13px;color:#333;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cal-more-pop .cmp-close{cursor:pointer;color:#999;font-size:14px;line-height:1;padding:2px 4px;border-radius:4px;flex-shrink:0}
+.cal-more-pop .cmp-close:hover{background:#f5f7fa;color:#003a8c}
+.cal-more-pop .cmp-item{display:flex;align-items:center;gap:8px;padding:6px;margin-bottom:2px;border-radius:6px;cursor:pointer;transition:background .12s}
+.cal-more-pop .cmp-item:hover{background:#f5f7fa}
+.cal-more-pop .cmp-item .cmp-t{font-size:13px;font-weight:500;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-more-pop .cmp-item .cmp-s{font-size:11px;color:#999;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ── 组合式年月选择器 ── */
 .cal-ym-picker{display:inline-flex;align-items:center;gap:4px;background:#fff;border:1.5px solid #d9d9d9;border-radius:8px;padding:5px 12px;cursor:pointer;user-select:none;transition:border-color .2s;position:relative}
@@ -12325,7 +12335,7 @@ function calFitRows(){
   vp.style.setProperty('--cal-row-h',rh+'px');
   calRowH=rh;
 }
-function calOnResize(){ calFitRows(); calUpdateHeaderFromScroll(); }
+function calOnResize(){ calFitRows(); calCloseDayMore(); calUpdateHeaderFromScroll(); }
 function openCalendarModal(){
   const now=new Date();
   calYear=now.getFullYear();
@@ -12349,6 +12359,7 @@ function closeModal(id){
   if($('pdmDatePop')&&$('pdmDatePop').classList.contains('show'))closePdmDatePop();
   if(id==='calendarModal'){
     $('calDayDetail').style.display='none';
+    calCloseDayMore();
     document.removeEventListener('click',calCloseDetailOutside);
     const vp=$('calViewport');
     if(vp)vp.removeEventListener('scroll',calUpdateHeaderFromScroll);
@@ -12484,6 +12495,7 @@ let calLastDimY=null, calLastDimM=null;
 /* 滚动时同步顶部年月显示与浅灰（rAF 节流：防连发，避免每次滚动都遍历 DOM） */
 let calHeaderRaf=null;
 function calUpdateHeaderFromScroll(){
+  calCloseDayMore(); /* 滚动时收起下拉浮层，避免与单元格错位 */
   if(calHeaderRaf)return; /* 已有待执行的帧，本次跳过 → 一帧最多算一次 */
   calHeaderRaf=requestAnimationFrame(function(){
     calHeaderRaf=null;
@@ -12779,7 +12791,7 @@ function buildCalCell(y,m,d,key,events,isTodayDate){
       <span class="cal-ev-dot"></span><span class="cal-ev-text">${escHtml(barText)}</span>
     </div>`;
   }).join('');
-  const moreHtml=dayEvents.length>maxDots?`<div class="cal-more" onclick="event.stopPropagation();calClickDay('${dateStr}')">+${dayEvents.length-maxDots}更多</div>`:'';
+  const moreHtml=dayEvents.length>maxDots?`<div class="cal-more" onclick="event.stopPropagation();calToggleDayMore('${dateStr}', this)">▲ +${dayEvents.length-maxDots}</div>`:'';
 
   return `<div class="${cls.join(' ')}" onclick="calClickDay('${dateStr}')" data-date="${dateStr}">
     <div class="cal-day-num"><span>${d}</span>${holidaySpan}</div>
@@ -12814,6 +12826,66 @@ function calClickDay(dateStr){
   const rect=modal.getBoundingClientRect();
   d.style.left=(rect.width/2-150)+'px';
   d.style.top='80px';
+}
+
+/* ── 点击 ▲ 后就地下拉浮层，呈现当日全部事件 ── */
+let calDayMorePop=null, calDayMoreEl=null;
+function calDayMoreListHtml(events){
+  const sorted=[...events].sort((a,b)=>{
+    if(a.overdue&&!b.overdue)return -1;if(!a.overdue&&b.overdue)return 1;
+    if(a.done!==b.done)return a.done?1:-1;return 0;});
+  return sorted.map(ev=>{
+    const label=CAL_TYPE_LABELS[ev.type]||'';
+    const iconCfg=CAL_TYPE_ICON[ev.type]||CAL_TYPE_ICON['task'];
+    const typeCls=`cal-ev-${ev.type}`;
+    const over=ev.overdue?' · <span style="color:#ff4d4f;font-weight:600">已逾期</span>':'';
+    const done=ev.done?' · <span style="color:#999">已完成</span>':'';
+    return `<div class="cmp-item" onclick="calCloseDayMore();calClickEvent('${ev.type}','${ev.id}','${ev.pid}')">
+      <span class="cal-ev ${typeCls}${ev.done?' cal-ev-done':''}${ev.overdue?' cal-ev-overdue':''}" style="width:22px;height:22px;flex-shrink:0">${iconCfg.svg}</span>
+      <div style="flex:1;min-width:0">
+        <div class="cmp-t"><strong>${label}</strong>：${escHtml(ev.title||'')}</div>
+        <div class="cmp-s">${escHtml(ev.proj||'')}${over}${done}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function calToggleDayMore(dateStr, el){
+  /* 已展开则收起 */
+  if(calDayMoreEl===el && calDayMorePop){ calCloseDayMore(); return; }
+  calCloseDayMore();
+  const events=collectCalendarEvents()[dateStr];
+  if(!events||!events.length)return;
+  const cell=el.closest('.cal-cell');
+  if(!cell)return;
+  const rect=cell.getBoundingClientRect();
+  const pop=document.createElement('div');
+  pop.className='cal-more-pop';
+  const dayLabel=dateStr.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1/$2/$3');
+  pop.innerHTML=`<div class="cmp-head"><span>${dayLabel} · ${events.length}件事</span><span class="cmp-close" onclick="calCloseDayMore()">✕</span></div>${calDayMoreListHtml(events)}`;
+  document.body.appendChild(pop);
+  /* 定位：默认单元格下方，空间不足则翻到上方；水平居中并限制不出血 */
+  const pw=pop.offsetWidth, ph=pop.offsetHeight;
+  let left=rect.left+rect.width/2-pw/2;
+  left=Math.max(8, Math.min(left, window.innerWidth-pw-8));
+  let top=rect.bottom+6;
+  if(top+ph>window.innerHeight-8) top=rect.top-ph-6;
+  pop.style.left=left+'px';
+  pop.style.top=top+'px';
+  calDayMorePop=pop; calDayMoreEl=el;
+  el._orig=el.textContent;
+  el.textContent='▼ 收起';
+  /* 延迟一帧再挂外部点击关闭，避免本次点击立即触发 */
+  setTimeout(()=>document.addEventListener('click', calDayMoreOutside, true), 0);
+}
+function calDayMoreOutside(e){
+  if(calDayMorePop && !calDayMorePop.contains(e.target) && !(e.target.closest && e.target.closest('.cal-more'))){
+    calCloseDayMore();
+  }
+}
+function calCloseDayMore(){
+  if(calDayMorePop){ if(calDayMorePop.parentNode)calDayMorePop.parentNode.removeChild(calDayMorePop); calDayMorePop=null; }
+  if(calDayMoreEl){ if(calDayMoreEl._orig!==undefined)calDayMoreEl.textContent=calDayMoreEl._orig; calDayMoreEl=null; }
+  document.removeEventListener('click', calDayMoreOutside, true);
 }
 
 /* 点击具体事件 → 跳转对应页面 */
