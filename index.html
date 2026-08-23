@@ -7481,7 +7481,7 @@ function renderProcess(){
     else undoneSteps.push({step,i});
   });
   /* 单个节点卡片渲染函数 */
-  const renderOneCard=({step:iStep,idx:i}, defExpanded)=>{
+  const renderOneCard=({step:iStep,i}, defExpanded)=>{
     const step=iStep;
     const done=isStepChecked(step.id);
     const fullyAccepted=isStepFullyAccepted(p,step);
