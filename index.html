@@ -4603,7 +4603,9 @@ function _fixOverflowLabels(root){
     var barLeft=parseFloat(bar.style.left)||0;
     label.style.left='calc('+barLeft+'% - '+Math.max(label.offsetWidth+6, 44)+'px)';
     label.style.top='23px';
-    label.style.transform='translate(-100%,-50%)';
+    label.style.height='14px';
+    label.style.lineHeight='14px';
+    label.style.transform='translateX(-100%)';
   });
 }
 
@@ -9467,17 +9469,18 @@ function renderPlanVsActualSheet(p,steps){
     const planW=Math.max(planRightPct-planLeftPct,0.4);
     const actW=Math.max(actRightPct-actLeftPct,0.4);
     /* 标签紧跟实际条形右边缘外侧；条形太靠右时自动挪到条形前面（左侧） */
-    /* 定位：top 与实际条同高(23px)，transform translateY(-50%) 使文字垂直居中于实际条 */
+    /* 定位策略：top/height/line-height 与实际条完全一致(23px/14px)，文字自然垂直居中，不用 translateY */
     const labelLeft=actLeftPct+actW; /* 实际条形右端 */
     const labelOnLeft3=labelLeft>65; /* 右缘超过 65% 时标签挪到实际条前面 */
     const showLabelPrefix=isDone?'实际 ':'计划 ';
     /* 标签时间：已完成节点显示实际完成时间，未完成显示计划时间；颜色：已完成深蓝、未完成中灰 */
     const showLabel=isDone?actLabel:planLabel;
     const _lc3=isDone?'#003a8c':'#888888';
-    /* 翻转到前面时锚定实际条左端(actLeftPct)，保证标签在条形前方不溢出；始终保留垂直居中 */
+    /* height+line-height 锁定 14px = 实际条高度，top=23px = 实际条 top → 文字必然与条形水平对齐 */
+    const labelBase=`top:23px;height:14px;line-height:14px;color:${_lc3}`;
     const labelStyle3=labelOnLeft3
-      ?`left:calc(${actLeftPct}% - 4px);top:23px;transform:translate(-100%,-50%);color:${_lc3}`
-      :`left:calc(${labelLeft}% + 4px);top:23px;transform:translateY(-50%);color:${_lc3}`;
+      ?`left:calc(${actLeftPct}% - 4px);${labelBase};transform:translateX(-100%)`
+      :`left:calc(${labelLeft}% + 4px);${labelBase}`;
     const actDays3=isDone?(Math.round((Date.parse(s.completedAt||planE||'')-Date.parse(s.completedAtStart||planS||''))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</span></div>`;
