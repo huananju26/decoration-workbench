@@ -2171,7 +2171,7 @@ a{color:#003a8c;text-decoration:none}
     </div>
     <div class="top-actions">
       <div class="search-box">
-        <input type="text" placeholder="搜索" id="globalSearch" oninput="handleSearch(this.value)">
+        <input type="text" placeholder="搜索" id="globalSearch" autocomplete="off" oninput="handleSearch(this.value)">
         <span class="search-icon">🔍</span>
       </div>
       <button class="btn-primary" id="topPrimaryBtn" onclick="handleTopPrimary()">新增待办</button>
@@ -2373,7 +2373,7 @@ a{color:#003a8c;text-decoration:none}
             <button class="process-nav-btn" onclick="collapseAllSteps()">全部折叠</button>
           </div>
           <div class="process-nav-search">
-            <input type="text" placeholder="搜索施工阶段" id="processSearchInput" oninput="filterProcessSteps(this.value)">
+            <input type="text" placeholder="搜索施工阶段" id="processSearchInput" autocomplete="off" oninput="filterProcessSteps(this.value)">
           </div>
           <div class="process-nav-hint">按名称快速定位节点</div>
           <ul class="process-nav-list" id="processNavList"></ul>
@@ -2413,7 +2413,7 @@ a{color:#003a8c;text-decoration:none}
         <div><div class="purchase-stat-num" id="purBoughtCount">0</div><div class="purchase-stat-label">已采购</div></div>
         <a class="purchase-stat-link" onclick="showPurchasedList()">去查看已置购物清单 →</a>
       </div>
-      <input type="text" placeholder="搜索材料名称..." style="margin-bottom:16px" oninput="filterPurchase(this.value)">
+      <input type="text" placeholder="搜索材料名称..." autocomplete="off" style="margin-bottom:16px" oninput="filterPurchase(this.value)">
       <div style="display:flex;gap:8px;margin-bottom:16px">
         <button class="btn-outline btn-sm" onclick="toggleAllCats(true)">全部展开</button>
         <button class="btn-outline btn-sm" onclick="toggleAllCats(false)">全部折叠</button>
@@ -2566,7 +2566,7 @@ a{color:#003a8c;text-decoration:none}
         <select id="ledgerFilterStatus" onchange="renderLedger()">
           <option value="">全部已结算</option>
         </select>
-        <input type="text" id="ledgerSearchInput" placeholder="搜索明细/收付款人..." oninput="renderLedger()">
+        <input type="text" id="ledgerSearchInput" autocomplete="off" placeholder="搜索明细/收付款人..." oninput="renderLedger()">
         <span class="ledger-count" id="ledgerCount"></span>
       </div>
 
@@ -13217,9 +13217,9 @@ else init();
     <div id="cloudCfgView">
       <div style="font-size:13px;color:#666;margin-bottom:12px">首次使用请填入 Supabase <b>Project URL</b> 与 <b>Publishable Key</b>（前端公开 key，可安全填写）。配置后登录账号即可多设备同步，不同账号数据相互隔离。</div>
       <div style="font-size:12px;color:#666;margin-bottom:4px">Project URL</div>
-      <input id="cloudUrl" placeholder="https://xxxx.supabase.co" class="login-input">
+      <input id="cloudUrl" placeholder="https://xxxx.supabase.co" class="login-input" autocomplete="off">
       <div style="font-size:12px;color:#666;margin-bottom:4px">Publishable Key</div>
-      <input id="cloudKey" class="login-input">
+      <input id="cloudKey" class="login-input" autocomplete="off">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
         <button class="btn-primary" onclick="cloudSaveCfg()">保存配置</button>
         <button class="btn-outline" onclick="cloudTestConn()">测试连接</button>
@@ -13230,9 +13230,9 @@ else init();
     <div id="cloudAuthView" style="display:none">
       <div style="font-size:13px;color:#666;margin-bottom:12px">登录你的账号即可同步（不同账号数据相互隔离）。</div>
       <div style="font-size:12px;color:#666;margin-bottom:4px">邮箱</div>
-      <input id="cloudEmailInput" placeholder="you@example.com" class="login-input">
+      <input id="cloudEmailInput" placeholder="you@example.com" class="login-input" autocomplete="email">
       <div style="font-size:12px;color:#666;margin-bottom:4px">密码</div>
-      <input id="cloudPwdInput" type="password" class="login-input">
+      <input id="cloudPwdInput" type="password" class="login-input" autocomplete="current-password">
       <div id="cloudAuthMsg" style="color:#ff4d4f;font-size:12px;min-height:16px;margin-bottom:8px"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-primary" onclick="cloudDoLogin()">登录</button>
