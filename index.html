@@ -2141,7 +2141,7 @@ a{color:#003a8c;text-decoration:none}
     <div id="welcomeScreen" class="welcome" style="display:none">
       <div class="welcome-icon">🏗️</div>
       <div class="welcome-title">欢迎使用装修工作台</div>
-      <div class="welcome-desc">当前还没有项目。创建一个新项目开始管理你的装修——支持新房毛胚、旧房改造、精装房、局部改造、适老改造、工装项目，各项目数据完全独立。</div>
+      <div class="welcome-desc">当前还没有项目。创建一个新项目开始管理你的装修——支持新房毛胚、旧房改造、精装升级、局部改造、适老改造、工装项目，各项目数据完全独立。</div>
       <button class="btn-primary" style="padding:12px 40px;font-size:15px;border-radius:24px" onclick="openProjectModal()">+ 新建第一个项目</button>
 
       <div class="recovery-card">
@@ -2587,12 +2587,12 @@ a{color:#003a8c;text-decoration:none}
       <div class="wizard-panel active" id="wizStep1">
         <div class="form-group"><label class="form-label">项目编号 <b style="color:#ff4d4f">*</b></label><input type="text" id="projCode" placeholder="如：202608-001"></div>
         <div class="form-group"><label class="form-label">项目名称 <b style="color:#ff4d4f">*</b></label><input type="text" id="projName" placeholder="如：焕安居装修 / 办公室改造"></div>
-        <div class="form-row-3"><div class="form-group"><label class="form-label">项目总金额 (¥) <b style="color:#ff4d4f">*</b></label><input type="number" id="projTotalAmount" placeholder="如：150000"></div><div class="form-group"><label class="form-label">签约月份</label><input type="month" id="projSignMonth" placeholder="如：2026-08"></div><div class="form-group"><label class="form-label">房屋面积 (m²)</label><input type="number" id="projArea" placeholder="如：120"></div></div>
+        <div class="form-row-3"><div class="form-group"><label class="form-label">项目总金额 (¥) <b style="color:#ff4d4f">*</b></label><input type="number" id="projTotalAmount" placeholder="如：150000"></div><div class="form-group"><label class="form-label">签约月份</label><input type="month" id="projSignMonth" placeholder="如：2026-08"></div><div class="form-group"><label class="form-label">项目面积 (m²)</label><input type="number" id="projArea" placeholder="如：120"></div></div>
         <div class="form-group"><label class="form-label">房屋类型 *</label>
           <div class="house-type-grid" id="houseTypeGrid">
             <div class="house-type-opt active" data-type="new" onclick="selectHouseType('new')"><div class="ht-icon">🏠</div><div class="ht-name">新房毛胚</div></div>
             <div class="house-type-opt" data-type="old" onclick="selectHouseType('old')"><div class="ht-icon">🔨</div><div class="ht-name">旧房改造</div></div>
-            <div class="house-type-opt" data-type="renovated" onclick="selectHouseType('renovated')"><div class="ht-icon">✨</div><div class="ht-name">精装房</div></div>
+            <div class="house-type-opt" data-type="renovated" onclick="selectHouseType('renovated')"><div class="ht-icon">✨</div><div class="ht-name">精装升级</div></div>
             <div class="house-type-opt" data-type="local" onclick="selectHouseType('local')"><div class="ht-icon">🛠️</div><div class="ht-name">局部改造</div></div>
             <div class="house-type-opt" data-type="elderly" onclick="selectHouseType('elderly')"><div class="ht-icon">♿</div><div class="ht-name">适老改造</div></div>
             <div class="house-type-opt" data-type="commercial" onclick="selectHouseType('commercial')"><div class="ht-icon">🏢</div><div class="ht-name">工装项目</div></div>
@@ -4029,7 +4029,7 @@ function load(){
 // ============================================================
 // GLOBAL TEMPLATES (same for all projects; per-project state in project data)
 // ============================================================
-const HOUSE_TYPES={new:'新房毛胚',old:'旧房改造',renovated:'精装房',local:'局部改造',elderly:'适老改造',commercial:'工装项目'};
+const HOUSE_TYPES={new:'新房毛胚',old:'旧房改造',renovated:'精装升级',local:'局部改造',elderly:'适老改造',commercial:'工装项目'};
 const HOUSE_ICONS={new:'🏠',old:'🔨',renovated:'✨',commercial:'🏢'};
 
 const PROCESS_STEPS=[
