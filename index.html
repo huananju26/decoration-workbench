@@ -3558,7 +3558,7 @@ a{color:#003a8c;text-decoration:none}
               <span class="cal-dp-title" id="calDpTitle" onclick="event.stopPropagation();calToggleMonthView()"></span>
               <button type="button" class="cal-dp-nav" onclick="event.stopPropagation();calDpShift(1)">›</button>
             </div>
-            <div class="cal-dp-week" id="calDpWeek"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+            <div class="cal-dp-week" id="calDpWeek"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
             <div class="cal-dp-grid" id="calDpGrid" onclick="event.stopPropagation();calDpGridClick(event)"></div>
             <!-- 月份快速选择视图（点击标题切换） -->
             <div class="cal-dp-months" id="calDpMonths" style="display:none" onclick="event.stopPropagation()"></div>
@@ -3578,13 +3578,13 @@ a{color:#003a8c;text-decoration:none}
       <div id="calFilterBar" class="cal-filter-bar"></div>
       <!-- 星期头 -->
       <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;padding:8px 0;background:#fafafa;flex-shrink:0;border-bottom:1px solid #eee;width:100%">
-        <span style="font-size:12px;color:#ff4d4f;font-weight:600">日</span>
         <span style="font-size:12px;color:#333;font-weight:600">一</span>
         <span style="font-size:12px;color:#333;font-weight:600">二</span>
         <span style="font-size:12px;color:#333;font-weight:600">三</span>
         <span style="font-size:12px;color:#333;font-weight:600">四</span>
         <span style="font-size:12px;color:#333;font-weight:600">五</span>
         <span style="font-size:12px;color:#003a8c;font-weight:600">六</span>
+        <span style="font-size:12px;color:#003a8c;font-weight:600">日</span>
       </div>
       <!-- 日历网格 -->
       <div id="calGrid" style="flex:1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:minmax(90px,1fr);overflow:auto;width:100%"></div>
@@ -12461,8 +12461,8 @@ function renderCalendar(){
     filteredEvents=allEvents;
   }
 
-  /* 计算日历网格 */
-  const firstDay=new Date(calYear,calMonth,1).getDay(); /* 0=Sun */
+  /* 计算日历网格（周一为每周第一天，周日列在最后） */
+  const startDow=(new Date(calYear,calMonth,1).getDay()+6)%7; /* 0=Mon 1=Tue ... 6=Sun */
   const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
   const prevDays=new Date(calYear,calMonth,0).getDate();
 
@@ -12471,7 +12471,7 @@ function renderCalendar(){
   const isToday=(y,m,d)=>y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate();
 
   /* 上月尾部 */
-  for(let i=firstDay-1;i>=0;i--){
+  for(let i=startDow-1;i>=0;i--){
     const d=prevDays-i;
     html+=buildCalCell(calYear,calMonth-1,d,'',filteredEvents,false);
   }
@@ -12481,8 +12481,8 @@ function renderCalendar(){
     html+=buildCalCell(calYear,calMonth,d,ds,filteredEvents,isToday(calYear,calMonth,d));
   }
   /* 下月头部 */
-  const totalCells=Math.ceil((firstDay+daysInMonth)/7)*7;
-  const nextCount=totalCells-firstDay-daysInMonth;
+  const totalCells=Math.ceil((startDow+daysInMonth)/7)*7;
+  const nextCount=totalCells-startDow-daysInMonth;
   for(let d=1;d<=nextCount;d++){
     html+=buildCalCell(calYear,calMonth+1,d,'',filteredEvents,false);
   }
@@ -12512,14 +12512,14 @@ function calDpShift(n){
 }
 function calRenderDpGrid(){
   $('calDpTitle').textContent=calDpYear+'年'+String(calDpMonth+1).padStart(2,'0')+'月';
-  const firstDay=new Date(calDpYear,calDpMonth,1).getDay();
+  const startDow=(new Date(calDpYear,calDpMonth,1).getDay()+6)%7; /* 0=Mon ... 6=Sun */
   const daysInMonth=new Date(calDpYear,calDpMonth+1,0).getDate();
   const prevDays=new Date(calDpYear,calDpMonth,0).getDate();
   const today=new Date();
   const isToday=(y,m,d)=>y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate();
   let html='';
   /* 上月尾部 */
-  for(let i=firstDay-1;i>=0;i--){
+  for(let i=startDow-1;i>=0;i--){
     const d=prevDays-i;
     html+=`<div class="cal-dp-cell other" data-y="${calDpYear}" data-m="${calDpMonth-1}" data-d="${d}">${d}</div>`;
   }
@@ -12530,8 +12530,8 @@ function calRenderDpGrid(){
     html+=`<div class="cal-dp-cell${cls.length?' '+cls.join(' '):''}" data-y="${calDpYear}" data-m="${calDpMonth}" data-d="${d}">${d}</div>`;
   }
   /* 下月头部 */
-  const totalCells=Math.ceil((firstDay+daysInMonth)/7)*7;
-  const nextCount=totalCells-firstDay-daysInMonth;
+  const totalCells=Math.ceil((startDow+daysInMonth)/7)*7;
+  const nextCount=totalCells-startDow-daysInMonth;
   for(let d=1;d<=nextCount;d++){
     html+=`<div class="cal-dp-cell other" data-y="${calDpYear}" data-m="${calDpMonth+1}" data-d="${d}">${d}</div>`;
   }
