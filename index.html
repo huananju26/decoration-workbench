@@ -1717,6 +1717,10 @@ a{color:#003a8c;text-decoration:none}
 .cal-cell.today .cal-day-num{color:#003a8c;font-size:15px}
 .cal-cell.today .cal-day-num span{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#003a8c;color:#fff;font-size:12px}
 .cal-cell.other-month .cal-day-num{color:#bbb}
+/* 连续周行（逐行滚动布局）：每行 7 列，固定行高便于滚轮逐行对齐 */
+.cal-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid #f0f0f0}
+.cal-week .cal-cell{box-sizing:border-box;border-bottom:none;min-height:0;height:78px}
+.cal-week .cal-cell.today{margin:0}
 /* 法定节假日（与日期数字同行） */
 .cal-holiday{font-size:9.5px;color:#ff4d4f;font-weight:600;margin-left:4px;white-space:nowrap;vertical-align:middle;display:inline-block;line-height:1.6}
 /* ── 事件图标行：竖向排列，图标+简短文字 ── */
@@ -3543,7 +3547,7 @@ a{color:#003a8c;text-decoration:none}
 
 <!-- 日历弹窗：全部待办月视图 -->
 <div class="modal-overlay" id="calendarModal">
-  <div class="modal" style="max-width:900px;width:92%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column">
+  <div class="modal" style="max-width:520px;width:100%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column">
     <div class="modal-header" style="flex-shrink:0">
       <div class="modal-title" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span style="font-size:16px;font-weight:700;color:#1a1a1a;white-space:nowrap">📅 待办日历</span>
@@ -3569,13 +3573,13 @@ a{color:#003a8c;text-decoration:none}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn-outline" onclick="calShiftAnimated(-1)" style="padding:2px 11px;font-size:18px;line-height:1" title="上一月">‹</button>
-        <button class="btn-outline" onclick="calShiftAnimated(1)" style="padding:2px 11px;font-size:18px;line-height:1" title="下一月">›</button>
+        <button class="btn-outline" onclick="calGoMonthRel(-1)" style="padding:2px 11px;font-size:18px;line-height:1" title="上一月">‹</button>
+        <button class="btn-outline" onclick="calGoMonthRel(1)" style="padding:2px 11px;font-size:18px;line-height:1" title="下一月">›</button>
         <button class="btn-outline" onclick="calGoToday()" style="padding:4px 12px;font-size:12px">今天</button>
         <div class="modal-close" onclick="closeModal('calendarModal')" style="margin-left:8px">✕</div>
       </div>
     </div>
-    <div class="modal-body" style="flex:1;overflow:auto;padding:0;display:flex;flex-direction:column">
+    <div class="modal-body" style="flex:1;overflow:hidden;padding:0;display:flex;flex-direction:column">
       <!-- 类型筛选栏 -->
       <div id="calFilterBar" class="cal-filter-bar"></div>
       <!-- 星期头 -->
@@ -3589,8 +3593,8 @@ a{color:#003a8c;text-decoration:none}
         <span style="font-size:12px;color:#003a8c;font-weight:600">日</span>
       </div>
       <!-- 日历网格 -->
-      <div id="calViewport" style="flex:1;position:relative;overflow:hidden;width:100%;min-height:432px;height:0">
-        <div id="calGrid" style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:minmax(72px,1fr);width:100%"></div>
+      <div id="calViewport" style="flex:1;position:relative;overflow-y:auto;overflow-x:hidden;width:100%">
+        <div id="calGrid" style="display:flex;flex-direction:column;width:100%"></div>
       </div>
     </div>
     <!-- 点击日期后的详情浮层 -->
@@ -12232,6 +12236,7 @@ function scrollToAqPending(){
 
 /* ── 日历弹窗：月视图 ── */
 let calYear, calMonth, calTypeFilter=null, calDpYear, calDpMonth; /* 当前显示的年月 + 下拉面板年月 */
+let calWeekList=[]; /* 连续周列表：每项是该周周一的 {y,m,d} */
 
 /* ════════════════════════════════════════
    中国法定节假日数据（2025-2027）
@@ -12307,14 +12312,17 @@ function openCalendarModal(){
   calYear=now.getFullYear();
   calMonth=now.getMonth();
   calTypeFilter=null; /* 打开时重置筛选 */
-  renderCalendar();
+  renderCalendar({scroll:'today'});
   showModal('calendarModal');
   /* 点击外部关闭详情浮层 */
   document.addEventListener('click',calCloseDetailOutside);
-  /* 滚轮切月：capture 阶段在整个 .modal 内层拦截，无论鼠标在弹窗哪个位置都能触发，
-     且 passive:false 允许 preventDefault 阻止内部 overflow 滚动 */
+  /* 滚轮逐行滚动：capture 阶段在整个 .modal 内层拦截，无论鼠标在弹窗哪个位置都能触发，
+     且 passive:false 允许 preventDefault 阻止内部原生滚动 */
   const calModalEl=document.querySelector('#calendarModal .modal');
   if(calModalEl)calModalEl.addEventListener('wheel',calWheelHandler,{capture:true,passive:false});
+  /* 滚动时实时同步顶部年月显示 */
+  const vp=$('calViewport');
+  if(vp)vp.addEventListener('scroll',calUpdateHeaderFromScroll);
 }
 function closeModal(id){
   $(id).classList.remove('show');
@@ -12325,8 +12333,8 @@ function closeModal(id){
     document.removeEventListener('click',calCloseDetailOutside);
     const calModalEl=document.querySelector('#calendarModal .modal');
     if(calModalEl)calModalEl.removeEventListener('wheel',calWheelHandler,{capture:true});
-    const grid=$('calGrid');
-    if(grid)grid.removeEventListener('wheel',calWheelHandler);
+    const vp=$('calViewport');
+    if(vp)vp.removeEventListener('scroll',calUpdateHeaderFromScroll);
   }
 }
 
@@ -12337,48 +12345,104 @@ function calCloseDetailOutside(e){
   }
 }
 
-function calShift(dir){
-  calMonth+=dir;
-  if(calMonth>11){calMonth=0;calYear++;}
-  if(calMonth<0){calMonth=11;calYear--;}
-  renderCalendar();
+/* ── 日历连续周滚动（苹果式逐行丝滑，取消整月翻页）── */
+function mondayOf(y,m,d){
+  const dt=new Date(y,m,d);
+  const dow=(dt.getDay()+6)%7; /* 0=Mon ... 6=Sun */
+  dt.setDate(dt.getDate()-dow);
+  return {y:dt.getFullYear(),m:dt.getMonth(),d:dt.getDate()};
 }
-/* 上一月/下一月滑动过渡：像苹果日历一样平滑滑入滑出，而非硬跳整页 */
-let calAnimating=false;
-function calShiftAnimated(dir){
-  if(calAnimating)return;
-  let ny=calYear, nm=calMonth+dir;
-  if(nm>11){nm=0;ny++;}else if(nm<0){nm=11;ny--;}
-  const grid=$('calGrid');
-  const oldHtml=grid.innerHTML;
-  calYear=ny; calMonth=nm;
-  renderCalendar();                 /* 渲染目标月（标题/下拉/筛选栏同步更新） */
-  const newHtml=grid.innerHTML;
-  const vp=$('calViewport');
-  if(!vp){return;}
-  const ease='cubic-bezier(.4,0,.2,1)';
-  const oldP=document.createElement('div');
-  oldP.style.cssText='position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:minmax(72px,1fr);transform:translateY(0);transition:transform .32s '+ease+';will-change:transform;pointer-events:none';
-  oldP.innerHTML=oldHtml;
-  const newP=document.createElement('div');
-  newP.style.cssText='position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:minmax(72px,1fr);transform:translateY('+(dir>0?'100%':'-100%')+');transition:transform .32s '+ease+';will-change:transform;pointer-events:none';
-  newP.innerHTML=newHtml;
-  vp.appendChild(oldP); vp.appendChild(newP);
-  grid.style.visibility='hidden';
-  calAnimating=true;
-  void vp.offsetWidth;             /* 强制 reflow，让起始 transform 生效 */
-  requestAnimationFrame(function(){
-    oldP.style.transform='translateY('+(dir>0?'-100%':'100%')+')';
-    newP.style.transform='translateY(0)';
+function addDays(y,m,d,n){
+  const dt=new Date(y,m,d);dt.setDate(dt.getDate()+n);
+  return {y:dt.getFullYear(),m:dt.getMonth(),d:dt.getDate()};
+}
+function cmpMon(a,b){ /* 比较两周周一先后：返回 -1/0/1 */
+  if(a.y!==b.y)return a.y<b.y?-1:1;
+  if(a.m!==b.m)return a.m<b.m?-1:1;
+  return a.d<b.d?-1:(a.d>b.d?1:0);
+}
+let calRowH=78, calRowScrolling=false; /* 单行(周)高度 + 滚轮逐行滚动锁 */
+/* 以 (y,m) 为中心，前后各渲染若干月的连续周，构成可丝滑滚动的窗口 */
+function calBuildWindow(y,m){
+  const startMon=mondayOf(y,m,1);
+  let cur=addDays(startMon.y,startMon.m,startMon.d,-26*7);     /* 向前约半年 */
+  const endMon=addDays(startMon.y,startMon.m,startMon.d,130*7); /* 向后约 2.5 年 */
+  calWeekList=[];
+  while(cmpMon(cur,endMon)<=0){
+    calWeekList.push({y:cur.y,m:cur.m,d:cur.d});
+    cur=addDays(cur.y,cur.m,cur.d,7);
+  }
+}
+/* 按筛选条件过滤事件 */
+function calComputeFiltered(){
+  const allEvents=collectCalendarEvents();
+  if(calTypeFilter){
+    const f={};
+    Object.keys(allEvents).forEach(d=>{
+      const matched=allEvents[d].filter(ev=>calMatchFilter(ev,calTypeFilter));
+      if(matched.length)f[d]=matched;
+    });
+    return f;
+  }
+  return allEvents;
+}
+/* 构建类型筛选栏 */
+function calRenderFilterBar(){
+  const fb=$('calFilterBar');
+  fb.innerHTML=CAL_FILTER_TYPES.map(ft=>{
+    const active=calTypeFilter===ft.key;
+    return `<div class="cal-filter-chip${active?' active':''}" onclick="calToggleTypeFilter('${ft.key}')">
+      <span class="cal-filter-icon" style="color:${ft.color};${active?'background:rgba(255,255,255,.25);':'border:1.5px solid '+ft.color+';background:transparent;'}">${ft.icon}</span>
+      <span>${ft.label}</span>
+    </div>`;
+  }).join('');
+}
+/* 渲染连续周行 */
+function calRenderWeeks(filtered){
+  const today=new Date();
+  const isToday=(y,m,d)=>y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate();
+  let html='';
+  calWeekList.forEach(wk=>{
+    let cells='';
+    for(let k=0;k<7;k++){
+      const day=addDays(wk.y,wk.m,wk.d,k);
+      const key=`${day.y}-${String(day.m+1).padStart(2,'0')}-${String(day.d).padStart(2,'0')}`;
+      cells+=buildCalCell(day.y,day.m,day.d,key,filtered,isToday(day.y,day.m,day.d));
+    }
+    html+=`<div class="cal-week" data-mon="${wk.y}-${String(wk.m+1).padStart(2,'0')}-${String(wk.d).padStart(2,'0')}">${cells}</div>`;
   });
-  setTimeout(function(){
-    if(oldP.parentNode)vp.removeChild(oldP);
-    if(newP.parentNode)vp.removeChild(newP);
-    grid.style.visibility='';
-    calAnimating=false;
-  },340);
+  $('calGrid').innerHTML=html;
+  const fw=$('calGrid').querySelector('.cal-week');
+  if(fw)calRowH=fw.getBoundingClientRect().height||78;
 }
-/* 鼠标滚轮在日历上滚动 → 上一月/下一月（滑动过渡，动画期间自动忽略连发事件） */
+/* 平滑滚动到今天所在周 */
+function calScrollToToday(){
+  const t=new Date();
+  const tMon=mondayOf(t.getFullYear(),t.getMonth(),t.getDate());
+  let i=calWeekList.findIndex(wk=>wk.y===tMon.y&&wk.m===tMon.m&&wk.d===tMon.d);
+  if(i<0)i=0;
+  const vp=$('calViewport');if(vp)vp.scrollTo({top:i*calRowH,behavior:'smooth'});
+  setTimeout(calUpdateHeaderFromScroll,360);
+}
+/* 平滑滚动到指定年月的第一周 */
+function calScrollToMonth(y,m){
+  const tMon=mondayOf(y,m,1);
+  let i=calWeekList.findIndex(wk=>wk.y===tMon.y&&wk.m===tMon.m&&wk.d===tMon.d);
+  if(i<0)i=0;
+  const vp=$('calViewport');if(vp)vp.scrollTo({top:i*calRowH,behavior:'smooth'});
+  setTimeout(calUpdateHeaderFromScroll,360);
+}
+/* 滚动时同步顶部年月显示与锚点（供下拉/箭头使用） */
+function calUpdateHeaderFromScroll(){
+  const vp=$('calViewport');
+  if(!vp||!calWeekList.length)return;
+  let i=Math.round(vp.scrollTop/calRowH);
+  i=Math.max(0,Math.min(calWeekList.length-1,i));
+  const wk=calWeekList[i];if(!wk)return;
+  $('calYmDisplay').textContent=wk.y+'年'+String(wk.m+1).padStart(2,'0')+'月';
+  calYear=wk.y;calMonth=wk.m;
+}
+/* 鼠标滚轮在日历上滚动 → 逐行(周)丝滑上下，而非整月翻页 */
 function calWheelHandler(e){
   const modal=document.getElementById('calendarModal');
   if(!modal||!modal.classList.contains('show'))return;
@@ -12386,12 +12450,28 @@ function calWheelHandler(e){
   if(dp&&dp.classList.contains('show'))return; /* 年/月下拉打开时，放行其内部滚动 */
   if(calMonthViewMode)return; /* 月份选择视图放行 */
   e.preventDefault();
-  calShiftAnimated(e.deltaY>0?1:-1);
+  const vp=$('calViewport');if(!vp)return;
+  if(calRowScrolling)return; /* 动画期间忽略连发，保证一次手势只翻一行 */
+  let i=Math.round(vp.scrollTop/calRowH);
+  const dir=e.deltaY>0?1:-1;
+  const ni=Math.max(0,Math.min(calWeekList.length-1,i+dir));
+  if(ni===i)return;
+  calRowScrolling=true;
+  vp.scrollTo({top:ni*calRowH,behavior:'smooth'});
+  setTimeout(function(){calRowScrolling=false;calUpdateHeaderFromScroll();},340);
 }
+/* 今天按钮：回到今天 */
 function calGoToday(){
   const now=new Date();
   calYear=now.getFullYear();calMonth=now.getMonth();
-  renderCalendar();
+  renderCalendar({scroll:'today'});
+}
+/* 上一月/下一月箭头：整月平滑跳转（连续滚动窗口内） */
+function calGoMonthRel(dir){
+  let m=calMonth+dir,y=calYear;
+  if(m>11){m=0;y++;}else if(m<0){m=11;y--;}
+  calYear=y;calMonth=m;
+  renderCalendar({scroll:'month'});
 }
 
 /* 聚合所有项目的日期事件 → { '2026-08-20': [{type:'task',title:'...',projName:'...',id:'...',pid:'...',done:false}, ...] } */
@@ -12463,65 +12543,25 @@ function calMatchFilter(ev, filterKey){
 
 function calToggleTypeFilter(key){
   calTypeFilter=(calTypeFilter===key)?null:key;
-  renderCalendar();
+  renderCalendar({rebuild:false}); /* 仅刷新事件，保持当前窗口与滚动位置 */
 }
 
-function renderCalendar(){
+function renderCalendar(opts){
+  opts=opts||{};
   /* ── 更新组合式年月选择器显示 ── */
   $('calYmDisplay').textContent=calYear+'年'+String(calMonth+1).padStart(2,'0')+'月';
-
   /* ── 渲染万年历下拉面板网格 ── */
   calRenderDpGrid();
-
-  const allEvents=collectCalendarEvents();
-
   /* ── 构建类型筛选栏 ── */
-  const fb=$('calFilterBar');
-  fb.innerHTML=CAL_FILTER_TYPES.map(ft=>{
-    const active=calTypeFilter===ft.key;
-    return `<div class="cal-filter-chip${active?' active':''}" onclick="calToggleTypeFilter('${ft.key}')">
-      <span class="cal-filter-icon" style="color:${ft.color};${active?'background:rgba(255,255,255,.25);':'border:1.5px solid '+ft.color+';background:transparent;'}">${ft.icon}</span>
-      <span>${ft.label}</span>
-    </div>`;
-  }).join('');
-
-  /* ── 按筛选条件过滤事件 ── */
-  let filteredEvents={};
-  if(calTypeFilter){
-    Object.keys(allEvents).forEach(d=>{
-      const matched=allEvents[d].filter(ev=>calMatchFilter(ev,calTypeFilter));
-      if(matched.length)filteredEvents[d]=matched;
-    });
-  } else {
-    filteredEvents=allEvents;
-  }
-
-  /* 计算日历网格（周一为每周第一天，周日列在最后） */
-  const startDow=(new Date(calYear,calMonth,1).getDay()+6)%7; /* 0=Mon 1=Tue ... 6=Sun */
-  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
-  const prevDays=new Date(calYear,calMonth,0).getDate();
-
-  let html='';
-  const today=new Date();
-  const isToday=(y,m,d)=>y===today.getFullYear()&&m===today.getMonth()&&d===today.getDate();
-
-  /* 上月尾部 */
-  for(let i=startDow-1;i>=0;i--){
-    const d=prevDays-i;
-    html+=buildCalCell(calYear,calMonth-1,d,'',filteredEvents,false);
-  }
-  /* 本月 */
-  for(let d=1;d<=daysInMonth;d++){
-    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    html+=buildCalCell(calYear,calMonth,d,ds,filteredEvents,isToday(calYear,calMonth,d));
-  }
-  /* 下月头部 */
-  const totalCells=42; /* 固定 6 行，月视图高度稳定，滑动切换更顺滑 */
-  const nextCount=totalCells-startDow-daysInMonth;
-  for(let d=1;d<=nextCount;d++){
-    html+=buildCalCell(calYear,calMonth+1,d,'',filteredEvents,false);
-  }
-  $('calGrid').innerHTML=html;
+  calRenderFilterBar();
+  /* ── 过滤事件 ── */
+  const filtered=calComputeFiltered();
+  /* ── 重建连续周窗口（导航/打开时）；仅切换筛选时保持窗口与滚动位置 ── */
+  if(opts.rebuild!==false)calBuildWindow(calYear,calMonth);
+  calRenderWeeks(filtered);
+  /* ── 滚动定位 ── */
+  if(opts.scroll==='today')calScrollToToday();
+  else if(opts.scroll==='month')calScrollToMonth(calYear,calMonth);
 }
 
 /* ── 万年历下拉面板交互 ── */
@@ -12583,7 +12623,7 @@ function calDpGridClick(e){
   calMonth=((m%12)+12)%12;
   if(m<0)calYear--;else if(m>11)calYear++;
   calToggleYmDropdown(); /* 关闭下拉 */
-  renderCalendar();
+  renderCalendar({scroll:'month'});
 }
 /* ── 月份快速选择视图 ── */
 let calMonthViewMode=false; /* false=日历视图, true=月份选择视图 */
@@ -12622,7 +12662,7 @@ function calPickMonth(m){
   calYear=calDpYear;
   calMonth=calDpMonth;
   calToggleYmDropdown();
-  renderCalendar();
+  renderCalendar({scroll:'month'});
 }
 /* 点击外部关闭下拉面板 */
 document.addEventListener('click',function(e){
