@@ -7894,12 +7894,17 @@ function scrollToStep(idx){
     });
   });
 }
-/* 同步左侧导航深蓝高亮：深蓝 = 该步骤详情已展开（唯一事实来源） */
+/* 同步左侧导航深蓝高亮：深蓝 = 该步骤详情已展开（唯一事实来源）
+   必须用 data-index 匹配，不可用 DOM 位置 i（分组后顺序与原始索引不一致）。 */
 function syncNavActiveStates(){
-  document.querySelectorAll('.step-card').forEach((card,i)=>{
-    const navItem=document.getElementById('processNavItem-'+i);
-    if(!navItem)return;
-    navItem.classList.toggle('active',card.classList.contains('expanded'));
+  /* 先全部取消 */
+  document.querySelectorAll('.process-nav-item.active').forEach(el=>el.classList.remove('active'));
+  /* 再只给真正展开的卡片对应导航项加高亮 */
+  document.querySelectorAll('.step-card.expanded').forEach(card=>{
+    const idx=card.dataset.index;
+    if(idx===undefined)return;
+    const navItem=document.getElementById('processNavItem-'+idx);
+    if(navItem)navItem.classList.add('active');
   });
 }
 /* 全部展开 */
@@ -8002,12 +8007,13 @@ function filterProcessSteps(query){
   const q=query.trim().toLowerCase();
   const p=cur();ensureProjectSteps(p);
   const steps=p.processSteps||[];
-  document.querySelectorAll('.step-card').forEach((card,i)=>{
-    const name=(steps[i]?steps[i].name:'').toLowerCase();
+  document.querySelectorAll('.step-card').forEach(card=>{
+    const idx=+card.dataset.index;
+    const name=(steps[idx]?steps[idx].name:'').toLowerCase();
     const match=!q||name.includes(q);
     card.style.display=match?'':'none';
-    /* 同步高亮导航项 */
-    const navItem=document.getElementById('processNavItem-'+i);
+    /* 同步隐藏/显示导航项（用 data-index 匹配，不可用 DOM 位置） */
+    const navItem=document.getElementById('processNavItem-'+idx);
     if(navItem)navItem.style.display=match?'':'none';
   });
 }
