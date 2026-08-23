@@ -6055,20 +6055,44 @@ function printQuote(){window.print();}
 // ============================================================
 // HOME — 全项目聚合速览（不依赖 cur()）
 // ============================================================
+/* 今日总览问候语：实时系统时间 + 时段激励短句（≤10 字） */
+function updateHeroGreeting(){
+  const el=document.getElementById('heroGreeting'); if(!el) return;
+  const d=new Date();
+  const y=d.getFullYear(), mo=d.getMonth()+1, da=d.getDate(), h=d.getHours();
+  const mi=d.getMinutes(), se=d.getSeconds();
+  let period, phrase;
+  if(h<6){ period='凌晨'; phrase='夜深了，注意休息'; }
+  else if(h<9){ period='早上'; phrase='新的一天，加油干'; }
+  else if(h<12){ period='上午'; phrase='专注当下，稳步前行'; }
+  else if(h<13){ period='中午'; phrase='小憩片刻，满电再战'; }
+  else if(h<18){ period='下午'; phrase='保持节奏，稳中推进'; }
+  else if(h<20){ period='傍晚'; phrase='收尾冲刺，今日事毕'; }
+  else { period='晚上'; phrase='复盘今日，安心入眠'; }
+  const h12=h%12; const hr12=h12===0?12:h12;
+  const pad=n=>String(n).padStart(2,'0');
+  el.textContent='您好！现在是 '+y+' 年 '+mo+' 月 '+da+' 日 '+period+' '+hr12+':'+pad(mi)+':'+pad(se)+'　'+phrase;
+}
+let _heroClockTimer=null;
+function startHeroClock(){
+  if(_heroClockTimer) return; /* 避免重复计时器 */
+  _heroClockTimer=setInterval(function(){
+    const el=document.getElementById('heroGreeting');
+    if(el) updateHeroGreeting();
+  },1000);
+}
 function renderHome(){
   const p=cur();
   if(!p){ showNoProject('home'); return; }
   hideNoProject();
-  const d=new Date();
-  const hour=d.getHours();
-  const greeting=hour<12?'上午好':hour<18?'下午好':'晚上好';
+  updateHeroGreeting();
+  startHeroClock();
   const projects=App.projects||[];
   const projName=projects.length===1?projDisplayName(projects[0]):
     projects.length>1?'所有项目':'暂无项目';
 
   // ── Hero（全项目聚合） ──
   $('breadcrumbProject').textContent='全部需要概览';
-  $('heroGreeting').textContent=greeting+'！';
 
   // 跨项目汇总今日待处理
   let allHandleItems=[];
