@@ -7820,11 +7820,7 @@ function renderProcess(){
   /* 详情左右栏：应用持久化的分栏比例 + 绑定拖拽分割条 */
   applyStepSplitToAll();
   setTimeout(bindStepSplitter,0);
-  /* 初始展开态：如果没有卡片是展开的，自动展开未完成组的第一张卡片 */
-  if(!document.querySelector('.step-card.expanded')){
-    const firstUndone=document.querySelector('.step-group[data-group="undone"] .step-card');
-    if(firstUndone){firstUndone.classList.add('expanded');syncNavActiveStates();}
-  }
+  /* 节点不自动展开：仅用户点击节点条 / 查看详情时才展开或折叠，不在此处自动展开任何卡片 */
 }
 /* 分组折叠/展开：点击分组标题栏切换该组所有卡片的显隐 */
 function toggleStepGroup(header){
@@ -7908,9 +7904,10 @@ function expandAllSteps(){
   syncNavActiveStates();
 }
 /* ── 节点详情：保存后保持展开态重新渲染 ──
-   focusIdx: 可选，指定编辑中的节点索引（强制只展开该节点并滚动定位）。
-   不传时兜底取"最后展开的卡片"为焦点。 */
-function renderProcessKeepExpanded(focusIdx){
+   节点绝不自动展开：完整恢复用户编辑前的卡片展开/折叠状态 + 分组折叠状态。
+   只有用户点击节点条 / 查看详情（toggleStepExpand / scrollToStep）才会改变展开态，
+   "全部展开 / 全部折叠"按钮走独立分支，也不受影响。 */
+function renderProcessKeepExpanded(){
   /* 记录当前展开的卡片索引 */
   const openCards=Array.from(document.querySelectorAll('.step-card.expanded')).map(c=>c.dataset.index);
   /* 记录当前折叠的分组（done/undone） */
@@ -7926,40 +7923,17 @@ function renderProcessKeepExpanded(focusIdx){
     const body=group.querySelector('.step-group-body');
     if(header&&body){header.classList.add('collapsed');body.style.maxHeight='0';}
   });
-  /* 确定焦点卡片：优先用传入的 focusIdx，否则取 openCards 最后一个（最近操作的） */
-  var targetIdx=(focusIdx!==undefined&&focusIdx!==null)?String(focusIdx):(openCards.length?openCards[openCards.length-1]:null);
-  /* 只展开焦点卡片，其他一律折叠 */
-  if(targetIdx!==null){
-    var fc=document.getElementById('stepCard-'+targetIdx);
-    if(fc){
-      var fg=fc.closest('.step-group');
-      var isCollapsed=fg&&fg.querySelector('.step-group-header.collapsed');
-      if(!isCollapsed){fc.classList.add('expanded');}
-    }
-  }
+  /* 完整恢复用户编辑前展开的卡片（仅恢复未折叠组内的卡片） */
+  openCards.forEach(function(idx){
+    const c=document.getElementById('stepCard-'+idx);
+    if(!c)return;
+    const group=c.closest('.step-group');
+    const isGroupCollapsed=group&&group.querySelector('.step-group-header.collapsed');
+    if(!isGroupCollapsed){c.classList.add('expanded');}
+  });
   syncNavActiveStates();
   applyStepSplitToAll();
   setTimeout(bindStepSplitter,0);
-  /* 滚动定位到焦点卡片，确保编辑中的节点始终在可视区 */
-  if(targetIdx!==null){
-    (function(idx){
-      requestAnimationFrame(function(){
-        requestAnimationFrame(function(){
-          var card=document.getElementById('stepCard-'+idx);
-          if(!card||!card.classList.contains('expanded'))return;
-          var main=document.querySelector('.main');
-          var topBar=document.querySelector('.top-bar');
-          var offset=(topBar?topBar.getBoundingClientRect().height:0)+12;
-          if(main){
-            var mainRect=main.getBoundingClientRect();
-            var cardRect=card.getBoundingClientRect();
-            var targetScroll=main.scrollTop+(cardRect.top-mainRect.top)-offset;
-            main.scrollTo({top:Math.max(0,targetScroll)});
-          }
-        });
-      });
-    })(targetIdx);
-  }
 }
 /* 采购状态 → 深蓝主题色类（不使用绿色） */
 function statusCls(s){
