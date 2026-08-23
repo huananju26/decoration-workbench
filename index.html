@@ -465,6 +465,12 @@ a{color:#003a8c;text-decoration:none}
 .sb-check-state.done{background:#e6f4ff;color:#003a8c;border:1px solid #91caff}
 .sb-check-state.pending{background:#fff7e6;color:#d48806;border:1px solid #ffd591}
 .sb-check-state.wait{background:#f5f5f5;color:#888;border:1px solid #e8e8e8}
+/* 现场照片项药丸可点击直接上传 */
+.sb-check-row.sb-row-clickable{cursor:pointer}
+.sb-check-state.sb-pill-clickable{cursor:pointer;transition:filter .15s,transform .1s;user-select:none}
+.sb-check-state.sb-pill-clickable:hover{filter:brightness(.96);box-shadow:0 1px 4px rgba(22,119,255,.18)}
+.sb-check-state.sb-pill-clickable:active{transform:scale(.96)}
+.sb-check-state.sb-pill-clickable.done{cursor:pointer}
 
 /* 右侧：C 必检项卡片 */
 .sb-acc-items .sb-rel-item{display:flex;flex-direction:column;align-items:stretch;gap:6px}
@@ -6634,7 +6640,13 @@ function renderStepRightPanel(p,step,i){
       <div class="sb-sec-title">节点验收与交付 <span class="sb-status ${fullyAccepted?'done':'pending'}" style="margin-left:auto;font-weight:600">${fullyAccepted?'已完成':'进行中'}</span></div>
       <div class="sb-sec-desc">完成条件后生成留企业抬头给客户的客户报告</div>
       <div class="sb-check-list">
-        ${checks.map(c=>`<div class="sb-check-row ${c.state}"><span class="sb-check-icon ${c.state}">${c.state==='done'?'✓':''}</span><span class="sb-check-text">${c.text}</span><span class="sb-check-state ${c.state}">${c.label}</span></div>`).join('')}
+        ${checks.map(c=>{
+          const isPhoto = c.text==='现场照片达到计划要求';
+          const stateHtml = isPhoto
+            ? `<span class="sb-check-state ${c.state} sb-pill-clickable" title="点击上传现场照片" onclick="event.stopPropagation();openStepPhotoModal(${i})">${c.label} <span style="opacity:.7;font-size:11px">📷 上传</span></span>`
+            : `<span class="sb-check-state ${c.state}">${c.label}</span>`;
+          return `<div class="sb-check-row ${c.state} ${isPhoto?'sb-row-clickable':''}"><span class="sb-check-icon ${c.state}">${c.state==='done'?'✓':''}</span><span class="sb-check-text">${c.text}</span>${stateHtml}</div>`;
+        }).join('')}
       </div>
     </div>
 
