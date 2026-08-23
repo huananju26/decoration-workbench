@@ -6069,9 +6069,8 @@ function updateHeroGreeting(){
   else if(h<18){ period='下午'; phrase='保持节奏，稳中推进'; }
   else if(h<20){ period='傍晚'; phrase='收尾冲刺，今日事毕'; }
   else { period='晚上'; phrase='复盘今日，安心入眠'; }
-  const h12=h%12; const hr12=h12===0?12:h12;
   const pad=n=>String(n).padStart(2,'0');
-  el.textContent='您好！现在是 '+y+' 年 '+mo+' 月 '+da+' 日 '+period+' '+hr12+':'+pad(mi)+':'+pad(se)+'　'+phrase;
+  el.textContent='您好！现在是 '+y+' 年 '+mo+' 月 '+da+' 日 '+period+' '+pad(h)+':'+pad(mi)+':'+pad(se)+'　'+phrase;
 }
 let _heroClockTimer=null;
 function startHeroClock(){
