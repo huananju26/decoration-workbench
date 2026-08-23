@@ -1166,6 +1166,7 @@ a{color:#003a8c;text-decoration:none}
 .form-group{margin-bottom:16px}
 .form-label{font-size:13px;font-weight:600;color:#333;margin-bottom:6px;display:block}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 .form-actions{display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;border-top:1px solid #f0f0f0;margin-top:0;flex-shrink:0}
 
 /* 自定义日期字段 + 日历浮层（标记完成弹窗） */
@@ -1470,6 +1471,7 @@ a{color:#003a8c;text-decoration:none}
   .modal-body{padding:16px}
   .form-actions{padding:12px 16px;gap:8px}
   .form-row{grid-template-columns:1fr;gap:8px}
+  .form-row-3{grid-template-columns:1fr;gap:8px}
   .form-group{margin-bottom:12px}
   /* 日历浮层自适应 */
   .date-pop{width:auto;max-width:88vw;padding:10px}
@@ -2585,7 +2587,7 @@ a{color:#003a8c;text-decoration:none}
       <div class="wizard-panel active" id="wizStep1">
         <div class="form-group"><label class="form-label">项目编号 <b style="color:#ff4d4f">*</b></label><input type="text" id="projCode" placeholder="如：202608-001"></div>
         <div class="form-group"><label class="form-label">项目名称 <b style="color:#ff4d4f">*</b></label><input type="text" id="projName" placeholder="如：焕安居装修 / 办公室改造"></div>
-        <div class="form-row"><div class="form-group"><label class="form-label">项目总金额 (¥) <b style="color:#ff4d4f">*</b></label><input type="number" id="projTotalAmount" placeholder="如：150000"></div><div class="form-group"><label class="form-label">房屋面积 (m²)</label><input type="number" id="projArea" placeholder="如：120"></div></div>
+        <div class="form-row-3"><div class="form-group"><label class="form-label">项目总金额 (¥) <b style="color:#ff4d4f">*</b></label><input type="number" id="projTotalAmount" placeholder="如：150000"></div><div class="form-group"><label class="form-label">签约月份</label><input type="month" id="projSignMonth" placeholder="如：2026-08"></div><div class="form-group"><label class="form-label">房屋面积 (m²)</label><input type="number" id="projArea" placeholder="如：120"></div></div>
         <div class="form-group"><label class="form-label">房屋类型 *</label>
           <div class="house-type-grid" id="houseTypeGrid">
             <div class="house-type-opt active" data-type="new" onclick="selectHouseType('new')"><div class="ht-icon">🏠</div><div class="ht-name">新房毛胚</div></div>
@@ -4852,7 +4854,7 @@ function openProjectModal(id){
     if(p){
       editingProjectId=id;
       selectedHouseType=p.houseType||'new';
-      $('projCode').value=p.code||'';$('projName').value=p.name||'';$('projTotalAmount').value=(p.totalAmount!==undefined&&p.totalAmount!==null&&p.totalAmount!=='')?p.totalAmount:'';$('projArea').value=p.area||'';
+      $('projCode').value=p.code||'';$('projName').value=p.name||'';$('projTotalAmount').value=(p.totalAmount!==undefined&&p.totalAmount!==null&&p.totalAmount!=='')?p.totalAmount:'';$('projArea').value=p.area||'';$('projSignMonth').value=p.signMonth||'';
       document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type===selectedHouseType));
       $('wPlanStartDate').value=(p.profile&&p.profile.startDate)||'';
       /* 预填施工计划节点：编辑时也能改施工计划 */
@@ -4899,7 +4901,7 @@ function openProjectModal(id){
   const now=new Date();const y=String(now.getFullYear());const m=String(now.getMonth()+1).padStart(2,'0');const prefix=y+m;
   const maxNum=Math.max(0,...App.projects.filter(p=>p.code&&p.code.startsWith(prefix)).map(p=>parseInt(p.code.split('-')[1])||0));
   $('projCode').value=prefix+'-'+String(maxNum+1).padStart(3,'0');
-  $('projTotalAmount').value='';$('projArea').value='';
+  $('projTotalAmount').value='';$('projArea').value='';$('projSignMonth').value='';
   document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type==='new'));
   $('wPlanStartDate').value='';
   renderPlanTemplateOptions();
@@ -5097,6 +5099,7 @@ function createProjectFromWizard(){
   const totalAmount=parseFloat($('projTotalAmount').value)||0;
   if(!totalAmount){alert('请输入项目总金额');goWizardStep(1);$('projTotalAmount').focus();return}
   const area=$('projArea').value.trim()||'';
+  const signMonth=$('projSignMonth').value.trim()||'';
 
   /* 将 wizPlanNodes 转换为 processSteps 格式 */
   const processSteps=buildProcessStepsFromWizard();
@@ -5105,7 +5108,7 @@ function createProjectFromWizard(){
 
   const p={
     id:'p_'+uid(),name:name,code:code,houseType:selectedHouseType,createdAt:todayISO(),
-    totalAmount:totalAmount,area:area,adjustment:0,
+    totalAmount:totalAmount,area:area,signMonth:signMonth,adjustment:0,
     profile:{style:'',layout:'',mode:'',startDate:$('wPlanStartDate').value||''},
     tasks:[],purchases:[],income:income,expense:[],diaries:[],compares:[],checked:{},
     processSteps:processSteps
@@ -5128,13 +5131,14 @@ function saveProject(){
   const totalAmount=parseFloat($('projTotalAmount').value)||0;
   if(!totalAmount){alert('请输入项目总金额');$('projTotalAmount').focus();return}
   const area=$('projArea').value.trim()||'';
+  const signMonth=$('projSignMonth').value.trim()||'';
   if(wizPlanNodes.length===0)initPlanNodesFromTemplate();
   const processSteps=buildProcessStepsFromWizard();
   if(editingProjectId){
     const idx=App.projects.findIndex(x=>x.id===editingProjectId);
     if(idx>=0){
       const p=App.projects[idx];
-      p.name=name;p.code=code;p.totalAmount=totalAmount;p.area=area;p.houseType=selectedHouseType;
+      p.name=name;p.code=code;p.totalAmount=totalAmount;p.area=area;p.signMonth=signMonth;p.houseType=selectedHouseType;
       p.profile=p.profile||{};p.profile.startDate=$('wPlanStartDate').value||'';
       p.processSteps=processSteps;
       p.income=saveEditIncome(p.income||[], totalAmount);
@@ -8329,12 +8333,14 @@ function renderProjDetailHeader(p){
   const worker=pf.worker||'';
   const manager=pf.manager||'';
   const area=p.area||0;
+  const signMonth=p.signMonth||'';
   $('pdhMetaRow').innerHTML=
     '<div class="pdh-meta-line">'+
       '<div class="pdh-meta-field"><span class="pdh-meta-label">客户</span><input class="pdh-meta-input" id="pdhOwner" value="'+escHtml(owner)+'" placeholder="未填写" onchange="saveProjMetaField(\'owner\',this.value)"></div>'+
       '<div class="pdh-meta-field"><span class="pdh-meta-label">设计</span><input class="pdh-meta-input" id="pdhDesigner" value="'+escHtml(designer)+'" placeholder="待分配" onchange="saveProjMetaField(\'designer\',this.value)"></div>'+
       '<div class="pdh-meta-field"><span class="pdh-meta-label">工长</span><input class="pdh-meta-input" id="pdhWorker" value="'+escHtml(worker)+'" placeholder="待分配" onchange="saveProjMetaField(\'worker\',this.value)"></div>'+
       '<div class="pdh-meta-field"><span class="pdh-meta-label">总负责人</span><input class="pdh-meta-input" id="pdhManager" value="'+escHtml(manager)+'" placeholder="待分配" onchange="saveProjMetaField(\'manager\',this.value)"></div>'+
+      '<div class="pdh-meta-field"><span class="pdh-meta-label">签约月份</span><input class="pdh-meta-input" id="pdhSignMonth" type="month" value="'+escHtml(signMonth)+'" placeholder="未填写" style="width:140px" onchange="saveProjMetaField(\'signMonth\',this.value)"></div>'+
       '<div class="pdh-meta-field"><span class="pdh-meta-label">项目面积(m²)</span><input class="pdh-meta-input" id="pdhArea" type="number" step="0.01" min="0" value="'+escHtml(area)+'" placeholder="未填写" style="width:120px" onchange="saveProjMetaField(\'area\',this.value)"></div>'+
     '</div>'+
     '<div class="pdh-meta-line">'+
@@ -8351,6 +8357,12 @@ function saveProjMetaField(key,value){
     persist();
     if(typeof renderProcessFinance==='function')renderProcessFinance();
     if(typeof renderFinance==='function')renderFinance();
+    return;
+  }
+  /* 签约月份：顶层字段 p.signMonth（与项目面积同级），字符串 YYYY-MM 存储 */
+  if(key==='signMonth'){
+    p.signMonth=(value||'').trim();
+    persist();
     return;
   }
   if(!p.profile)p.profile={};
