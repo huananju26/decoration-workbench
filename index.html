@@ -9504,7 +9504,7 @@ function renderPlanVsActualSheet(p,steps){
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</span></div>`;
     /* 行高加大：track=44px，上行计划(top:3/h:14) + 下行实际(top:23/h:14) + 6px间距 */
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:44px">${todayEl}`
-      +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:14px;font-size:9px;padding:0;opacity:.85"></div>`
+      +`<div class="pg-bar" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:14px;font-size:9px;padding:0;background:#91caff;border-color:#69b1ff;color:#003a8c;opacity:.9"></div>`
       +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:23px;height:14px;font-size:9px;padding:0"></div>`
       /* 实际标签：跟随实际条水平对齐；未完成节点只显示此标签 */
       +`<span class="pg-bar-label" style="${actLabelStyle};font-size:10.5px"><span class="pg-label-date">实际 ${actLabel}</span></span>`
