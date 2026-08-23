@@ -7850,7 +7850,7 @@ function renderProcessNav(){
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
   navList.innerHTML=steps.map((step,i)=>{
-    const done=isStepChecked(step.id);
+    const done=isStepFullyAccepted(p,step);
     const numStr=String(i+1).padStart(2,'0');
     return `<li class="process-nav-item" id="processNavItem-${i}" data-index="${i}" onclick="scrollToStep(${i})">
       <span class="process-nav-dot${done?' active':''}"></span>
