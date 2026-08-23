@@ -2176,7 +2176,7 @@ a{color:#003a8c;text-decoration:none}
       <div class="home-top-grid">
         <div class="home-hero">
           <div class="hero-breadcrumb">TODAY / <span id="breadcrumbProject">全部需要整理</span></div>
-          <div class="hero-greeting" id="heroGreeting">下午好。</div>
+          <div class="hero-greeting" id="heroGreeting"></div>
           <div class="hero-headline" id="heroHeadline">今天有 <strong>0</strong> 项需要处理。</div>
           <div class="hero-summary" id="heroSummary"></div>
           <div class="hero-chips">
@@ -6081,11 +6081,12 @@ function startHeroClock(){
   },1000);
 }
 function renderHome(){
+  /* 问候语/实时时钟与项目无关，应无条件更新（避免无项目时 early-return 导致静态「下午好」残留） */
+  updateHeroGreeting();
+  startHeroClock();
   const p=cur();
   if(!p){ showNoProject('home'); return; }
   hideNoProject();
-  updateHeroGreeting();
-  startHeroClock();
   const projects=App.projects||[];
   const projName=projects.length===1?projDisplayName(projects[0]):
     projects.length>1?'所有项目':'暂无项目';
