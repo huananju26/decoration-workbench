@@ -1718,8 +1718,8 @@ a{color:#003a8c;text-decoration:none}
 .cal-cell.today .cal-day-num span{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#003a8c;color:#fff;font-size:12px}
 .cal-cell.other-month .cal-day-num{color:#bbb}
 /* 连续周行（逐行滚动布局）：每行 7 列，固定行高便于滚轮逐行对齐 */
-.cal-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid #f0f0f0}
-.cal-week .cal-cell{box-sizing:border-box;border-bottom:none;min-height:0;height:78px}
+.cal-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid #f0f0f0;height:var(--cal-row-h,116px)}
+.cal-week .cal-cell{box-sizing:border-box;border-bottom:none;min-height:0;height:var(--cal-row-h,116px)}
 .cal-week .cal-cell.today{margin:0}
 /* 未划到的月份（非当前聚焦月）整周浅灰色显示 */
 .cal-week.dim{opacity:.42}
@@ -3595,7 +3595,7 @@ a{color:#003a8c;text-decoration:none}
         <span style="font-size:12px;color:#003a8c;font-weight:600">日</span>
       </div>
       <!-- 日历网格 -->
-      <div id="calViewport" style="flex:none;position:relative;overflow-y:auto;overflow-x:hidden;width:100%;height:390px;max-height:62vh">
+      <div id="calViewport" style="flex:1;position:relative;overflow-y:auto;overflow-x:hidden;width:100%">
         <div id="calGrid" style="display:flex;flex-direction:column;width:100%"></div>
       </div>
     </div>
@@ -12309,13 +12309,23 @@ function countWorkdays(startStr, endStr){
   return count;
 }
 
+/* 每行行高 = 视口可见高度 / 5：弹窗尺寸不变、随容器缩放，可视区恰显 5 行 */
+function calFitRows(){
+  const vp=$('calViewport');if(!vp)return;
+  const h=vp.clientHeight;if(h<10)return;
+  const rh=Math.max(80,Math.floor(h/5));
+  vp.style.setProperty('--cal-row-h',rh+'px');
+  calRowH=rh;
+}
+function calOnResize(){ calFitRows(); calUpdateHeaderFromScroll(); }
 function openCalendarModal(){
   const now=new Date();
   calYear=now.getFullYear();
   calMonth=now.getMonth();
   calTypeFilter=null; /* 打开时重置筛选 */
+  showModal('calendarModal');      /* 先显示弹窗，确保视口已参与布局、可量到高度 */
+  calFitRows();                    /* 按视口高度把每行设为 1/5，可视区恰显 5 行 */
   renderCalendar({scroll:'today'});
-  showModal('calendarModal');
   /* 点击外部关闭详情浮层 */
   document.addEventListener('click',calCloseDetailOutside);
   /* 滚轮逐行滚动：capture 阶段在整个 .modal 内层拦截，无论鼠标在弹窗哪个位置都能触发，
@@ -12325,6 +12335,8 @@ function openCalendarModal(){
   /* 滚动时实时同步顶部年月显示 */
   const vp=$('calViewport');
   if(vp)vp.addEventListener('scroll',calUpdateHeaderFromScroll);
+  /* 容器尺寸变化时重算行高，保持恰显 5 行 */
+  window.addEventListener('resize',calOnResize);
 }
 function closeModal(id){
   $(id).classList.remove('show');
@@ -12337,6 +12349,7 @@ function closeModal(id){
     if(calModalEl)calModalEl.removeEventListener('wheel',calWheelHandler,{capture:true});
     const vp=$('calViewport');
     if(vp)vp.removeEventListener('scroll',calUpdateHeaderFromScroll);
+    window.removeEventListener('resize',calOnResize);
   }
 }
 
@@ -12418,10 +12431,7 @@ function calRenderWeeks(filtered){
   });
   $('calGrid').innerHTML=html;
   const fw=$('calGrid').querySelector('.cal-week');
-  if(fw)calRowH=fw.getBoundingClientRect().height||78;
-  /* 视口固定显示 5 行（其余滚动）；max-height 兜底小屏 */
-  const vp=$('calViewport');
-  if(vp)vp.style.height=Math.min(5*calRowH, Math.round(window.innerHeight*0.62))+'px';
+  if(fw)calRowH=fw.getBoundingClientRect().height||116;
   /* 未划到的月份（非当前聚焦月）浅灰色显示 */
   calApplyDim();
   calLastDimY=calYear;calLastDimM=calMonth;
