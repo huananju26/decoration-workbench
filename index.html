@@ -8042,11 +8042,16 @@ function toggleStepExpand(idx){
   const card=document.getElementById('stepCard-'+idx);
   if(!card)return;
   const wasExpanded=card.classList.contains('expanded');
-  /* 单选模式：先折叠所有其他卡片，仅保留编辑中的节点展开 */
+  /* 单列编辑语义：先折叠所有其他卡片，再对目标卡片做真正的反转（已展开→折叠，未展开→展开） */
   document.querySelectorAll('.step-card.expanded').forEach(c=>{ if(c!==card) c.classList.remove('expanded'); });
-  /* toggle target */
-  if(!wasExpanded){card.classList.add('expanded');const fsImgs=card.querySelectorAll('img.fs-photo');if(fsImgs.length)loadFsPhotos(card);}
-  /* 同步左侧导航深蓝高亮（仅编辑中的节点点亮） */
+  /* toggle target：反转当前卡片状态（支持折叠已展开的节点） */
+  if(wasExpanded){
+    card.classList.remove('expanded');
+  }else{
+    card.classList.add('expanded');
+    const fsImgs=card.querySelectorAll('img.fs-photo');if(fsImgs.length)loadFsPhotos(card);
+  }
+  /* 同步左侧导航深蓝高亮（仅展开的节点点亮） */
   syncNavActiveStates();
 }
 /* 点击"未闭环整改"徽章：展开节点并定位滚动到整改记录区，短暂高亮 */
