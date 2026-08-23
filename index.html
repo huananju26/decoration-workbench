@@ -2212,7 +2212,7 @@ a{color:#003a8c;text-decoration:none}
     <div id="pagesWrapper">
 
     <!-- PAGE: 今日总览 -->
-    <div class="page active" id="page-home">
+    <div class="page" id="page-home">
 
       <!-- ═══ 顶部双栏：Hero + 今日需要处理 ═══ -->
       <div class="home-top-grid">
@@ -3848,12 +3848,13 @@ function hideLoginPage(){$('loginPage').classList.remove('show');$('loginPage').
 /* 进入工作台：隐藏登录页、显示 app、恢复页面（sessionStorage 在刷新后保留当前页，关闭标签页后清空→今日总览） */
 function enterApp(){
   hideLoginPage();
-  $('app').style.display='';
+  /* 先按已保存页面完成页面激活与渲染，再显示 app，避免出现「先显示今日总览再跳回原页面」的闪烁与重复渲染 */
   let savedPage='home';
   try{const sp=sessionStorage.getItem('xzgz_current_page');if(sp)savedPage=sp;}catch(e){}
   const VALID_PAGES=['home','process','finance','ledger','purchase','compare','tools','quote','diary','knowledge'];
   if(!VALID_PAGES.includes(savedPage))savedPage='home';
   switchPage(savedPage);
+  $('app').style.display='';
 }
 /* 登录成功后：先同步再进工作台 */
 function cloudEnterApp(){
