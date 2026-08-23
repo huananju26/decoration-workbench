@@ -3797,12 +3797,12 @@ function showLoginPage(){
   $('app').style.display='none';
 }
 function hideLoginPage(){$('loginPage').classList.remove('show');$('loginPage').style.display='none';}
-/* 进入工作台：隐藏登录页、显示 app、恢复上次浏览页面 */
+/* 进入工作台：隐藏登录页、显示 app、恢复页面（sessionStorage 在刷新后保留当前页，关闭标签页后清空→今日总览） */
 function enterApp(){
   hideLoginPage();
   $('app').style.display='';
   let savedPage='home';
-  try{const sp=localStorage.getItem('xzgz_current_page');if(sp)savedPage=sp;}catch(e){}
+  try{const sp=sessionStorage.getItem('xzgz_current_page');if(sp)savedPage=sp;}catch(e){}
   const VALID_PAGES=['home','process','finance','ledger','purchase','compare','tools','quote','diary','knowledge'];
   if(!VALID_PAGES.includes(savedPage))savedPage='home';
   switchPage(savedPage);
@@ -5227,8 +5227,8 @@ function hideNoProject(){const el=$('noProjectOverlay');if(el)el.style.display='
 let currentPage='home';
 function switchPage(page){
   currentPage=page;
-  /* 持久化当前页，刷新后停留 */
-  try{localStorage.setItem('xzgz_current_page',page);}catch(e){}
+  /* 用 sessionStorage 记录当前页：刷新（不关标签页）可恢复当前页；关闭标签页后清空，重开回到今日总览 */
+  try{sessionStorage.setItem('xzgz_current_page',page);}catch(e){}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   $('page-'+page).classList.add('active');
   document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
