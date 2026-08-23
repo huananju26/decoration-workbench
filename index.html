@@ -6760,7 +6760,7 @@ function sbMarkItemOK(i,idx){
   if(!step.acceptance||!step.acceptance[idx])return;
   step.acceptance[idx].status='passed';
   step.acceptance[idx].rectifyPassed=false;
-  persist();renderProcessKeepExpanded();
+  persist();renderProcessKeepExpanded(i);
 }
 function sbMarkItemIssue(i,idx){
   // 改为打开「发起问题整改」弹窗，由用户在弹窗内填写并创建整改记录
@@ -7313,7 +7313,7 @@ function sbDelAcceptItem(i,idx){
       if(r.tag==='整改'&&r.stepId===stepId&&typeof r.acceptanceKey==='number'&&r.acceptanceKey>idx){ r.acceptanceKey-=1; }
     });
   }
-  persist();renderProcessKeepExpanded();
+  persist();renderProcessKeepExpanded(i);
 }
 // 从模板导入必检项（默认土建·水电·防水·油漆 4 个，可扩展）
 function sbImportAcceptTemplate(i){
@@ -7328,7 +7328,7 @@ function sbImportAcceptTemplate(i){
   ensureProjectSteps(p);
   if(!step.acceptance)step.acceptance=[];
   step.acceptance=step.acceptance.concat(JSON.parse(JSON.stringify(tmpl)));
-  persist();renderProcessKeepExpanded();
+  persist();renderProcessKeepExpanded(i);
 }
 function sbManageAcceptTemplates(){
   alert('企业必检项模板管理（开发中）\n后续将支持：按施工类型预设、水电/木工/油漆/瓦工 不同阶段模板。');
@@ -7907,8 +7907,10 @@ function expandAllSteps(){
   document.querySelectorAll('.step-card').forEach(c=>c.classList.add('expanded'));
   syncNavActiveStates();
 }
-/* ── 节点详情：保存后保持展开态重新渲染 ── */
-function renderProcessKeepExpanded(){
+/* ── 节点详情：保存后保持展开态重新渲染 ──
+   focusIdx: 可选，指定编辑中的节点索引（强制只展开该节点并滚动定位）。
+   不传时兜底取"最后展开的卡片"为焦点。 */
+function renderProcessKeepExpanded(focusIdx){
   /* 记录当前展开的卡片索引 */
   const openCards=Array.from(document.querySelectorAll('.step-card.expanded')).map(c=>c.dataset.index);
   /* 记录当前折叠的分组（done/undone） */
@@ -7916,7 +7918,7 @@ function renderProcessKeepExpanded(){
     .map(function(h){const g=h.closest('.step-group');return g?g.dataset.group:null;})
     .filter(Boolean);
   renderProcess();
-  /* 先恢复分组折叠状态（必须在恢复卡片展开之前，否则折叠组内的卡片会被错误展开） */
+  /* 先恢复分组折叠状态 */
   collapsedGroups.forEach(function(g){
     const group=document.querySelector('.step-group[data-group="'+g+'"]');
     if(!group)return;
@@ -7924,19 +7926,40 @@ function renderProcessKeepExpanded(){
     const body=group.querySelector('.step-group-body');
     if(header&&body){header.classList.add('collapsed');body.style.maxHeight='0';}
   });
-  /* 再恢复卡片展开状态：编辑语义为"仅展开编辑中的节点"——只展开第一个记录的卡片，
-     其他卡片一律折叠（不受"全部展开"按钮影响，该按钮直接调用 expandAllSteps 不进此分支） */
-  let restored=false;
-  openCards.forEach(function(idx){
-    const c=document.getElementById('stepCard-'+idx);
-    if(!c)return;
-    const group=c.closest('.step-group');
-    const isGroupCollapsed=group&&group.querySelector('.step-group-header.collapsed');
-    if(!isGroupCollapsed&&!restored){c.classList.add('expanded');restored=true;}
-  });
+  /* 确定焦点卡片：优先用传入的 focusIdx，否则取 openCards 最后一个（最近操作的） */
+  var targetIdx=(focusIdx!==undefined&&focusIdx!==null)?String(focusIdx):(openCards.length?openCards[openCards.length-1]:null);
+  /* 只展开焦点卡片，其他一律折叠 */
+  if(targetIdx!==null){
+    var fc=document.getElementById('stepCard-'+targetIdx);
+    if(fc){
+      var fg=fc.closest('.step-group');
+      var isCollapsed=fg&&fg.querySelector('.step-group-header.collapsed');
+      if(!isCollapsed){fc.classList.add('expanded');}
+    }
+  }
   syncNavActiveStates();
   applyStepSplitToAll();
   setTimeout(bindStepSplitter,0);
+  /* 滚动定位到焦点卡片，确保编辑中的节点始终在可视区 */
+  if(targetIdx!==null){
+    (function(idx){
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          var card=document.getElementById('stepCard-'+idx);
+          if(!card||!card.classList.contains('expanded'))return;
+          var main=document.querySelector('.main');
+          var topBar=document.querySelector('.top-bar');
+          var offset=(topBar?topBar.getBoundingClientRect().height:0)+12;
+          if(main){
+            var mainRect=main.getBoundingClientRect();
+            var cardRect=card.getBoundingClientRect();
+            var targetScroll=main.scrollTop+(cardRect.top-mainRect.top)-offset;
+            main.scrollTo({top:Math.max(0,targetScroll)});
+          }
+        });
+      });
+    })(targetIdx);
+  }
 }
 /* 采购状态 → 深蓝主题色类（不使用绿色） */
 function statusCls(s){
@@ -7976,7 +7999,7 @@ function saveStepDetail(i){
   });
   step.acceptance=acc;
   persist();
-  renderProcessKeepExpanded();
+  renderProcessKeepExpanded(i);
   alert('节点信息已保存');
 }
 /* 从节点详情快捷新增采购（预填所属阶段） */
