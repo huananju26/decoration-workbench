@@ -9478,7 +9478,7 @@ function renderPlanVsActualSheet(p,steps){
     const badgeCls=isDone?'done':actClass;
     const planW=Math.max(planRightPct-planLeftPct,0.4);
     const actW=Math.max(actRightPct-actLeftPct,0.4);
-    /* 标签：计划条与实际条各自独立标签，强制与该条水平对齐；未完成(进行中/待开始)只显示实际标签 */
+    /* 标签：计划条与实际条各自独立标签，强制与该条水平对齐 */
     /* 实际条标签：跟随实际条(top:23px/14px)，右缘>65%时挪到前面(左) */
     const actLabelLeft=actLeftPct+actW;
     const actOnLeft3=actLabelLeft>65;
@@ -9487,18 +9487,17 @@ function renderPlanVsActualSheet(p,steps){
     const actLabelStyle=actOnLeft3
       ?`left:calc(${actLeftPct}% - 4px);${actLabelBase};transform:translateX(-100%)`
       :`left:calc(${actLabelLeft}% + 4px);${actLabelBase}`;
-    /* 计划条标签：仅已完成节点显示；跟随计划条(top:3px/14px)，右缘>65%时挪到前面(左) */
-    let planLabelHtml='';
-    if(isDone){
-      const planLabelLeft=planLeftPct+planW;
-      const planOnLeft3=planLabelLeft>65;
-      const _lcPlan='#888888'; /* 计划标签中灰 */
-      const planLabelBase=`top:3px;height:14px;line-height:14px;color:${_lcPlan}`;
-      const planLabelStyle=planOnLeft3
-        ?`left:calc(${planLeftPct}% - 4px);${planLabelBase};transform:translateX(-100%)`
-        :`left:calc(${planLabelLeft}% + 4px);${planLabelBase}`;
-      planLabelHtml=`<span class="pg-bar-label" style="${planLabelStyle};font-size:10.5px"><span class="pg-label-date">计划 ${planLabel}</span></span>`;
-    }
+    /* 实际标签文字：未完成 → 显示状态文字(行中/待开始/逾期)；已完成 → "完成 + 日期" */
+    const actLabelText=isDone?`完成 ${actLabel}`:({inprogress:'行中',pending:'待开始',overdue:'逾期'})[actClass]||'行中';
+    /* 计划条标签：所有节点都显示；跟随计划条(top:3px/14px)，右缘>65%时挪到前面(左) */
+    const planLabelLeft=planLeftPct+planW;
+    const planOnLeft3=planLabelLeft>65;
+    const _lcPlan='#888888'; /* 计划标签中灰 */
+    const planLabelBase=`top:3px;height:14px;line-height:14px;color:${_lcPlan}`;
+    const planLabelStyle=planOnLeft3
+      ?`left:calc(${planLeftPct}% - 4px);${planLabelBase};transform:translateX(-100%)`
+      :`left:calc(${planLabelLeft}% + 4px);${planLabelBase}`;
+    const planLabelHtml=`<span class="pg-bar-label" style="${planLabelStyle};font-size:10.5px"><span class="pg-label-date">计划 ${planLabel}</span></span>`;
     const actDays3=isDone?(Math.round((Date.parse(s.completedAt||planE||'')-Date.parse(s.completedAtStart||planS||''))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</span></div>`;
@@ -9506,8 +9505,8 @@ function renderPlanVsActualSheet(p,steps){
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:44px">${todayEl}`
       +`<div class="pg-bar" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:14px;font-size:9px;padding:0;background:#91caff;border-color:#69b1ff;color:#003a8c;opacity:.9"></div>`
       +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:23px;height:14px;font-size:9px;padding:0"></div>`
-      /* 实际标签：跟随实际条水平对齐；未完成节点只显示此标签 */
-      +`<span class="pg-bar-label" style="${actLabelStyle};font-size:10.5px"><span class="pg-label-date">实际 ${actLabel}</span></span>`
+      /* 实际标签：跟随实际条水平对齐；未完成显示状态文字、已完成显示"完成+日期" */
+      +`<span class="pg-bar-label" style="${actLabelStyle};font-size:10.5px"><span class="pg-label-date">实际 ${actLabelText}</span></span>`
       /* 计划标签：仅已完成节点，跟随计划条水平对齐 */
       +planLabelHtml
       +`</div></div>`;
