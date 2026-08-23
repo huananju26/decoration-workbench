@@ -1721,6 +1721,8 @@ a{color:#003a8c;text-decoration:none}
 .cal-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid #f0f0f0}
 .cal-week .cal-cell{box-sizing:border-box;border-bottom:none;min-height:0;height:78px}
 .cal-week .cal-cell.today{margin:0}
+/* 未划到的月份（非当前聚焦月）整周浅灰色显示 */
+.cal-week.dim{opacity:.42}
 /* 法定节假日（与日期数字同行） */
 .cal-holiday{font-size:9.5px;color:#ff4d4f;font-weight:600;margin-left:4px;white-space:nowrap;vertical-align:middle;display:inline-block;line-height:1.6}
 /* ── 事件图标行：竖向排列，图标+简短文字 ── */
@@ -3593,7 +3595,7 @@ a{color:#003a8c;text-decoration:none}
         <span style="font-size:12px;color:#003a8c;font-weight:600">日</span>
       </div>
       <!-- 日历网格 -->
-      <div id="calViewport" style="flex:1;position:relative;overflow-y:auto;overflow-x:hidden;width:100%">
+      <div id="calViewport" style="flex:none;position:relative;overflow-y:auto;overflow-x:hidden;width:100%;height:390px;max-height:62vh">
         <div id="calGrid" style="display:flex;flex-direction:column;width:100%"></div>
       </div>
     </div>
@@ -12409,11 +12411,20 @@ function calRenderWeeks(filtered){
       const key=`${day.y}-${String(day.m+1).padStart(2,'0')}-${String(day.d).padStart(2,'0')}`;
       cells+=buildCalCell(day.y,day.m,day.d,key,filtered,isToday(day.y,day.m,day.d));
     }
-    html+=`<div class="cal-week" data-mon="${wk.y}-${String(wk.m+1).padStart(2,'0')}-${String(wk.d).padStart(2,'0')}">${cells}</div>`;
+    /* 周所属月份：以周三（当周中间日）所在的月份为代表，避免跨月周归属混乱 */
+    const rep=addDays(wk.y,wk.m,wk.d,3);
+    const ym=rep.y+'-'+String(rep.m+1).padStart(2,'0');
+    html+=`<div class="cal-week" data-mon="${wk.y}-${String(wk.m+1).padStart(2,'0')}-${String(wk.d).padStart(2,'0')}" data-ym="${ym}">${cells}</div>`;
   });
   $('calGrid').innerHTML=html;
   const fw=$('calGrid').querySelector('.cal-week');
   if(fw)calRowH=fw.getBoundingClientRect().height||78;
+  /* 视口固定显示 5 行（其余滚动）；max-height 兜底小屏 */
+  const vp=$('calViewport');
+  if(vp)vp.style.height=Math.min(5*calRowH, Math.round(window.innerHeight*0.62))+'px';
+  /* 未划到的月份（非当前聚焦月）浅灰色显示 */
+  calApplyDim();
+  calLastDimY=calYear;calLastDimM=calMonth;
 }
 /* 平滑滚动到今天所在周 */
 function calScrollToToday(){
@@ -12432,7 +12443,19 @@ function calScrollToMonth(y,m){
   const vp=$('calViewport');if(vp)vp.scrollTo({top:i*calRowH,behavior:'smooth'});
   setTimeout(calUpdateHeaderFromScroll,360);
 }
+/* 将非当前聚焦月（未划到的月份）的周行标记为浅灰色 */
+function calApplyDim(){
+  const grid=$('calGrid');if(!grid)return;
+  const active=calYear+'-'+String(calMonth+1).padStart(2,'0');
+  const weeks=grid.querySelectorAll('.cal-week');
+  for(let w=0;w<weeks.length;w++){
+    const el=weeks[w];
+    if(el.getAttribute('data-ym')!==active)el.classList.add('dim');
+    else el.classList.remove('dim');
+  }
+}
 /* 滚动时同步顶部年月显示与锚点（供下拉/箭头使用） */
+let calLastDimY=null, calLastDimM=null;
 function calUpdateHeaderFromScroll(){
   const vp=$('calViewport');
   if(!vp||!calWeekList.length)return;
@@ -12441,6 +12464,11 @@ function calUpdateHeaderFromScroll(){
   const wk=calWeekList[i];if(!wk)return;
   $('calYmDisplay').textContent=wk.y+'年'+String(wk.m+1).padStart(2,'0')+'月';
   calYear=wk.y;calMonth=wk.m;
+  /* 仅在聚焦月份跨月时重算浅灰，避免滚动过程频繁遍历 */
+  if(calYear!==calLastDimY||calMonth!==calLastDimM){
+    calLastDimY=calYear;calLastDimM=calMonth;
+    calApplyDim();
+  }
 }
 /* 鼠标滚轮在日历上滚动 → 逐行(周)丝滑上下，而非整月翻页 */
 function calWheelHandler(e){
