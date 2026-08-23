@@ -444,6 +444,14 @@ a{color:#003a8c;text-decoration:none}
 /* ── 节点详情：左右两栏布局（可拖拽分割） ── */
 .step-body-grid{display:grid;grid-template-columns:var(--sb-left-w,1fr) 8px minmax(260px,1fr);gap:14px;width:100%;align-items:flex-start}
 .step-body-left{display:flex;flex-direction:column;min-width:0}
+/* ── 节点分组标题栏 ── */
+.step-group-header{display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;user-select:none;border-radius:10px;margin:6px 0 2px;background:#f7f9fc;border:1px solid #e8ecf1;font-size:13.5px;font-weight:600;color:#333;transition:background .15s}
+.step-group-header:hover{background:#eef3fa}
+.step-group-header .step-group-icon{font-size:15px;width:22px;text-align:center;flex-shrink:0}
+.step-group-header .step-group-count{margin-left:auto;background:#e6f4ff;color:#003a8c;font-size:11.5px;padding:2px 8px;border-radius:10px;font-weight:700}
+.step-group-header .step-group-arrow{font-size:10px;color:#999;transition:transform .2s;margin-left:4px}
+.step-group-header.collapsed .step-group-arrow{transform:rotate(-90deg)}
+.step-group-body{overflow:hidden;transition:max-height .3s ease}
 .step-body-split{display:flex;align-items:flex-start;justify-content:center;cursor:col-resize;user-select:none;-webkit-user-select:none;position:relative;padding-top:24px}
 .step-body-split::before{content:'';width:2px;height:48px;background:#d9e2f3;border-radius:2px;transition:background .15s,height .15s}
 .step-body-split:hover::before,.step-body-split.dragging::before{background:#1677ff;min-height:80px}
@@ -7466,10 +7474,18 @@ function renderProcess(){
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
   const container=$('stepCardList');
-  container.innerHTML=steps.map((step,i)=>{
+  /* 分组：已完成 vs 未完成（序号保持原始位置不变） */
+  const doneSteps=[], undoneSteps=[];
+  steps.forEach((step,i)=>{
+    if(isStepFullyAccepted(p,step)) doneSteps.push({step,i});
+    else undoneSteps.push({step,i});
+  });
+  /* 单个节点卡片渲染函数 */
+  const renderOneCard=({step:iStep,idx:i}, defExpanded)=>{
+    const step=iStep;
     const done=isStepChecked(step.id);
     const fullyAccepted=isStepFullyAccepted(p,step);
-    const expanded=false; /* 默认全部折叠，不自动展开第一个 */
+    const expanded=defExpanded;
     /* 日期信息（需先于逾期判定声明） */
     const actStart=step.completedAtStart||'';
     const actEnd=step.completedAt||'';
@@ -7766,7 +7782,34 @@ function renderProcess(){
         </div><!-- /step-body-grid -->
       </div>
     </div>`;
-  }).join('');
+  };
+  /* 分组拼接：已完成组(折叠) + 未完成组(展开) */
+  let html='';
+  if(doneSteps.length){
+    const doneCards=doneSteps.map(s=>renderOneCard(s,false)).join('');
+    html+=`<div class="step-group" data-group="done">
+      <div class="step-group-header collapsed" onclick="toggleStepGroup(this)">
+        <span class="step-group-icon">✅</span>
+        <span>已完成</span>
+        <span class="step-group-count">${doneSteps.length}</span>
+        <span class="step-group-arrow">▼</span>
+      </div>
+      <div class="step-group-body" style="max-height:0">${doneCards}</div>
+    </div>`;
+  }
+  if(undoneSteps.length){
+    const undoneCards=undoneSteps.map(s=>renderOneCard(s,true)).join('');
+    html+=`<div class="step-group" data-group="undone">
+      <div class="step-group-header" onclick="toggleStepGroup(this)">
+        <span class="step-group-icon">🔄</span>
+        <span>进行中</span>
+        <span class="step-group-count">${undoneSteps.length}</span>
+        <span class="step-group-arrow">▼</span>
+      </div>
+      <div class="step-group-body" style="max-height:9999px">${undoneCards}</div>
+    </div>`;
+  }
+  container.innerHTML=html;
   updateProcProgress();
   /* 渲染左侧导航 */
   renderProcessNav();
@@ -7777,6 +7820,23 @@ function renderProcess(){
   /* 详情左右栏：应用持久化的分栏比例 + 绑定拖拽分割条 */
   applyStepSplitToAll();
   setTimeout(bindStepSplitter,0);
+}
+/* 分组折叠/展开：点击分组标题栏切换该组所有卡片的显隐 */
+function toggleStepGroup(header){
+  const group=header.closest('.step-group');
+  if(!group) return;
+  const body=group.querySelector('.step-group-body');
+  const isCollapsed=header.classList.contains('collapsed');
+  if(isCollapsed){
+    header.classList.remove('collapsed');
+    body.style.maxHeight=body.scrollHeight+'px';
+    setTimeout(function(){ if(!header.classList.contains('collapsed')) body.style.maxHeight='9999px'; },320);
+  } else{
+    header.classList.add('collapsed');
+    body.style.maxHeight=body.scrollHeight+'px';
+    requestAnimationFrame(function(){ body.style.maxHeight='0'; });
+    body.querySelectorAll('.step-card.expanded').forEach(function(c){ c.classList.remove('expanded'); });
+  }
 }
 /* 渲染左侧阶段导航列表 */
 function renderProcessNav(){
