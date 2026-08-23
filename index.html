@@ -1723,6 +1723,12 @@ a{color:#003a8c;text-decoration:none}
 .cal-week .cal-cell.today{margin:0}
 /* 未划到的月份（非当前聚焦月）整周浅灰色显示 */
 .cal-week.dim{opacity:.42}
+/* 日历导航药丸按钮组（‹ 今天 ›） */
+.cal-nav-pill{display:inline-flex;align-items:center;background:#fff;border:1.5px solid #d9d9d9;border-radius:10px;padding:3px;gap:2px}
+.cal-nav-btn{display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:#333;font-size:15px;cursor:pointer;border-radius:7px;padding:6px 14px;transition:all .18s;user-select:none;line-height:1;min-width:28px}
+.cal-nav-btn:hover{background:#e6f4ff;color:#1677ff}
+.cal-nav-btn:active{background:#bae0ff}
+.cal-nav-today{font-size:13px;font-weight:600;padding:6px 18px;letter-spacing:1px}
 /* 法定节假日（与日期数字同行） */
 .cal-holiday{font-size:9.5px;color:#ff4d4f;font-weight:600;margin-left:4px;white-space:nowrap;vertical-align:middle;display:inline-block;line-height:1.6}
 /* ── 事件图标行：竖向排列，图标+简短文字 ── */
@@ -3575,10 +3581,12 @@ a{color:#003a8c;text-decoration:none}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn-outline" onclick="calGoMonthRel(-1)" style="padding:2px 11px;font-size:18px;line-height:1" title="上一月">‹</button>
-        <button class="btn-outline" onclick="calGoMonthRel(1)" style="padding:2px 11px;font-size:18px;line-height:1" title="下一月">›</button>
-        <button class="btn-outline" onclick="calGoToday()" style="padding:4px 12px;font-size:12px">今天</button>
-        <div class="modal-close" onclick="closeModal('calendarModal')" style="margin-left:8px">✕</div>
+      <div class="cal-nav-pill">
+        <button type="button" class="cal-nav-btn" onclick="calGoMonthRel(-1)" title="上一月">‹</button>
+        <button type="button" class="cal-nav-btn cal-nav-today" onclick="calGoToday()">今天</button>
+        <button type="button" class="cal-nav-btn" onclick="calGoMonthRel(1)" title="下一月">›</button>
+      </div>
+      <div class="modal-close" onclick="closeModal('calendarModal')" style="margin-left:8px;flex-shrink:0">✕</div>
       </div>
     </div>
     <div class="modal-body" style="flex:1;overflow:hidden;padding:0;display:flex;flex-direction:column">
@@ -12325,7 +12333,7 @@ function openCalendarModal(){
   calTypeFilter=null; /* 打开时重置筛选 */
   showModal('calendarModal');      /* 先显示弹窗，确保视口已参与布局、可量到高度 */
   calFitRows();                    /* 按视口高度把每行设为 1/5，可视区恰显 5 行 */
-  renderCalendar({scroll:'today'});
+  renderCalendar({scroll:'today-center'});
   /* 点击外部关闭详情浮层 */
   document.addEventListener('click',calCloseDetailOutside);
   /* 滚轮逐行滚动：capture 阶段在整个 .modal 内层拦截，无论鼠标在弹窗哪个位置都能触发，
@@ -12376,7 +12384,7 @@ function cmpMon(a,b){ /* 比较两周周一先后：返回 -1/0/1 */
   if(a.m!==b.m)return a.m<b.m?-1:1;
   return a.d<b.d?-1:(a.d>b.d?1:0);
 }
-let calRowH=78, calRowScrolling=false; /* 单行(周)高度 + 滚轮逐行滚动锁 */
+let calRowH=78, calRowScrolling=false, calVisibleRows=5; /* 单行(周)高度 + 滚轮逐行滚动锁 + 可视行数 */
 /* 以 (y,m) 为中心，前后各渲染若干月的连续周，构成可丝滑滚动的窗口 */
 function calBuildWindow(y,m){
   const startMon=mondayOf(y,m,1);
@@ -12445,6 +12453,18 @@ function calScrollToToday(){
   const vp=$('calViewport');if(vp)vp.scrollTo({top:i*calRowH,behavior:'smooth'});
   setTimeout(calUpdateHeaderFromScroll,360);
 }
+/* 滚动到今天并居中显示在可视区第 3 行（5 行视口的中心行） */
+function calScrollToTodayCenter(){
+  const t=new Date();
+  const tMon=mondayOf(t.getFullYear(),t.getMonth(),t.getDate());
+  let i=calWeekList.findIndex(wk=>wk.y===tMon.y&&wk.m===tMon.m&&wk.d===tMon.d);
+  if(i<0)i=0;
+  /* 居中：目标 scrollTop = (todayWeekIndex - 可视行数÷2) × 行高 */
+  const centerOffset=Math.floor(calVisibleRows/2);
+  const target=Math.max(0,(i-centerOffset)*calRowH);
+  const vp=$('calViewport');if(vp)vp.scrollTo({top:target,behavior:'smooth'});
+  setTimeout(calUpdateHeaderFromScroll,360);
+}
 /* 平滑滚动到指定年月的第一周 */
 function calScrollToMonth(y,m){
   const tMon=mondayOf(y,m,1);
@@ -12498,18 +12518,19 @@ function calWheelHandler(e){
   vp.scrollTo({top:ni*calRowH,behavior:'smooth'});
   setTimeout(function(){calRowScrolling=false;calUpdateHeaderFromScroll();},340);
 }
-/* 今天按钮：回到今天 */
+/* 今天按钮：回到今天，并居中显示在可视区第 3 行（5 行视口的中心行） */
 function calGoToday(){
   const now=new Date();
   calYear=now.getFullYear();calMonth=now.getMonth();
-  renderCalendar({scroll:'today'});
+  renderCalendar({scroll:'today-center'});
 }
-/* 上一月/下一月箭头：整月平滑跳转（连续滚动窗口内） */
+/* 上一月/下一月箭头：直接滚动约 4 周（不重渲染，丝滑） */
 function calGoMonthRel(dir){
-  let m=calMonth+dir,y=calYear;
-  if(m>11){m=0;y++;}else if(m<0){m=11;y--;}
-  calYear=y;calMonth=m;
-  renderCalendar({scroll:'month'});
+  const vp=$('calViewport');if(!vp||!calRowH)return;
+  if(calRowScrolling)return;
+  calRowScrolling=true;
+  vp.scrollBy({top:dir*Math.round(4.3*calRowH),behavior:'smooth'});
+  setTimeout(function(){calRowScrolling=false;calUpdateHeaderFromScroll();},360);
 }
 
 /* 聚合所有项目的日期事件 → { '2026-08-20': [{type:'task',title:'...',projName:'...',id:'...',pid:'...',done:false}, ...] } */
@@ -12598,7 +12619,8 @@ function renderCalendar(opts){
   if(opts.rebuild!==false)calBuildWindow(calYear,calMonth);
   calRenderWeeks(filtered);
   /* ── 滚动定位 ── */
-  if(opts.scroll==='today')calScrollToToday();
+  if(opts.scroll==='today-center')calScrollToTodayCenter();
+  else if(opts.scroll==='today')calScrollToToday();
   else if(opts.scroll==='month')calScrollToMonth(calYear,calMonth);
 }
 
