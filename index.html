@@ -9467,21 +9467,23 @@ function renderPlanVsActualSheet(p,steps){
     const planW=Math.max(planRightPct-planLeftPct,0.4);
     const actW=Math.max(actRightPct-actLeftPct,0.4);
     /* 标签紧跟实际条形（下方条）右边缘外侧；靠右时自动挪到左侧 */
-    const labelLeft=Math.max(planLeftPct+planW, actLeftPct+actW);
-    const labelOnLeft3=labelLeft>72;
-    /* 标签时间：已完成节点显示实际完成时间，未完成显示计划时间；颜色：已完成深蓝、未完成黑色 */
+    /* 标签定位：固定在「实际条水平后方」（与实际条同高 top:23px 区），水平延伸不进入下方压其他行 */
+    const labelLeft=actLeftPct+actW; /* 实际条形右端 */
+    const labelOnLeft3=labelLeft>78; /* 右缘太靠右时整体翻到条形左侧 */
+    const showLabelPrefix=isDone?'实际 ':'计划 ';
+    /* 标签时间：已完成节点显示实际完成时间，未完成显示计划时间；颜色：已完成深蓝、未完成中灰 */
     const showLabel=isDone?actLabel:planLabel;
     const _lc3=isDone?'#003a8c':'#888888';
-    const labelStyle3=labelOnLeft3?`left:calc(${labelLeft}% - 2px);transform:translateX(-100%) translateY(-50%);color:${_lc3}`:`left:calc(${labelLeft}% + 2px);transform:translateY(-50%);color:${_lc3}`;
+    const labelStyle3=labelOnLeft3?`left:calc(${labelLeft}% - 4px);top:30px;transform:translateX(-100%);color:${_lc3}`:`left:calc(${labelLeft}% + 4px);top:30px;transform:translateY(-50%);color:${_lc3}`;
     const actDays3=isDone?(Math.round((Date.parse(s.completedAt||planE||'')-Date.parse(s.completedAtStart||planS||''))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</span></div>`;
-    /* 行高加大：track=44px，上行计划(top:3/h:14) + 下行实际(top:23/h:14) + 6px间距 + 底部日期区 */
+    /* 行高加大：track=44px，上行计划(top:3/h:14) + 下行实际(top:23/h:14) + 6px间距 */
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track" style="height:44px">${todayEl}`
       +`<div class="pg-bar pending" title="${escHtml('计划 '+planLabel)}" style="left:${planLeftPct}%;width:${planW}%;top:3px;height:14px;font-size:9px;padding:0;opacity:.85"></div>`
       +`<div class="pg-bar ${actClass}" title="${escHtml('实际 '+actLabel)}" style="left:${actLeftPct}%;width:${actW}%;top:23px;height:14px;font-size:9px;padding:0"></div>`
-      /* 日期标签放在条形下方右侧，仅显示日期（不含节点名），避免重叠 */
-      +`<span class="pg-bar-label" style="left:calc(${Math.max(planLeftPct+planW,actLeftPct+actW)}% + 4px);top:41px;transform:none;color:${_lc3};font-size:10.5px"><span class="pg-label-date">${showLabel}</span></span>`
+      /* 日期标签：固定在实际条水平后方（top:30px 与实际条同高），加「实际/计划」前缀，不压其他行 */
+      +`<span class="pg-bar-label" style="${labelStyle3};font-size:10.5px"><span class="pg-label-date">${showLabelPrefix}${showLabel}</span></span>`
       +`</div></div>`;
   });
   return `<div class="gs-sheet" id="planVsActualSheet">
