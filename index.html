@@ -4587,14 +4587,21 @@ function _normalizeGanttLabelWidth(root){
   var maxW=0;
   labels.forEach(function(l){
     var nameEl=l.querySelector('.pg-name');
+    var numEl=l.querySelector('.pg-num');
     var badgeEl=l.querySelector('.pg-badge');
-    var nameW=_gtMeasureTextW(nameEl?nameEl.textContent:'',12,500);
+    /* 第一行：pg-name-line = pg-num(22px) + gap(4px) + pg-name(文字) */
+    var numW=numEl?_gtMeasureTextW(numEl.textContent||'',12,600):22;
+    var line1W=22+4+_gtMeasureTextW(nameEl?nameEl.textContent:'',12,500);
+    /* 第二行：pg-badge-row = badge(文字+padding~14) + gap(6) + 天数文字 */
+    var daysEl=l.querySelector('.pg-actual-days');
     var badgeW=_gtMeasureTextW(badgeEl?badgeEl.textContent:'',10,400);
-    // 行宽 = max(节点名, 状态徽章文字+徽章左右padding12) + 标签左右padding(4+4) + 右边框1 + 冗余2
-    var cellW=Math.max(nameW, badgeW+12) + 11;
+    var daysW=_gtMeasureTextW(daysEl?daysEl.textContent:'',11,500);
+    var line2W=badgeW+14+6+daysW;
+    /* 该行需要的外层宽度 = max(第一行,第二行) + 左padding(4) + 右border(1) + 冗余(2) */
+    var cellW=Math.max(line1W,line2W)+7;
     if(cellW>maxW) maxW=cellW;
   });
-  maxW=Math.min(Math.ceil(maxW), 380);   // 上限保护，避免极端超长名撑爆布局（原260偏小导致长名称截断）
+  maxW=Math.ceil(maxW);
   if(maxW>0) root.style.setProperty('--pg-label-w', maxW+'px');
 }
 
