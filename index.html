@@ -4602,8 +4602,8 @@ function _fixOverflowLabels(root){
     if(!bar){ label.style.left='0'; return; }
     var barLeft=parseFloat(bar.style.left)||0;
     label.style.left='calc('+barLeft+'% - '+Math.max(label.offsetWidth+6, 44)+'px)';
-    label.style.top='30px';
-    label.style.transform='translateX(-100%)';
+    label.style.top='23px';
+    label.style.transform='translate(-100%,-50%)';
   });
 }
 
@@ -9467,16 +9467,17 @@ function renderPlanVsActualSheet(p,steps){
     const planW=Math.max(planRightPct-planLeftPct,0.4);
     const actW=Math.max(actRightPct-actLeftPct,0.4);
     /* 标签紧跟实际条形右边缘外侧；条形太靠右时自动挪到条形前面（左侧） */
+    /* 定位：top 与实际条同高(23px)，transform translateY(-50%) 使文字垂直居中于实际条 */
     const labelLeft=actLeftPct+actW; /* 实际条形右端 */
     const labelOnLeft3=labelLeft>65; /* 右缘超过 65% 时标签挪到实际条前面 */
     const showLabelPrefix=isDone?'实际 ':'计划 ';
     /* 标签时间：已完成节点显示实际完成时间，未完成显示计划时间；颜色：已完成深蓝、未完成中灰 */
     const showLabel=isDone?actLabel:planLabel;
     const _lc3=isDone?'#003a8c':'#888888';
-    /* 翻转到前面时锚定实际条左端(actLeftPct)，保证标签在条形前方不溢出 */
+    /* 翻转到前面时锚定实际条左端(actLeftPct)，保证标签在条形前方不溢出；始终保留垂直居中 */
     const labelStyle3=labelOnLeft3
-      ?`left:calc(${actLeftPct}% - 4px);top:30px;transform:translateX(-100%);color:${_lc3}`
-      :`left:calc(${labelLeft}% + 4px);top:30px;transform:translateY(-50%);color:${_lc3}`;
+      ?`left:calc(${actLeftPct}% - 4px);top:23px;transform:translate(-100%,-50%);color:${_lc3}`
+      :`left:calc(${labelLeft}% + 4px);top:23px;transform:translateY(-50%);color:${_lc3}`;
     const actDays3=isDone?(Math.round((Date.parse(s.completedAt||planE||'')-Date.parse(s.completedAtStart||planS||''))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</span></div>`;
