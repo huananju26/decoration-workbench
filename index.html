@@ -4584,7 +4584,7 @@ function _normalizeGanttLabelWidth(root){
 }
 
 /** 修正甘特图溢出标签：检测每个 .pg-bar-label 右缘是否超出 .pg-track 容器，
- *  超出则自动挪到对应条形的左侧（left = barLeft - labelWidth - 6px）。 */
+ *  超出则自动挪到实际条形（第二个 pg-bar）的左侧。 */
 function _fixOverflowLabels(root){
   if(!root) return;
   var labels=root.querySelectorAll('.pg-bar-label');
@@ -4593,17 +4593,17 @@ function _fixOverflowLabels(root){
     var track=label.closest('.pg-track');
     if(!track) return;
     var tw=track.clientWidth;
-    if(tw<=0) return; // 不可见时跳过
+    if(tw<=0) return;
     var rightEdge=label.offsetLeft + label.offsetWidth;
     if(rightEdge <= tw + 2) return; // 未溢出（+2px 容差）
-    // 溢出了——找到同行的条形，把标签挪到条形左侧
-    var bar=label.previousElementSibling;
-    while(bar && !bar.classList.contains('pg-bar')){
-      bar=bar.previousElementSibling;
-    }
+    // 溢出了——找实际条形（第二个 .pg-bar），把标签挪到它左侧
+    var bars=track.querySelectorAll('.pg-bar');
+    var bar=bars.length>=2 ? bars[1] : bars[0]; // 优先取实际条(下行)
     if(!bar){ label.style.left='0'; return; }
-    var barLeft=parseFloat(bar.style.left)||0; // 百分比数值
-    label.style.left='calc('+barLeft+'% - '+Math.max(label.offsetWidth+6, 40)+'px)';
+    var barLeft=parseFloat(bar.style.left)||0;
+    label.style.left='calc('+barLeft+'% - '+Math.max(label.offsetWidth+6, 44)+'px)';
+    label.style.top='30px';
+    label.style.transform='translateX(-100%)';
   });
 }
 
@@ -9466,15 +9466,17 @@ function renderPlanVsActualSheet(p,steps){
     const badgeCls=isDone?'done':actClass;
     const planW=Math.max(planRightPct-planLeftPct,0.4);
     const actW=Math.max(actRightPct-actLeftPct,0.4);
-    /* 标签紧跟实际条形（下方条）右边缘外侧；靠右时自动挪到左侧 */
-    /* 标签定位：固定在「实际条水平后方」（与实际条同高 top:23px 区），水平延伸不进入下方压其他行 */
+    /* 标签紧跟实际条形右边缘外侧；条形太靠右时自动挪到条形前面（左侧） */
     const labelLeft=actLeftPct+actW; /* 实际条形右端 */
-    const labelOnLeft3=labelLeft>78; /* 右缘太靠右时整体翻到条形左侧 */
+    const labelOnLeft3=labelLeft>65; /* 右缘超过 65% 时标签挪到实际条前面 */
     const showLabelPrefix=isDone?'实际 ':'计划 ';
     /* 标签时间：已完成节点显示实际完成时间，未完成显示计划时间；颜色：已完成深蓝、未完成中灰 */
     const showLabel=isDone?actLabel:planLabel;
     const _lc3=isDone?'#003a8c':'#888888';
-    const labelStyle3=labelOnLeft3?`left:calc(${labelLeft}% - 4px);top:30px;transform:translateX(-100%);color:${_lc3}`:`left:calc(${labelLeft}% + 4px);top:30px;transform:translateY(-50%);color:${_lc3}`;
+    /* 翻转到前面时锚定实际条左端(actLeftPct)，保证标签在条形前方不溢出 */
+    const labelStyle3=labelOnLeft3
+      ?`left:calc(${actLeftPct}% - 4px);top:30px;transform:translateX(-100%);color:${_lc3}`
+      :`left:calc(${labelLeft}% + 4px);top:30px;transform:translateY(-50%);color:${_lc3}`;
     const actDays3=isDone?(Math.round((Date.parse(s.completedAt||planE||'')-Date.parse(s.completedAtStart||planS||''))/86400000)+1):0;
     const actDaysHtml3=actDays3>0?`<span class="pg-actual-days">${actDays3}天</span>`:'';
     const nameCell=`<div class="pg-row-label"><span class="pg-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-badge-row"><span class="pg-badge ${badgeCls}">${_gsPgStatusLabel(badgeCls)}</span>${actDaysHtml3}</span></div>`;
