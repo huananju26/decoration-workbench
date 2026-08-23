@@ -13159,32 +13159,46 @@ function handleSearch(q){if(!q)return;}
 // ============================================================
 async function init(){
   load();
-  /* 首屏立即填充问候语与实时时钟：问候语与第二行静态「今天有 0 项需要处理」应同步显示，
-     避免被下方云端 pull 的 await 阻塞几秒才出现（表现为刷新后第一行空白、几秒后才填充） */
   updateHeroGreeting();
   startHeroClock();
-  if(cloudUser&&CloudSync.configured){
-    try{
-      const d=await CloudSync.pull();
-      if(d&&d.projects){
-        applyCloudData(d,true);
-        persist();
-        refreshProjectUI();
-      }
-    }catch(e){/* 云端失败，用本地兜底 */}
-  }
-  updateCloudUI();
-  /* 启动时恢复已保存的照片目录句柄（仅句柄，权限需用户重新授权） */
-  fsLoadDirHandle().then(h=>{if(h){_fsDirHandle=h;updateFsDirDesc();}}).catch(()=>{});
+  /* ── 立即着陆：用本地数据先显示 app，不等待云端同步（离线优先） ──
+     原流程：await CloudSync.pull() 阻塞 5+ 秒才 enterApp()，期间 loginPage 和 app 均 display:none → 用户看到空白页。
+     新流程：先 enterApp() 让界面立即可见，云端同步在后台异步执行，完成后静默刷新。 */
   if(App.projects.length&&!App.currentProjectId)App.currentProjectId=App.projects[0].id;
-  refreshProjectUI();
   refreshContactDatalists();
-  /* 着陆逻辑：已登录云端 → 直接进入工作台；否则 → 显示全屏登录页 */
   if(CloudSync.loggedIn){
     enterApp();
   }else{
     showLoginPage();
+    return; /* 未登录则停止，等用户手动操作（登录/仅本地使用） */
   }
+  /* ── 后台云同步（非阻塞）：拉取完成后若数据有变更则静默刷新当前页 ── */
+  if(cloudUser&&CloudSync.configured){
+    (async()=>{
+      try{
+        const d=await CloudSync.pull();
+        if(d&&d.projects){
+          applyCloudData(d,true);
+          persist();
+          refreshProjectUI();
+          /* 静默刷新当前页面（不跳转、不滚动），用户无感知数据已更新 */
+          const page=currentPage||'home';
+          if(page==='home')renderHome();
+          else if(page==='process')renderProcess();
+          else if(page==='purchase')renderPurchase();
+          else if(page==='finance')renderFinance();
+          else if(page==='compare')renderCompare();
+          else if(page==='diary')renderDiary();
+          else if(page==='knowledge')renderKnowledge();
+          else if(page==='ledger')renderLedger();
+          else if(page==='quote')renderQuote();
+        }
+      }catch(e){/* 云端失败，本地兜底已生效 */}
+      updateCloudUI();
+    })();
+  }
+  /* 后台恢复照片目录句柄 */
+  fsLoadDirHandle().then(h=>{if(h){_fsDirHandle=h;updateFsDirDesc();}}).catch(()=>{});
 }
 /* 等待 DOM（含登录页 #loginPage）解析完成再启动，避免在元素尚未就绪时调用 */
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
