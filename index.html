@@ -6575,10 +6575,15 @@ function computeAcceptChecks(p,step){
     {state:cliOpinCnt?'pending':'done', text:'客户意见已处理', label:cliOpinCnt?cliOpinCnt+' 条待处理':'无待处理意见'}
   ];
 }
+/* 节点是否「真正完成」——必须五项验收条件全部通过（标记完成只是记录时间，不代表验收通过） */
+function isStepFullyAccepted(p,step){
+  return computeAcceptChecks(p,step).every(c=>c.state==='done');
+}
 
 // 渲染节点详情右栏
 function renderStepRightPanel(p,step,i){
   const done=isStepChecked(step.id);
+  const fullyAccepted=isStepFullyAccepted(p,step);
   const ac=getAcceptStats(step);
   const photoCnt=getStepPhotoCount(p,step);
   const photoReq=getStepRequiredPhotoCount(step);
@@ -6616,9 +6621,9 @@ function renderStepRightPanel(p,step,i){
     }).join('')}</div>`
     : `<div class="sb-empty">未配置必检项 · <a href="javascript:void(0)" onclick="sbFocusName(${i});setTimeout(()=>addAcceptRow(${i}),100)">去添加</a></div>`;
 
-  // 报告还差哪些项（红色提示）
+  // 报告还差哪些项（红色提示）——以五项验收条件全部通过为准
   const missing=[];
-  if(!done)missing.push('标记节点为已完成');
+  if(!done)missing.push('记录节点完成时间');
   if(ac.passed<ac.total)missing.push(`完成全部必检验收项 (${ac.passed}/${ac.total})`);
   if(photoCnt<photoReq)missing.push(`补齐现场照片 (${photoCnt}/${photoReq})`);
   const missingTxt = missing.length? missing.join('、') : '所有条件已满足，可直接生成客户报告';
@@ -6626,7 +6631,7 @@ function renderStepRightPanel(p,step,i){
   return `
     <!-- B. 节点验收与交付 -->
     <div class="sb-section">
-      <div class="sb-sec-title">节点验收与交付 <span class="sb-status ${done?'done':'pending'}" style="margin-left:auto;font-weight:600">${done?'已完成':'进行中'}</span></div>
+      <div class="sb-sec-title">节点验收与交付 <span class="sb-status ${fullyAccepted?'done':'pending'}" style="margin-left:auto;font-weight:600">${fullyAccepted?'已完成':'进行中'}</span></div>
       <div class="sb-sec-desc">完成条件后生成留企业抬头给客户的客户报告</div>
       <div class="sb-check-list">
         ${checks.map(c=>`<div class="sb-check-row ${c.state}"><span class="sb-check-icon ${c.state}">${c.state==='done'?'✓':''}</span><span class="sb-check-text">${c.text}</span><span class="sb-check-state ${c.state}">${c.label}</span></div>`).join('')}
@@ -7322,6 +7327,7 @@ function sbPreviewReport(i){
   const fixCnt=getStepFixCount(p,step);
   const cliSyncCnt=getStepClientSyncCount(step);
   const done=isStepChecked(step.id);
+  const fullyAccepted=isStepFullyAccepted(p,step);
   const company=(window.companyName&&companyName())||'企业';
   const body=document.getElementById('sbReportBody');
   if(body){
@@ -7332,7 +7338,7 @@ function sbPreviewReport(i){
       </div>
       <div style="padding:14px 0">
         <div style="font-size:15px;font-weight:600;color:#1a1a1a">${i+1}. ${escHtml(step.name)}</div>
-        <div style="font-size:12px;color:#888;margin-top:4px">状态：${done?'✓ 已完成':'进行中'} · 客户同步：${cliSyncCnt} 次</div>
+        <div style="font-size:12px;color:#888;margin-top:4px">状态：${fullyAccepted?'✓ 已完成':'进行中'} · 客户同步：${cliSyncCnt} 次</div>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:13px;color:#333">
         <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff;width:30%">现场照片</td><td style="padding:8px;border:1px solid #eee">${photoCnt} 张 ${photoCnt<photoReq?`(未达标 ${photoReq-photoCnt} 张)`:''}</td></tr>
@@ -7443,6 +7449,7 @@ function renderProcess(){
   const container=$('stepCardList');
   container.innerHTML=steps.map((step,i)=>{
     const done=isStepChecked(step.id);
+    const fullyAccepted=isStepFullyAccepted(p,step);
     const expanded=false; /* 默认全部折叠，不自动展开第一个 */
     /* 日期信息（需先于逾期判定声明） */
     const actStart=step.completedAtStart||'';
@@ -7484,20 +7491,21 @@ function renderProcess(){
     const acceptAll=computeAcceptChecks(p,step).every(c=>c.state==='done');
     const acceptNumColor=acceptAll?'#003a8c':'#fa541c';
     const acceptNumStr=acceptAll?'1/1':'0/1';
-    return `<div class="step-card ${done?'completed':''} ${pending?'pending':''} ${overdue?'overdue':''} ${expanded?'expanded':''}" id="stepCard-${i}" data-index="${i}" data-name="${escHtml(step.name)}">
+    return `<div class="step-card ${fullyAccepted?'completed':''} ${pending?'pending':''} ${overdue?'overdue':''} ${expanded?'expanded':''}" id="stepCard-${i}" data-index="${i}" data-name="${escHtml(step.name)}">
       <div class="step-card-header" onclick="toggleStepExpand(${i})">
         <!-- 左栏：编号+名称+状态 -->
         <div class="step-left-col">
           <div class="step-name-wrap">
             <span class="step-num">${i+1}</span>
             <span class="step-name">${escHtml(step.name)}</span>
-            ${done?'<span class="step-status-badge done">已完成</span>':overdue?'<span class="step-status-badge overdue">逾期 '+daysOver+'天</span>':pending?'<span class="step-status-badge wait">待开始</span>':'<span class="step-status-badge active">进行中</span>'}
+            ${fullyAccepted?'<span class="step-status-badge done">已完成</span>':overdue?'<span class="step-status-badge overdue">逾期 '+daysOver+'天</span>':pending?'<span class="step-status-badge wait">待开始</span>':'<span class="step-status-badge active">进行中</span>'}
           </div>
           <div class="step-mark-complete">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="event.stopPropagation();toggleStepCheck('${step.id}')">
               <div class="step-complete-checkbox ${done?'checked':''}">${done?'✓':''}</div>
-              <span class="step-complete-label">${done?'已标记完成':'标记完成'}</span>
+              <span class="step-complete-label">${done?'已记录完成时间':'标记完成时间'}</span>
             </label>
+            ${done?`<span class="step-complete-time">实际完成 ${fmtRange(actStart,actEnd)||'—'}</span>`:''}
           </div>
         </div>
         <!-- 中栏：日期信息 -->
