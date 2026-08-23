@@ -6577,7 +6577,7 @@ function computeAcceptChecks(p,step){
     {state:done?'done':'pending', text:'节点标记为已完成', label:done?'已完成':'待完成'},
     {state:ac.total&&ac.passed===ac.total?'done':(ac.passed?'pending':'wait'), text:'必检项全部通过', label:ac.total?`${ac.passed}/${ac.total} 已通过`:'未配置'},
     {state:photoCnt>=photoReq?'done':'pending', text:'现场照片达到计划要求', label:`${photoCnt}/${photoReq} 张`},
-    {state:(fixCnt>0&&fixClosed===fixCnt)?'done':(fixCnt?'pending':'wait'), text:'整改问题全部闭环', label:fixCnt?(fixClosed===fixCnt?'已闭环':(fixClosed+'/'+fixCnt+' 已闭环')):'无整改'},
+    {state:(fixCnt===0||(fixCnt>0&&fixClosed===fixCnt))?'done':(fixCnt?'pending':'wait'), text:'整改问题全部闭环', label:fixCnt?(fixClosed===fixCnt?'已闭环':(fixClosed+'/'+fixCnt+' 已闭环')):'已闭环'},
     {state:cliOpinCnt?'pending':'done', text:'客户意见已处理', label:cliOpinCnt?cliOpinCnt+' 条待处理':'无待处理意见'}
   ];
 }
