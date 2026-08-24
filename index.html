@@ -10191,26 +10191,32 @@ function _doGeneratePDF(el,sheetId,fileBase){
 function printSheet(sheetId){
   const el=$(sheetId); if(!el) return;
   zoomGsReset(sheetId);
-  /* ── 动态注入 <style> 方案（与 printNodeReport 同源，已验证可行）──
-     用具体 modal ID 做 visibility 隔离，不依赖预置 @media print 规则 */
+  /* ── 核弹级 DOM 隔离方案 ──
+     打印前直接把 body 下除目标弹窗外的所有子元素 display:none（从渲染树移除），
+     不依赖 @media print 的 CSS 解析，100% 可靠 */
   var modal=el.closest('.modal-overlay');
   if(!modal){ alert('未找到表格所在弹窗'); return; }
   var mid=modal.id;
+  /* 记录并隐藏 body 所有子元素（目标弹窗除外） */
+  var hiddenEls=[];
+  Array.from(document.body.children).forEach(function(ch){
+    if(ch!==modal && ch.style.display!=='none'){
+      hiddenEls.push({el:ch,prev:ch.style.display});
+      ch.style.display='none';
+    }
+  });
   /* 清除上次注入的残留 */
   var old=document.getElementById('printSheetStyle'); if(old) old.remove();
-  /* 甘特图类（真实像素宽，远超 A4）→ 用 size:auto 让浏览器按内容宽度自动横向分页；其余纵版 A4 */
+  /* 仅注入布局净化 + 纸张方向（隐藏已由 DOM 操作完成，不再需要 visibility/display 隔离 CSS） */
   var landscape=el.classList.contains('gs-sheet');
   var pageRule=landscape ? 'size:auto;margin:8mm' : 'size:A4;margin:8mm';
   var css='@media print{'+
-    'body *{visibility:hidden} '+
-    '#'+mid+',#'+mid+' *{visibility:visible} '+
-    '#'+mid+'{position:absolute;left:0;top:0;width:auto!important;margin:0;padding:0;box-shadow:none;border:none;background:#fff!important;display:block!important;overflow:visible!important} '+
-    '#'+mid+' .modal{max-width:none!important;width:auto!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important} '+
+    '#'+mid+'{position:absolute;left:0;top:0;width:auto!important;background:#fff!important;display:block!important;box-shadow:none!important;border:none!important;padding:0!important;overflow:visible!important} '+
+    '#'+mid+' .modal{max-width:none!important;width:auto!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important} '+
     '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important} '+
     '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:0!important;background:#fff!important} '+
-    /* 甘特图按真实像素宽渲染，解除 overflow 裁剪，保证内容完整不断裂 */
     '#'+mid+' .gs-zoom-pad{width:auto!important;height:auto!important;overflow:visible!important} '+
-    '#'+mid+' .gs-sheet{width:auto!important;height:auto!important;overflow:visible!important;transform:none!important} '+
+    '#'+mid+' .gs-sheet{width:auto!important;height:auto!important;transform:none!important;overflow:visible!important} '+
     '#'+mid+' .gs-chart{overflow:visible!important} '+
     '@page{'+pageRule+'}'+
   '}';
@@ -10218,6 +10224,8 @@ function printSheet(sheetId){
   document.head.appendChild(ps);
   setTimeout(function(){
     window.print();
+    /* 恢复所有被隐藏的元素 */
+    hiddenEls.forEach(function(item){ item.el.style.display=item.prev||''; });
     var s=document.getElementById('printSheetStyle'); if(s) s.remove();
   }, 200);
 }
