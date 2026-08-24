@@ -7802,8 +7802,23 @@ function ryExportRectifyPdf(recordId){
 }
 /* 打印 / 导出 PDF：隔离只打印整改记录单文档本体 */
 function printRectifyRecord(){
-  document.documentElement.classList.add('gs-printing-rectify');
-  setTimeout(function(){ window.print(); }, 250);
+  /* 与 printNodeReport 完全同源的 visibility 注入方案 */
+  var mid='rectifyPreviewModal';
+  var old=document.getElementById('printRectifyStyle'); if(old) old.remove();
+  var css='@media print{'+
+    'body *{visibility:hidden}'+
+    '#'+mid+',#'+mid+' *{visibility:visible}'+
+    '#'+mid+'{position:absolute;left:0;top:0;width:100%;height:auto!important;background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;margin:0!important;box-shadow:none!important;border:none!important}'+
+    '#'+mid+' .modal{max-width:none!important;width:100%!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important;background:#fff!important}'+
+    '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important}'+
+    '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:16px 24px!important;background:#fff!important}'+
+    '@page{size:A4;margin:10mm}'+
+  '}';
+  var ps=document.createElement('style');
+  ps.id='printRectifyStyle';
+  ps.textContent=css;
+  document.head.appendChild(ps);
+  window.print();
 }
 function sbEditAcceptItem(i,idx){
   /* 点击右侧「编辑」→ 展开左侧「节点信息」折叠区 → 滚动到对应验收标准行 → focus 输入框
@@ -10192,45 +10207,35 @@ function _doGeneratePDF(el,sheetId,fileBase){
 function printSheet(sheetId){
   const el=$(sheetId); if(!el) return;
   zoomGsReset(sheetId);
-  /* ── 终极方案：新窗口 document.write ──
-     完全脱离原页面 DOM，在新窗口写入纯净 HTML + 内联样式，再调 print()。
-     不依赖原页面任何 CSS/JS/@media print 规则，100% 隔离。 */
+  /* ── 与 printNodeReport 完全同源的 visibility 注入方案 ──
+     用具体 modal ID + sheet ID 做 @media print 隔离，
+     保留整条祖先链可见，剥离弹窗装饰，直接 window.print() */
+  var modal=el.closest('.modal-overlay');
+  if(!modal){ alert('未找到表格所在弹窗'); return; }
+  var mid=modal.id, sid=sheetId;
+  /* 清除上次注入的残留 */
+  var old=document.getElementById('printSheetStyle'); if(old) old.remove();
+  /* 甘特图类横版 A4，其余纵版 */
   var landscape=el.classList.contains('gs-sheet');
-  /* 提取表格的 outerHTML（含全部内联样式） */
-  var contentHTML=el.outerHTML;
-  /* 构建标题 */
-  var title='装修工作台';
-  if(sheetId==='cprSheet') title='合同收款计划表';
-  else if(sheetId==='clientTimelineSheet') title='施工进度表';
-  else if(sheetId==='planVsActualSheet') title='计划与实际进度表';
-  /* 纸张方向 */
-  var pageCSS=landscape
-    ? '@page{size:A4 landscape;margin:6mm}'
-    : '@page{size:A4;margin:10mm}';
-  /* 完整打印文档 */
-  var printDoc='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
-    '<style>'+
-      'body{margin:0;padding:20px 24px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#333;background:#fff}'+
-      '*{box-sizing:border-box}'+
-      'table{width:100%;border-collapse:collapse;font-size:12px}'+
-      'th,td{border:1px solid #d9d9d9;padding:6px 10px;text-align:left;word-break:break-all}'+
-      'th{background:#e6f4ff;color:#003a8c;font-weight:600;white-space:nowrap}'+
-      '.cpr-sheet .cpr-title{font-size:18px;font-weight:700;color:#003a8c;text-align:center;margin-bottom:16px}'+
-      '.cpr-sheet .cpr-subtitle{font-size:13px;color:#666;text-align:center;margin-bottom:12px}'+
-      '.cpr-sheet table{margin-top:8px}'+
-      '.cpr-sheet tfoot td{font-weight:700;background:#fafafa}'+
-      '.gs-sheet{width:auto!important;min-width:100%!important}'+
-      '.gs-chart{overflow:visible!important}'+
-      '.gs-zoom-pad{width:auto!important;overflow:visible!important}'+
-      pageCSS+
-    '</style></head><body>'+
-    '<h2 style="text-align:center;margin:0 0 16px;font-size:20px;color:#003a8c">'+title+'</h2>'+
-    contentHTML+
-    '<script>window.onload=function(){ window.print(); }<\/script></body></html>';
-  var w=window.open('','_blank','width=1000,height=700');
-  if(!w){ alert('请允许弹出窗口后重试'); return; }
-  w.document.write(printDoc);
-  w.document.close();
+  var pageRule=landscape ? 'size:A4 landscape;margin:6mm' : 'size:A4;margin:10mm';
+  var css='@media print{'+
+    'body *{visibility:hidden}'+
+    '#'+mid+',#'+mid+' *,#'+sid+',#'+sid+' *{visibility:visible}'+
+    '#'+mid+'{position:absolute;left:0;top:0;width:100%;height:auto!important;min-height:0!important;background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;margin:0!important;box-shadow:none!important;border:none!important}'+
+    '#'+mid+' .modal{max-width:none!important;width:100%!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important;background:#fff!important}'+
+    '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important}'+
+    '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:16px 24px!important;background:#fff!important}'+
+    /* 甘特图解除 overflow 裁剪，按真实宽度渲染 */
+    '#'+mid+' .gs-zoom-pad{width:auto!important;height:auto!important;overflow:visible!important}'+
+    '#'+mid+' .gs-sheet{width:auto!important;height:auto!important;overflow:visible!important;transform:none!important}'+
+    '#'+mid+' .gs-chart{overflow:visible!important}'+
+    '@page{'+pageRule+'}'+
+  '}';
+  var ps=document.createElement('style');
+  ps.id='printSheetStyle';
+  ps.textContent=css;
+  document.head.appendChild(ps);
+  window.print();
 }
 window.addEventListener('afterprint',function(){
   document.documentElement.classList.remove('gs-printing-rectify');
@@ -12771,8 +12776,24 @@ function updateCrSummary(){
 function previewCostReconModal(){openCostReconModal();}
 /* 预览对账单：调用浏览器打印（弹窗内布局已适配 @media print） */
 function previewCostRecon(){
-  document.documentElement.classList.add('gs-printing-costrecon');
-  setTimeout(function(){ window.print(); }, 250);
+  /* 与 printNodeReport 完全同源的 visibility 注入方案 */
+  var mid='costReconModal';
+  var old=document.getElementById('printCostReconStyle'); if(old) old.remove();
+  var css='@media print{'+
+    'body *{visibility:hidden}'+
+    '#'+mid+',#'+mid+' *{visibility:visible}'+
+    '#'+mid+'{position:absolute;left:0;top:0;width:100%;height:auto!important;background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;margin:0!important;box-shadow:none!important;border:none!important}'+
+    '#'+mid+' .modal{max-width:none!important;width:100%!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important;background:#fff!important}'+
+    '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important}'+
+    '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:16px 24px!important;background:#fff!important}'+
+    '#'+mid+' #crDetailList{max-height:none!important;overflow:visible!important}'+
+    '@page{size:A4;margin:10mm}'+
+  '}';
+  var ps=document.createElement('style');
+  ps.id='printCostReconStyle';
+  ps.textContent=css;
+  document.head.appendChild(ps);
+  window.print();
 }
 /* 导出为简化HTML（浏览器打印或另存PDF） */
 function exportCostReconPDF(){
