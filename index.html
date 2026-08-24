@@ -13329,6 +13329,11 @@ async function init(){
   }
   /* 后台恢复照片目录句柄 */
   fsLoadDirHandle().then(h=>{if(h){_fsDirHandle=h;updateFsDirDesc();}}).catch(()=>{});
+  /* 强制修复搜索框：确保非只读 + 清空浏览器自动填充残留（防 CDN 缓存旧 readonly 版本） */
+  ['globalSearch','processSearchInput','ledgerSearchInput'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ try{el.readOnly=false;el.removeAttribute('readonly');el.value='';}catch(e){} }
+  });
 }
 /* 等待 DOM（含登录页 #loginPage）解析完成再启动，避免在元素尚未就绪时调用 */
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
