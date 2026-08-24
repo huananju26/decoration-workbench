@@ -426,10 +426,6 @@ a{color:#003a8c;text-decoration:none}
 .sb-accept-row{display:flex;gap:6px;align-items:center}
 .sb-acc-label{flex:0 0 110px;padding:6px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:12px;background:#fff;color:#1a1a1a}
 .sb-acc-text{flex:1;min-width:0;padding:6px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:12px;background:#fff;color:#1a1a1a}
-/* 右侧「节点必检项」内的可编辑 input（与左侧验收标准同源，常驻可编辑） */
-.sb-acc-inline{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.sb-acc-label.right{flex:0 0 120px;padding:4px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:12px;background:#fff;color:#1a1a1a;min-width:0}
-.sb-acc-text.right{flex:1;min-width:120px;padding:4px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:12px;background:#fff;color:#1a1a1a}
 .sb-acc-del{flex:0 0 auto;cursor:pointer;color:#ff4d4f;font-weight:700;padding:0 6px;font-size:16px;user-select:none}
 .sb-mini-btn{font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid #91caff;color:#003a8c;background:#e6f4ff;cursor:pointer;transition:background .15s}
 .sb-mini-btn:hover{background:#d6ebff}
@@ -7060,9 +7056,8 @@ function renderStepRightPanel(p,step,i){
   // 验收条件清单（5 行）— 复用 computeAcceptChecks，与卡片徽章一致
   const checks=computeAcceptChecks(p,step);
 
-  // 节点必检项列表（来自 step.acceptance，每项带 status）
-  // 每项 label/text 直接渲染为可编辑 input，编辑即回写 step.acceptance（单一数据源），
-  // 完全不依赖左侧「节点信息」折叠区，因此点「编辑」不会展开左侧节点信息（问题①根因级修复）。
+  // 节点必检项列表（来自 step.acceptance，每项带 status）—— 只读展示 + 操作按钮
+  // 编辑入口在右侧「编辑」按钮（点击后展开左侧节点信息并聚焦对应输入框）
   const acceptListHtml = ac.items.length?
     `<div class="sb-rel-list sb-acc-items">${ac.items.map((a,idx)=>{
       const st=a.status||'pending';
@@ -7072,10 +7067,10 @@ function renderStepRightPanel(p,step,i){
         `<button class="sb-acc-act ${st==='passed'?'on':(st==='issue'?'muted':'')}" type="button" onclick="event.stopPropagation();sbMarkItemOK(${i},${idx})">检查无问题</button>`+
         `<button class="sb-acc-act issue ${st==='issue'?'on':(st==='passed'?'muted':'')}" type="button" onclick="event.stopPropagation();sbMarkItemIssue(${i},${idx})">有问题 · 发整改</button>`;
       return `<div class="sb-rel-item">
-        <div class="sb-rel-main sb-acc-inline">
+        <div class="sb-rel-main">
           <span class="sb-acc-item-tag ${tagCls}">${tagLabel}</span>
-          <input class="sb-acc-label right" value="${escAttr(a.label||'')}" placeholder="必检项" onchange="event.stopPropagation();sbRightSetAccept(${i},${idx},'label',this.value)">
-          <input class="sb-acc-text right" value="${escAttr(a.text||'')}" placeholder="标准说明" onchange="event.stopPropagation();sbRightSetAccept(${i},${idx},'text',this.value)">
+          <span class="sb-rel-name">${escHtml(a.label||'(未命名项)')}</span>
+          ${a.text?`<span class="sb-rel-sub">${escHtml(a.text)}</span>`:''}
         </div>
         <div class="sb-acc-actions">
           ${opRight}
@@ -7743,12 +7738,23 @@ function printRectifyRecord(){
   setTimeout(function(){ window.print(); }, 250);
 }
 function sbEditAcceptItem(i,idx){
-  /* 纯就地编辑：聚焦右侧「节点必检项」区域的目标输入框，
-     完全不触碰左侧「节点信息」折叠区、不触发任何 rerender、不调用 sbEditStep。
-     彻底杜绝「点编辑导致节点信息自动展开」的连锁反应。 */
+  /* 点击右侧「编辑」→ 展开左侧「节点信息」折叠区 → 滚动到对应验收标准行 → focus 输入框
+     这是用户期望的编辑流程：在左侧可编辑的验收标准输入框中修改内容。 */
   event&&event.stopPropagation&&event.stopPropagation();
-  const input=document.querySelector('#sbAcceptSec_'+i+' .sb-acc-items .sb-rel-item:nth-child('+(idx+1)+') .sb-acc-label.right');
-  if(input){ try{ input.focus({preventScroll:true}); input.select&&input.select(); }catch(e){ input.focus(); } }
+  /* 1) 若左侧「节点信息」处于折叠状态，则展开它 */
+  const infoSec=document.getElementById('sbInfoSec_'+i);
+  if(infoSec&&infoSec.classList.contains('collapsed')){
+    infoSec.classList.remove('collapsed');
+    try{ localStorage.setItem('xzgz_collapse_info_'+i,'0'); }catch(e){}
+  }
+  /* 2) 滚动到左侧验收标准区域 */
+  const acceptSec=document.getElementById('sb_accept_'+i);
+  if(acceptSec) acceptSec.scrollIntoView({behavior:'smooth',block:'center'});
+  /* 3) 聚焦目标行的 label 输入框（延迟等 scrollIntoView 完成） */
+  setTimeout(function(){
+    const input=document.querySelector('#sb_accept_'+i+' .sb-accept-row:nth-child('+(idx+1)+') .sb-acc-label');
+    if(input){ try{ input.focus(); input.select&&input.select(); }catch(e){} }
+  },350);
 }
 /* 右侧「节点必检项」input 即时回写单一数据源 step.acceptance（与左侧验收标准同源同步） */
 function sbRightSetAccept(i,idx,field,val){
