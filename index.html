@@ -3022,7 +3022,7 @@ a{color:#003a8c;text-decoration:none}
       <span style="font-size:11px;color:#bbb;margin-right:auto" id="sbReportDims"></span>
       <button class="btn-outline" onclick="openCompanyCfgModal()" style="padding:8px 16px;font-size:13px">⊙ 企业抬头</button>
       <button class="btn-outline" onclick="closeModal('sbReportModal')" style="padding:8px 20px;font-size:13px">关闭预览</button>
-      <button class="btn-primary" onclick="downloadSheetPDF('nodeAcceptReportSheet','节点验收报告')" style="padding:10px 22px;font-size:13px;background:#003a8c;border-color:#003a8c">下载 PDF 文件</button>
+      <button class="btn-primary" onclick="printNodeReport()" style="padding:10px 22px;font-size:13px;background:#003a8c;border-color:#003a8c">🖨 打印报告</button>
     </div>
   </div>
 </div>
@@ -10082,6 +10082,19 @@ function _makePDF(jpeg, iw, ih){
     else { out.set(p.d,o); o+=p.d.length; }
   }
   return out;
+}
+/* ── 打印节点验收报告（调用浏览器打印对话框）── */
+function printNodeReport(){
+  const el=$('nodeAcceptReportSheet'); if(!el){ alert('报告内容未就绪'); return; }
+  /* 注入一次性打印样式：隐藏所有非报告内容 */
+  let ps=document.getElementById('printNodeStyle');
+  if(!ps){
+    ps=document.createElement('style'); ps.id='printNodeStyle';
+    ps.textContent='@media print{body *{visibility:hidden} #nodeAcceptReportSheet,#nodeAcceptReportSheet *{visibility:visible}#nodeAcceptReportSheet{position:absolute;left:0;top:0;width:100%;margin:0;padding:24px 28px;box-shadow:none;border:none}@page{size:A4;margin:12mm}}';
+    document.head.appendChild(ps);
+  }
+  window.print();
+  /* 打印后可选择性移除样式（保留也无害） */
 }
 function downloadSheetPDF(sheetId,fileBase){
   const el=$(sheetId); if(!el) return;
