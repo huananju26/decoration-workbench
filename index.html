@@ -7835,7 +7835,7 @@ function renderProcess(){
             <span class="step-num">${di||i+1}</span>
             <span class="step-name">${escHtml(step.name)}</span>
             ${/* 节点状态四态+1特殊态（按优先级从高到低）：已完成 > 待验收 > 逾期 > 待开始 > 进行中 */''}
-            ${fullyAccepted?'<span class="step-status-badge done">已完成</span>':done?'<span class="step-status-badge accepting">当前节点已完成，待节点验收</span>':overdue?'<span class="step-status-badge overdue">逾期 '+daysOver+'天</span>':(planStart&&planStart>todayISO())?'<span class="step-status-badge wait">待开始</span>':'<span class="step-status-badge active">进行中</span>'}
+            ${fullyAccepted?'<span class="step-status-badge done">已完成</span>':done?'<span class="step-status-badge accepting">节点完成，待验收</span>':overdue?'<span class="step-status-badge overdue">逾期 '+daysOver+'天</span>':(planStart&&planStart>todayISO())?'<span class="step-status-badge wait">待开始</span>':'<span class="step-status-badge active">进行中</span>'}
           </div>
           <div class="step-mark-complete">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="event.stopPropagation();toggleStepCheck('${step.id}')">
@@ -10515,10 +10515,10 @@ function updateProcProgress(){
   const p=cur();if(!p){return;}
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
-  /* 进度统计仅计入可执行节点（排除母节点/阶段标题） */
-  const execSteps=steps.filter(s=>!s.isParent);
+  /* 进度统计仅计入母节点（阶段），验收以母节点整体验收为准 */
+  const execSteps=steps.filter(s=>s.isParent);
   const total=execSteps.length;let done=0;
-  execSteps.forEach(s=>{if(isStepChecked(s.id))done++});
+  execSteps.forEach(s=>{if(isStepFullyAccepted(p,s))done++});
   /* 旧字段兼容（如有其他地方引用） */
   const elP=$('procProgressNum');if(elP)elP.textContent=done;
   const elT=$('procTotalNum');if(elT)elT.textContent=total;
@@ -10531,12 +10531,12 @@ function updateProcProgress(){
     if(allDone){
       curNodeEl.innerHTML='<span style="color:#003a8c;font-weight:700">全部完成</span>';
     } else {
-      /* 从 processSteps 找到第一个未完成的「可执行」步骤作为"当前执行中"节点（跳过母节点） */
+      /* 从 processSteps 找到第一个未完成的母节点作为"当前执行中"节点 */
       let curStep=null;
       let curIdx=-1;
       for(let i=0;i<steps.length;i++){
-        if(steps[i].isParent)continue;
-        if(!isStepChecked(steps[i].id)){curStep=steps[i];curIdx=i;break;}
+        if(!steps[i].isParent)continue;
+        if(!isStepFullyAccepted(p,steps[i])){curStep=steps[i];curIdx=i;break;}
       }
       if(curStep){
         const ps=curStep.planStartDate||'';
