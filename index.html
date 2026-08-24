@@ -2054,6 +2054,33 @@ a{color:#003a8c;text-decoration:none}
   .quote-sheet,.quote-summary,.quote-notes,.qt-meta{page-break-inside:avoid}
   body{background:#fff!important}
 }
+/* ── 成本对账单打印隔离（与 printRectifyRecord 同源方案） ── */
+@media print{
+  html.gs-printing-costrecon,html.gs-printing-costrecon body{margin:0!important;padding:0!important}
+  html.gs-printing-costrecon *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  html.gs-printing-costrecon body>*:not(#costReconModal){display:none!important}
+  html.gs-printing-costrecon #costReconModal{
+    position:absolute!important;left:0!important;top:0!important;right:auto!important;bottom:auto!important;
+    width:100%!important;height:auto!important;min-height:0!important;
+    background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;z-index:auto!important
+  }
+  html.gs-printing-costrecon #costReconModal .modal{
+    max-width:none!important;width:100%!important;max-height:none!important;min-height:0!important;
+    height:auto!important;box-shadow:none!important;border-radius:0!important;display:block!important;
+    overflow:visible!important
+  }
+  html.gs-printing-costrecon #costReconModal .modal-header,
+  html.gs-printing-costrecon #costReconModal .form-actions,
+  html.gs-printing-costrecon #costReconModal .adj-subtitle,
+  html.gs-printing-costrecon #costReconModal .modal-close{display:none!important}
+  html.gs-printing-costrecon #costReconModal .modal-body{
+    overflow:visible!important;max-height:none!important;max-width:none!important;height:auto!important;
+    padding:12px 16px!important;background:#fff!important
+  }
+  /* 解除明细列表高度限制，避免打印截断 */
+  html.gs-printing-costrecon #crDetailList{max-height:none!important;overflow:visible!important;height:auto!important}
+  @page{size:A4;margin:12mm}
+}
 
 /* ── 客户版合同收款计划表 ── */
 .cpr-sheet{background:#fff;padding:32px 36px 36px;margin:0 0 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#1a1a1a;line-height:1.6}
@@ -2129,7 +2156,7 @@ a{color:#003a8c;text-decoration:none}
 @media print{
   body>*:not(#gsPrintOverlay){display:none !important}
   #gsPrintOverlay{display:block !important;position:absolute;left:0;top:0;width:100%;height:auto;background:#fff;z-index:999998;overflow:visible!important}
-  #gsPrintClone{position:relative!important;left:0!important;top:0!important;width:auto!important;max-width:100%!important;z-index:999999;background:#fff;padding:20px 30px;box-sizing:border-box;transform-origin:top left;margin:0 auto}
+  #gsPrintClone{position:relative!important;left:0!important;top:0!important;width:auto!important;max-width:none!important;z-index:999999;background:#fff;padding:20px 30px;box-sizing:border-box;margin:0 auto}
   @page{size:A4 landscape;margin:5mm}
 }
 .gs-company{font-size:15px;font-weight:700;color:#003a8c}
@@ -10127,23 +10154,13 @@ function _doGeneratePDF(el,sheetId,fileBase){
 function printSheet(sheetId){
   const el=$(sheetId); if(!el) return;
   zoomGsReset(sheetId);
-  /* 直接 DOM 打印：克隆目标内容 → 计算缩放 → 全屏覆盖 → window.print() → 恢复 */
+  /* 直接 DOM 打印：克隆目标内容 → 全屏覆盖（原始尺寸，靠 @page A4 landscape 自适应缩放）→ window.print() → 恢复 */
   const clone=el.cloneNode(true);
   clone.id='gsPrintClone';
-  /* 先临时挂载到 DOM 获取真实尺寸 */
-  clone.style.cssText='position:absolute;left:-9999px;top:0;visibility:hidden;background:#fff;padding:30px 36px;box-sizing:border-box';
-  document.body.appendChild(clone);
-  const contentW=clone.scrollWidth;
-  const contentH=clone.scrollHeight;
-  document.body.removeChild(clone);
-  /* A4 横版可打印区域（约 96dpi，含边距） */
-  const pageW=1050, pageH=720;
-  const scale=Math.min(1, pageW/contentW, pageH/contentH);
-  /* 应用缩放后的样式 */
-  clone.style.cssText='position:relative;left:0;top:0;width:auto;z-index:999999;background:#fff;padding:30px 36px;box-sizing:border-box;transform:scale('+scale+');transform-origin:top left';
+  clone.style.cssText='position:relative;left:0;top:0;width:auto;max-width:none;z-index:999999;background:#fff;padding:20px 30px;box-sizing:border-box';
   const overlay=document.createElement('div');
   overlay.id='gsPrintOverlay';
-  overlay.style.cssText='position:fixed;left:0;top:0;width:'+Math.ceil(pageW/scale)+'px;height:'+Math.ceil(pageH/scale)+'px;z-index:999998;background:#fff;overflow:hidden';
+  overlay.style.cssText='position:fixed;left:0;top:0;width:100%;height:auto;min-height:100%;z-index:999998;background:#fff;overflow:visible';
   overlay.appendChild(clone);
   document.body.appendChild(overlay);
   document.documentElement.classList.add('gs-printing');
@@ -10156,6 +10173,7 @@ window.addEventListener('afterprint',function(){
 });
 window.addEventListener('afterprint',function(){
   document.documentElement.classList.remove('gs-printing-rectify');
+  document.documentElement.classList.remove('gs-printing-costrecon');
 });
 
 function downloadCustomerPayPNG(){
@@ -12646,7 +12664,10 @@ function updateCrSummary(){
 }
 function previewCostReconModal(){openCostReconModal();}
 /* 预览对账单：调用浏览器打印（弹窗内布局已适配 @media print） */
-function previewCostRecon(){ window.print(); }
+function previewCostRecon(){
+  document.documentElement.classList.add('gs-printing-costrecon');
+  setTimeout(function(){ window.print(); }, 250);
+}
 /* 导出为简化HTML（浏览器打印或另存PDF） */
 function exportCostReconPDF(){
   const p=cur();if(!p){alert('请先选择项目');return;}
