@@ -10083,15 +10083,14 @@ function _makePDF(jpeg, iw, ih){
 /* ── 打印节点验收报告（调用浏览器打印对话框）── */
 function printNodeReport(){
   const el=$('nodeAcceptReportSheet'); if(!el){ alert('报告内容未就绪'); return; }
-  /* 注入一次性打印样式：隐藏所有非报告内容 */
+  /* 注入一次性打印样式：隐藏所有非报告内容，但保留报告整条祖先链可见 */
   let ps=document.getElementById('printNodeStyle');
   if(!ps){
     ps=document.createElement('style'); ps.id='printNodeStyle';
-    ps.textContent='@media print{body *{visibility:hidden} #nodeAcceptReportSheet,#nodeAcceptReportSheet *{visibility:visible}#nodeAcceptReportSheet{position:absolute;left:0;top:0;width:100%;margin:0;padding:24px 28px;box-shadow:none;border:none}@page{size:A4;margin:12mm}}';
+    ps.textContent='@media print{body *{visibility:hidden}#sbReportModal,#sbReportModal *,#nodeAcceptReportSheet,#nodeAcceptReportSheet *{visibility:visible}#nodeAcceptReportSheet{position:absolute;left:0;top:0;width:100%;margin:0;padding:24px 28px;box-shadow:none;border:none;background:#fff}#sbReportModal{position:absolute;left:0;top:0;background:none!important;border:none!important;box-shadow:none;padding:0;margin:0}@page{size:A4;margin:12mm}}';
     document.head.appendChild(ps);
   }
   window.print();
-  /* 打印后可选择性移除样式（保留也无害） */
 }
 function downloadSheetPDF(sheetId,fileBase){
   const el=$(sheetId); if(!el) return;
