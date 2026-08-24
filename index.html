@@ -2181,7 +2181,7 @@ a{color:#003a8c;text-decoration:none}
     </div>
     <div class="top-actions">
       <div class="search-box">
-        <input type="text" placeholder="搜索" id="globalSearch" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" oninput="handleSearch(this.value)">
+        <input type="text" placeholder="搜索" id="globalSearch" autocomplete="off" name="wb_globalsearch_dummy" oninput="handleSearch(this.value)">
         <span class="search-icon">🔍</span>
       </div>
       <button class="btn-primary" id="topPrimaryBtn" onclick="handleTopPrimary()">新增待办</button>
@@ -2383,7 +2383,7 @@ a{color:#003a8c;text-decoration:none}
             <button class="process-nav-btn" onclick="collapseAllSteps()">全部折叠</button>
           </div>
           <div class="process-nav-search">
-            <input type="text" placeholder="搜索施工阶段" id="processSearchInput" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" oninput="filterProcessSteps(this.value)">
+            <input type="text" placeholder="搜索施工阶段" id="processSearchInput" autocomplete="off" name="wb_procsearch_dummy" oninput="filterProcessSteps(this.value)">
           </div>
           <div class="process-nav-hint">按名称快速定位节点</div>
           <ul class="process-nav-list" id="processNavList"></ul>
@@ -2423,7 +2423,7 @@ a{color:#003a8c;text-decoration:none}
         <div><div class="purchase-stat-num" id="purBoughtCount">0</div><div class="purchase-stat-label">已采购</div></div>
         <a class="purchase-stat-link" onclick="showPurchasedList()">去查看已置购物清单 →</a>
       </div>
-      <input type="text" placeholder="搜索材料名称..." autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" style="margin-bottom:16px" oninput="filterPurchase(this.value)">
+      <input type="text" placeholder="搜索材料名称..." autocomplete="off" name="wb_purchsearch_dummy" style="margin-bottom:16px" oninput="filterPurchase(this.value)">
       <div style="display:flex;gap:8px;margin-bottom:16px">
         <button class="btn-outline btn-sm" onclick="toggleAllCats(true)">全部展开</button>
         <button class="btn-outline btn-sm" onclick="toggleAllCats(false)">全部折叠</button>
@@ -2576,7 +2576,7 @@ a{color:#003a8c;text-decoration:none}
         <select id="ledgerFilterStatus" onchange="renderLedger()">
           <option value="">全部已结算</option>
         </select>
-        <input type="text" id="ledgerSearchInput" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')" placeholder="搜索明细/收付款人..." oninput="renderLedger()">
+        <input type="text" id="ledgerSearchInput" autocomplete="off" name="wb_ledgersearch_dummy" placeholder="搜索明细/收付款人..." oninput="renderLedger()">
         <span class="ledger-count" id="ledgerCount"></span>
       </div>
 
