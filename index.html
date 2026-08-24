@@ -474,8 +474,7 @@ a{color:#003a8c;text-decoration:none}
 .sb-child-note input:focus{border-color:#1677ff;box-shadow:0 0 0 2px rgba(22,119,255,.1)}
 /* 折叠区域 */
 .sb-sec-collapsible>.sb-sec-title{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}
-.sb-sec-collapsible>.sb-sec-title::after{content:'';display:inline-block;width:0;height:0;border-left:5px solid #999;border-top:3px solid transparent;border-bottom:3px solid transparent;transition:transform .2s;flex-shrink:0;margin-left:auto}
-.sb-sec-collapsible.collapsed>.sb-sec-title::after{transform:rotate(-90deg)}
+.sb-sec-collapsible.collapsed .sb-sec-title .chev{transform:rotate(-90deg)}
 .sb-sec-collapsible>.sb-child-list,.sb-sec-collapsible>.sb-collapsible-body{overflow:hidden;transition:max-height .3s ease,opacity .2s ease}
 .sb-sec-collapsible.collapsed>.sb-child-list,.sb-sec-collapsible.collapsed>.sb-collapsible-body{max-height:0!important;opacity:0;padding-top:0;padding-bottom:0}
 /* 子节点操作按钮 */
@@ -8233,7 +8232,7 @@ function renderProcess(){
           if(!kids.length) return '';
           const secId='sbChild_'+step.id;
           return `<div class="sb-section sb-sec-collapsible collapsed" id="${secId}">
-            <div class="sb-sec-title" onclick="toggleChildList('${secId}')">包含工序<span class="sb-badge" id="${secId}_count">${kids.length}</span><span class="sb-sec-hint">该阶段包含以下子工序，验收以母节点整体验收为准</span></div>
+            <div class="sb-sec-title" onclick="toggleChildList('${secId}')">包含工序<span class="sb-badge" id="${secId}_count">${kids.length}</span><span class="sb-sec-hint">该阶段包含以下子工序，验收以母节点整体验收为准</span><span class="chev" style="margin-left:auto">▾</span></div>
             <div class="sb-child-list">
               ${kids.map((k,ki)=>`<div class="sb-child-item" id="${secId}_row_${k.id}">
                 <span class="sb-child-dot"></span>
