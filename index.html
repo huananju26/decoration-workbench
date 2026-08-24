@@ -7070,7 +7070,7 @@ function renderStepRightPanel(p,step,i){
         </div>
         <div class="sb-acc-actions">
           ${opRight}
-          <button class="sb-acc-act" type="button" onclick="sbEditAcceptItem(${i},${idx})">编辑</button>
+          <button class="sb-acc-act" type="button" onclick="event.stopPropagation();sbEditAcceptItem(${i},${idx})">编辑</button>
           <button class="sb-acc-act del" type="button" onclick="sbDelAcceptItem(${i},${idx})">删除</button>
         </div>
       </div>`;
@@ -7734,12 +7734,21 @@ function printRectifyRecord(){
   setTimeout(function(){ window.print(); }, 250);
 }
 function sbEditAcceptItem(i,idx){
-  /* 直接滚动到必检项区域并聚焦目标输入框，不调用 sbEditStep（避免聚焦折叠区内的名称输入框导致节点信息自动展开） */
+  /* 1) 先记录左侧「节点信息」的折叠状态 */
+  const infoSec=document.getElementById('sbInfoSec_'+i);
+  const wasInfoCollapsed=infoSec&&infoSec.classList.contains('collapsed');
+  /* 2) 直接滚动到必检项区域并聚焦目标输入框，不调用 sbEditStep（避免聚焦折叠区内的名称输入框导致节点信息自动展开） */
   const acceptSec=document.getElementById('sb_accept_'+i);
   if(acceptSec)acceptSec.scrollIntoView({behavior:'smooth',block:'center'});
   setTimeout(()=>{
+    /* 3) 聚焦目标输入框 */
     const input=document.querySelector('#sb_accept_'+i+' .sb-accept-row:nth-child('+(idx+1)+') .sb-acc-label');
     if(input){input.focus();input.select&&input.select();}
+    /* 4) 防御性恢复：如果节点信息被意外展开，强制恢复为折叠状态 */
+    if(wasInfoCollapsed){
+      const sec=document.getElementById('sbInfoSec_'+i);
+      if(sec&&!sec.classList.contains('collapsed'))sec.classList.add('collapsed');
+    }
   },320);
 }
 function sbDelAcceptItem(i,idx){
@@ -8663,6 +8672,10 @@ function renderProcessKeepExpanded(){
   const collapsedGroups=Array.from(document.querySelectorAll('.step-group-header.collapsed'))
     .map(function(h){const g=h.closest('.step-group');return g?g.dataset.group:null;})
     .filter(Boolean);
+  /* 记录内部 section 折叠状态（节点信息 / 必检项 / 包含工序），防止 rerender 后丢失 */
+  const collapsedInfoSecs=[]; document.querySelectorAll('[id^="sbInfoSec_"].collapsed').forEach(function(el){collapsedInfoSecs.push(el.id);});
+  const collapsedAcceptSecs=[]; document.querySelectorAll('[id^="sbAcceptSec_"].collapsed').forEach(function(el){collapsedAcceptSecs.push(el.id);});
+  const collapsedChildSecs=[]; document.querySelectorAll('[id^="sbChild_"].collapsed').forEach(function(el){collapsedChildSecs.push(el.id);});
   renderProcess();
   /* 先恢复分组折叠状态 */
   collapsedGroups.forEach(function(g){
@@ -8680,6 +8693,10 @@ function renderProcessKeepExpanded(){
     const isGroupCollapsed=group&&group.querySelector('.step-group-header.collapsed');
     if(!isGroupCollapsed){c.classList.add('expanded');}
   });
+  /* 恢复内部 section 折叠状态（防御性兜底：即使 localStorage 读取正确，也强制确保 DOM 状态一致） */
+  collapsedInfoSecs.forEach(function(id){const el=document.getElementById(id);if(el&&!el.classList.contains('collapsed'))el.classList.add('collapsed');});
+  collapsedAcceptSecs.forEach(function(id){const el=document.getElementById(id);if(el&&!el.classList.contains('collapsed'))el.classList.add('collapsed');});
+  collapsedChildSecs.forEach(function(id){const el=document.getElementById(id);if(el&&!el.classList.contains('collapsed'))el.classList.add('collapsed');});
   syncNavActiveStates();
   applyStepSplitToAll();
   setTimeout(bindStepSplitter,0);
