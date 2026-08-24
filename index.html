@@ -7035,14 +7035,19 @@ function sbMarkItemOK(i,idx){
   const oldStatus=step.acceptance[idx].status||'pending';
   step.acceptance[idx].status='passed';
   step.acceptance[idx].rectifyPassed=false;
-  /* 若原状态为 issue（有问题·发整改），自动撤销对应的整改记录 */
+  /* 若原状态为 issue（有问题·发整改），直接删除对应的整改记录（撤销=删除） */
   if(oldStatus==='issue'){
-    const rectifyRec=(p.siteRecords||[]).find(r=>
-      r.tag==='整改'&&r.stepId===step.id&&r.acceptanceKey===idx&&!['已撤销','已完成'].includes(r.rectifyStatus||'')
+    const ri=(p.siteRecords||[]).findIndex(r=>
+      r.tag==='整改'&&r.stepId===step.id&&r.acceptanceKey===idx
     );
-    if(rectifyRec){
-      rectifyRec.rectifyStatus='已撤销';
-      rectifyRec.updatedAt=new Date().toISOString();
+    if(ri>=0){
+      const rec=p.siteRecords[ri];
+      p.siteRecords.splice(ri,1);
+      /* 同步删除关联待办 */
+      if(rec.taskId && p.tasks){
+        const ti=p.tasks.findIndex(t=>t.id===rec.taskId);
+        if(ti>=0) p.tasks.splice(ti,1);
+      }
     }
   }
   persist();renderProcessKeepExpanded(i);
