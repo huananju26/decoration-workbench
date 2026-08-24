@@ -3578,6 +3578,7 @@ a{color:#003a8c;text-decoration:none}
       <div style="display:flex;gap:8px">
         <button class="btn-outline" onclick="openCompanyCfgModal()" style="padding:8px 16px;font-size:13px" title="设置企业名称与 Logo">⚙ 企业抬头</button>
         <button class="btn-outline" onclick="closeModal('customerPayModal')" style="padding:8px 20px;font-size:13px">关闭预览</button>
+        <button class="btn-outline" onclick="exportCustomerPayXLSX()" style="padding:8px 16px;font-size:13px">⬇ 导出 Excel</button>
         <button class="btn-outline" onclick="printSheet('cprSheet')" style="padding:8px 18px;font-size:13px">打印进度表</button>
       </div>
     </div>
@@ -10250,6 +10251,51 @@ function downloadCustomerPayPNG(){
     },'image/png');
   }).catch(()=>alert('图片生成失败，请重试。'));
 }
+/* 合同收款计划表 → 导出可编辑 Excel（零依赖，WPS 可直接打开） */
+function exportCustomerPayXLSX(){
+  const p=cur(); if(!p){alert('请先选择项目');return;}
+  /* 与 renderCustomerPayReport 同源取数 */
+  const incList=(p.income||[]).slice();
+  const contractTotal=Number(p.contractTotal||0)||0;
+  const today=todayISO();
+  const totalReceived=incList.reduce((s,i)=>s+incReceivedAmt(i),0);
+  const totalTarget=incList.reduce((s,i)=>s+(i.amount||0),0);
+  const pendingAmt=Math.max(0,totalTarget-totalReceived);
+  const projName=p.name||'未命名项目';
+  const code=p.code||'—';
+  const addr=p.address||'';
+  const created=p.createdAt?fmtDate(p.createdAt):today;
+  const rows=[];
+  rows.push([{t:'s',v:companyName()?companyName():'装修合同收款计划表'}]);
+  if(companyName()) rows.push([{t:'s',v:'合同收款计划表'}]);
+  rows.push([]);
+  rows.push(['项目：'+projName]);
+  rows.push(['合同号：'+code+(addr?'    地址：'+addr:'')]);
+  rows.push(['生成日期：'+created]);
+  rows.push([]);
+  rows.push(['合同总价',{t:'n',v:contractTotal}]);
+  rows.push(['已收金额',{t:'n',v:totalReceived}]);
+  rows.push(['累计到账',{t:'n',v:totalReceived}]);
+  rows.push(['剩余应收',{t:'n',v:pendingAmt}]);
+  rows.push([]);
+  rows.push(['序号','收款节点','合同占比','节点目标金额','本期计划应收','计划日期','状态']);
+  incList.forEach((i,idx)=>{
+    migrateIncomeReceipts(i);
+    const received=incReceivedAmt(i);
+    const st=incStatus(i);
+    const pct=contractTotal?Math.round((i.amount||0)/contractTotal*100*10)/10:0;
+    rows.push([
+      idx+1,
+      i.name||('收款'+(idx+1)),
+      pct+'%',
+      {t:'n',v:i.amount||0},
+      {t:'n',v:received},
+      i.dueDate||i.date||'—',
+      incStatusLabel(st)
+    ]);
+  });
+  exportXLSX(rows,'收款计划',(projName||'项目')+'_合同收款计划表_'+today+'.xlsx');
+}
 
 /* ════════════════════════════════════════
    「计划与导出」下拉菜单
@@ -14093,6 +14139,99 @@ function populateStageSelect(id){const sel=$(id);sel.innerHTML='<option value=""
 // ============================================================
 function exportJSON(){download(JSON.stringify(App,null,2),'装修工作台备份_'+todayISO()+'.json','application/json');}
 function download(content,filename,type){const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),200);}
+
+/* ───────────────────────────────────────────────────────────
+   零依赖 XLSX 生成器（手写 OOXML + 最小 ZIP/store，无外部库）
+   用法：buildXLSX(rows2d, {sheetName}) → Blob(.xlsx)
+   rows2d: 二维数组，每元素可为 字符串/数字/null/undefined/{t:'n',v:123}/{t:'s',v:'x'}
+   ─────────────────────────────────────────────────────────── */
+function _xlsxEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');}
+function _xlsxCell(col,row,val){
+  var ref=String.fromCharCode(65+(col%26))+(col>=26?String.fromCharCode(65+Math.floor(col/26)-1):'')+(row+1);
+  if(val==null||val==='') return '<c r="'+ref+'"/>';
+  if(typeof val==='object'){
+    if(val.t==='n') return '<c r="'+ref+'" t="n"><v>'+val.v+'</v></c>';
+    return '<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+_xlsxEsc(val.v)+'</t></is></c>';
+  }
+  if(typeof val==='number') return '<c r="'+ref+'" t="n"><v>'+val+'</v></c>';
+  return '<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+_xlsxEsc(val)+'</t></is></c>';
+}
+function buildXLSX(rows,opt){
+  opt=opt||{};var sheetName=opt.sheetName||'Sheet1';
+  var maxCols=0;rows.forEach(function(r){if(r.length>maxCols)maxCols=r.length;});
+  var body='';
+  rows.forEach(function(r,ri){
+    var cells='';
+    for(var ci=0;ci<r.length;ci++) cells+=_xlsxCell(ci,ri,r[ci]);
+    body+='<row r="'+(ri+1)+'">'+cells+'</row>';
+  });
+  var sheetXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'+body+'</sheetData></worksheet>';
+  var workbookXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="'+_xlsxEsc(sheetName)+'" sheetId="1" r:id="rId1"/></sheets></workbook>';
+  var relsXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>';
+  var contentTypes='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>';
+  var rootRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+  var stylesXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>';
+  var sharedStrings='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+    '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="0" uniqueCount="0"></sst>';
+  /* 构建 ZIP（store 模式，无压缩） */
+  function crc32(buf){var c=~0;for(var i=0;i<buf.length;i++){c^=buf[i];for(var k=0;k<8;k++)c=(c>>>1)^(0xEDB88320&-(c&1));}return ~c>>>0;}
+  function strBytes(s){var arr=[];for(var i=0;i<s.length;i++){var cc=s.charCodeAt(i);if(cc<0x80)arr.push(cc);else if(cc<0x800){arr.push(0xC0|(cc>>6),0x80|(cc&0x3F));}else if(cc>=0xD800&&cc<=0xDBFF){var hi=cc,lo=s.charCodeAt(++i);var cp=((hi-0xD800)<<10)+(lo-0xDC00)+0x10000;arr.push(0xF0|(cp>>18),0x80|((cp>>12)&0x3F),0x80|((cp>>6)&0x3F),0x80|(cp&0x3F));}else{arr.push(0xE0|(cc>>12),0x80|((cc>>6)&0x3F),0x80|(cc&0x3F));}}return arr;}
+  var parts=[
+    {name:'[Content_Types].xml',data:strBytes(contentTypes)},
+    {name:'_rels/.rels',data:strBytes(rootRels)},
+    {name:'xl/workbook.xml',data:strBytes(workbookXml)},
+    {name:'xl/_rels/workbook.xml.rels',data:strBytes(relsXml)},
+    {name:'xl/worksheets/sheet1.xml',data:strBytes(sheetXml)},
+    {name:'xl/styles.xml',data:strBytes(stylesXml)},
+    {name:'xl/sharedStrings.xml',data:strBytes(sharedStrings)}
+  ];
+  var chunks=[];var central=[];var offset=0;
+  parts.forEach(function(p){
+    var nameBytes=strBytes(p.name);
+    var crc=crc32(p.data);var size=p.data.length;
+    var local=[];
+    local.push(0x04034b50);local.push(20);local.push(0);local.push(0);local.push(0);local.push(0);
+    local.push(crc>>>0);local.push(size>>>0);local.push(size>>>0);
+    local.push(nameBytes.length>>>0);local.push(0);
+    var header=new Uint8Array(30+nameBytes.length);
+    var dv=new DataView(header.buffer);
+    dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint16(6,0,true);dv.setUint16(8,0,true);dv.setUint16(10,0,true);dv.setUint16(12,0,true);
+    dv.setUint32(14,crc>>>0,true);dv.setUint32(18,size>>>0,true);dv.setUint32(22,size>>>0,true);
+    dv.setUint16(26,nameBytes.length,true);dv.setUint16(28,0,true);
+    header.set(nameBytes,30);
+    chunks.push(header);
+    chunks.push(new Uint8Array(p.data));
+    var cd=new Uint8Array(46+nameBytes.length);
+    var cdv=new DataView(cd.buffer);
+    cdv.setUint32(0,0x02014b50,true);cdv.setUint16(4,20,true);cdv.setUint16(6,20,true);cdv.setUint16(8,0,true);cdv.setUint16(10,0,true);cdv.setUint16(12,0,true);cdv.setUint16(14,0,true);
+    cdv.setUint32(16,crc>>>0,true);cdv.setUint32(20,size>>>0,true);cdv.setUint32(24,size>>>0,true);
+    cdv.setUint16(28,nameBytes.length,true);cdv.setUint16(30,0,true);cdv.setUint16(32,0,true);cdv.setUint16(34,0,true);cdv.setUint16(36,0,true);cdv.setUint32(38,0,true);
+    cdv.setUint32(42,offset>>>0,true);
+    cd.set(nameBytes,46);
+    central.push(cd);
+    offset+=header.length+size;
+  });
+  var centralSize=0;central.forEach(function(c){centralSize+=c.length;});
+  var centralOffset=offset;
+  var end=new Uint8Array(22);
+  var edv=new DataView(end.buffer);
+  edv.setUint32(0,0x06054b50,true);edv.setUint16(4,0,true);edv.setUint16(6,0,true);
+  edv.setUint16(8,parts.length,true);edv.setUint16(10,parts.length,true);
+  edv.setUint32(12,centralSize>>>0,true);edv.setUint32(16,centralOffset>>>0,true);edv.setUint16(20,0,true);
+  chunks.push.apply(chunks,central);
+  chunks.push(end);
+  return new Blob(chunks,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function exportXLSX(rows,sheetName,filename){
+  var blob=buildXLSX(rows,{sheetName:sheetName});
+  download(blob,filename,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
 function importData(input){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();
