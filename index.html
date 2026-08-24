@@ -584,6 +584,8 @@ a{color:#003a8c;text-decoration:none}
 .sb-acc-act.muted{background:#f5f5f5;color:#bcbcbc;border-color:#ededed}
 .sb-acc-act.muted:hover{background:#f0f0f0;color:#a6a6a6;border-color:#e4e4e4}
 .sb-mini-add{font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid #91caff;background:#e6f4ff;color:#003a8c;cursor:pointer;transition:background .15s;min-height:0;min-width:0}
+.sb-mini-primary{font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid #1677ff;background:#1677ff;color:#fff;cursor:pointer;transition:background .15s;min-height:0;min-width:0}
+.sb-mini-primary:hover{background:#003a8c;border-color:#003a8c}
 .sb-mini-add:hover{background:#d6ebff}
 /* 必检项模块折叠收起 */
 .sb-collapse-btn{margin-left:6px;width:22px;height:22px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e6f0ff;background:#fff;border-radius:6px;color:#003a8c;cursor:pointer;transition:background .15s,border-color .15s;font-size:12px;line-height:1;padding:0}
@@ -4130,6 +4132,33 @@ function mergeProject(p){
   out.profile=Object.assign({style:'',layout:'',mode:'',startDate:''}, out.profile);
   return out;
 }
+/* 旧项目迁移：若某母节点的必检项恰好等于「通用4项」导入模板（修复前常见），
+   自动替换为该节点专属的系统标准必检项（来自 PARENT_ACCEPTANCE_TEMPLATES）。
+   仅当 4 项与通用模板完全一致才替换，绝不触碰用户自行增删 / 已通过状态的节点。 */
+const _GENERIC_ACCEPT_LABELS=['材料进场验收','隐蔽工程验收','工序自检','成品保护'];
+function upgradeLegacyAcceptance(){
+  if(!App||!App.projects)return;
+  let changed=false;
+  App.projects.forEach(p=>{
+    (p.processSteps||[]).forEach(s=>{
+      if(!s.isParent)return;
+      const acc=s.acceptance||[];
+      if(acc.length===4){
+        const allGeneric=acc.every(a=>_GENERIC_ACCEPT_LABELS.includes(a.label))
+          && _GENERIC_ACCEPT_LABELS.every(l=>acc.some(a=>a.label===l));
+        if(allGeneric){
+          const tpl=PARENT_ACCEPTANCE_TEMPLATES[s.id]||[];
+          s.acceptance=tpl.map(a=>({label:a.label,text:a.text,status:'pending',rectifyPassed:false,rectifyId:''}));
+          changed=true;
+        }
+      }
+    });
+  });
+  if(changed){
+    try{ localStorage.setItem(APP_KEY, JSON.stringify(App)); }catch(e){}
+    console.log('[upgrade] 已将通用必检项节点升级为节点专属标准必检项');
+  }
+}
 function load(){
   // 候选存储键：当前键 + 历史上可能用过的旧键名（防止早期版本命名不同导致"数据丢失"）
   const CANDIDATE_KEYS=[APP_KEY,'xzgz_app_v1','xzgz_app','xzgz_renovation','renovation_app','xzjz_app'];
@@ -7080,6 +7109,7 @@ function renderStepRightPanel(p,step,i){
           <button type="button" class="sb-mini-add" onclick="addAcceptRow(${i})">＋ 添加必检项</button>
           <button type="button" class="sb-mini-add" onclick="sbImportAcceptTemplate(${i})">从模板导入</button>
           <button type="button" class="sb-mini-add" onclick="sbManageAcceptTemplates()">管理企业模板</button>
+          <button type="button" class="sb-mini-primary" onclick="sbApplyNodeStdAccept(${i})">套用节点标准必检项</button>
         </div>
         ${acceptListHtml}
       </div>
@@ -7752,6 +7782,22 @@ function sbImportAcceptTemplate(i){
   if(!step.acceptance)step.acceptance=[];
   step.acceptance=step.acceptance.concat(JSON.parse(JSON.stringify(tmpl)));
   persist();renderProcessKeepExpanded(i);
+}
+/* 套用该节点专属的系统标准必检项（来自 PARENT_ACCEPTANCE_TEMPLATES）：
+   按 label 匹配保留已通过状态，模板新增项置为待检查。用于旧项目 / 手动调整后一键对齐。 */
+function sbApplyNodeStdAccept(i){
+  const p=cur();if(!p)return;
+  const step=(p.processSteps||[])[i];if(!step)return;
+  ensureProjectSteps(p);
+  const tpl=PARENT_ACCEPTANCE_TEMPLATES[step.id]||[];
+  if(!tpl.length){ alert('该节点暂无系统标准必检项模板'); return; }
+  const prev=new Map((step.acceptance||[]).map(a=>[a.label, a.status]));
+  step.acceptance=tpl.map(a=>({
+    label:a.label, text:a.text,
+    status: prev.get(a.label)==='passed'?'passed':'pending',
+    rectifyPassed:false, rectifyId:''
+  }));
+  persist(); renderProcessKeepExpanded(i);
 }
 function sbManageAcceptTemplates(){
   /* 深拷贝当前模板作为编辑态（避免直接修改原数据，取消时不污染） */
@@ -13866,6 +13912,7 @@ document.addEventListener('click',function(e){
 async function init(){
   load();
   loadAcceptTplFromStorage();
+  upgradeLegacyAcceptance();
   updateHeroGreeting();
   startHeroClock();
   /* ── 立即着陆：用本地数据先显示 app，不等待云端同步（离线优先） ──
