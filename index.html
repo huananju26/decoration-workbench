@@ -7794,7 +7794,7 @@ function renderProcess(){
   steps.forEach((step,i)=>{ if(step.isParent) parentSteps.push({step,i}); });
   const doneSteps=[], undoneSteps=[];
   parentSteps.forEach(({step,i})=>{
-    const isDone=!!step.checked;
+    const isDone=isStepFullyAccepted(p,step);
     if(isDone) doneSteps.push({step,i});
     else undoneSteps.push({step,i});
   });
