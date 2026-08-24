@@ -64,6 +64,15 @@ a{color:#003a8c;text-decoration:none}
 .search-box input{width:200px;height:36px;padding:0 36px 0 14px;border-radius:20px;font-size:13px;background:#f5f5f5;border:1px solid transparent}
 .search-box input:focus{background:#fff;border-color:#003a8c}
 .search-box .search-icon{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#bbb;font-size:14px}
+/* 全局搜索结果浮层 */
+.search-results-panel{display:none;position:absolute;top:42px;right:0;width:340px;max-height:60vh;overflow-y:auto;background:#fff;border:1px solid #91caff;border-radius:12px;box-shadow:0 8px 28px rgba(0,58,140,.16);z-index:1200;padding:6px}
+.search-results-panel .search-empty{padding:18px 14px;color:#8c8c8c;font-size:13px;text-align:center}
+.search-result-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer}
+.search-result-item:hover{background:#e6f4ff}
+.search-result-item .sr-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
+.search-result-item .sr-text{display:flex;flex-direction:column;min-width:0}
+.search-result-item .sr-label{font-size:13px;color:#003a8c;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-result-item .sr-sub{font-size:11px;color:#8c8c8c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .page-content{flex:1;padding:24px 32px;width:100%}
 .page{display:none}
@@ -13153,7 +13162,122 @@ function handleTopPrimary(){
   const a={home:()=>openTaskModal(),process:()=>{},purchase:()=>openPurchaseModal(),finance:()=>openFinanceModal(),compare:()=>{},tools:()=>{},diary:()=>openDiaryModal(),knowledge:()=>{}};
   if(a[currentPage])a[currentPage]();
 }
-function handleSearch(q){if(!q)return;}
+/* ══════════════════════════════════════════
+   顶部全局搜索：跨项目、跨模块检索并跳转
+   ══════════════════════════════════════════ */
+function handleSearch(q){
+  const box=document.querySelector('.search-box');
+  let panel=$('globalSearchPanel');
+  if(!q||!q.trim()){ if(panel)panel.style.display='none'; return; }
+  const kw=q.trim().toLowerCase();
+  const results=[];
+  /* 遍历全部项目，检索 6 大数据域 */
+  App.projects.forEach(p=>{
+    const pn=projDisplayName(p);
+    /* 1) 项目名本身 */
+    if((p.name||'').toLowerCase().includes(kw)||(p.code||'').toLowerCase().includes(kw)){
+      results.push({type:'project',icon:'🏠',label:pn,sub:'项目',pid:p.id});
+    }
+    /* 2) 施工节点 */
+    (p.processSteps||[]).forEach((s,idx)=>{
+      if((s.name||'').toLowerCase().includes(kw)){
+        results.push({type:'step',icon:'📋',label:s.name,sub:'施工节点 · '+pn,pid:p.id,stepIdx:idx});
+      }
+    });
+    /* 3) 待办 / 采购 */
+    [...(p.tasks||[]).map(t=>({...t,_k:'task'})),...(p.purchases||[]).map(x=>({...x,_k:'purchase'}))].forEach(it=>{
+      const nm=it.title||it.name||'';
+      if(nm.toLowerCase().includes(kw)){
+        results.push({type:it._k,icon:it._k==='task'?'✅':'🛒',label:nm,sub:(it._k==='task'?'待办':'采购')+' · '+pn,pid:p.id,recId:it.id});
+      }
+    });
+    /* 4) 收入 / 支出 */
+    [...(p.income||[]).map(r=>({...r,_k:'income'})),...(p.expense||[]).map(r=>({...r,_k:'expense'}))].forEach(r=>{
+      const nm=r.name||'';
+      const extra=[r.cat||'',r.payer||r.payee||'',r.note||''].join(' ');
+      if(nm.toLowerCase().includes(kw)||extra.toLowerCase().includes(kw)){
+        results.push({type:r._k,icon:r._k==='income'?'💰':'💸',label:nm+(r.amount?(' ¥'+fmt(r.amount)):''),sub:(r._k==='income'?'收入':'支出')+' · '+pn,pid:p.id,recId:r.id});
+      }
+    });
+    /* 5) 增减项（合同增减） */
+    (p.adjustments||[]).forEach(a=>{
+      const nm=a.name||'';
+      if(nm.toLowerCase().includes(kw)){
+        results.push({type:'adj',icon:'➕',label:nm+(a.amount?(' ¥'+fmt(a.amount)):''),sub:'增减项 · '+pn,pid:p.id,recId:a.id});
+      }
+    });
+    /* 6) 日记 */
+    (p.diaries||[]).forEach(d=>{
+      const nm=d.title||'';
+      const extra=d.content||'';
+      if(nm.toLowerCase().includes(kw)||extra.toLowerCase().includes(kw)){
+        results.push({type:'diary',icon:'📝',label:nm,sub:'日记 · '+pn,pid:p.id,recId:d.id});
+      }
+    });
+  });
+  /* 去重（同一项目同名节点/记录可能因迁移重复）并截断 */
+  const seen=new Set();const uniq=[];
+  results.forEach(r=>{const key=r.type+'|'+r.pid+'|'+(r.stepIdx??'')+'|'+(r.recId??'')+'|'+r.label;if(!seen.has(key)){seen.add(key);uniq.push(r);}});
+  const show=uniq.slice(0,30);
+  if(!panel){
+    panel=document.createElement('div');
+    panel.id='globalSearchPanel';
+    panel.className='search-results-panel';
+    if(box)box.appendChild(panel);
+  }
+  if(!show.length){
+    panel.innerHTML='<div class="search-empty">未找到与“'+escHtml(q.trim())+'”相关的结果</div>';
+    panel.style.display='block';
+    return;
+  }
+  panel.innerHTML=show.map((r,i)=>`<div class="search-result-item" data-i="${i}">`+
+    `<span class="sr-icon">${r.icon}</span>`+
+    `<span class="sr-text"><span class="sr-label">${escHtml(r.label)}</span><span class="sr-sub">${escHtml(r.sub)}</span></span>`+
+    `</div>`).join('');
+  panel.style.display='block';
+  /* 绑定点击跳转 */
+  panel.querySelectorAll('.search-result-item').forEach(el=>{
+    el.onclick=()=>{
+      const r=show[+el.dataset.i];
+      doSearchJump(r);
+      panel.style.display='none';
+      const inp=$('globalSearch'); if(inp)inp.blur();
+    };
+  });
+}
+/* 按结果类型执行对应跳转 */
+function doSearchJump(r){
+  switch(r.type){
+    case 'project':
+      switchToProject(r.pid); switchPage('process'); break;
+    case 'step':
+      switchToProject(r.pid); switchPage('process');
+      setTimeout(()=>scrollToStep(r.stepIdx),160); break;
+    case 'task': /* 待办：跳今日总览 ACTION QUEUE（跨项目待办聚合） */
+      switchToProject(r.pid); switchPage('home');
+      setTimeout(()=>scrollToSection('actionQueue'),160); break;
+    case 'purchase':
+      switchToProject(r.pid); switchPage('purchase');
+      setTimeout(()=>{ const el=document.querySelector('[data-purchase-id="'+r.recId+'"]'); if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'center'}); },200); break;
+    case 'income':
+    case 'expense':
+      jumpToFinance(r.pid,r.type,r.recId); break;
+    case 'adj':
+      /* 增减项位于「项目管理→合同收款」子页；切到该页后用户可见 */
+      switchToProject(r.pid); switchPage('process');
+      setTimeout(()=>{ const tab=document.querySelector('.proj-tab[data-tab="finance"]'); if(tab)switchProjTab(tab,'finance'); },180); break;
+    case 'diary':
+      /* 日记位于「装修日记」页 */
+      switchToProject(r.pid); switchPage('diary'); break;
+  }
+}
+/* 点击外部关闭搜索结果浮层 */
+document.addEventListener('click',function(e){
+  const panel=$('globalSearchPanel'); const box=document.querySelector('.search-box');
+  if(panel&&panel.style.display==='block'){
+    if(box&&!box.contains(e.target)){ panel.style.display='none'; }
+  }
+});
 
 // ============================================================
 // INIT
