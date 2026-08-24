@@ -4264,131 +4264,67 @@ const NODE_TEMPLATES={
   '整改内容':{desc:'记录验收发现的问题项及整改要求。',acceptance:[],articles:[],photosRequired:3}
 };
 
-/* 将某个房屋类型的母/子节点模板转为「母节点数组（含嵌套 children）」
-   · 只产出 18 个母节点（isParent:true），子节点作为母节点的 children 细节补充，不进计划排期
-   · 保持旧逻辑兼容：母节点仍是数组元素（可用下标 / step.id 索引） */
-function buildParentSteps(houseType){
+/* 将某个房屋类型的母/子节点模板展平为带 parentId 的节点数组
+   母节点：isParent=true，parentId=null；子节点：isParent=false，parentId=母节点id
+   所有节点均为独立可索引卡片（保持旧逻辑兼容） */
+function buildFlatSteps(houseType){
   const cfg=PARENT_GROUPS[houseType]||PARENT_GROUPS.new;
-  /* 从 BASE_PARENT_GROUPS 按 include 选配（'*' 或省略 = 全部） */
   let groups=BASE_PARENT_GROUPS;
   const inc=cfg.include;
   if(Array.isArray(inc)) groups=BASE_PARENT_GROUPS.filter(g=>inc.includes(g.id));
   const overrides=cfg.overrides||{};
-  return groups.map(g=>{
-    const children=(g.children||[]).map(c=>{
+  const out=[];
+  groups.forEach(g=>{
+    const ov=overrides[g.id]||{};
+    out.push({
+      id:g.id, name:ov.name||g.name, days:String(ov.days!=null?ov.days:g.days||''),
+      desc:'', acceptance:[], articles:[],
+      isParent:true, parentId:null, photosRequired:3,
+      checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
+    });
+    (g.children||[]).forEach(c=>{
       const tpl=NODE_TEMPLATES[c.name]||{};
-      return {
+      out.push({
         id:c.id, name:c.name, days:String(tpl.days||'1'),
         desc:tpl.desc||'', acceptance:(tpl.acceptance||[]).map(a=>({...a})),
         articles:(tpl.articles||[]).map(a=>({...a})),
         photosRequired:tpl.photosRequired||3,
+        isParent:false, parentId:g.id,
         checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
-      };
+      });
     });
-    const ov=overrides[g.id]||{};
-    return {
-      id:g.id, name:ov.name||g.name, days:String(ov.days!=null?ov.days:g.days||''), desc:'',
-      acceptance:[], articles:[], isParent:true,
-      children, checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
-    };
   });
+  return out;
 }
 
-/* Legacy alias for backward compat（旧向导/模板编辑可能引用 PROCESS_STEPS / buildFlatSteps） */
-function buildFlatSteps(houseType){ return buildParentSteps(houseType); }
-const PROCESS_STEPS=buildParentSteps('new');
+const PROCESS_STEPS=buildFlatSteps('new');
 const STAGES=PROCESS_STEPS;
 
-/* 基础全流程的深拷贝：新建项目时作为该项目初始流程（可按项目删减/新增自定义母节点） */
+/* 基础全流程的深拷贝：新建项目时作为该项目初始流程 */
 function baseFlowClone(houseType){
-  return buildParentSteps(houseType||'new').map(s=>cloneParentStep(s));
-}
-/* 深拷贝单个母节点（含 children 深拷贝） */
-function cloneParentStep(s){
-  return {
+  return buildFlatSteps(houseType||'new').map(s=>({
     id:s.id, name:s.name, days:s.days, desc:s.desc,
     acceptance:(s.acceptance||[]).map(a=>({...a})),
     articles:(s.articles||[]).map(a=>({...a})),
-    isParent:true,
-    checked:!!s.checked,
-    planStartDate:s.planStartDate||'', planEndDate:s.planEndDate||'',
-    actualStartDate:s.actualStartDate||'', actualEndDate:s.actualEndDate||'',
-    children:(s.children||[]).map(c=>({
-      id:c.id, name:c.name, days:c.days, desc:c.desc||'',
-      acceptance:(c.acceptance||[]).map(a=>({...a})),
-      articles:(c.articles||[]).map(a=>({...a})),
-      photosRequired:c.photosRequired||3,
-      checked:!!c.checked,
-      planStartDate:c.planStartDate||'', planEndDate:c.planEndDate||'',
-      actualStartDate:c.actualStartDate||'', actualEndDate:c.actualEndDate||''
-    }))
-  };
+    isParent:!!s.isParent, parentId:s.parentId||null,
+    photosRequired:s.photosRequired||3,
+    checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
+  }));
 }
-/* 旧项目兼容：确保存在 processSteps 字段，并补齐新字段。
-   · 新结构：processSteps 只含母节点，子节点在 children 内
-   · 旧结构（116 扁平节点，含 parentId/isParent）自动迁移：
-     isParent:true 提为母节点；parentId 匹配的收进对应母节点 children；
-     其余无父独立节点保留为母节点（children 空）。 */
+
+/* 旧项目兼容：确保存在 processSteps 字段，并补齐新字段（parentId/isParent/photosRequired） */
+
 function ensureProjectSteps(p){
   if(!p)return;
   if(!p.processSteps||!Array.isArray(p.processSteps)){p.processSteps=baseFlowClone(p.houseType);return;}
-  const steps=p.processSteps;
-  // 已是新结构（含 children 字段的母节点）则仅补齐子节点默认值
-  if(steps.length && steps[0].isParent===true && Array.isArray(steps[0].children)){
-    steps.forEach(s=>{
-      s.isParent=true;
-      if(!Array.isArray(s.children))s.children=[];
-      s.children.forEach(c=>{
-        if(c.photosRequired===undefined)c.photosRequired=3;
-        if(c.checked===undefined)c.checked=false;
-      });
-      if(s.checked===undefined)s.checked=false;
-    });
-    return;
-  }
-  // 旧扁平结构迁移
-  const parents=steps.filter(s=>s.isParent===true);
-  const childrenMap={};
-  steps.forEach(s=>{
-    if(s.isParent!==true && s.parentId){
-      (childrenMap[s.parentId]=childrenMap[s.parentId]||[]).push(s);
-    }
+  /* 旧数据补齐：无 parentId 的节点视为独立节点（parentId=null, isParent=false） */
+  p.processSteps.forEach(s=>{
+    if(s.parentId===undefined)s.parentId=null;
+    if(s.isParent===undefined)s.isParent=false;
+    if(s.photosRequired===undefined)s.photosRequired=3;
   });
-  const orphans=steps.filter(s=>s.isParent!==true && !s.parentId);
-  const out=[];
-  parents.forEach(g=>{
-    const kids=(childrenMap[g.id]||[]).map(c=>({
-      id:c.id, name:c.name, days:String(c.days||'1'), desc:c.desc||'',
-      acceptance:(c.acceptance||[]).map(a=>({...a})),
-      articles:(c.articles||[]).map(a=>({...a})),
-      photosRequired:c.photosRequired||3,
-      checked:!!c.checked,
-      planStartDate:c.planStartDate||'', planEndDate:c.planEndDate||'',
-      actualStartDate:c.actualStartDate||'', actualEndDate:c.actualEndDate||''
-    }));
-    out.push({
-      id:g.id, name:g.name, days:String(g.days||''), desc:g.desc||'',
-      acceptance:(g.acceptance||[]).map(a=>({...a})),
-      articles:(g.articles||[]).map(a=>({...a})),
-      isParent:true, children:kids,
-      checked:!!g.checked,
-      planStartDate:g.planStartDate||'', planEndDate:g.planEndDate||'',
-      actualStartDate:g.actualStartDate||'', actualEndDate:g.actualEndDate||''
-    });
-  });
-  orphans.forEach(o=>{
-    out.push({
-      id:o.id, name:o.name, days:String(o.days||'1'), desc:o.desc||'',
-      acceptance:(o.acceptance||[]).map(a=>({...a})),
-      articles:(o.articles||[]).map(a=>({...a})),
-      isParent:true, children:[],
-      checked:!!o.checked,
-      planStartDate:o.planStartDate||'', planEndDate:o.planEndDate||'',
-      actualStartDate:o.actualStartDate||'', actualEndDate:o.actualEndDate||''
-    });
-  });
-  p.processSteps=out;
 }
+
 
 const PURCHASE_CATS=[
   {key:'pre',name:'开工前准备',icon:'📋',items:['设计费','监理服务','开工手续','临时用电用水','成品保护材料']},
@@ -4526,7 +4462,8 @@ function closeProjectWizard(){
 /** 从 PROCESS_STEPS（毛胚模板，仅母节点）加载标准阶段到 wizPlanNodes。
     wizPlanNodes 只含 18 个母节点（阶段），子节点不进计划排期。 */
 function initPlanNodesFromTemplate(){
-  wizPlanNodes=PROCESS_STEPS.map(s=>({
+  /* 计划表只排母节点（阶段），不排子节点 */
+  wizPlanNodes=PROCESS_STEPS.filter(s=>s.isParent).map(s=>({
     id:s.id,name:s.name,days:s.days,
     status:'pending',planStart:'',planEnd:'',manual:false,
     desc:s.desc,acceptance:(s.acceptance||[]).map(a=>({...a})),
@@ -5207,34 +5144,40 @@ function openProjectModal(id){
 
 /* 把向导中的 wizPlanNodes 转换为存储用的 processSteps 格式（新建/编辑保存共用） */
 function buildProcessStepsFromWizard(){
-  return wizPlanNodes.map(n=>{
+  /* wizPlanNodes 只有母节点（阶段）；输出时展平为 母节点+子节点 的扁平数组 */
+  const out=[];
+  wizPlanNodes.forEach(n=>{
     const src=n.id?PROCESS_STEPS.find(s=>s.id===n.id):null;
-    /* 子节点细节取自系统模板对应母节点的 children（执行层，不进计划排期） */
-    const srcChildren=(src&&src.children)||[];
-    return {
-      id:n.id||('ps_'+uid()),
+    /* 子节点取自系统模板（按 parentId 匹配） */
+    const srcChildren=PROCESS_STEPS.filter(s=>s.parentId===n.id);
+    out.push({
+      id:n.id||("ps_"+uid()),
       name:n.name,days:String(n.days),
-      status:n.status||'pending',
-      desc:n.desc||(src?src.desc:''),
+      status:n.status||"pending",
+      desc:n.desc||(src?src.desc:""),
       acceptance:(n.acceptance&&n.acceptance.length?n.acceptance:(src?src.acceptance:[])).map(a=>({...a})),
       articles:(n.articles&&n.articles.length?n.articles:(src?src.articles:[])).map(a=>({...a})),
       isParent:true, parentId:null,
       photosRequired:3,
-      planStartDate:n.planStartDate||n.planStart||'',
-      planEndDate:n.planEndDate||n.planEnd||'',
-      /* 子节点细节：保留原有 children（编辑回填时带进来的），否则取系统模板 */
-      children:(Array.isArray(n.children)&&n.children.length?n.children:srcChildren).map(c=>({
-        id:c.id, name:c.name, days:String(c.days||'1'),
-        desc:c.desc||'', acceptance:(c.acceptance||[]).map(a=>({...a})),
+      planStartDate:n.planStartDate||n.planStart||"",
+      planEndDate:n.planEndDate||n.planEnd||""
+    });
+    srcChildren.forEach(c=>{
+      out.push({
+        id:c.id, name:c.name, days:String(c.days||"1"),
+        desc:c.desc||"", acceptance:(c.acceptance||[]).map(a=>({...a})),
         articles:(c.articles||[]).map(a=>({...a})),
+        isParent:false, parentId:n.id,
         photosRequired:c.photosRequired||3,
-        checked:!!c.checked,
-        planStartDate:c.planStartDate||'', planEndDate:c.planEndDate||'',
-        actualStartDate:c.actualStartDate||'', actualEndDate:c.actualEndDate||''
-      }))
-    };
+        checked:false,
+        planStartDate:"", planEndDate:"",
+        actualStartDate:"", actualEndDate:""
+      });
+    });
   });
+  return out;
 }
+
 
 /* ════════════════════════════════════════
    Step3: 收款计划（新建向导）
@@ -7733,70 +7676,6 @@ function applyStepSplitToAll(){
 function companyName(){return (window._companyName_||localStorage.getItem('xzgz_company')||'').toString();}
 function companyTagline(){return (window._companyTagline_||'').toString();}
 
-/* 流程页：记录哪些母节点（阶段）被展开其子节点细节（仅前端展示态，不入库） */
-const _expandedParents=new Set();
-/* 点击母节点标题：展开/折叠其子节点细节 */
-function toggleParentExpand(id){
-  if(_expandedParents.has(id))_expandedParents.delete(id);
-  else _expandedParents.add(id);
-  renderProcess();
-}
-/* 手动标记阶段（母节点）完成 / 撤销完成 */
-function toggleStageDone(id){
-  const p=cur();if(!p)return;
-  const g=(p.processSteps||[]).find(s=>s.id===id);
-  if(!g||!g.isParent)return;
-  if(p.checked)g.checked[id]=!g.checked[id];
-  else p.checked={[id]:true};
-  /* 标记完成时顺带折叠，撤销时保持；persist + 重渲染 */
-  persist();
-  renderProcess();
-  updateProcProgress();
-}
-/* 子节点（执行细节）标记完成 / 撤销完成：直接操作 p.checked[c.id] */
-function toggleChildDone(cid){
-  const p=cur();if(!p)return;
-  if(!p.checked)p.checked={};
-  p.checked[cid]=!p.checked[cid];
-  persist();
-  renderProcess();
-  updateProcProgress();
-}
-
-/* 套用库预设到子节点：用 NODE_TEMPLATES[name] 覆盖该子节点的 desc/acceptance/articles/photosRequired */
-function applyNodeTemplate(parentId,cid){
-  const p=cur();if(!p)return;
-  const g=(p.processSteps||[]).find(s=>s.id===parentId);
-  const c=g&&(g.children||[]).find(x=>x.id===cid);
-  const tpl=NODE_TEMPLATES[c?c.name:''];
-  if(!c||!tpl){alert('未找到对应套用库预设');return;}
-  c.desc=tpl.desc||'';
-  c.acceptance=(tpl.acceptance||[]).map(a=>({...a}));
-  c.articles=(tpl.articles||[]).map(a=>({...a}));
-  c.photosRequired=tpl.photosRequired||3;
-  persist();
-  renderProcess();
-  alert('已套用「'+c.name+'」的库预设（描述/验收/材料/照片数）。');
-}
-
-/* 把子节点当前内容回写到 NODE_TEMPLATES 套用库（同名复用） */
-function saveNodeTemplate(parentId,cid){
-  const p=cur();if(!p)return;
-  const g=(p.processSteps||[]).find(s=>s.id===parentId);
-  const c=g&&(g.children||[]).find(x=>x.id===cid);
-  if(!c){return;}
-  if(!confirm('将「'+c.name+'」当前的内容（描述/验收/材料/照片数）保存到套用库，供今后其他项目同名节点一键套用？'))return;
-  NODE_TEMPLATES[c.name]={
-    days:c.days?parseFloat(c.days):undefined,
-    desc:c.desc||'',
-    acceptance:(c.acceptance||[]).map(a=>({...a})),
-    articles:(c.articles||[]).map(a=>({...a})),
-    photosRequired:c.photosRequired||3
-  };
-  persist();
-  renderProcess();
-  alert('已保存到套用库：'+c.name);
-}
 
 function renderProcess(){
   const p=cur();if(!p){showNoProject('process');return;}hideNoProject();
@@ -8138,48 +8017,19 @@ function renderProcess(){
     </div>`;
   };
   /* 单个流程项渲染：母节点 → 可点击展开的阶段分组（含子节点细节）；独立节点 → 标准节点卡片 */
+  /* 单个流程项渲染：母节点 → 阶段分组标题（不可点详情面板）；子节点/独立节点 → 标准节点卡片 */
   const renderProcessItem=({step,i})=>{
     if(step.isParent){
-      const kids=(step.children||[]);
+      /* 母节点：渲染为深蓝阶段标题（非卡片、无 checkbox、无详情面板） */
+      const kids=steps.filter(s=>s.parentId===step.id);
       const kidTotal=kids.length;
-      const kidDone=kids.filter(c=>isStepChecked(c.id)).length;
+      const kidDone=kids.filter(s=>isStepFullyAccepted(p,s)).length;
       const prog=kidTotal?Math.round(kidDone/kidTotal*100):0;
-      /* 阶段完成：手动标记 step.checked（优先）；否则以子节点全部完成为参考 */
-      const stageDone=!!step.checked;
-      const expanded=_expandedParents.has(step.id);
-      const childHtml=kids.map(c=>{
-        const tpl=NODE_TEMPLATES[c.name];
-        const hasDesc=!!(c.desc&&c.desc.trim());
-        const canApply=!!tpl && !hasDesc;            /* 命中库预设且本地未填 → 可套用 */
-        const canSave=hasDesc && !!tpl;              /* 本地已填且库中有同名 → 可回写更新库 */
-        const canNewSave=hasDesc && !tpl;            /* 本地已填但库无同名 → 可新增到库 */
-        return `<div class="step-child-row" id="childRow-${c.id}">
-          <div class="step-child-main" onclick="toggleChildDone('${c.id}')" title="点击标记/取消完成">
-            <span class="step-child-dot${isStepChecked(c.id)?' done':''}"></span>
-            <span class="step-child-name">${escHtml(c.name)}</span>
-            ${c.days?`<span class="step-child-days">${escHtml(c.days)}天</span>`:''}
-            ${isStepChecked(c.id)?'<span class="step-child-badge done">已完成</span>':'<span class="step-child-badge">待完成</span>'}
-            ${tpl?'<span class="step-child-tpl-tag" title="已接入套用库">📚</span>':''}
-          </div>
-          ${(hasDesc||(tpl&&tpl.desc))?`<div class="step-child-desc">${escHtml(hasDesc?c.desc:(tpl.desc||''))}</div>`:''}
-          <div class="step-child-ops">
-            ${canApply?`<button class="btn-mini" onclick="applyNodeTemplate('${step.id}','${c.id}')">套用库预设</button>`:''}
-            ${canSave?`<button class="btn-mini ghost" onclick="saveNodeTemplate('${step.id}','${c.id}')">更新到库</button>`:''}
-            ${canNewSave?`<button class="btn-mini ghost" onclick="saveNodeTemplate('${step.id}','${c.id}')">存到套用库</button>`:''}
-          </div>
-        </div>`;
-      }).join('')||'<div class="step-child-empty">（该阶段暂未配置子节点细节）</div>';
-      return `<div class="step-parent-block" id="stepParent-${i}" data-index="${i}">
-        <div class="step-parent-header${stageDone?' done':''}" onclick="toggleParentExpand('${step.id}')">
-          <span class="step-parent-caret">${expanded?'▼':'▶'}</span>
-          <span class="step-parent-icon">📂</span>
-          <span class="step-parent-name">${escHtml(step.name)}</span>
-          ${step.days?`<span class="step-parent-days">预计 ${escHtml(step.days)} 工作日</span>`:''}
-          <span class="step-parent-prog">子节点 ${kidDone}/${kidTotal}${kidTotal?(' · '+prog+'%'):''}</span>
-          ${stageDone?'<span class="step-parent-stage-badge done">阶段已完成</span>':'<span class="step-parent-stage-badge">阶段进行中</span>'}
-          <span class="step-parent-mark" onclick="event.stopPropagation();toggleStageDone('${step.id}')">${stageDone?'↺ 撤销完成':'✓ 标记完成'}</span>
-        </div>
-        ${expanded?`<div class="step-parent-children">${childHtml}</div>`:''}
+      return `<div class="step-parent-header" id="stepParent-${i}" data-index="${i}">
+        <span class="step-parent-icon">📂</span>
+        <span class="step-parent-name">${escHtml(step.name)}</span>
+        ${step.days?`<span class="step-parent-days">预计 ${escHtml(step.days)} 工作日</span>`:''}
+        <span class="step-parent-prog">${kidDone}/${kidTotal}${kidTotal?(' · '+prog+'%'):''}</span>
       </div>`;
     }
     return renderOneCard({step,i},false);
@@ -8248,11 +8098,11 @@ function renderProcessNav(){
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
   navList.innerHTML=steps.map((step,i)=>{
-    /* 母节点：渲染为可点击展开的阶段分组标题 */
+    /* 母节点：渲染为不可点击的阶段分组标题 */
     if(step.isParent){
-      const kids=(step.children||[]);
-      const kidDone=kids.filter(c=>isStepChecked(c.id)).length;
-      return `<li class="process-nav-item nav-parent" id="processNavItem-${i}" data-index="${i}" onclick="toggleParentExpand('${step.id}')">
+      const kids=steps.filter(s=>s.parentId===step.id);
+      const kidDone=kids.filter(s=>isStepFullyAccepted(p,s)).length;
+      return `<li class="process-nav-item nav-parent" id="processNavItem-${i}" data-index="${i}">
         <span class="process-nav-parent-icon">📂</span>
         <span class="process-nav-name nav-parent-name">${escHtml(step.name)}</span>
         <span class="nav-parent-count">${kidDone}/${kids.length}</span>
@@ -10545,34 +10395,38 @@ function updateProcProgress(){
   const p=cur();if(!p){return;}
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
-  /* 进度统计计入全部「子节点（执行细节）」——母节点本身不参与执行计数 */
-  let total=0,done=0,curStep=null,curIdx=-1;
-  steps.forEach((g,gi)=>{
-    (g.children||[]).forEach((c,ci)=>{
-      total++;
-      if(isStepChecked(c.id))done++;
-      else if(!curStep){curStep=c;curIdx=total-1;}
-    });
-  });
+  /* 进度统计仅计入可执行节点（排除母节点/阶段标题） */
+  const execSteps=steps.filter(s=>!s.isParent);
+  const total=execSteps.length;let done=0;
+  execSteps.forEach(s=>{if(isStepChecked(s.id))done++});
   /* 旧字段兼容（如有其他地方引用） */
   const elP=$('procProgressNum');if(elP)elP.textContent=done;
   const elT=$('procTotalNum');if(elT)elT.textContent=total;
   const elPB=$('procProgressBar');if(elPB)elPB.style.width=total?(done/total*100)+'%':'0%';
-  const elCS=$('procCurrentStage');if(elCS)elCS.textContent='已完成 '+Math.round(total?done/total*100:0)+'%';
+  const elCS=$('procCurrentStage');if(elCS)elCS.textContent='已完成 '+Math.round(done/total*100)+'%';
   const elSC=$('procStageCount');if(elSC)elSC.textContent=total+' 步骤';
   /* 新顶栏统计 — 当前节点：关联时间线显示当前执行节点+进度 */
   const curNodeEl=$('pdhCurNode');if(curNodeEl){
     const allDone=(done>=total&&total>0);
     if(allDone){
       curNodeEl.innerHTML='<span style="color:#003a8c;font-weight:700">全部完成</span>';
-    } else if(curStep){
-      const ps=curStep.planStartDate||'';
-      const pe=curStep.planEndDate||'';
-      const fmtD=(d)=>{if(!d)return '';const t=new Date(d);return `${t.getMonth()+1}/${t.getDate()}`};
-      const dateInfo=(ps||pe)?`<small style="color:#999;font-weight:400"> · ${fmtD(ps)}-${fmtD(pe)}</small>`:'';
-      curNodeEl.innerHTML=`<span style="font-weight:700;color:#003a8c">${escHtml(curStep.name)}</span><small style="color:#999;margin-left:4px">${curIdx+1}/${total}</small>${dateInfo}`;
     } else {
-      curNodeEl.textContent='准备中';
+      /* 从 processSteps 找到第一个未完成的「可执行」步骤作为"当前执行中"节点（跳过母节点） */
+      let curStep=null;
+      let curIdx=-1;
+      for(let i=0;i<steps.length;i++){
+        if(steps[i].isParent)continue;
+        if(!isStepChecked(steps[i].id)){curStep=steps[i];curIdx=i;break;}
+      }
+      if(curStep){
+        const ps=curStep.planStartDate||'';
+        const pe=curStep.planEndDate||'';
+        const fmtD=(d)=>{if(!d)return '';const t=new Date(d);return `${t.getMonth()+1}/${t.getDate()}`};
+        const dateInfo=(ps||pe)?`<small style="color:#999;font-weight:400"> · ${fmtD(ps)}-${fmtD(pe)}</small>`:'';
+        curNodeEl.innerHTML=`<span style="font-weight:700;color:#003a8c">${escHtml(curStep.name)}</span><small style="color:#999;margin-left:4px">${curIdx+1}/${total}</small>${dateInfo}`;
+      } else {
+        curNodeEl.textContent='准备中';
+      }
     }
   }
   const doneEl=$('pdhNodeDone');if(doneEl)doneEl.textContent=done+'/'+total;
@@ -13475,7 +13329,7 @@ function getCurrentStageIndex(){
 }
 function getCurrentStage(){return STAGES[getCurrentStageIndex()]||null}
 function getStageName(key){const s=STAGES.find(x=>x.id===key);return s?s.name:key||''}
-function engProgress(p){const steps=p.processSteps||[];let total=0,done=0;steps.forEach(g=>(g.children||[]).forEach(c=>{total++;if(p.checked&&p.checked[c.id])done++;}));if(!total)return 0;return Math.round(done/total*100);}
+function engProgress(p){const steps=p.processSteps||[];const exec=steps.filter(s=>!s.isParent);const total=exec.length;if(!total)return 0;const done=p.checked?exec.filter(s=>p.checked[s.id]).length:0;return Math.round(done/total*100);}
 function purchasePending(p){return p.purchases.filter(x=>x.status!=='已到货'&&x.status!=='已下单').length;}
 function pendingCount(p){return p.tasks.filter(t=>!t.done).length+purchasePending(p);}
 function populateStageSelect(id){const sel=$(id);sel.innerHTML='<option value="">无</option>'+STAGES.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');}
