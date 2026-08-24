@@ -2181,7 +2181,9 @@ a{color:#003a8c;text-decoration:none}
     </div>
     <div class="top-actions">
       <div class="search-box">
-        <input type="text" placeholder="搜索" id="globalSearch" autocomplete="off" name="wb_globalsearch_dummy" oninput="handleSearch(this.value)">
+        <!-- 诱饵输入框：吸收浏览器自动填充（隐藏，不可见） -->
+        <input type="email" name="email" autocomplete="email" tabindex="-1" style="position:absolute;left:-9999px;opacity:0;height:0;width:0;border:none;padding:0;margin:0;pointer-events:none">
+        <input type="text" placeholder="搜索" id="globalSearch" autocomplete="off" oninput="handleSearch(this.value)">
         <span class="search-icon">🔍</span>
       </div>
       <button class="btn-primary" id="topPrimaryBtn" onclick="handleTopPrimary()">新增待办</button>
