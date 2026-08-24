@@ -4529,7 +4529,7 @@ function applyPlanTemplate(){initPlanNodesFromTemplate();recalcPlanSchedule()}
 let _tplEditNodes=[]; /* 弹窗内临时编辑的节点数据（仅母节点/阶段） [{id,name,days,sourceId}] */
 function toggleApplyOrSaveTemplate(){
   /* 从当前系统模板（PROCESS_STEPS，仅母节点）复制一份到编辑区 */
-  _tplEditNodes=PROCESS_STEPS.map(s=>({id:s.id,name:s.name,days:String(s.days),sourceId:s.id}));
+  _tplEditNodes=PROCESS_STEPS.filter(s=>s.isParent).map(s=>({id:s.id,name:s.name,days:String(s.days),sourceId:s.id}));
   renderTplEditTable();
   showModal('tplEditModal');
 }
