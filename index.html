@@ -4662,12 +4662,9 @@ function resetSingleNode(i){
 /** 渲染节点表格 */
 function renderPlanTable(){
   const tbody=$('planNodeBody');
-  tbody.innerHTML=wizPlanNodes.map((n,i)=>{
-    /* 所有节点（含阶段/母节点）均正常可编辑：调天数、设日期、排序、删除 */
-    const isStage=!!n.isParent;
-    return `<tr data-idx="${i}"${isStage?' class="plan-parent-row"':''}>
-    <td class="plan-idx"${isStage?' style="font-weight:700;color:#003a8c;background:#e6f4ff;padding-left:14px" colspan="2"':''}>${isStage?'<span style="margin-right:6px">📂</span>'+escHtml(n.name):String(i+1).padStart(2,'0')}</td>
-    ${!isStage?`<td><input class="plan-name-input" list="stepNameList" value="${escHtml(n.name)}" onchange="autoFillPlanNodeFromName(${i},this.value)"></td>`:''}
+  tbody.innerHTML=wizPlanNodes.map((n,i)=>`<tr data-idx="${i}">
+    <td class="plan-idx">${String(i+1).padStart(2,'0')}</td>
+    <td><input class="plan-name-input" list="stepNameList" value="${escHtml(n.name)}" onchange="autoFillPlanNodeFromName(${i},this.value)"></td>
     <td><div class="plan-days-spinner"><button type="button" class="plan-days-btn" onclick="event.stopPropagation();adjustPlanNodeDays(${i},-1)" title="减少1天">−</button><input class="plan-days-input" value="${escHtml(String(n.days))}" onchange="updatePlanNode(${i},'days',this.value)" onclick="openPlanDurationPicker(${i})" readonly title="点击选择结束日期"><button type="button" class="plan-days-btn" onclick="event.stopPropagation();adjustPlanNodeDays(${i},1)" title="增加1天">+</button></div><span class="plan-days-unit">天</span></td>
     <td><select class="plan-status-sel" onchange="updatePlanNode(${i},'status',this.value)">
       <option value="pending" ${n.status==='pending'?'selected':''}>待开始</option>
@@ -4678,10 +4675,9 @@ function renderPlanTable(){
     <td style="text-align:center">
       <span class="plan-op-btn" onclick="moveWizPlanNode(${i},-1)" title="上移"${i===0?' style="opacity:.3;pointer-events:none"':''}>↑</span>
       <span class="plan-op-btn" onclick="moveWizPlanNode(${i},1)" title="下移"${i===wizPlanNodes.length-1?' style="opacity:.3;pointer-events:none"':''}>↓</span>
-      <span class="plan-op-btn danger" onclick="deletePlanNode(${i})" title="${isStage?'删除该阶段（将连带其下子节点细节）':'删除'}">×</span>
+      <span class="plan-op-btn danger" onclick="deletePlanNode(${i})" title="删除">×</span>
     </td>
-  </tr>`;
-  }).join('');
+  </tr>`).join('');
   /* 渲染后同步刷新顶部统计（自然日=首→末节点跨度，工作日=扣除周末节假日） */
   let _nd=0,_wd=0,_firstStart='',_lastEnd='';
   wizPlanNodes.forEach(n=>{
