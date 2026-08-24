@@ -411,6 +411,7 @@ a{color:#003a8c;text-decoration:none}
 .sb-section{margin-top:16px;background:#fafcff;border:1px solid #e6f0ff;border-radius:10px;padding:14px 16px}
 .sb-sec-title{font-size:13px;font-weight:600;color:#003a8c;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .sb-sec-hint{font-size:11px;font-weight:400;color:#999;margin-left:auto}
+.sb-sec-hint-row{font-size:11px;color:#999;margin-bottom:10px;line-height:1.4}
 .sb-sec-sub{font-size:12px;font-weight:600;color:#555;margin:10px 0 6px}
 .sb-edit-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
 .sb-field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#666}
@@ -8370,7 +8371,8 @@ function renderProcess(){
         <div class="step-body-left">
         <!-- ① 可编辑节点信息 -->
         <div class="sb-section ${isSbInfoCollapsed(i)?'collapsed':''}" id="sbInfoSec_${i}">
-          <div class="sb-sec-title sb-sec-clickable" onclick="toggleSbInfoCollapse(${i})">节点信息<span class="sb-sec-hint" style="margin-left:0">可直接修改后点保存</span><span class="chev" style="margin-left:auto">▾</span></div>
+          <div class="sb-sec-title sb-sec-clickable" onclick="toggleSbInfoCollapse(${i})">节点信息<span class="chev" style="margin-left:auto">▾</span></div>
+          <div class="sb-sec-hint-row">可直接修改后点保存</div>
           <div class="sb-sec-body">
           <div class="sb-edit-grid">
             <label class="sb-field sb-field-name">节点名称
@@ -8403,7 +8405,8 @@ function renderProcess(){
           if(!kids.length) return '';
           const secId='sbChild_'+step.id;
           return `<div class="sb-section sb-sec-collapsible collapsed" id="${secId}">
-            <div class="sb-sec-title" onclick="toggleChildList('${secId}')">包含工序<span class="sb-badge" id="${secId}_count">${kids.length}</span><span class="sb-sec-hint">该阶段包含以下子工序，验收以母节点整体验收为准</span><span class="chev" style="margin-left:auto">▾</span></div>
+            <div class="sb-sec-title" onclick="toggleChildList('${secId}')">包含工序<span class="sb-badge" id="${secId}_count">${kids.length}</span><span class="chev" style="margin-left:auto">▾</span></div>
+            <div class="sb-sec-hint-row">该阶段包含以下子工序，验收以母节点整体验收为准</div>
             <div class="sb-child-list">
               ${kids.map((k,ki)=>`<div class="sb-child-item" id="${secId}_row_${k.id}">
                 <span class="sb-child-dot"></span>
