@@ -375,7 +375,7 @@ a{color:#003a8c;text-decoration:none}
 
 /* ── 左栏：编号+名称+状态标签+DCSpace副行（固定 1/4 宽度，左对齐） ── */
 .step-left-col{flex:0 0 25%;max-width:25%;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding-right:8px}
-.step-name-wrap{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;line-height:1.3;max-width:100%}
+.step-name-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.3;max-width:100%;min-width:0}
 .step-name{font-size:14px;font-weight:600;color:#1a1a1a;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
 .step-card.pending .step-name{color:#bfbfbf}
 .step-status-badge{font-size:11px;padding:1px 8px;border-radius:10px;font-weight:500;flex-shrink:0;line-height:1.6}
@@ -7835,7 +7835,7 @@ function renderProcess(){
             <span class="step-num">${di||i+1}</span>
             <span class="step-name">${escHtml(step.name)}</span>
             ${/* 节点状态四态+1特殊态（按优先级从高到低）：已完成 > 待验收 > 逾期 > 待开始 > 进行中 */''}
-            ${fullyAccepted?'<span class="step-status-badge done">已完成</span>':done?'<span class="step-status-badge accepting">节点完成，待验收</span>':overdue?'<span class="step-status-badge overdue">逾期 '+daysOver+'天</span>':(planStart&&planStart>todayISO())?'<span class="step-status-badge wait">待开始</span>':'<span class="step-status-badge active">进行中</span>'}
+            ${fullyAccepted?'<span class="step-status-badge done">已完成</span>':done?'<span class="step-status-badge accepting">待验收</span>':overdue?'<span class="step-status-badge overdue">逾期 '+daysOver+'天</span>':(planStart&&planStart>todayISO())?'<span class="step-status-badge wait">待开始</span>':'<span class="step-status-badge active">进行中</span>'}
           </div>
           <div class="step-mark-complete">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="event.stopPropagation();toggleStepCheck('${step.id}')">
