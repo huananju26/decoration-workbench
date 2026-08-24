@@ -2173,6 +2173,29 @@ a{color:#003a8c;text-decoration:none}
   }
   @page{size:A4;margin:8mm}
 }
+/* ── 甘特图类（施工进度表 / 计划与实际进度表）横向 A4 打印 ── */
+@media print{
+  html.gs-printing-landscape,html.gs-printing-landscape body{margin:0!important;padding:0!important}
+  html.gs-printing-landscape *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  html.gs-printing-landscape body>*:not(.gs-print-target){display:none!important}
+  html.gs-printing-landscape .gs-print-target{
+    position:absolute!important;left:0!important;top:0!important;right:auto!important;bottom:auto!important;
+    width:100%!important;height:auto!important;min-height:0!important;
+    background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;z-index:auto!important
+  }
+  html.gs-printing-landscape .gs-print-target .modal{
+    max-width:none!important;width:100%!important;max-height:none!important;min-height:0!important;
+    height:auto!important;box-shadow:none!important;border-radius:0!important;display:block!important;
+    overflow:visible!important
+  }
+  html.gs-printing-landscape .gs-print-target .modal-header,
+  html.gs-printing-landscape .gs-print-target .form-actions{display:none!important}
+  html.gs-printing-landscape .gs-print-target .modal-body{
+    overflow:visible!important;max-height:none!important;max-width:none!important;height:auto!important;
+    padding:0!important;background:#fff!important
+  }
+  @page{size:A4 landscape;margin:5mm}
+}
 .gs-company{font-size:15px;font-weight:700;color:#003a8c}
 .gs-tagline{font-size:11px;color:#999;margin-top:1px}
 .gs-title-area{text-align:right}
@@ -10173,7 +10196,9 @@ function printSheet(sheetId){
   var modal=el.closest('.modal-overlay');
   if(!modal){ alert('未找到表格所在弹窗'); return; }
   modal.classList.add('gs-print-target');
-  document.documentElement.classList.add('gs-printing-sheet');
+  /* 甘特图类（施工进度表 / 计划与实际进度表）用横向 A4；其余（合同收款计划表）用纵向 A4 */
+  var landscape = el.classList.contains('gs-sheet');
+  document.documentElement.classList.add(landscape ? 'gs-printing-landscape' : 'gs-printing-sheet');
   setTimeout(function(){ window.print(); }, 250);
 }
 window.addEventListener('afterprint',function(){
@@ -10181,6 +10206,7 @@ window.addEventListener('afterprint',function(){
   var t=document.querySelector('.gs-print-target');
   if(t) t.classList.remove('gs-print-target');
   document.documentElement.classList.remove('gs-printing-sheet');
+  document.documentElement.classList.remove('gs-printing-landscape');
 });
 window.addEventListener('afterprint',function(){
   document.documentElement.classList.remove('gs-printing-rectify');
