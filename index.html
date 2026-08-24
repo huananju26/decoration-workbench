@@ -467,6 +467,20 @@ a{color:#003a8c;text-decoration:none}
 .step-group-header .step-group-arrow{font-size:10px;color:#999;transition:transform .2s;margin-left:4px}
 .step-group-header.collapsed .step-group-arrow{transform:rotate(-90deg)}
 .step-group-body{overflow:hidden;transition:max-height .3s ease}
+/* 流程页：母节点（阶段）分组标题 —— 深蓝系，区别于子节点卡片 */
+.step-parent-header{display:flex;align-items:center;gap:10px;padding:12px 18px;margin:14px 0 8px;
+  background:linear-gradient(90deg,#e6f4ff 0%,#f0f7ff 100%);border:1px solid #91caff;border-left:4px solid #1677ff;
+  border-radius:10px;font-weight:700;color:#003a8c;font-size:14.5px;box-shadow:0 1px 3px rgba(22,119,255,.08)}
+.step-parent-header:first-child{margin-top:4px}
+.step-parent-icon{font-size:16px;flex-shrink:0}
+.step-parent-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step-parent-days{font-size:12px;font-weight:500;color:#0050b3;background:#fff;border:1px solid #bae0ff;border-radius:10px;padding:2px 10px;white-space:nowrap}
+.step-parent-prog{font-size:12px;font-weight:600;color:#003a8c;background:#fff;border:1px solid #91caff;border-radius:10px;padding:2px 10px;white-space:nowrap}
+/* 左侧导航：母节点分组标题 */
+.process-nav-item.nav-parent{cursor:default;background:#e6f4ff;border:1px solid #bae0ff;margin:8px 0 2px;font-weight:700;color:#003a8c;padding:7px 10px;border-radius:8px}
+.process-nav-item.nav-parent:hover{background:#e6f4ff}
+.process-nav-parent-icon{font-size:13px;flex-shrink:0}
+.process-nav-name.nav-parent-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
 .step-body-split{display:flex;align-items:flex-start;justify-content:center;cursor:col-resize;user-select:none;-webkit-user-select:none;position:relative;padding-top:24px}
 .step-body-split::before{content:'';width:2px;height:48px;background:#d9e2f3;border-radius:2px;transition:background .15s,height .15s}
 .step-body-split:hover::before,.step-body-split.dragging::before{background:#1677ff;min-height:80px}
@@ -4093,112 +4107,143 @@ function load(){
 const HOUSE_TYPES={new:'新房毛胚',old:'旧房改造',renovated:'精装升级',local:'局部改造',elderly:'适老改造',commercial:'工装项目'};
 const HOUSE_ICONS={new:'🏠',old:'🔨',renovated:'✨',commercial:'🏢'};
 
-const PROCESS_STEPS=[
-  {id:'ps01',name:'设计与开工准备',days:'15',
-    desc:'先完成收房验房，检查墙面开裂、空鼓等问题并及时要求开发商整改；再通过上门量房，沟通设计风格、平面布局与水电点位，最后携带身份证、房产证、施工图到物业办理装修许可证，缴纳装修保证金，并确认墙体拆改限制、门窗封装要求、垃圾清运等事项。',
-    acceptance:[{label:'验收',text:'毛坯房验收'}],
-    articles:[{label:'攻略',text:'量房步骤'},{label:'攻略',text:'自装第一步，物业报备超详细流程'},{label:'攻略',text:'选择装修公司的核心要点'}]},
-  {id:'ps02',name:'墙体拆改',days:'4',
-    desc:'按设计图纸拆除非承重墙体或新建墙体。拆除前确认墙体性质（承重墙严禁拆改），办理拆改审批手续。拆除时做好防尘措施，及时清运建筑垃圾。拆改完成后需对裸露的梁柱进行加固处理。',
-    acceptance:[{label:'验收',text:'拆改尺寸核对'},{label:'验收',text:'结构安全确认'}],
-    articles:[{label:'攻略',text:'承重墙识别方法'},{label:'攻略',text:'拆改审批流程'}]},
-  {id:'ps03',name:'新建墙体',days:'3',
-    desc:'新砌墙体及必要构造柱施工。使用合格水泥砂浆砌筑，按规定设置拉结筋（每500mm高度设2根φ6钢筋）。门洞上方需预制或现浇过梁。新建墙体顶部应斜砌或预留缝隙后填实，防止沉降开裂。',
-    acceptance:[{label:'验收',text:'垂直度偏差≤3mm/m'},{label:'验收',text:'拉结筋设置规范'}],
-    articles:[{label:'攻略',text:'新砌墙体工艺标准'}]},
-  {id:'ps04',name:'门窗封装施工',days:'3',
-    desc:'门洞窗洞封砌及门框/窗框安装预埋。封堵废弃洞口时需分层塞实，做好防水处理。新门窗框安装前检查洞口尺寸，预埋固定件位置准确，框体水平垂直度符合规范。',
-    acceptance:[{label:'验收',text:'洞口密封严密'},{label:'验收',text:'框体安装牢固'}],
-    articles:[{label:'攻略',text:'门窗安装注意事项'}]},
-  {id:'ps05',name:'水电改造',days:'10',
-    desc:'强电弱电布管穿线、水路改造及打压测试。电路布线遵循"横平竖直"原则，强弱电分管分槽，间距≥300mm。水管走顶不走地（便于检修），冷热水管间距150mm，热水管需做保温。完工后进行水管打压测试（0.8MPa，30分钟压降≤0.02MPa）和电路绝缘电阻测试。',
-    acceptance:[{label:'验收',text:'水管打压合格'},{label:'验收',text:'电路通断正常'},{label:'验收',text:'强弱电分离'},{label:'验收',text:'现场拍照留档'}],
-    articles:[{label:'攻略',text:'水电改造全流程详解'},{label:'攻略',text:'水电验收清单'}]},
-  {id:'ps06',name:'管道隔音施工',days:'2',
-    desc:'卫生间下水管隔音棉包裹处理。选用密度≥32kg/m³的橡塑隔音棉或专用静音管道包裹材料，厚度≥20mm。包裹需完整覆盖立管至吊顶以上，接头处用胶带密封。同时可包覆横向排水管以减少水流噪音。',
-    acceptance:[{label:'验收',text:'包裹完整无遗漏'},{label:'验收',text:'固定牢靠不松动'}],
-    articles:[{label:'攻略',text:'下水管隔音方案对比'}]},
-  {id:'ps07',name:'防水施工',days:'3',
-    desc:'厨房卫生间阳台防水涂刷及闭水试验。基层需干燥平整，阴阳角做成圆弧形（R≥50mm）或45°斜角。防水涂料涂刷2-3遍，每遍方向垂直，总厚度≥1.5mm。淋浴区墙面防水高度≥1800mm，非淋浴区≥300mm。闭水试验蓄水深度20-30mm，时间不少于48小时。',
-    acceptance:[{label:'验收',text:'闭水试验48h无渗漏'},{label:'验收',text:'防水层厚度达标'},{label:'验收',text:'墙面高度符合要求'}],
-    articles:[{label:'攻略',text:'防水施工避坑指南'},{label:'攻略',text:'闭水试验正确做法'}]},
-  {id:'ps08',name:'墙地砖铺贴',days:'7',
-    desc:'墙砖地砖铺贴及留缝准备。铺贴前需泡水砖充分浸泡（≥2小时），干铺法找平层用干硬性水泥砂浆。墙砖从下往上铺贴，地砖由里向外延伸。留缝宽度：墙砖1.5-2mm，地砖2-3mm（视砖规格调整）。铺贴24小时后方可踩踏。',
-    acceptance:[{label:'验收',text:'空鼓率≤5%且单块空鼓面积≤1/3'},{label:'验收',text:'平整度偏差≤2mm/2m'},{label:'验收',text:'对缝整齐'}],
-    articles:[{label:'攻略',text:'瓷砖铺贴工艺详解'},{label:'攻略',text:'瓷砖空鼓原因及预防'}]},
-  {id:'ps09',name:'瓷砖美缝',days:'2',
-    desc:'瓷砖缝隙清理及美缝剂施工。待瓷砖铺贴完成7天后（水泥完全固化），清理缝隙内灰尘杂物。双组份美缝剂需混合均匀后施工，用压缝工具压实。施工后24小时内勿沾水，72小时后可正常使用。',
-    acceptance:[{label:'验收',text:'缝隙饱满光滑'},{label:'验收',text:'颜色均匀一致'},{label:'验收',text:'无脱落开裂'}],
-    articles:[{label:'攻略',text:'美缝剂选择指南'},{label:'攻略',text:'DIY美缝施工技巧'}]},
-  {id:'ps10',name:'成品保护',days:'1',
-    desc:'已完工成品保护措施。对入户门、窗户、已铺贴瓷砖、水电底盒等使用专用保护膜/护角条覆盖。地面铺设纤维板或石膏板保护层。电梯口、楼梯等公共区域做好防护，避免搬运材料造成损坏。',
-    acceptance:[{label:'验收',text:'所有成品均已覆盖保护'},{label:'验收',text:'保护材料固定牢靠'}],
-    articles:[{label:'攻略',text:'装修成品保护清单'}]},
-  {id:'ps11',name:'木工吊顶',days:'5',
-    desc:'轻钢/木龙骨吊顶框架搭建及石膏板封面。龙骨间距≤400mm，主副龙骨连接牢固。转角处使用L型整板（"7"字型），杜绝T型拼接以防开裂。石膏板接缝处开V型槽，螺丝钉距边缘≥15mm、间距≤200mm。',
-    acceptance:[{label:'验收',text:'龙骨间距合规'},{label:'验收',text:'转角L型整板'},{label:'验收',text:'表面平整无明显变形'}],
-    articles:[{label:'攻略',text:'吊顶施工全流程'},{label:'攻略',text:'吊顶开裂预防技巧'}]},
-  {id:'ps12',name:'墙面基层处理',days:'5',
-    desc:'墙面找平、挂网、批刮腻子。原墙面铲除至基层（铲除腻子层检查是否有空鼓脱落）。新旧墙体交接处、水电开槽处挂钢丝网或玻纤网防裂。腻子批刮2-3遍，每遍干透后再刮下一遍，打磨后平整度偏差≤3mm/2m。',
-    acceptance:[{label:'验收',text:'墙面平整度≤3mm/2m'},{label:'验收',text:'无起皮脱落'},{label:'验收',text:'阴阳角方正'}],
-    articles:[{label:'攻略',text:'墙面基层处理细节'},{label:'攻略',text:'腻子选择与施工'}]},
-  {id:'ps13',name:'墙面涂饰',days:'3',
-    desc:'乳胶漆底漆+面漆施工。底漆一遍封闭基层，面漆两遍（颜色不同区域先刷深色后刷浅色）。滚涂/喷涂均匀，无流挂、漏刷、色差。两遍面漆间隔≥2小时。施工环境温度5-35℃，湿度＜85%。',
-    acceptance:[{label:'验收',text:'色泽均匀无色差'},{label:'验收',text:'无流挂漏刷'},{label:'验收',text:'手感平滑'}],
-    articles:[{label:'攻略',text:'乳胶漆选购指南'},{label:'攻略', text:'刷漆施工技巧'}]},
-  {id:'ps14',name:'室内门安装',days:'2',
-    desc:'房间门套及门扇安装。门套线条与墙面贴合紧密，缝隙均匀。门扇开启灵活无异响，关闭后与门套间隙3-5mm。门锁、合页安装牢固，五金件功能正常。门套底部做防潮处理（尤其卫生间门）。',
-    acceptance:[{label:'验收',text:'开关顺畅无异响'},{label:'验收',text:'缝隙均匀美观'},{label:'验收',text:'五金件功能完好'}],
-    articles:[{label:'攻略',text:'室内门选购与安装'}]},
-  {id:'ps15',name:'厨房电器安装',days:'1',
-    desc:'油烟机、灶具、洗碗机、烤箱等厨房电器安装定位。提前确认电源插座位置和水路接口。嵌入式电器需配合橱柜同步安装。安装后测试各项功能，检查燃气连接是否安全无泄漏。',
-    acceptance:[{label:'验收',text:'各电器功能正常'},{label:'验收',text:'燃气连接无泄漏'},{label:'验收',text:'电源接地可靠'}],
-    articles:[{label:'攻略',text:'厨房电器安装顺序'}]},
-  {id:'ps16',name:'全屋定制安装',days:'2',
-    desc:'定制衣柜、鞋柜、书柜、橱柜等柜体安装。安装前复核现场尺寸与图纸是否一致。柜体水平垂直，板材无划伤破损。铰链、滑轨、拉手等五金件调试顺滑。与墙面/天花交接处打胶收口。',
-    acceptance:[{label:'验收',text:'柜体稳固无晃动'},{label:'验收',text:'五金件开合顺畅'},{label:'验收',text:'外观无损伤'}],
-    articles:[{label:'攻略',text:'全屋定制安装验收要点'}]},
-  {id:'ps17',name:'踢脚线安装',days:'2',
-    desc:'踢脚线安装及阴角阳角处理。材质可选实木/PVC/瓷砖/金属踢脚线。安装前墙面需完全干燥平整。用钉枪或胶粘固定，接口处45°拼角或直角对接。与墙面缝隙用同色密封胶填充。',
-    acceptance:[{label:'验收',text:'安装牢固无松动'},{label:'验收',text:'拼角严密'},{label:'验收',text:'与墙面贴合紧密'}],
-    articles:[{label:'攻略',text:'踢脚线材质选择与安装'}]},
-  {id:'ps18',name:'灯具及开关安装',days:'2',
-    desc:'全屋灯具安装调试及开关插座面板安装。灯具安装牢固，大型吊灯需在龙骨层加固。筒灯/射灯开孔尺寸精确，嵌入平整。开关面板端正，方向统一（向上为开）。安装后逐个测试照明效果。',
-    acceptance:[{label:'验收',text:'灯具安装牢固'},{label:'验收',text:'开关方向统一'},{label:'验收',text:'全部照明正常'}],
-    articles:[{label:'攻略',text:'灯具安装高度参考'},{label:'攻略',text:'开关插座布置原则'}]},
-  {id:'ps19',name:'卫浴洁具安装',days:'2',
-    desc:'马桶、花洒、浴室柜、镜柜、龙头等卫浴产品安装。马桶法兰圈密封到位，试水无渗漏。花洒混水阀预埋高度准确（1100-1200mm）。浴室柜水平安装，下水通畅。镜柜与墙面贴合紧密。',
-    acceptance:[{label:'验收',text:'马桶无渗漏异味'},{label:'验收',text:'花洒出水角度合适'},{label:'验收',text:'下水通畅无堵塞'}],
-    articles:[{label:'攻略',text:'卫浴安装常见问题'}]},
-  {id:'ps20',name:'开荒保洁',days:'2',
-    desc:'装修后首次全面深度清洁。清除所有施工残留（水泥点、油漆渍、胶痕、灰尘）。玻璃清洁无水痕，瓷砖缝隙无余泥，厨卫无油污。建议请专业开荒保洁团队，自备工具难以达到入住标准。',
-    acceptance:[{label:'验收',text:'目测无明显污渍'},{label:'验收',text:'玻璃透亮无水痕'},{label:'验收',text:'厨卫洁净无异味'}],
-    articles:[{label:'攻略',text:'开荒保洁注意事项'}]},
-  {id:'ps21',name:'窗帘安装',days:'1',
-    desc:'窗帘杆/轨道安装及窗帘悬挂。窗帘杆安装高度一般距天花15cm（或装在吊顶内），两端超出窗口15-20cm。轨道需加固安装（尤其是布帘较重时）。窗帘悬挂后垂感自然，遮光帘需测试遮光效果。',
-    acceptance:[{label:'验收',text:'轨道/杆安装牢固'},{label:'验收',text:'开合顺畅'},{label:'验收',text:'垂感自然美观'}],
-    articles:[{label:'攻略',text:'窗帘测量与安装指南'}]},
-  {id:'ps22',name:'家具软装进场',days:'3',
-    desc:'沙发、床、餐桌椅、地毯、装饰画、绿植等家具软装摆放入场。大件家具提前测量电梯/楼道尺寸确保能搬入。摆放位置按设计方案就位，注意保护地板/瓷砖不受刮伤。软装搭配整体协调，营造温馨居住氛围。',
-    acceptance:[{label:'验收',text:'家具无运输损伤'},{label:'验收',text:'摆放位置合理'},{label:'验收',text:'软装风格协调'}],
-    articles:[{label:'攻略',text:'软装搭配基本原则'},{label:'攻略',text:'家具进场保护须知'}]}
-];
+/* ════════════════════════════════════════════════════════════════
+   施工节点模板（母节点 + 子节点 两级结构）
+   - PARENT_GROUPS：按房屋类型的母节点（阶段）定义；每个母节点含 children 子节点
+   - 毛胚（new）为基准模板，含全部 18 个阶段 / 165 子节点（取自用户 Excel）
+   - 其余类型在 Step B 中按 include 清单选配
+   - buildFlatSteps() 将两级结构「展平」为带 parentId 的扁平数组，
+     既保留母/子层级语义，又兼容现有基于下标/step.id 的全部渲染逻辑（零破坏）
+   ════════════════════════════════════════════════════════════════ */
+const PARENT_GROUPS={
+  new:[
+    {id:'mg_prep',name:'前期准备',days:'14',children:[
+      {id:'sg_prep_1',name:'现场测量'},{id:'sg_prep_2',name:'设计效果'},{id:'sg_prep_3',name:'签订合同'},
+      {id:'sg_prep_4',name:'装修手续'},{id:'sg_prep_5',name:'围挡搭建'},{id:'sg_prep_6',name:'成品保护'},{id:'sg_prep_7',name:'封闭阳台'}
+    ]},
+    {id:'mg_demo',name:'拆除施工',days:'7',children:[
+      {id:'sg_demo_1',name:'拆除交底'},{id:'sg_demo_2',name:'拆除铲灰'},{id:'sg_demo_3',name:'垃圾清运'}
+    ]},
+    {id:'mg_wall',name:'新建墙体',days:'14',children:[
+      {id:'sg_wall_1',name:'材料配送'},{id:'sg_wall_2',name:'墙体放样'},{id:'sg_wall_3',name:'制作地梁'},
+      {id:'sg_wall_4',name:'砌筑墙体'},{id:'sg_wall_5',name:'砌墙粉刷'},{id:'sg_wall_6',name:'墙体养护'},{id:'sg_wall_7',name:'归方找平'}
+    ]},
+    {id:'mg_water',name:'水电施工',days:'14',children:[
+      {id:'sg_water_1',name:'水电入户'},{id:'sg_water_2',name:'水电放样'},{id:'sg_water_3',name:'墙地开槽'},
+      {id:'sg_water_4',name:'材料配送'},{id:'sg_water_5',name:'水电施工'},{id:'sg_water_6',name:'预埋配件'},
+      {id:'sg_water_7',name:'烟道止逆阀'},{id:'sg_water_8',name:'宽带入户'},{id:'sg_water_9',name:'试压及VR'},{id:'sg_water_10',name:'后期水电安装'}
+    ]},
+    {id:'mg_equip_loc',name:'设备定位',days:'5',children:[
+      {id:'sg_equip_1',name:'燃气改管'},{id:'sg_equip_2',name:'燃热定位'},{id:'sg_equip_3',name:'家电定位'},
+      {id:'sg_equip_4',name:'空调定位'},{id:'sg_equip_5',name:'新风定位'},{id:'sg_equip_6',name:'地暖定位'}
+    ]},
+    {id:'mg_equip_inst',name:'设备安装',days:'14',children:[
+      {id:'sg_inst_1',name:'智能安装'},{id:'sg_inst_2',name:'空调安装'},{id:'sg_inst_3',name:'新风安装'},
+      {id:'sg_inst_4',name:'消防改造'},{id:'sg_inst_5',name:'其他设备'}
+    ]},
+    {id:'mg_window',name:'门窗封装',days:'30',children:[
+      {id:'sg_win_1',name:'窗户测量'},{id:'sg_win_2',name:'门窗生产'},{id:'sg_win_3',name:'窗户安装'},{id:'sg_win_4',name:'纱窗安装'}
+    ]},
+    {id:'mg_wood',name:'木作施工',days:'14',children:[
+      {id:'sg_wood_1',name:'材料配送'},{id:'sg_wood_2',name:'木作施工'}
+    ]},
+    {id:'mg_masonry',name:'泥瓦施工',days:'21',children:[
+      {id:'sg_mas_1',name:'地面找平'},{id:'sg_mas_2',name:'防水施工'},{id:'sg_mas_3',name:'闭水试验'},
+      {id:'sg_mas_4',name:'瓷砖测量'},{id:'sg_mas_5',name:'瓷砖加工'},{id:'sg_mas_6',name:'瓷砖送货'},
+      {id:'sg_mas_7',name:'辅材配送'},{id:'sg_mas_8',name:'瓷砖铺贴'},{id:'sg_mas_9',name:'石材测量'},
+      {id:'sg_mas_10',name:'石材铺贴'},{id:'sg_mas_11',name:'购买地漏'},{id:'sg_mas_12',name:'美缝施工'},{id:'sg_mas_13',name:'自流平'}
+    ]},
+    {id:'mg_paint_pre',name:'前期油漆',days:'14',children:[
+      {id:'sg_pp_1',name:'材料进场'},{id:'sg_pp_2',name:'基础扒底'},{id:'sg_pp_3',name:'修补扒底'},{id:'sg_pp_4',name:'腻子打磨'}
+    ]},
+    {id:'mg_custom',name:'整木定制',days:'45',children:[
+      {id:'sg_cus_1',name:'整木测量'},{id:'sg_cus_2',name:'整木方案'},{id:'sg_cus_3',name:'整木生产'},
+      {id:'sg_cus_4',name:'整木送货'},{id:'sg_cus_5',name:'整木安装'}
+    ]},
+    {id:'mg_paint_post',name:'后期油漆',days:'14',children:[
+      {id:'sg_po_1',name:'乳胶漆'},{id:'sg_po_2',name:'艺术漆'},{id:'sg_po_3',name:'氟碳漆'},
+      {id:'sg_po_4',name:'环氧漆'},{id:'sg_po_5',name:'后期油漆修补'}
+    ]},
+    {id:'mg_main_inst',name:'主材安装',days:'14',children:[
+      {id:'sg_mi_1',name:'入户门测量安装'},{id:'sg_mi_2',name:'防火门测量安装'},{id:'sg_mi_3',name:'玻璃不锈钢测量安装'},
+      {id:'sg_mi_4',name:'招牌LOGO测量安装'},{id:'sg_mi_5',name:'集成吊顶安装'},{id:'sg_mi_6',name:'木地板测量安装'},
+      {id:'sg_mi_7',name:'踢脚线测量安装'},{id:'sg_mi_8',name:'淋浴房测量安装'},{id:'sg_mi_9',name:'洁具卫浴安装'},
+      {id:'sg_mi_10',name:'厨房设备安装'},{id:'sg_mi_11',name:'窗帘测量安装'},{id:'sg_mi_12',name:'软硬包测量安装'},
+      {id:'sg_mi_13',name:'开关插座灯具'},{id:'sg_mi_14',name:'申请宽带开通'}
+    ]},
+    {id:'mg_clean',name:'卫生保洁',days:'3',children:[
+      {id:'sg_cl_1',name:'施工保洁'},{id:'sg_cl_2',name:'开荒保洁'},{id:'sg_cl_3',name:'围挡拆除'}
+    ]},
+    {id:'mg_soft',name:'软装家具',days:'10',children:[
+      {id:'sg_sf_1',name:'窗帘安装'},{id:'sg_sf_2',name:'家具进场'},{id:'sg_sf_3',name:'家电进场'},
+      {id:'sg_sf_4',name:'床品进场'},{id:'sg_sf_5',name:'装饰进场'},{id:'sg_sf_6',name:'软装搭配'}
+    ]},
+    {id:'mg_accept',name:'竣工验收',days:'2',children:[
+      {id:'sg_ac_1',name:'隐蔽验收'},{id:'sg_ac_2',name:'竣工验收'}
+    ]},
+    {id:'mg_rectify',name:'问题整改',days:'5',children:[
+      {id:'sg_rc_1',name:'整改内容'}
+    ]},
+    {id:'mg_warranty',name:'完工维保',days:'',children:[
+      {id:'sg_wa_1',name:'维保日期'}
+    ]}
+  ]
+};
 
-/* Legacy alias for backward compat */
+/* 节点套用库（Step C 填充）：同名节点可在此预设 desc/acceptance/articles
+   目前毛胚模板子节点仅含名称，后续可在工作台内编辑后自动回写本库复用。
+   NODE_TEMPLATES key = 子节点名；值为 {days,desc,acceptance[],articles[],photosRequired} */
+const NODE_TEMPLATES={};
+
+/* 将某个房屋类型的母/子节点模板展平为带 parentId 的节点数组
+   parent 节点：isParent=true，承载阶段工期；child 节点：parentId 指向母节点。
+   所有节点均为独立可索引卡片（保持旧逻辑兼容）。 */
+function buildFlatSteps(houseType){
+  const groups=PARENT_GROUPS[houseType]||PARENT_GROUPS.new;
+  const out=[];
+  groups.forEach(g=>{
+    out.push({
+      id:g.id, name:g.name, days:String(g.days||''), desc:'',
+      acceptance:[], articles:[], isParent:true, parentId:null
+    });
+    (g.children||[]).forEach(c=>{
+      const tpl=NODE_TEMPLATES[c.name]||{};
+      out.push({
+        id:c.id, name:c.name, days:String(tpl.days||'1'),
+        desc:tpl.desc||'', acceptance:(tpl.acceptance||[]).map(a=>({...a})),
+        articles:(tpl.articles||[]).map(a=>({...a})),
+        photosRequired:tpl.photosRequired||3,
+        isParent:false, parentId:g.id
+      });
+    });
+  });
+  return out;
+}
+
+/* Legacy alias for backward compat（旧向导/模板编辑可能引用 PROCESS_STEPS） */
+const PROCESS_STEPS=buildFlatSteps('new');
 const STAGES=PROCESS_STEPS;
 
 /* 基础全流程的深拷贝：新建项目时作为该项目初始流程（可按项目删减/新增自定义节点） */
-function baseFlowClone(){
-  return PROCESS_STEPS.map(s=>({
+function baseFlowClone(houseType){
+  return buildFlatSteps(houseType||'new').map(s=>({
     id:s.id, name:s.name, days:s.days, desc:s.desc,
-    acceptance:(s.acceptance||[]).map(a=>({label:a.label,text:a.text})),
-    articles:(s.articles||[]).map(a=>({label:a.label,text:a.text}))
+    acceptance:(s.acceptance||[]).map(a=>({...a})),
+    articles:(s.articles||[]).map(a=>({...a})),
+    isParent:!!s.isParent, parentId:s.parentId||null,
+    photosRequired:s.photosRequired||3
   }));
 }
-/* 旧项目兼容：确保存在 processSteps 字段 */
+/* 旧项目兼容：确保存在 processSteps 字段，并补齐新字段（parentId/isParent/photosRequired） */
 function ensureProjectSteps(p){
   if(!p)return;
-  if(!p.processSteps||!Array.isArray(p.processSteps)){p.processSteps=baseFlowClone();}
+  if(!p.processSteps||!Array.isArray(p.processSteps)){p.processSteps=baseFlowClone(p.houseType);return;}
+  /* 旧数据补齐：无 parentId 的节点视为独立节点（parentId=null, isParent=false） */
+  p.processSteps.forEach(s=>{
+    if(s.parentId===undefined)s.parentId=null;
+    if(s.isParent===undefined)s.isParent=false;
+    if(s.photosRequired===undefined)s.photosRequired=3;
+  });
 }
 
 const PURCHASE_CATS=[
@@ -4323,13 +4368,15 @@ function closeProjectWizard(){
 
 /* ── Step2: 施工计划核心逻辑 ── */
 
-/** 从 PROCESS_STEPS 加载标准22节点到 wizPlanNodes */
+/** 从 PROCESS_STEPS（毛胚展平模板）加载标准节点到 wizPlanNodes，保留 parentId/isParent */
 function initPlanNodesFromTemplate(){
   wizPlanNodes=PROCESS_STEPS.map(s=>({
     id:s.id,name:s.name,days:s.days,
     status:'pending',planStart:'',planEnd:'',manual:false,
     desc:s.desc,acceptance:(s.acceptance||[]).map(a=>({...a})),
-    articles:(s.articles||[]).map(a=>({...a}))
+    articles:(s.articles||[]).map(a=>({...a})),
+    isParent:!!s.isParent, parentId:(s.parentId!=null?s.parentId:null),
+    photosRequired:(s.photosRequired!=null?s.photosRequired:3)
   }));
   renderPlanTable();
 }
@@ -4338,10 +4385,11 @@ function initPlanNodesFromTemplate(){
 function applyPlanTemplate(){initPlanNodesFromTemplate();recalcPlanSchedule()}
 
 /** 修改模板：打开模板编辑弹窗 */
-let _tplEditNodes=[]; /* 弹窗内临时编辑的节点数据 [{name,days,sourceId}] */
+let _tplEditNodes=[]; /* 弹窗内临时编辑的节点数据 [{name,days,sourceId,isParent,parentId}] */
 function toggleApplyOrSaveTemplate(){
   /* 从当前系统模板（PROCESS_STEPS）复制一份到编辑区 */
-  _tplEditNodes=PROCESS_STEPS.map(s=>({id:s.id,name:s.name,days:String(s.days),sourceId:s.id}));
+  _tplEditNodes=PROCESS_STEPS.map(s=>({id:s.id,name:s.name,days:String(s.days),sourceId:s.id,
+    isParent:!!s.isParent,parentId:(s.parentId!=null?s.parentId:null)}));
   renderTplEditTable();
   showModal('tplEditModal');
 }
@@ -4372,7 +4420,9 @@ function confirmTplEdit(){
   wizPlanNodes=_tplEditNodes.map(n=>({
     id:n.id,name:n.name,days:n.days,
     status:'pending',planStart:'',planEnd:'',manual:false,
-    desc:'',acceptance:[],articles:[]
+    desc:'',acceptance:[],articles:[],
+    isParent:!!n.isParent,parentId:(n.parentId!=null?n.parentId:null),
+    photosRequired:3
   }));
   recalcPlanSchedule();
   closeModal('tplEditModal');
@@ -4464,6 +4514,8 @@ function recalcPlanSchedule(){
     cur=anchorEnd?new Date(shiftDate(anchorEnd,1)+'T00:00:00'):new Date(startStr+'T00:00:00');
   }
   wizPlanNodes.forEach((n,idx)=>{
+    /* 母节点（阶段分组）不参与顺序排期，仅子节点/独立节点排入时间线 */
+    if(n.isParent) return;
     /* 手动节点及其上方（分界之上）原样保留，不做自动顺排，从而保留手动设定的空档期/交叉作业 */
     if(idx<=lastManualIdx) return;
     if(n.manual===true) return;
@@ -4479,8 +4531,9 @@ function recalcPlanSchedule(){
   });
   /* 统计：自然日 = 项目总跨度（首节点开始→末节点完成，纯日历差，不受周末节假日影响）；
      工作日 = 各节点跨度含首尾、扣除周末节假日的合计（仅此处受周末节假日影响） */
-  const _firstStart=wizPlanNodes[0].planStart;
-  const _lastEnd=wizPlanNodes[wizPlanNodes.length-1].planEnd;
+  const _schedNodes=wizPlanNodes.filter(n=>!n.isParent&&n.planStart&&n.planEnd);
+  const _firstStart=_schedNodes.length?_schedNodes[0].planStart:'';
+  const _lastEnd=_schedNodes.length?_schedNodes[_schedNodes.length-1].planEnd:'';
   let nd=0,wd=0;
   if(_firstStart&&_lastEnd) nd=Math.round((new Date(_lastEnd)-new Date(_firstStart))/86400000)+1;
   wizPlanNodes.forEach(n=>{ if(n.planStart&&n.planEnd) wd+=countWorkdays(n.planStart,n.planEnd); });
@@ -4519,7 +4572,19 @@ function resetSingleNode(i){
 /** 渲染节点表格 */
 function renderPlanTable(){
   const tbody=$('planNodeBody');
-  tbody.innerHTML=wizPlanNodes.map((n,i)=>`<tr data-idx="${i}">
+  tbody.innerHTML=wizPlanNodes.map((n,i)=>{
+    /* 母节点：渲染为阶段分组标题行（不可删/不可排状态，仅显示阶段工期） */
+    if(n.isParent){
+      return `<tr class="plan-parent-row" data-idx="${i}">
+        <td class="plan-idx" colspan="2" style="font-weight:700;color:#003a8c;background:#e6f4ff;padding-left:14px">
+          <span style="margin-right:6px">📂</span>${escHtml(n.name)}
+        </td>
+        <td style="background:#e6f4ff;color:#0050b3;font-weight:600">${n.days?('预计 '+escHtml(String(n.days))+' 天'):'—'}</td>
+        <td colspan="2" style="background:#e6f4ff;color:#999;font-size:11px">阶段分组（含下方子节点）</td>
+        <td style="background:#e6f4ff;text-align:center;color:#bbb" title="阶段分组不可单独删除">🔒</td>
+      </tr>`;
+    }
+    return `<tr data-idx="${i}">
     <td class="plan-idx">${String(i+1).padStart(2,'0')}</td>
     <td><input class="plan-name-input" list="stepNameList" value="${escHtml(n.name)}" onchange="autoFillPlanNodeFromName(${i},this.value)"></td>
     <td><div class="plan-days-spinner"><button type="button" class="plan-days-btn" onclick="event.stopPropagation();adjustPlanNodeDays(${i},-1)" title="减少1天">−</button><input class="plan-days-input" value="${escHtml(String(n.days))}" onchange="updatePlanNode(${i},'days',this.value)" onclick="openPlanDurationPicker(${i})" readonly title="点击选择结束日期"><button type="button" class="plan-days-btn" onclick="event.stopPropagation();adjustPlanNodeDays(${i},1)" title="增加1天">+</button></div><span class="plan-days-unit">天</span></td>
@@ -4534,7 +4599,8 @@ function renderPlanTable(){
       <span class="plan-op-btn" onclick="moveWizPlanNode(${i},1)" title="下移"${i===wizPlanNodes.length-1?' style="opacity:.3;pointer-events:none"':''}>↓</span>
       <span class="plan-op-btn danger" onclick="deletePlanNode(${i})" title="删除">×</span>
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
   /* 渲染后同步刷新顶部统计（自然日=首→末节点跨度，工作日=扣除周末节假日） */
   let _nd=0,_wd=0,_firstStart='',_lastEnd='';
   wizPlanNodes.forEach(n=>{
@@ -4906,6 +4972,13 @@ function moveWizPlanNode(i,dir){
 /** 删除节点 */
 function deletePlanNode(i){
   if(wizPlanNodes.length<=1){alert('至少保留一个节点');return}
+  if(wizPlanNodes[i].isParent){
+    const hasKids=wizPlanNodes.some(n=>n.parentId===wizPlanNodes[i].id);
+    if(hasKids&&!confirm('删除阶段「'+wizPlanNodes[i].name+'」将同时删除其下全部子节点，确认？'))return;
+    /* 删除母节点及其所有子节点 */
+    wizPlanNodes=wizPlanNodes.filter(n=>n!==wizPlanNodes[i] && n.parentId!==wizPlanNodes[i].id);
+    recalcPlanSchedule();return;
+  }
   if(!confirm('确认删除节点「'+wizPlanNodes[i].name+'」？'))return;
   wizPlanNodes.splice(i,1);
   recalcPlanSchedule();
@@ -4938,7 +5011,9 @@ function openProjectModal(id){
         name:s.name,days:s.days||'1',status:s.status||'pending',
         planStart:s.planStartDate||'',planEnd:s.planEndDate||'',manual:!!(s.planStartDate&&s.planEndDate),
         desc:s.desc||'',
-        acceptance:(s.acceptance||[]).map(a=>({...a})),articles:(s.articles||[]).map(a=>({...a}))
+        acceptance:(s.acceptance||[]).map(a=>({...a})),articles:(s.articles||[]).map(a=>({...a})),
+        isParent:!!s.isParent,parentId:(s.parentId!=null?s.parentId:null),
+        photosRequired:(s.photosRequired!=null?s.photosRequired:3)
       }));
       if(wizPlanNodes.length===0)initPlanNodesFromTemplate();
       $('projectModalTitle').textContent='编辑项目';
@@ -4996,6 +5071,8 @@ function buildProcessStepsFromWizard(){
       desc:n.desc||(src?src.desc:''),
       acceptance:(n.acceptance&&n.acceptance.length?n.acceptance:(src?src.acceptance:[])).map(a=>({...a})),
       articles:(n.articles&&n.articles.length?n.articles:(src?src.articles:[])).map(a=>({...a})),
+      isParent:!!n.isParent, parentId:(n.parentId!=null?n.parentId:null),
+      photosRequired:(n.photosRequired!=null?n.photosRequired:3),
       planStartDate:n.planStartDate||n.planStart||'',
       planEndDate:n.planEndDate||n.planEnd||''
     };
@@ -7836,10 +7913,27 @@ function renderProcess(){
       </div>
     </div>`;
   };
+  /* 单个流程项渲染：母节点 → 阶段分组标题；子节点/独立节点 → 标准节点卡片 */
+  const renderProcessItem=({step,i})=>{
+    if(step.isParent){
+      /* 统计该母节点下子节点完成情况 */
+      const kids=steps.filter(s=>s.parentId===step.id);
+      const kidTotal=kids.length;
+      const kidDone=kids.filter(s=>isStepFullyAccepted(p,s)).length;
+      const prog=kidTotal?Math.round(kidDone/kidTotal*100):0;
+      return `<div class="step-parent-header" id="stepParent-${i}" data-index="${i}">
+        <span class="step-parent-icon">📂</span>
+        <span class="step-parent-name">${escHtml(step.name)}</span>
+        ${step.days?`<span class="step-parent-days">预计 ${escHtml(step.days)} 工作日</span>`:''}
+        <span class="step-parent-prog">${kidDone}/${kidTotal}${kidTotal?(' · '+prog+'%'):''}</span>
+      </div>`;
+    }
+    return renderOneCard({step,i},false);
+  };
   /* 分组拼接：已完成组(折叠) + 未完成组(展开) */
   let html='';
   if(doneSteps.length){
-    const doneCards=doneSteps.map(s=>renderOneCard(s,false)).join('');
+    const doneCards=doneSteps.map(s=>renderProcessItem(s)).join('');
     html+=`<div class="step-group" data-group="done">
       <div class="step-group-header collapsed" onclick="toggleStepGroup(this)">
         <span class="step-group-icon">✅</span>
@@ -7851,7 +7945,7 @@ function renderProcess(){
     </div>`;
   }
   if(undoneSteps.length){
-    const undoneCards=undoneSteps.map(s=>renderOneCard(s,false)).join('');
+    const undoneCards=undoneSteps.map(s=>renderProcessItem(s)).join('');
     html+=`<div class="step-group" data-group="undone">
       <div class="step-group-header" onclick="toggleStepGroup(this)">
         <span class="step-group-icon">🔄</span>
@@ -7900,6 +7994,13 @@ function renderProcessNav(){
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
   navList.innerHTML=steps.map((step,i)=>{
+    /* 母节点：渲染为不可点击的阶段分组标题 */
+    if(step.isParent){
+      return `<li class="process-nav-item nav-parent" id="processNavItem-${i}" data-index="${i}">
+        <span class="process-nav-parent-icon">📂</span>
+        <span class="process-nav-name nav-parent-name">${escHtml(step.name)}</span>
+      </li>`;
+    }
     const done=isStepFullyAccepted(p,step);
     const numStr=String(i+1).padStart(2,'0');
     return `<li class="process-nav-item${done?' disabled':''}" id="processNavItem-${i}" data-index="${i}"${done?'':' onclick="scrollToStep('+i+')"'}>
@@ -10187,8 +10288,10 @@ function updateProcProgress(){
   const p=cur();if(!p){return;}
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
-  const total=steps.length;let done=0;
-  steps.forEach(s=>{if(isStepChecked(s.id))done++});
+  /* 进度统计仅计入可执行节点（排除母节点/阶段标题） */
+  const execSteps=steps.filter(s=>!s.isParent);
+  const total=execSteps.length;let done=0;
+  execSteps.forEach(s=>{if(isStepChecked(s.id))done++});
   /* 旧字段兼容（如有其他地方引用） */
   const elP=$('procProgressNum');if(elP)elP.textContent=done;
   const elT=$('procTotalNum');if(elT)elT.textContent=total;
@@ -10201,10 +10304,11 @@ function updateProcProgress(){
     if(allDone){
       curNodeEl.innerHTML='<span style="color:#003a8c;font-weight:700">全部完成</span>';
     } else {
-      /* 从 processSteps 找到第一个未完成的步骤作为"当前执行中"节点 */
+      /* 从 processSteps 找到第一个未完成的「可执行」步骤作为"当前执行中"节点（跳过母节点） */
       let curStep=null;
       let curIdx=-1;
       for(let i=0;i<steps.length;i++){
+        if(steps[i].isParent)continue;
         if(!isStepChecked(steps[i].id)){curStep=steps[i];curIdx=i;break;}
       }
       if(curStep){
