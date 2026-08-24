@@ -2730,9 +2730,7 @@ a{color:#003a8c;text-decoration:none}
         <!-- 模板选择 -->
         <div class="plan-template-row">
           <div class="plan-template-label">选择施工计划模板<small>引用后复制到本项目，仍可逐项调整，不含嵌套企业预设</small></div>
-          <select class="plan-template-select" id="planTemplateSelect" onchange="onPlanTemplateChange()">
-            <option value="standard">系统标准施工流程 · 22 个节点</option>
-          </select>
+          <select class="plan-template-select" id="planTemplateSelect" onchange="onPlanTemplateChange()"></select>
           <button class="plan-tpl-btn primary" id="applyTplBtn" onclick="toggleApplyOrSaveTemplate()">修改模板</button>
           <button class="plan-tpl-btn" onclick="resetPlanToDefault()">恢复系统标准</button>
           <span class="plan-tpl-hint" id="planTplHint">当前使用系统标准施工流程</span>
@@ -4305,8 +4303,46 @@ function buildFlatSteps(houseType){
   return out;
 }
 
-const PROCESS_STEPS=buildFlatSteps('new');
-const STAGES=PROCESS_STEPS;
+let PROCESS_STEPS=buildFlatSteps('new');
+let STAGES=PROCESS_STEPS;
+
+/* 按房屋类型重建 PROCESS_STEPS（切换模板/房屋类型时调用） */
+function rebuildProcessSteps(houseType){
+  PROCESS_STEPS=buildFlatSteps(houseType||'new');
+  STAGES=PROCESS_STEPS;
+}
+
+/* 渲染系统施工计划模板下拉框（planTemplateSelect）：按 PARENT_GROUPS 列出每种房屋类型 */
+function renderSystemPlanTemplateOptions(){
+  const sel=$('planTemplateSelect');if(!sel)return;
+  const opts=Object.keys(PARENT_GROUPS).map(key=>{
+    const cfg=PARENT_GROUPS[key];
+    const count=Array.isArray(cfg.include)?cfg.include.length:BASE_PARENT_GROUPS.length;
+    return `<option value="${key}">${HOUSE_TYPES[key]}标准流程 · ${count} 个阶段</option>`;
+  }).join('');
+  sel.innerHTML=opts;
+  /* 选中当前房屋类型 */
+  if(selectedHouseType) sel.value=selectedHouseType;
+}
+
+/* 系统模板下拉框切换：按选中类型重建节点并重新加载计划 */
+function onPlanTemplateChange(){
+  const sel=$('planTemplateSelect');if(!sel||!sel.value)return;
+  const ht=sel.value;
+  if(ht===selectedHouseType)return;
+  if(wizPlanNodes.length>0){
+    if(!confirm('切换施工模板将重新载入「'+HOUSE_TYPES[ht]+'」的节点配置，当前已调整的计划内容会丢失，确认切换？')){
+      sel.value=selectedHouseType;return;
+    }
+  }
+  selectedHouseType=ht;
+  document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type===ht));
+  rebuildProcessSteps(ht);
+  wizPlanNodes=[];
+  initPlanNodesFromTemplate();
+  recalcPlanSchedule();
+  $('planTplHint').textContent='当前使用「'+HOUSE_TYPES[ht]+'」标准流程';
+}
 
 /* 基础全流程的深拷贝：新建项目时作为该项目初始流程 */
 function baseFlowClone(houseType){
@@ -4410,6 +4446,8 @@ function selectHouseType(t){
   }
   selectedHouseType=t;
   document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type===t));
+  /* 同步系统模板下拉框选中状态 */
+  const tplSel=$('planTemplateSelect');if(tplSel)tplSel.value=t;
   /* 重置计划为当前类型模板（下次进入 Step2 时自动按新类型载入） */
   wizPlanNodes=[];
 }
@@ -4470,6 +4508,8 @@ function closeProjectWizard(){
 /** 从 PROCESS_STEPS（毛胚模板，仅母节点）加载标准阶段到 wizPlanNodes。
     wizPlanNodes 只含 18 个母节点（阶段），子节点不进计划排期。 */
 function initPlanNodesFromTemplate(){
+  /* 确保 PROCESS_STEPS 与当前选中房屋类型一致 */
+  if(selectedHouseType && selectedHouseType!=='new') rebuildProcessSteps(selectedHouseType);
   /* 计划表只排母节点（阶段），不排子节点 */
   wizPlanNodes=PROCESS_STEPS.filter(s=>s.isParent).map(s=>({
     id:s.id,name:s.name,days:s.days,
@@ -4528,13 +4568,12 @@ function confirmTplEdit(){
   $('planTplHint').textContent='已应用修改后的模板（'+wizPlanNodes.length+' 个阶段）';
 }
 
-/** 恢复系统标准 = 重新从系统模板加载 */
+/** 恢复系统标准 = 重新从当前房屋类型的系统模板加载 */
 function resetPlanToDefault(){
+  rebuildProcessSteps(selectedHouseType);
   initPlanNodesFromTemplate();recalcPlanSchedule();
-  $('planTplHint').textContent='当前使用系统标准施工流程';
+  $('planTplHint').textContent='当前使用「'+HOUSE_TYPES[selectedHouseType||'new']+'」标准流程';
 }
-
-function onPlanTemplateChange(){/* 预留：未来可扩展多模板 */}
 
 /* ── 我的施工模板：本地另存/套用/删除 ── */
 const PLAN_TPL_KEY='xzgz_plan_templates';
@@ -5117,6 +5156,7 @@ function openProjectModal(id){
         dueDate:e.date||'',
         group:e._group||'labor'
       }));
+      renderSystemPlanTemplateOptions();
       renderPlanTemplateOptions();
       fillStepNameDatalist();
       recalcPlanSchedule();
@@ -5140,6 +5180,7 @@ function openProjectModal(id){
   $('projTotalAmount').value='';$('projArea').value='';$('projSignMonth').value='';
   document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type==='new'));
   $('wPlanStartDate').value='';
+  renderSystemPlanTemplateOptions();
   renderPlanTemplateOptions();
   fillStepNameDatalist();
   goWizardStep(1);
