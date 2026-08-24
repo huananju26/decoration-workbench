@@ -10191,23 +10191,32 @@ function _doGeneratePDF(el,sheetId,fileBase){
 function printSheet(sheetId){
   const el=$(sheetId); if(!el) return;
   zoomGsReset(sheetId);
-  /* class 隔离方案（与 printRectifyRecord / previewCostRecon 同源）：
-     找到 sheet 所在的 modal-overlay → 加 gs-print-target 标记 → @media print 只保留该弹窗 */
+  /* ── 动态注入 <style> 方案（与 printNodeReport 同源，已验证可行）──
+     用具体 modal ID 做 visibility 隔离，不依赖预置 @media print 规则 */
   var modal=el.closest('.modal-overlay');
   if(!modal){ alert('未找到表格所在弹窗'); return; }
-  modal.classList.add('gs-print-target');
-  /* 甘特图类（施工进度表 / 计划与实际进度表）用横向 A4；其余（合同收款计划表）用纵向 A4 */
-  var landscape = el.classList.contains('gs-sheet');
-  document.documentElement.classList.add(landscape ? 'gs-printing-landscape' : 'gs-printing-sheet');
-  setTimeout(function(){ window.print(); }, 250);
+  var mid=modal.id;
+  /* 清除上次注入的残留 */
+  var old=document.getElementById('printSheetStyle'); if(old) old.remove();
+  /* 甘特图类横版，其余纵版 */
+  var landscape=el.classList.contains('gs-sheet');
+  var pageRule=landscape ? 'size:A4 landscape;margin:5mm' : 'size:A4;margin:8mm';
+  var css='@media print{'+
+    'body *{visibility:hidden} '+
+    '#'+mid+',#'+mid+' *{visibility:visible} '+
+    '#'+mid+'{position:absolute;left:0;top:0;width:100%;margin:0;padding:0;box-shadow:none;border:none;background:#fff!important;display:block!important;overflow:visible!important} '+
+    '#'+mid+' .modal{max-width:none!important;width:100%!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important} '+
+    '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important} '+
+    '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:0!important;background:#fff!important} '+
+    '@page{'+pageRule+'}'+
+  '}';
+  var ps=document.createElement('style'); ps.id='printSheetStyle'; ps.textContent=css;
+  document.head.appendChild(ps);
+  setTimeout(function(){
+    window.print();
+    var s=document.getElementById('printSheetStyle'); if(s) s.remove();
+  }, 200);
 }
-window.addEventListener('afterprint',function(){
-  /* 清理 printSheet 的标记 */
-  var t=document.querySelector('.gs-print-target');
-  if(t) t.classList.remove('gs-print-target');
-  document.documentElement.classList.remove('gs-printing-sheet');
-  document.documentElement.classList.remove('gs-printing-landscape');
-});
 window.addEventListener('afterprint',function(){
   document.documentElement.classList.remove('gs-printing-rectify');
   document.documentElement.classList.remove('gs-printing-costrecon');
