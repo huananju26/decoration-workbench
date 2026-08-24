@@ -468,19 +468,40 @@ a{color:#003a8c;text-decoration:none}
 .step-group-header.collapsed .step-group-arrow{transform:rotate(-90deg)}
 .step-group-body{overflow:hidden;transition:max-height .3s ease}
 /* 流程页：母节点（阶段）分组标题 —— 深蓝系，区别于子节点卡片 */
-.step-parent-header{display:flex;align-items:center;gap:10px;padding:12px 18px;margin:14px 0 8px;
+/* 母节点（阶段）分组块：可点击展开子节点细节 */
+.step-parent-block{margin:14px 0 8px}
+.step-parent-block:first-child{margin-top:4px}
+.step-parent-header{display:flex;align-items:center;gap:10px;padding:12px 18px;cursor:pointer;
   background:linear-gradient(90deg,#e6f4ff 0%,#f0f7ff 100%);border:1px solid #91caff;border-left:4px solid #1677ff;
   border-radius:10px;font-weight:700;color:#003a8c;font-size:14.5px;box-shadow:0 1px 3px rgba(22,119,255,.08)}
-.step-parent-header:first-child{margin-top:4px}
+.step-parent-header.done{background:linear-gradient(90deg,#f6ffed 0%,#f0f7ff 100%);border-color:#b7eb8f;border-left-color:#52c41a}
+.step-parent-caret{font-size:11px;color:#0050b3;flex-shrink:0;width:12px}
 .step-parent-icon{font-size:16px;flex-shrink:0}
 .step-parent-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .step-parent-days{font-size:12px;font-weight:500;color:#0050b3;background:#fff;border:1px solid #bae0ff;border-radius:10px;padding:2px 10px;white-space:nowrap}
 .step-parent-prog{font-size:12px;font-weight:600;color:#003a8c;background:#fff;border:1px solid #91caff;border-radius:10px;padding:2px 10px;white-space:nowrap}
-/* 左侧导航：母节点分组标题 */
-.process-nav-item.nav-parent{cursor:default;background:#e6f4ff;border:1px solid #bae0ff;margin:8px 0 2px;font-weight:700;color:#003a8c;padding:7px 10px;border-radius:8px}
-.process-nav-item.nav-parent:hover{background:#e6f4ff}
+.step-parent-stage-badge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;white-space:nowrap}
+.step-parent-stage-badge{background:#fff7e6;color:#d46b08;border:1px solid #ffd591}
+.step-parent-stage-badge.done{background:#f6ffed;color:#389e0d;border:1px solid #b7eb8f}
+.step-parent-mark{font-size:12px;font-weight:600;color:#1677ff;background:#fff;border:1px solid #91caff;border-radius:10px;padding:3px 12px;white-space:nowrap;cursor:pointer}
+.step-parent-mark:hover{background:#e6f4ff}
+/* 母节点展开后的子节点细节列表 */
+.step-parent-children{margin:2px 0 0 16px;border-left:2px dashed #bae0ff;padding:4px 0 6px 14px}
+.step-child-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;font-size:13px;color:#333}
+.step-child-row:hover{background:#f5faff}
+.step-child-dot{width:8px;height:8px;border-radius:50%;background:#d9d9d9;flex-shrink:0}
+.step-child-dot.done{background:#003a8c}
+.step-child-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step-child-days{font-size:11px;color:#888;white-space:nowrap}
+.step-child-badge{font-size:10px;font-weight:600;padding:1px 7px;border-radius:8px;background:#fff2f0;color:#ff4d4f;border:1px solid #ffccc7;white-space:nowrap}
+.step-child-badge.done{background:#e6f4ff;color:#003a8c;border-color:#91caff}
+.step-child-empty{font-size:12px;color:#aaa;padding:6px 8px;font-style:italic}
+/* 左侧导航：母节点分组标题（可点击展开） */
+.process-nav-item.nav-parent{cursor:pointer;background:#e6f4ff;border:1px solid #bae0ff;margin:8px 0 2px;font-weight:700;color:#003a8c;padding:7px 10px;border-radius:8px;display:flex;align-items:center;gap:6px}
+.process-nav-item.nav-parent:hover{background:#d6ecff}
 .process-nav-parent-icon{font-size:13px;flex-shrink:0}
 .process-nav-name.nav-parent-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.nav-parent-count{font-size:11px;font-weight:600;color:#0050b3;background:#fff;border:1px solid #91caff;border-radius:8px;padding:1px 7px;white-space:nowrap}
 .step-body-split{display:flex;align-items:flex-start;justify-content:center;cursor:col-resize;user-select:none;-webkit-user-select:none;position:relative;padding-top:24px}
 .step-body-split::before{content:'';width:2px;height:48px;background:#d9e2f3;border-radius:2px;transition:background .15s,height .15s}
 .step-body-split:hover::before,.step-body-split.dragging::before{background:#1677ff;min-height:80px}
@@ -4108,12 +4129,16 @@ const HOUSE_TYPES={new:'新房毛胚',old:'旧房改造',renovated:'精装升级
 const HOUSE_ICONS={new:'🏠',old:'🔨',renovated:'✨',commercial:'🏢'};
 
 /* ════════════════════════════════════════════════════════════════
-   施工节点模板（母节点 + 子节点 两级结构）
+   施工节点模板（母节点 + 子节点 两级结构，职责清晰分离）
    - PARENT_GROUPS：按房屋类型的母节点（阶段）定义；每个母节点含 children 子节点
-   - 毛胚（new）为基准模板，含全部 18 个阶段 / 165 子节点（取自用户 Excel）
+   - 毛胚（new）为基准模板，含全部 18 个阶段 / 98 子节点（取自用户 Excel）
    - 其余类型在 Step B 中按 include 清单选配
-   - buildFlatSteps() 将两级结构「展平」为带 parentId 的扁平数组，
-     既保留母/子层级语义，又兼容现有基于下标/step.id 的全部渲染逻辑（零破坏）
+   ── 职责分离（用户本意）──
+   · 计划层 ONLY 排 18 个母节点：processSteps 只存母节点，做计划/排期/甘特/收款节点关联/进度统计都只碰这 18 个，轻松不累人
+   · 执行层 子节点是母节点的「细节补充」：挂在母节点的 children 字段，只在施工流程页「点击母节点展开」时呈现，不参与计划排期
+   ── 数据模型 ──
+   · processSteps = [{id,name,days,desc,acceptance,articles,isParent:true,children:[子节点...]}]
+   · 子节点 = {id,name,days,desc,acceptance,articles,photosRequired}（无 isParent，不进计划排期）
    ════════════════════════════════════════════════════════════════ */
 const PARENT_GROUPS={
   new:[
@@ -4190,60 +4215,129 @@ const PARENT_GROUPS={
   ]
 };
 
-/* 节点套用库（Step C 填充）：同名节点可在此预设 desc/acceptance/articles
+/* 节点套用库（Step C 填充）：同名子节点可在此预设 desc/acceptance/articles
    目前毛胚模板子节点仅含名称，后续可在工作台内编辑后自动回写本库复用。
    NODE_TEMPLATES key = 子节点名；值为 {days,desc,acceptance[],articles[],photosRequired} */
 const NODE_TEMPLATES={};
 
-/* 将某个房屋类型的母/子节点模板展平为带 parentId 的节点数组
-   parent 节点：isParent=true，承载阶段工期；child 节点：parentId 指向母节点。
-   所有节点均为独立可索引卡片（保持旧逻辑兼容）。 */
-function buildFlatSteps(houseType){
+/* 将某个房屋类型的母/子节点模板转为「母节点数组（含嵌套 children）」
+   · 只产出 18 个母节点（isParent:true），子节点作为母节点的 children 细节补充，不进计划排期
+   · 保持旧逻辑兼容：母节点仍是数组元素（可用下标 / step.id 索引） */
+function buildParentSteps(houseType){
   const groups=PARENT_GROUPS[houseType]||PARENT_GROUPS.new;
-  const out=[];
-  groups.forEach(g=>{
-    out.push({
-      id:g.id, name:g.name, days:String(g.days||''), desc:'',
-      acceptance:[], articles:[], isParent:true, parentId:null
-    });
-    (g.children||[]).forEach(c=>{
+  return groups.map(g=>{
+    const children=(g.children||[]).map(c=>{
       const tpl=NODE_TEMPLATES[c.name]||{};
-      out.push({
+      return {
         id:c.id, name:c.name, days:String(tpl.days||'1'),
         desc:tpl.desc||'', acceptance:(tpl.acceptance||[]).map(a=>({...a})),
         articles:(tpl.articles||[]).map(a=>({...a})),
         photosRequired:tpl.photosRequired||3,
-        isParent:false, parentId:g.id
-      });
+        checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
+      };
     });
+    return {
+      id:g.id, name:g.name, days:String(g.days||''), desc:'',
+      acceptance:[], articles:[], isParent:true,
+      children, checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
+    };
   });
-  return out;
 }
 
-/* Legacy alias for backward compat（旧向导/模板编辑可能引用 PROCESS_STEPS） */
-const PROCESS_STEPS=buildFlatSteps('new');
+/* Legacy alias for backward compat（旧向导/模板编辑可能引用 PROCESS_STEPS / buildFlatSteps） */
+function buildFlatSteps(houseType){ return buildParentSteps(houseType); }
+const PROCESS_STEPS=buildParentSteps('new');
 const STAGES=PROCESS_STEPS;
 
-/* 基础全流程的深拷贝：新建项目时作为该项目初始流程（可按项目删减/新增自定义节点） */
+/* 基础全流程的深拷贝：新建项目时作为该项目初始流程（可按项目删减/新增自定义母节点） */
 function baseFlowClone(houseType){
-  return buildFlatSteps(houseType||'new').map(s=>({
+  return buildParentSteps(houseType||'new').map(s=>cloneParentStep(s));
+}
+/* 深拷贝单个母节点（含 children 深拷贝） */
+function cloneParentStep(s){
+  return {
     id:s.id, name:s.name, days:s.days, desc:s.desc,
     acceptance:(s.acceptance||[]).map(a=>({...a})),
     articles:(s.articles||[]).map(a=>({...a})),
-    isParent:!!s.isParent, parentId:s.parentId||null,
-    photosRequired:s.photosRequired||3
-  }));
+    isParent:true,
+    checked:!!s.checked,
+    planStartDate:s.planStartDate||'', planEndDate:s.planEndDate||'',
+    actualStartDate:s.actualStartDate||'', actualEndDate:s.actualEndDate||'',
+    children:(s.children||[]).map(c=>({
+      id:c.id, name:c.name, days:c.days, desc:c.desc||'',
+      acceptance:(c.acceptance||[]).map(a=>({...a})),
+      articles:(c.articles||[]).map(a=>({...a})),
+      photosRequired:c.photosRequired||3,
+      checked:!!c.checked,
+      planStartDate:c.planStartDate||'', planEndDate:c.planEndDate||'',
+      actualStartDate:c.actualStartDate||'', actualEndDate:c.actualEndDate||''
+    }))
+  };
 }
-/* 旧项目兼容：确保存在 processSteps 字段，并补齐新字段（parentId/isParent/photosRequired） */
+/* 旧项目兼容：确保存在 processSteps 字段，并补齐新字段。
+   · 新结构：processSteps 只含母节点，子节点在 children 内
+   · 旧结构（116 扁平节点，含 parentId/isParent）自动迁移：
+     isParent:true 提为母节点；parentId 匹配的收进对应母节点 children；
+     其余无父独立节点保留为母节点（children 空）。 */
 function ensureProjectSteps(p){
   if(!p)return;
   if(!p.processSteps||!Array.isArray(p.processSteps)){p.processSteps=baseFlowClone(p.houseType);return;}
-  /* 旧数据补齐：无 parentId 的节点视为独立节点（parentId=null, isParent=false） */
-  p.processSteps.forEach(s=>{
-    if(s.parentId===undefined)s.parentId=null;
-    if(s.isParent===undefined)s.isParent=false;
-    if(s.photosRequired===undefined)s.photosRequired=3;
+  const steps=p.processSteps;
+  // 已是新结构（含 children 字段的母节点）则仅补齐子节点默认值
+  if(steps.length && steps[0].isParent===true && Array.isArray(steps[0].children)){
+    steps.forEach(s=>{
+      s.isParent=true;
+      if(!Array.isArray(s.children))s.children=[];
+      s.children.forEach(c=>{
+        if(c.photosRequired===undefined)c.photosRequired=3;
+        if(c.checked===undefined)c.checked=false;
+      });
+      if(s.checked===undefined)s.checked=false;
+    });
+    return;
+  }
+  // 旧扁平结构迁移
+  const parents=steps.filter(s=>s.isParent===true);
+  const childrenMap={};
+  steps.forEach(s=>{
+    if(s.isParent!==true && s.parentId){
+      (childrenMap[s.parentId]=childrenMap[s.parentId]||[]).push(s);
+    }
   });
+  const orphans=steps.filter(s=>s.isParent!==true && !s.parentId);
+  const out=[];
+  parents.forEach(g=>{
+    const kids=(childrenMap[g.id]||[]).map(c=>({
+      id:c.id, name:c.name, days:String(c.days||'1'), desc:c.desc||'',
+      acceptance:(c.acceptance||[]).map(a=>({...a})),
+      articles:(c.articles||[]).map(a=>({...a})),
+      photosRequired:c.photosRequired||3,
+      checked:!!c.checked,
+      planStartDate:c.planStartDate||'', planEndDate:c.planEndDate||'',
+      actualStartDate:c.actualStartDate||'', actualEndDate:c.actualEndDate||''
+    }));
+    out.push({
+      id:g.id, name:g.name, days:String(g.days||''), desc:g.desc||'',
+      acceptance:(g.acceptance||[]).map(a=>({...a})),
+      articles:(g.articles||[]).map(a=>({...a})),
+      isParent:true, children:kids,
+      checked:!!g.checked,
+      planStartDate:g.planStartDate||'', planEndDate:g.planEndDate||'',
+      actualStartDate:g.actualStartDate||'', actualEndDate:g.actualEndDate||''
+    });
+  });
+  orphans.forEach(o=>{
+    out.push({
+      id:o.id, name:o.name, days:String(o.days||'1'), desc:o.desc||'',
+      acceptance:(o.acceptance||[]).map(a=>({...a})),
+      articles:(o.articles||[]).map(a=>({...a})),
+      isParent:true, children:[],
+      checked:!!o.checked,
+      planStartDate:o.planStartDate||'', planEndDate:o.planEndDate||'',
+      actualStartDate:o.actualStartDate||'', actualEndDate:o.actualEndDate||''
+    });
+  });
+  p.processSteps=out;
 }
 
 const PURCHASE_CATS=[
@@ -4368,15 +4462,16 @@ function closeProjectWizard(){
 
 /* ── Step2: 施工计划核心逻辑 ── */
 
-/** 从 PROCESS_STEPS（毛胚展平模板）加载标准节点到 wizPlanNodes，保留 parentId/isParent */
+/** 从 PROCESS_STEPS（毛胚模板，仅母节点）加载标准阶段到 wizPlanNodes。
+    wizPlanNodes 只含 18 个母节点（阶段），子节点不进计划排期。 */
 function initPlanNodesFromTemplate(){
   wizPlanNodes=PROCESS_STEPS.map(s=>({
     id:s.id,name:s.name,days:s.days,
     status:'pending',planStart:'',planEnd:'',manual:false,
     desc:s.desc,acceptance:(s.acceptance||[]).map(a=>({...a})),
     articles:(s.articles||[]).map(a=>({...a})),
-    isParent:!!s.isParent, parentId:(s.parentId!=null?s.parentId:null),
-    photosRequired:(s.photosRequired!=null?s.photosRequired:3)
+    isParent:true, parentId:null,
+    photosRequired:3
   }));
   renderPlanTable();
 }
@@ -4385,11 +4480,10 @@ function initPlanNodesFromTemplate(){
 function applyPlanTemplate(){initPlanNodesFromTemplate();recalcPlanSchedule()}
 
 /** 修改模板：打开模板编辑弹窗 */
-let _tplEditNodes=[]; /* 弹窗内临时编辑的节点数据 [{name,days,sourceId,isParent,parentId}] */
+let _tplEditNodes=[]; /* 弹窗内临时编辑的节点数据（仅母节点/阶段） [{id,name,days,sourceId}] */
 function toggleApplyOrSaveTemplate(){
-  /* 从当前系统模板（PROCESS_STEPS）复制一份到编辑区 */
-  _tplEditNodes=PROCESS_STEPS.map(s=>({id:s.id,name:s.name,days:String(s.days),sourceId:s.id,
-    isParent:!!s.isParent,parentId:(s.parentId!=null?s.parentId:null)}));
+  /* 从当前系统模板（PROCESS_STEPS，仅母节点）复制一份到编辑区 */
+  _tplEditNodes=PROCESS_STEPS.map(s=>({id:s.id,name:s.name,days:String(s.days),sourceId:s.id}));
   renderTplEditTable();
   showModal('tplEditModal');
 }
@@ -4414,19 +4508,18 @@ function tplEditDelNode(i){if(_tplEditNodes.length<=1)return;_tplEditNodes.splic
 function closeTplEditModal(){closeModal('tplEditModal');}
 /** 打开模板编辑弹窗 */
 function openTplEditModal(){showModal('tplEditModal');}
-/** 确认应用编辑后的模板到施工计划 */
+/** 确认应用编辑后的模板到施工计划（仅母节点/阶段） */
 function confirmTplEdit(){
-  /* 将编辑后的节点转为 wizPlanNodes 格式 */
   wizPlanNodes=_tplEditNodes.map(n=>({
     id:n.id,name:n.name,days:n.days,
     status:'pending',planStart:'',planEnd:'',manual:false,
     desc:'',acceptance:[],articles:[],
-    isParent:!!n.isParent,parentId:(n.parentId!=null?n.parentId:null),
+    isParent:true,parentId:null,
     photosRequired:3
   }));
   recalcPlanSchedule();
   closeModal('tplEditModal');
-  $('planTplHint').textContent='已应用修改后的模板（'+wizPlanNodes.length+' 个节点）';
+  $('planTplHint').textContent='已应用修改后的模板（'+wizPlanNodes.length+' 个阶段）';
 }
 
 /** 恢复系统标准 = 重新从系统模板加载 */
@@ -4514,8 +4607,7 @@ function recalcPlanSchedule(){
     cur=anchorEnd?new Date(shiftDate(anchorEnd,1)+'T00:00:00'):new Date(startStr+'T00:00:00');
   }
   wizPlanNodes.forEach((n,idx)=>{
-    /* 母节点（阶段分组）不参与顺序排期，仅子节点/独立节点排入时间线 */
-    if(n.isParent) return;
+    /* wizPlanNodes 仅含母节点（阶段），全部参与顺序排期 */
     /* 手动节点及其上方（分界之上）原样保留，不做自动顺排，从而保留手动设定的空档期/交叉作业 */
     if(idx<=lastManualIdx) return;
     if(n.manual===true) return;
@@ -4531,7 +4623,7 @@ function recalcPlanSchedule(){
   });
   /* 统计：自然日 = 项目总跨度（首节点开始→末节点完成，纯日历差，不受周末节假日影响）；
      工作日 = 各节点跨度含首尾、扣除周末节假日的合计（仅此处受周末节假日影响） */
-  const _schedNodes=wizPlanNodes.filter(n=>!n.isParent&&n.planStart&&n.planEnd);
+  const _schedNodes=wizPlanNodes.filter(n=>n.planStart&&n.planEnd);
   const _firstStart=_schedNodes.length?_schedNodes[0].planStart:'';
   const _lastEnd=_schedNodes.length?_schedNodes[_schedNodes.length-1].planEnd:'';
   let nd=0,wd=0;
@@ -4580,8 +4672,8 @@ function renderPlanTable(){
           <span style="margin-right:6px">📂</span>${escHtml(n.name)}
         </td>
         <td style="background:#e6f4ff;color:#0050b3;font-weight:600">${n.days?('预计 '+escHtml(String(n.days))+' 天'):'—'}</td>
-        <td colspan="2" style="background:#e6f4ff;color:#999;font-size:11px">阶段分组（含下方子节点）</td>
-        <td style="background:#e6f4ff;text-align:center;color:#bbb" title="阶段分组不可单独删除">🔒</td>
+        <td colspan="2" style="background:#e6f4ff;color:#999;font-size:11px">施工阶段（计划仅排此层）</td>
+        <td style="background:#e6f4ff;text-align:center;color:#bbb" title="删除阶段将连带其下子节点细节">🔒</td>
       </tr>`;
     }
     return `<tr data-idx="${i}">
@@ -4969,24 +5061,18 @@ function moveWizPlanNode(i,dir){
   recalcPlanSchedule();
 }
 
-/** 删除节点 */
+/** 删除节点（wizPlanNodes 仅含母节点/阶段；子节点在母节点 children 内，随母节点一并移除） */
 function deletePlanNode(i){
-  if(wizPlanNodes.length<=1){alert('至少保留一个节点');return}
-  if(wizPlanNodes[i].isParent){
-    const hasKids=wizPlanNodes.some(n=>n.parentId===wizPlanNodes[i].id);
-    if(hasKids&&!confirm('删除阶段「'+wizPlanNodes[i].name+'」将同时删除其下全部子节点，确认？'))return;
-    /* 删除母节点及其所有子节点 */
-    wizPlanNodes=wizPlanNodes.filter(n=>n!==wizPlanNodes[i] && n.parentId!==wizPlanNodes[i].id);
-    recalcPlanSchedule();return;
-  }
-  if(!confirm('确认删除节点「'+wizPlanNodes[i].name+'」？'))return;
+  if(wizPlanNodes.length<=1){alert('至少保留一个阶段');return}
+  const kids=(wizPlanNodes[i].children&&wizPlanNodes[i].children.length)||0;
+  if(kids>0 && !confirm('删除阶段「'+wizPlanNodes[i].name+'」将同时删除其下 '+kids+' 个子节点（细节），确认？'))return;
   wizPlanNodes.splice(i,1);
   recalcPlanSchedule();
 }
 
-/** 添加自定义节点 */
+/** 添加自定义阶段（母节点，无 children 子节点） */
 function addPlanCustomNode(){
-  wizPlanNodes.push({id:'custom_'+uid(),name:'新节点',days:'3',status:'pending',planStart:'',planEnd:'',manual:false,desc:'',acceptance:[],articles:[]});
+  wizPlanNodes.push({id:'custom_'+uid(),name:'新节点',days:'3',status:'pending',planStart:'',planEnd:'',manual:false,desc:'',acceptance:[],articles:[],isParent:true,parentId:null,children:[],photosRequired:3});
   recalcPlanSchedule();
   /* 滚动表格到底部 */
   const wrap=document.querySelector('.plan-table-wrap');
@@ -5005,15 +5091,22 @@ function openProjectModal(id){
       $('projCode').value=p.code||'';$('projName').value=p.name||'';$('projTotalAmount').value=(p.totalAmount!==undefined&&p.totalAmount!==null&&p.totalAmount!=='')?p.totalAmount:'';$('projArea').value=p.area||'';$('projSignMonth').value=p.signMonth||'';
       document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type===selectedHouseType));
       $('wPlanStartDate').value=(p.profile&&p.profile.startDate)||'';
-      /* 预填施工计划节点：编辑时也能改施工计划 */
+      /* 预填施工计划节点：编辑时也能改施工计划（仅母节点/阶段） */
       wizPlanNodes=(p.processSteps&&p.processSteps.length?p.processSteps:[]).map(s=>({
         id:s.id||('ps_'+uid()),
         name:s.name,days:s.days||'1',status:s.status||'pending',
         planStart:s.planStartDate||'',planEnd:s.planEndDate||'',manual:!!(s.planStartDate&&s.planEndDate),
         desc:s.desc||'',
         acceptance:(s.acceptance||[]).map(a=>({...a})),articles:(s.articles||[]).map(a=>({...a})),
-        isParent:!!s.isParent,parentId:(s.parentId!=null?s.parentId:null),
-        photosRequired:(s.photosRequired!=null?s.photosRequired:3)
+        isParent:true,parentId:null,
+        children:(s.children||[]).map(c=>({
+          id:c.id, name:c.name, days:c.days, desc:c.desc||'',
+          acceptance:(c.acceptance||[]).map(a=>({...a})), articles:(c.articles||[]).map(a=>({...a})),
+          photosRequired:c.photosRequired||3, checked:!!c.checked,
+          planStartDate:c.planStartDate||'', planEndDate:c.planEndDate||'',
+          actualStartDate:c.actualStartDate||'', actualEndDate:c.actualEndDate||''
+        })),
+        photosRequired:3
       }));
       if(wizPlanNodes.length===0)initPlanNodesFromTemplate();
       $('projectModalTitle').textContent='编辑项目';
@@ -5064,6 +5157,8 @@ function openProjectModal(id){
 function buildProcessStepsFromWizard(){
   return wizPlanNodes.map(n=>{
     const src=n.id?PROCESS_STEPS.find(s=>s.id===n.id):null;
+    /* 子节点细节取自系统模板对应母节点的 children（执行层，不进计划排期） */
+    const srcChildren=(src&&src.children)||[];
     return {
       id:n.id||('ps_'+uid()),
       name:n.name,days:String(n.days),
@@ -5071,10 +5166,20 @@ function buildProcessStepsFromWizard(){
       desc:n.desc||(src?src.desc:''),
       acceptance:(n.acceptance&&n.acceptance.length?n.acceptance:(src?src.acceptance:[])).map(a=>({...a})),
       articles:(n.articles&&n.articles.length?n.articles:(src?src.articles:[])).map(a=>({...a})),
-      isParent:!!n.isParent, parentId:(n.parentId!=null?n.parentId:null),
-      photosRequired:(n.photosRequired!=null?n.photosRequired:3),
+      isParent:true, parentId:null,
+      photosRequired:3,
       planStartDate:n.planStartDate||n.planStart||'',
-      planEndDate:n.planEndDate||n.planEnd||''
+      planEndDate:n.planEndDate||n.planEnd||'',
+      /* 子节点细节：保留原有 children（编辑回填时带进来的），否则取系统模板 */
+      children:(Array.isArray(n.children)&&n.children.length?n.children:srcChildren).map(c=>({
+        id:c.id, name:c.name, days:String(c.days||'1'),
+        desc:c.desc||'', acceptance:(c.acceptance||[]).map(a=>({...a})),
+        articles:(c.articles||[]).map(a=>({...a})),
+        photosRequired:c.photosRequired||3,
+        checked:!!c.checked,
+        planStartDate:c.planStartDate||'', planEndDate:c.planEndDate||'',
+        actualStartDate:c.actualStartDate||'', actualEndDate:c.actualEndDate||''
+      }))
     };
   });
 }
@@ -7576,6 +7681,36 @@ function applyStepSplitToAll(){
 function companyName(){return (window._companyName_||localStorage.getItem('xzgz_company')||'').toString();}
 function companyTagline(){return (window._companyTagline_||'').toString();}
 
+/* 流程页：记录哪些母节点（阶段）被展开其子节点细节（仅前端展示态，不入库） */
+const _expandedParents=new Set();
+/* 点击母节点标题：展开/折叠其子节点细节 */
+function toggleParentExpand(id){
+  if(_expandedParents.has(id))_expandedParents.delete(id);
+  else _expandedParents.add(id);
+  renderProcess();
+}
+/* 手动标记阶段（母节点）完成 / 撤销完成 */
+function toggleStageDone(id){
+  const p=cur();if(!p)return;
+  const g=(p.processSteps||[]).find(s=>s.id===id);
+  if(!g||!g.isParent)return;
+  if(p.checked)g.checked[id]=!g.checked[id];
+  else p.checked={[id]:true};
+  /* 标记完成时顺带折叠，撤销时保持；persist + 重渲染 */
+  persist();
+  renderProcess();
+  updateProcProgress();
+}
+/* 子节点（执行细节）标记完成 / 撤销完成：直接操作 p.checked[c.id] */
+function toggleChildDone(cid){
+  const p=cur();if(!p)return;
+  if(!p.checked)p.checked={};
+  p.checked[cid]=!p.checked[cid];
+  persist();
+  renderProcess();
+  updateProcProgress();
+}
+
 function renderProcess(){
   const p=cur();if(!p){showNoProject('process');return;}hideNoProject();
   /* 渲染项目详情顶栏 */
@@ -7606,10 +7741,12 @@ function renderProcess(){
     const key=step.id+'|'+step.name;
     return map.get(key)||[];
   };
-  /* 分组：已完成 vs 未完成（序号保持原始位置不变） */
+  /* 分组：已完成 vs 未完成（序号保持原始位置不变）
+     母节点（阶段）按手动标记 checked 判定；子节点按验收完成判定 */
   const doneSteps=[], undoneSteps=[];
   steps.forEach((step,i)=>{
-    if(isStepFullyAccepted(p,step)) doneSteps.push({step,i});
+    const isDone=step.isParent?!!step.checked:isStepFullyAccepted(p,step);
+    if(isDone) doneSteps.push({step,i});
     else undoneSteps.push({step,i});
   });
   /* 单个节点卡片渲染函数 */
@@ -7913,19 +8050,33 @@ function renderProcess(){
       </div>
     </div>`;
   };
-  /* 单个流程项渲染：母节点 → 阶段分组标题；子节点/独立节点 → 标准节点卡片 */
+  /* 单个流程项渲染：母节点 → 可点击展开的阶段分组（含子节点细节）；独立节点 → 标准节点卡片 */
   const renderProcessItem=({step,i})=>{
     if(step.isParent){
-      /* 统计该母节点下子节点完成情况 */
-      const kids=steps.filter(s=>s.parentId===step.id);
+      const kids=(step.children||[]);
       const kidTotal=kids.length;
-      const kidDone=kids.filter(s=>isStepFullyAccepted(p,s)).length;
+      const kidDone=kids.filter(c=>isStepChecked(c.id)).length;
       const prog=kidTotal?Math.round(kidDone/kidTotal*100):0;
-      return `<div class="step-parent-header" id="stepParent-${i}" data-index="${i}">
-        <span class="step-parent-icon">📂</span>
-        <span class="step-parent-name">${escHtml(step.name)}</span>
-        ${step.days?`<span class="step-parent-days">预计 ${escHtml(step.days)} 工作日</span>`:''}
-        <span class="step-parent-prog">${kidDone}/${kidTotal}${kidTotal?(' · '+prog+'%'):''}</span>
+      /* 阶段完成：手动标记 step.checked（优先）；否则以子节点全部完成为参考 */
+      const stageDone=!!step.checked;
+      const expanded=_expandedParents.has(step.id);
+      const childHtml=kids.map(c=>`<div class="step-child-row" onclick="toggleChildDone('${c.id}')" title="点击标记/取消完成">
+        <span class="step-child-dot${isStepChecked(c.id)?' done':''}"></span>
+        <span class="step-child-name">${escHtml(c.name)}</span>
+        ${c.days?`<span class="step-child-days">${escHtml(c.days)}天</span>`:''}
+        ${isStepChecked(c.id)?'<span class="step-child-badge done">已完成</span>':'<span class="step-child-badge">待完成</span>'}
+      </div>`).join('')||'<div class="step-child-empty">（该阶段暂未配置子节点细节）</div>';
+      return `<div class="step-parent-block" id="stepParent-${i}" data-index="${i}">
+        <div class="step-parent-header${stageDone?' done':''}" onclick="toggleParentExpand('${step.id}')">
+          <span class="step-parent-caret">${expanded?'▼':'▶'}</span>
+          <span class="step-parent-icon">📂</span>
+          <span class="step-parent-name">${escHtml(step.name)}</span>
+          ${step.days?`<span class="step-parent-days">预计 ${escHtml(step.days)} 工作日</span>`:''}
+          <span class="step-parent-prog">子节点 ${kidDone}/${kidTotal}${kidTotal?(' · '+prog+'%'):''}</span>
+          ${stageDone?'<span class="step-parent-stage-badge done">阶段已完成</span>':'<span class="step-parent-stage-badge">阶段进行中</span>'}
+          <span class="step-parent-mark" onclick="event.stopPropagation();toggleStageDone('${step.id}')">${stageDone?'↺ 撤销完成':'✓ 标记完成'}</span>
+        </div>
+        ${expanded?`<div class="step-parent-children">${childHtml}</div>`:''}
       </div>`;
     }
     return renderOneCard({step,i},false);
@@ -7994,11 +8145,14 @@ function renderProcessNav(){
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
   navList.innerHTML=steps.map((step,i)=>{
-    /* 母节点：渲染为不可点击的阶段分组标题 */
+    /* 母节点：渲染为可点击展开的阶段分组标题 */
     if(step.isParent){
-      return `<li class="process-nav-item nav-parent" id="processNavItem-${i}" data-index="${i}">
+      const kids=(step.children||[]);
+      const kidDone=kids.filter(c=>isStepChecked(c.id)).length;
+      return `<li class="process-nav-item nav-parent" id="processNavItem-${i}" data-index="${i}" onclick="toggleParentExpand('${step.id}')">
         <span class="process-nav-parent-icon">📂</span>
         <span class="process-nav-name nav-parent-name">${escHtml(step.name)}</span>
+        <span class="nav-parent-count">${kidDone}/${kids.length}</span>
       </li>`;
     }
     const done=isStepFullyAccepted(p,step);
@@ -10288,38 +10442,34 @@ function updateProcProgress(){
   const p=cur();if(!p){return;}
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
-  /* 进度统计仅计入可执行节点（排除母节点/阶段标题） */
-  const execSteps=steps.filter(s=>!s.isParent);
-  const total=execSteps.length;let done=0;
-  execSteps.forEach(s=>{if(isStepChecked(s.id))done++});
+  /* 进度统计计入全部「子节点（执行细节）」——母节点本身不参与执行计数 */
+  let total=0,done=0,curStep=null,curIdx=-1;
+  steps.forEach((g,gi)=>{
+    (g.children||[]).forEach((c,ci)=>{
+      total++;
+      if(isStepChecked(c.id))done++;
+      else if(!curStep){curStep=c;curIdx=total-1;}
+    });
+  });
   /* 旧字段兼容（如有其他地方引用） */
   const elP=$('procProgressNum');if(elP)elP.textContent=done;
   const elT=$('procTotalNum');if(elT)elT.textContent=total;
   const elPB=$('procProgressBar');if(elPB)elPB.style.width=total?(done/total*100)+'%':'0%';
-  const elCS=$('procCurrentStage');if(elCS)elCS.textContent='已完成 '+Math.round(done/total*100)+'%';
+  const elCS=$('procCurrentStage');if(elCS)elCS.textContent='已完成 '+Math.round(total?done/total*100:0)+'%';
   const elSC=$('procStageCount');if(elSC)elSC.textContent=total+' 步骤';
   /* 新顶栏统计 — 当前节点：关联时间线显示当前执行节点+进度 */
   const curNodeEl=$('pdhCurNode');if(curNodeEl){
     const allDone=(done>=total&&total>0);
     if(allDone){
       curNodeEl.innerHTML='<span style="color:#003a8c;font-weight:700">全部完成</span>';
+    } else if(curStep){
+      const ps=curStep.planStartDate||'';
+      const pe=curStep.planEndDate||'';
+      const fmtD=(d)=>{if(!d)return '';const t=new Date(d);return `${t.getMonth()+1}/${t.getDate()}`};
+      const dateInfo=(ps||pe)?`<small style="color:#999;font-weight:400"> · ${fmtD(ps)}-${fmtD(pe)}</small>`:'';
+      curNodeEl.innerHTML=`<span style="font-weight:700;color:#003a8c">${escHtml(curStep.name)}</span><small style="color:#999;margin-left:4px">${curIdx+1}/${total}</small>${dateInfo}`;
     } else {
-      /* 从 processSteps 找到第一个未完成的「可执行」步骤作为"当前执行中"节点（跳过母节点） */
-      let curStep=null;
-      let curIdx=-1;
-      for(let i=0;i<steps.length;i++){
-        if(steps[i].isParent)continue;
-        if(!isStepChecked(steps[i].id)){curStep=steps[i];curIdx=i;break;}
-      }
-      if(curStep){
-        const ps=curStep.planStartDate||'';
-        const pe=curStep.planEndDate||'';
-        const fmtD=(d)=>{if(!d)return '';const t=new Date(d);return `${t.getMonth()+1}/${t.getDate()}`};
-        const dateInfo=(ps||pe)?`<small style="color:#999;font-weight:400"> · ${fmtD(ps)}-${fmtD(pe)}</small>`:'';
-        curNodeEl.innerHTML=`<span style="font-weight:700;color:#003a8c">${escHtml(curStep.name)}</span><small style="color:#999;margin-left:4px">${curIdx+1}/${total}</small>${dateInfo}`;
-      } else {
-        curNodeEl.textContent='准备中';
-      }
+      curNodeEl.textContent='准备中';
     }
   }
   const doneEl=$('pdhNodeDone');if(doneEl)doneEl.textContent=done+'/'+total;
@@ -13222,7 +13372,7 @@ function getCurrentStageIndex(){
 }
 function getCurrentStage(){return STAGES[getCurrentStageIndex()]||null}
 function getStageName(key){const s=STAGES.find(x=>x.id===key);return s?s.name:key||''}
-function engProgress(p){const steps=p.processSteps||[];const total=steps.length;if(!total)return 0;const done=p.checked?steps.filter(s=>p.checked[s.id]).length:0;return Math.round(done/total*100);}
+function engProgress(p){const steps=p.processSteps||[];let total=0,done=0;steps.forEach(g=>(g.children||[]).forEach(c=>{total++;if(p.checked&&p.checked[c.id])done++;}));if(!total)return 0;return Math.round(done/total*100);}
 function purchasePending(p){return p.purchases.filter(x=>x.status!=='已到货'&&x.status!=='已下单').length;}
 function pendingCount(p){return p.tasks.filter(t=>!t.done).length+purchasePending(p);}
 function populateStageSelect(id){const sel=$(id);sel.innerHTML='<option value="">无</option>'+STAGES.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');}
