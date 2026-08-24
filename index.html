@@ -8332,22 +8332,6 @@ function renderProcess(){
           </div>`;
         })():'')}
 
-        <!-- ② 计划 vs 实际 -->
-        <div class="sb-section">
-          <div class="sb-sec-title">计划 vs 实际</div>
-          <div class="sb-compare">
-            <div class="sb-compare-row">
-              <span class="sb-compare-tag plan">计划</span>
-              <span class="sb-compare-val">${planStart||planEnd?`${fmtRange(planStart,planEnd)||'—'}${planDays?' · '+planDays+' 天':''}`:'未排期'}</span>
-            </div>
-            <div class="sb-compare-row">
-              <span class="sb-compare-tag actual">实际</span>
-              <span class="sb-compare-val">${done?`${fmtRange(actStart,actEnd)||'—'}${actDays?' · '+actDays+' 天':''}`:'<span style="color:#999">未完成</span>'}</span>
-            </div>
-            ${planDays&&actDays?`<div class="sb-compare-diff ${actDays>planDays?'late':'early'}">${actDays>planDays?('⏱ 工期比计划延长 '+(actDays-planDays)+' 天'):actDays<planDays?('✓ 工期比计划缩短 '+(planDays-actDays)+' 天'):'◎ 工期与计划一致'}</div>`:''}
-          </div>
-        </div>
-
         <!-- ③ 关联采购 -->
         <div class="sb-section">
           ${(function(){const rel=getRel(purByStep,step,true);return `<div class="sb-sec-title">关联采购<span class="sb-badge">${rel.length}</span></div>`+((function(){if(!rel.length)return `<div class="sb-empty">暂无关联采购 · <a href="javascript:void(0)" onclick="openPurchaseModalForStep('${step.id}')">去添加</a></div>`;return `<div class="sb-rel-list">${rel.map(x=>`<div class="sb-rel-item"><div class="sb-rel-main"><span class="sb-rel-name">${escHtml(x.name||'')}</span>${x.qty?`<span class="sb-rel-sub">${escHtml(x.qty+'')}${escAttr(x.unit||'项')}</span>`:''}</div><div class="sb-rel-right"><span class="sb-rel-amt">¥${fmt(x.budget||0)}</span><span class="sb-status ${statusCls(x.status)}">${escHtml(x.status||'待购')}</span></div></div>`).join('')}</div><div class="sb-rel-add"><button class="sb-mini-btn" type="button" onclick="openPurchaseModalForStep('${step.id}')">＋ 关联采购</button></div>`})());})()}
