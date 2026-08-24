@@ -10222,12 +10222,15 @@ function printSheet(sheetId){
   '}';
   var ps=document.createElement('style'); ps.id='printSheetStyle'; ps.textContent=css;
   document.head.appendChild(ps);
-  setTimeout(function(){
-    window.print();
-    /* 恢复所有被隐藏的元素 */
+  /* afterprint 负责恢复（无论用户点打印还是取消都触发），避免 setTimeout 竞态窗口 */
+  function _restoreSheetPrint(){
     hiddenEls.forEach(function(item){ item.el.style.display=item.prev||''; });
     var s=document.getElementById('printSheetStyle'); if(s) s.remove();
-  }, 200);
+    window.removeEventListener('afterprint',_restoreSheetPrint);
+  }
+  window.addEventListener('afterprint',_restoreSheetPrint);
+  /* 同步隐藏后立即打印，最小化竞态 */
+  window.print();
 }
 window.addEventListener('afterprint',function(){
   document.documentElement.classList.remove('gs-printing-rectify');
