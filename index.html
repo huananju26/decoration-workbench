@@ -10198,16 +10198,20 @@ function printSheet(sheetId){
   var mid=modal.id;
   /* 清除上次注入的残留 */
   var old=document.getElementById('printSheetStyle'); if(old) old.remove();
-  /* 甘特图类横版，其余纵版 */
+  /* 甘特图类（真实像素宽，远超 A4）→ 用 size:auto 让浏览器按内容宽度自动横向分页；其余纵版 A4 */
   var landscape=el.classList.contains('gs-sheet');
-  var pageRule=landscape ? 'size:A4 landscape;margin:5mm' : 'size:A4;margin:8mm';
+  var pageRule=landscape ? 'size:auto;margin:8mm' : 'size:A4;margin:8mm';
   var css='@media print{'+
     'body *{visibility:hidden} '+
     '#'+mid+',#'+mid+' *{visibility:visible} '+
-    '#'+mid+'{position:absolute;left:0;top:0;width:100%;margin:0;padding:0;box-shadow:none;border:none;background:#fff!important;display:block!important;overflow:visible!important} '+
-    '#'+mid+' .modal{max-width:none!important;width:100%!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important} '+
+    '#'+mid+'{position:absolute;left:0;top:0;width:auto!important;margin:0;padding:0;box-shadow:none;border:none;background:#fff!important;display:block!important;overflow:visible!important} '+
+    '#'+mid+' .modal{max-width:none!important;width:auto!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important} '+
     '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important} '+
     '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:0!important;background:#fff!important} '+
+    /* 甘特图按真实像素宽渲染，解除 overflow 裁剪，保证内容完整不断裂 */
+    '#'+mid+' .gs-zoom-pad{width:auto!important;height:auto!important;overflow:visible!important} '+
+    '#'+mid+' .gs-sheet{width:auto!important;height:auto!important;overflow:visible!important;transform:none!important} '+
+    '#'+mid+' .gs-chart{overflow:visible!important} '+
     '@page{'+pageRule+'}'+
   '}';
   var ps=document.createElement('style'); ps.id='printSheetStyle'; ps.textContent=css;
