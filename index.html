@@ -8372,8 +8372,8 @@ function renderProcess(){
         <!-- ① 可编辑节点信息 -->
         <div class="sb-section ${isSbInfoCollapsed(i)?'collapsed':''}" id="sbInfoSec_${i}">
           <div class="sb-sec-title sb-sec-clickable" onclick="toggleSbInfoCollapse(${i})">节点信息<span class="chev" style="margin-left:auto">▾</span></div>
-          <div class="sb-sec-body">
           <div style="font-size:11px;color:#999;margin-bottom:10px">可直接修改后点保存</div>
+          <div class="sb-sec-body">
           <div class="sb-edit-grid">
             <label class="sb-field sb-field-name">节点名称
               <input id="sb_name_${i}" class="sb-input" value="${escAttr(step.name)}">
