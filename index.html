@@ -7711,16 +7711,18 @@ function renderProcess(){
     const key=step.id+'|'+step.name;
     return map.get(key)||[];
   };
-  /* 分组：已完成 vs 未完成（序号保持原始位置不变）
-     母节点（阶段）按手动标记 checked 判定；子节点按验收完成判定 */
+  /* 分组：只渲染母节点（子节点不作为独立卡片出现，仅在母节点详情面板内的"包含工序"区显示）
+     母节点按 checked 判定完成态 */
+  const parentSteps=[];
+  steps.forEach((step,i)=>{ if(step.isParent) parentSteps.push({step,i}); });
   const doneSteps=[], undoneSteps=[];
-  steps.forEach((step,i)=>{
-    const isDone=step.isParent?!!step.checked:isStepFullyAccepted(p,step);
+  parentSteps.forEach(({step,i})=>{
+    const isDone=!!step.checked;
     if(isDone) doneSteps.push({step,i});
     else undoneSteps.push({step,i});
   });
-  /* 单个节点卡片渲染函数 */
-  const renderOneCard=({step:iStep,i}, defExpanded)=>{
+  /* 单个节点卡片渲染函数（母节点统一用原版下拉卡片式） */
+  const renderOneCard=({step:iStep,i,di}, defExpanded)=>{
     const step=iStep;
     const done=isStepChecked(step.id);
     const fullyAccepted=isStepFullyAccepted(p,step);
@@ -7769,7 +7771,7 @@ function renderProcess(){
         <!-- 左栏：编号+名称+状态 -->
         <div class="step-left-col">
           <div class="step-name-wrap">
-            <span class="step-num">${i+1}</span>
+            <span class="step-num">${di||i+1}</span>
             <span class="step-name">${escHtml(step.name)}</span>
             ${/* 节点状态四态+1特殊态（按优先级从高到低）：已完成 > 待验收 > 逾期 > 待开始 > 进行中 */''}
             ${fullyAccepted?'<span class="step-status-badge done">已完成</span>':done?'<span class="step-status-badge accepting">当前节点已完成，待节点验收</span>':overdue?'<span class="step-status-badge overdue">逾期 '+daysOver+'天</span>':(planStart&&planStart>todayISO())?'<span class="step-status-badge wait">待开始</span>':'<span class="step-status-badge active">进行中</span>'}
@@ -8035,24 +8037,9 @@ function renderProcess(){
       </div>
     </div>`;
   };
-  /* 单个流程项渲染：母节点 → 可点击展开的阶段分组（含子节点细节）；独立节点 → 标准节点卡片 */
-  /* 单个流程项渲染：母节点 → 阶段分组标题（不可点详情面板）；子节点/独立节点 → 标准节点卡片 */
-  const renderProcessItem=({step,i})=>{
-    if(step.isParent){
-      /* 母节点：渲染为深蓝阶段标题（非卡片、无 checkbox、无详情面板） */
-      const kids=steps.filter(s=>s.parentId===step.id);
-      const kidTotal=kids.length;
-      const kidDone=kids.filter(s=>isStepFullyAccepted(p,s)).length;
-      const prog=kidTotal?Math.round(kidDone/kidTotal*100):0;
-      return `<div class="step-parent-header" id="stepParent-${i}" data-index="${i}">
-        <span class="step-parent-icon">📂</span>
-        <span class="step-parent-name">${escHtml(step.name)}</span>
-        ${step.days?`<span class="step-parent-days">预计 ${escHtml(step.days)} 工作日</span>`:''}
-        <span class="step-parent-prog">${kidDone}/${kidTotal}${kidTotal?(' · '+prog+'%'):''}</span>
-      </div>`;
-    }
-    return renderOneCard({step,i},false);
-  };
+  /* 母节点统一用原版下拉卡片式渲染 */
+  let _parentDisplayIdx=0;
+  const renderProcessItem=({step:i})=>{const di=++_parentDisplayIdx;return renderOneCard({step,i,di},false);};
   /* 分组拼接：已完成组(折叠) + 未完成组(展开) */
   let html='';
   if(doneSteps.length){
@@ -8116,16 +8103,16 @@ function renderProcessNav(){
   const p=cur();if(!p)return;
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
-  /* 只渲染母节点（isParent），子节点不在左侧导航显示 */
+  /* 只显示母节点，用原版编号格式（序号+名称+完成态），无图标 */
   const parentSteps=steps.filter(s=>s.isParent);
   navList.innerHTML=parentSteps.map((step,pi)=>{
     const origIdx=steps.indexOf(step);
-    const kids=steps.filter(s=>s.parentId===step.id);
-    const kidDone=kids.filter(s=>isStepFullyAccepted(p,s)).length;
-    return `<li class="process-nav-item nav-parent" id="processNavItem-${origIdx}" data-index="${origIdx}">
-      <span class="process-nav-parent-icon">📂</span>
-      <span class="process-nav-name nav-parent-name">${escHtml(step.name)}</span>
-      <span class="nav-parent-count">${kidDone}/${kids.length}</span>
+    const done=isStepFullyAccepted(p,step);
+    const numStr=String(pi+1).padStart(2,'0');
+    return `<li class="process-nav-item${done?' disabled':''}" id="processNavItem-${origIdx}" data-index="${origIdx}"${done?'':' onclick="scrollToStep('+origIdx+')"'}>
+      <span class="process-nav-dot${done?' active':''}"></span>
+      <span class="process-nav-num${done?' done':''}">${numStr}</span>
+      <span class="process-nav-name${done?' done':''}">${escHtml(step.name)}</span>
     </li>`;
   }).join('');
 }
