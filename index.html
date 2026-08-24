@@ -4290,6 +4290,125 @@ const NODE_TEMPLATES={
   '整改内容':{desc:'记录验收发现的问题项及整改要求。',acceptance:[],articles:[],photosRequired:3}
 };
 
+/* 母节点专属必检项模板（PARENT_ACCEPTANCE_TEMPLATES）：key = 母节点 id（与 BASE_PARENT_GROUPS.id 对应）。
+   buildFlatSteps() 创建母节点时自动从本字典读取填充 acceptance，每个母节点拥有符合实际施工内容的专属验收项。
+   每项格式：{label:'验收项名称', text:'标准说明'}，status 由渲染层默认为 'pending'。 */
+const PARENT_ACCEPTANCE_TEMPLATES={
+  'mg_prep':[
+    {label:'现场测量完成',text:'复核房屋尺寸、梁柱、管道走向，输出测绘图'},
+    {label:'设计方案确认',text:'平面布置、效果图、材料选型业主签字'},
+    {label:'施工合同签署',text:'合同、预算单、工期约定双方盖章'},
+    {label:'物业手续齐全',text:'施工许可、物业登记、邻里告知完成'},
+    {label:'围挡保护到位',text:'入户围挡搭建、成品保护覆盖无遗漏'}
+  ],
+  'mg_demo':[
+    {label:'拆除交底签字',text:'班组确认拆除范围、保留项、垃圾堆放点'},
+    {label:'铲至基层无残留',text:'墙体铲灰、旧饰面拆除至坚实基层'},
+    {label:'垃圾清运完毕',text:'拆除垃圾装袋外运，现场无堆积'},
+    {label:'结构安全无损',text:'承重墙、梁柱、管道未受破坏'}
+  ],
+  'mg_wall':[
+    {label:'墙体放样准确',text:'按图纸弹线定位，与设计一致'},
+    {label:'地梁浇筑合格',text:'地梁混凝土强度、位置符合要求'},
+    {label:'砌筑垂直度达标',text:'轻砌块/砖墙垂直度≤3mm（2m靠尺）'},
+    {label:'粉刷无空鼓',text:'双面抹灰找平，空鼓锤全检通过'},
+    {label:'墙体养护期满',text:'养护时间满足要求，归方找平完成'}
+  ],
+  'mg_water':[
+    {label:'水电放样确认',text:'点位弹线定位，业主现场签字确认'},
+    {label:'开槽符合规范',text:'机械开槽、严禁横槽，深度满足管径'},
+    {label:'管线敷设规范',text:'横平竖直、强弱电间距≥30cm、交叉屏蔽'},
+    {label:'水管打压合格',text:'0.8MPa 保压30分钟，压降≤0.05MPa'},
+    {label:'电路VR全景留存',text:'隐蔽工程VR/照片全景归档'},
+    {label:'烟道止逆阀安装',text:'止逆阀安装牢固、方向正确'}
+  ],
+  'mg_equip_loc':[
+    {label:'燃气改管合规',text:'燃气公司上门改管，验收合格'},
+    {label:'空调点位确认',text:'内机位置、外机位、管路走向确定'},
+    {label:'新风/地暖定位',text:'设备位置、风口布局业主确认'},
+    {label:'家电点位核对',text:'冰箱、洗衣机、热水器等点位预留'}
+  ],
+  'mg_equip_inst':[
+    {label:'智能系统调试',text:'智能家居设备联网、场景测试正常'},
+    {label:'空调安装验收',text:'冷媒保压、排水通畅、运行无异响'},
+    {label:'新风系统运行',text:'风量达标、滤网安装正确、噪音正常'},
+    {label:'消防改造合规',text:'烟感、喷淋、应急照明符合消防要求'}
+  ],
+  'mg_window':[
+    {label:'窗户测量准确',text:'洞口尺寸复尺无误，订单规格正确'},
+    {label:'窗框安装水平',text:'水平垂直度≤2mm，填缝密实'},
+    {label:'密封性良好',text:'打胶均匀、无渗漏、开关顺畅'},
+    {label:'纱窗安装完好',text:'纱窗启闭灵活、网面无破损'}
+  ],
+  'mg_wood':[
+    {label:'材料进场验收',text:'板材品牌、规格、环保等级与合同一致'},
+    {label:'木作造型准确',text:'吊顶、柜体造型与图纸一致'},
+    {label:'收口平整美观',text:'阴角阳角线条顺直、收口严密'},
+    {label:'牢固无松动',text:'结构连接牢固、承重部位加强处理'}
+  ],
+  'mg_masonry':[
+    {label:'防水施工合格',text:'卫生间/阳台/厨房涂刷均匀、墙面≥1.8m'},
+    {label:'闭水试验通过',text:'蓄水24-48h、楼下无渗漏'},
+    {label:'瓷砖铺贴质量',text:'空鼓率≤5%、留缝均匀、平整度≤2mm'},
+    {label:'美缝施工完整',text:'砖缝清理干净、美缝剂饱满无气泡'},
+    {label:'地漏坡度正确',text:'排水顺畅、无积水现象'}
+  ],
+  'mg_paint_pre':[
+    {label:'材料进场验收',text:'腻子、界面剂、底漆品牌规格核对'},
+    {label:'基层处理合格',text:'墙面洁净、无浮灰、界面剂涂刷到位'},
+    {label:'批刮找平平整',text:'腻子层平整、灯光侧照无明显波浪'},
+    {label:'打磨细腻光滑',text:'砂纸打磨均匀、手感平滑无砂痕'}
+  ],
+  'mg_custom':[
+    {label:'测量数据准确',text:'现场复尺与设计图一致'},
+    {label:'生产质量合格',text:'材质、颜色、工艺与样品一致'},
+    {label:'安装位置正确',text:'柜体水平垂直、缝隙均匀'},
+    {label:'五金件功能正常',text:'铰链、滑轨、拉手启闭顺畅'}
+  ],
+  'mg_paint_post':[
+    {label:'底漆涂刷到位',text:'底漆滚涂均匀、无漏刷'},
+    {label:'面漆无色差流挂',text:'自然光检查无色差、无流挂泪痕'},
+    {label:'阴阳角顺直',text:'角线清晰、无毛边'},
+    {label:'成品保护完好',text:'门窗、地板、五金污染清理干净'}
+  ],
+  'mg_main_inst':[
+    {label:'入户门安装合格',text:'门框垂直、开启顺畅、锁具功能正常'},
+    {label:'橱柜安装验收',text:'柜体水平、台面无缝、五金完好'},
+    {label:'卫浴安装到位',text:'洁具稳固、下水通畅、无渗漏'},
+    {label:'灯具开关正常',text:'全部灯具点亮、开关插座面板安装端正'},
+    {label:'地板铺装质量',text:'拼接紧密、行走无异响、踢脚线贴合'},
+    {label:'窗帘/软包安装',text:'轨道水平、窗帘垂顺、软包平整'}
+  ],
+  'mg_clean':[
+    {label:'施工保洁完成',text:'建渣清运、表面灰尘清理'},
+    {label:'开荒保洁合格',text:'全屋深度清洁、玻璃明亮、无死角'},
+    {label:'围挡保护拆除',text:'所有围挡、保护膜清除、恢复原貌'},
+    {label:'钥匙交接清单',text:'钥匙、遥控器、说明书清点移交'}
+  ],
+  'mg_soft':[
+    {label:'家具摆放到位',text:'按布置图摆放、位置合理'},
+    {label:'家电调试正常',text:'全部家电通电试运行、功能正常'},
+    {label:'窗帘床品配套',text:'窗帘挂装、床品铺设整洁'},
+    {label:'装饰陈列完整',text:'装饰画、摆件、绿植布置完成'}
+  ],
+  'mg_accept':[
+    {label:'隐蔽工程验收单',text:'水电/防水/结构隐蔽验收签字归档'},
+    {label:'主材验收确认',text:'全部主材数量、品牌、质量确认'},
+    {label:'竣工验收报告',text:'全屋竣工验收单双方签字'},
+    {label:'资料交付完整',text:'保修卡、说明书、钥匙、遥控器全套移交'}
+  ],
+  'mg_rectify':[
+    {label:'整改项已闭环',text:'所有验收问题整改完成并复核通过'},
+    {label:'客户确认满意',text:'客户对整改结果签字确认'},
+    {label:'整改记录归档',text:'前后对比照片、整改单据整理归档'}
+  ],
+  'mg_warranty':[
+    {label:'维保日期登记',text:'质保起算日、各项目质保期明确'},
+    {label:'维保清单移交',text:'书面维保清单、售后联系方式移交'},
+    {label:'回访计划确认',text:'质保期内回访时间节点约定'}
+  ]
+};
+
 /* 将某个房屋类型的母/子节点模板展平为带 parentId 的节点数组
    母节点：isParent=true，parentId=null；子节点：isParent=false，parentId=母节点id
    所有节点均为独立可索引卡片（保持旧逻辑兼容） */
@@ -4304,7 +4423,7 @@ function buildFlatSteps(houseType){
     const ov=overrides[g.id]||{};
     out.push({
       id:g.id, name:ov.name||g.name, days:String(ov.days!=null?ov.days:g.days||''),
-      desc:'', acceptance:[], articles:[],
+      desc:'', acceptance:(PARENT_ACCEPTANCE_TEMPLATES[g.id]||[]).map(a=>({...a,status:'pending'})), articles:[],
       isParent:true, parentId:null, photosRequired:3,
       checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
     });
