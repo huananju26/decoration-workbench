@@ -461,8 +461,21 @@ a{color:#003a8c;text-decoration:none}
 .sb-child-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fafffe;border-radius:6px;transition:background .15s}
 .sb-child-item:hover{background:#e6f4ff}
 .sb-child-dot{width:6px;height:6px;border-radius:50%;background:#91caff;flex-shrink:0}
-.sb-child-name{font-size:12.5px;color:#333;flex:1}
+.sb-child-name{font-size:12.5px;color:#333;min-width:70px;flex-shrink:0}
 .sb-child-days{font-size:11px;color:#999;flex-shrink:0}
+/* 子节点完成时间 & 备注 */
+.sb-child-date{width:110px;flex-shrink:0}
+.sb-child-date input{width:100%;box-sizing:border-box;border:1px solid #d9d9d9;border-radius:4px;padding:2px 6px;font-size:11.5px;color:#333;background:#fff;outline:none;transition:border-color .2s}
+.sb-child-date input:focus{border-color:#1677ff;box-shadow:0 0 0 2px rgba(22,119,255,.1)}
+.sb-child-note{flex:1;min-width:0}
+.sb-child-note input{width:100%;box-sizing:border-box;border:1px solid #d9d9d9;border-radius:4px;padding:2px 6px;font-size:11.5px;color:#333;background:#fff;outline:none;transition:border-color .2s}
+.sb-child-note input:focus{border-color:#1677ff;box-shadow:0 0 0 2px rgba(22,119,255,.1)}
+/* 折叠区域 */
+.sb-sec-collapsible>.sb-sec-title{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}
+.sb-sec-collapsible>.sb-sec-title::before{content:'';display:inline-block;width:0;height:0;border-left:5px solid #999;border-top:3px solid transparent;border-bottom:3px solid transparent;transition:transform .2s;flex-shrink:0;margin-left:2px}
+.sb-sec-collapsible.collapsed>.sb-sec-title::before{transform:rotate(-90deg)}
+.sb-sec-collapsible>.sb-child-list,.sb-sec-collapsible>.sb-collapsible-body{overflow:hidden;transition:max-height .3s ease,opacity .2s ease}
+.sb-sec-collapsible.collapsed>.sb-child-list,.sb-sec-collapsible.collapsed>.sb-collapsible-body{max-height:0!important;opacity:0;padding-top:0;padding-bottom:0}
 
 /* ── 节点详情：左右两栏布局（可拖拽分割） ── */
 .step-body-grid{display:grid;grid-template-columns:var(--sb-left-w,1fr) 8px minmax(260px,1fr);gap:14px;width:100%;align-items:flex-start}
@@ -7879,12 +7892,15 @@ function renderProcess(){
         ${(step.isParent?(function(){
           const kids=steps.filter(s=>s.parentId===step.id);
           if(!kids.length) return '';
-          return `<div class="sb-section">
-            <div class="sb-sec-title">包含工序<span class="sb-badge">${kids.length}</span><span class="sb-sec-hint">该阶段包含以下子工序，验收以母节点整体验收为准</span></div>
+          const secId='sbChild_'+step.id;
+          return `<div class="sb-section sb-sec-collapsible collapsed" id="${secId}">
+            <div class="sb-sec-title" onclick="toggleChildList('${secId}')">包含工序<span class="sb-badge">${kids.length}</span><span class="sb-sec-hint">该阶段包含以下子工序，验收以母节点整体验收为准</span></div>
             <div class="sb-child-list">
               ${kids.map((k,ki)=>`<div class="sb-child-item">
                 <span class="sb-child-dot"></span>
                 <span class="sb-child-name">${escHtml(k.name)}</span>
+                <span class="sb-child-date"><input type="date" value="${k.childCompleteDate||''}" placeholder="完成时间" onchange="saveChildField('${step.id}','${k.id}','childCompleteDate',this.value)"></span>
+                <span class="sb-child-note"><input type="text" value="${escHtml(k.childNote||'')}" placeholder="备注" onchange="saveChildField('${step.id}','${k.id}','childNote',this.value)"></span>
                 ${k.days?`<span class="sb-child-days">${k.days}天</span>`:''}
               </div>`).join('')}
             </div>
@@ -8158,6 +8174,21 @@ function renderProcessNav(){
   }).join('');
 }
 /* 滚动到指定步骤卡片（快速定位：强制展开目标、折叠其它，再滚动定位） */
+/* 切换包含工序折叠状态 */
+function toggleChildList(secId){
+  const el=document.getElementById(secId);
+  if(!el)return;
+  el.classList.toggle('collapsed');
+}
+/* 保存子节点备注字段（完成时间/备注）到当前项目的 processSteps 数据 */
+function saveChildField(stepId,childId,field,value){
+  const p=cur();if(!p)return;
+  const steps=p.processSteps||[];
+  const child=steps.find(s=>s.id===childId);
+  if(!child)return;
+  child[field]=value;
+  persist();
+}
 function scrollToStep(idx){
   const card=document.getElementById('stepCard-'+idx);
   if(!card)return;
