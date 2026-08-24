@@ -3312,6 +3312,20 @@ a{color:#003a8c;text-decoration:none}
     </div>
   </div>
 </div>
+<!-- 企业必检项模板管理弹窗 -->
+<div class="modal-overlay" id="acceptTplModal">
+  <div class="modal" style="max-width:860px;width:96%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0">
+      <div class="modal-title" style="font-size:15px">管理企业必检项模板</div>
+      <div class="modal-close" onclick="closeModal('acceptTplModal')">✕</div>
+    </div>
+    <div class="modal-body" id="acceptTplBody" style="overflow-y:auto;padding:16px 20px;background:#fafbfc"></div>
+    <div class="form-actions" style="flex-shrink:0;padding:12px 20px;border-top:1px solid #e8e8e8">
+      <button class="btn-outline" onclick="closeModal('acceptTplModal')">取消</button>
+      <button class="btn-primary" onclick="saveAcceptTplModal()" style="margin-left:auto">保存模板</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="planModal">
   <div class="modal" style="max-width:900px">
     <div class="modal-header"><div class="modal-title">编辑合同收款计划</div><div class="modal-close" onclick="closeModal('planModal')">✕</div></div>
@@ -7740,7 +7754,104 @@ function sbImportAcceptTemplate(i){
   persist();renderProcessKeepExpanded(i);
 }
 function sbManageAcceptTemplates(){
-  alert('企业必检项模板管理（开发中）\n后续将支持：按施工类型预设、水电/木工/油漆/瓦工 不同阶段模板。');
+  /* 深拷贝当前模板作为编辑态（避免直接修改原数据，取消时不污染） */
+  window._acceptTplEdit=JSON.parse(JSON.stringify(PARENT_ACCEPTANCE_TEMPLATES));
+  renderAcceptTplModal();
+  showModal('acceptTplModal');
+}
+/* 渲染企业必检项模板弹窗内容 */
+function renderAcceptTplModal(){
+  const body=$('acceptTplBody');if(!body)return;
+  const data=window._acceptTplEdit||{};
+  const groups=BASE_PARENT_GROUPS;
+  let html='<div style="font-size:12px;color:#888;margin-bottom:14px">以下为 18 个管理母节点的专属必检项模板。新建项目时自动套用。修改后点「保存模板」生效。</div>';
+  groups.forEach((g,gi)=>{
+    const items=(data[g.id])||[];
+    html+=`<div style="background:#fff;border:0.5px solid #e8e8e8;border-radius:8px;margin-bottom:10px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#f0f2f5;cursor:pointer" onclick="toggleAcceptTplGroup(${gi})">
+        <span class="chev" id="atChev_${gi}" style="transition:transform .2s;font-size:10px;color:#666">▾</span>
+        <span style="background:#003a8c;color:#fff;font-size:11px;padding:1px 7px;border-radius:4px;min-width:22px;text-align:center">${String(gi+1).padStart(2,'0')}</span>
+        <strong style="color:#003a8c;font-size:13px">${escHtml(g.name)}</strong>
+        <span style="color:#bbb;font-family:monospace;font-size:11px">${g.id}</span>
+        <span style="margin-left:auto;color:#1677ff;font-size:11px">${items.length} 项</span>
+      </div>
+      <div id="atGroup_${gi}" style="padding:10px 12px">
+        ${items.length?items.map((it,ii)=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px" data-gi="${gi}" data-ii="${ii}">
+          <input type="text" placeholder="验收项名称" value="${escAttr(it.label||'')}" onchange="onAcceptTplItemChange(${gi},${ii},'label',this.value)" style="flex:0 0 140px;padding:5px 8px;border:1px solid #d9d9d9;border-radius:5px;font-size:12px">
+          <input type="text" placeholder="标准说明" value="${escAttr(it.text||'')}" onchange="onAcceptTplItemChange(${gi},${ii},'text',this.value)" style="flex:1;padding:5px 8px;border:1px solid #d9d9d9;border-radius:5px;font-size:12px">
+          <button type="button" onclick="delAcceptTplItem(${gi},${ii})" title="删除此项" style="border:none;background:none;color:#ff4d4f;cursor:pointer;font-size:16px;line-height:1;padding:0 2px">×</button>
+        </div>`).join(''):'<div style="color:#999;font-size:12px;padding:4px 0">暂无必检项</div>'}
+        <button type="button" onclick="addAcceptTplItem(${gi})" style="margin-top:4px;border:none;background:none;color:#1677ff;cursor:pointer;font-size:12px;padding:2px 0">＋ 添加必检项</button>
+      </div>
+    </div>`;
+  });
+  body.innerHTML=html;
+}
+/* 切换节点组折叠 */
+function toggleAcceptTplGroup(gi){
+  const g=$('atGroup_'+gi);const c=$('atChev_'+gi);
+  if(!g)return;
+  const hidden=g.style.display==='none';
+  g.style.display=hidden?'':'none';
+  if(c)c.style.transform=hidden?'':'rotate(-90deg)';
+}
+/* 编辑某项字段 */
+function onAcceptTplItemChange(gi,ii,field,val){
+  const data=window._acceptTplEdit;if(!data)return;
+  const groups=BASE_PARENT_GROUPS;if(!groups[gi])return;
+  const gid=groups[gi].id;
+  if(!data[gid]||!data[gid][ii])return;
+  data[gid][ii][field]=val;
+}
+/* 某节点下新增一项 */
+function addAcceptTplItem(gi){
+  const data=window._acceptTplEdit;if(!data)return;
+  const groups=BASE_PARENT_GROUPS;if(!groups[gi])return;
+  const gid=groups[gi].id;
+  if(!data[gid])data[gid]=[];
+  data[gid].push({label:'',text:''});
+  renderAcceptTplModal();
+  /* 自动展开并聚焦新行 */
+  const g=$('atGroup_'+gi);if(g)g.style.display='';
+  const c=$('atChev_'+gi);if(c)c.style.transform='';
+  const inputs=g.querySelectorAll('input');
+  if(inputs.length>=2){inputs[inputs.length-2].focus();}
+}
+/* 删除某项 */
+function delAcceptTplItem(gi,ii){
+  const data=window._acceptTplEdit;if(!data)return;
+  const groups=BASE_PARENT_GROUPS;if(!groups[gi])return;
+  const gid=groups[gi].id;
+  if(!data[gid])return;
+  data[gid].splice(ii,1);
+  renderAcceptTplModal();
+}
+/* 保存模板：写回 PARENT_ACCEPTANCE_TEMPLATES + localStorage 持久化 */
+function saveAcceptTplModal(){
+  const src=window._acceptTplEdit;if(!src)return;
+  /* 写回运行时常量（用 Object.assign 逐 key 覆盖保持引用） */
+  Object.keys(PARENT_ACCEPTANCE_TEMPLATES).forEach(k=>{ delete PARENT_ACCEPTANCE_TEMPLATES[k]; });
+  Object.keys(src).forEach(k=>{ PARENT_ACCEPTANCE_TEMPLATES[k]=src[k]; });
+  /* localStorage 持久化（刷新不丢失） */
+  try{
+    localStorage.setItem('xzgz_accept_tpl_v1',JSON.stringify(PARENT_ACCEPTANCE_TEMPLATES));
+  }catch(e){}
+  closeModal('acceptTplModal');
+  window._acceptTplEdit=null;
+}
+/* 启动时从 localStorage 恢复企业自定义模板（如有） */
+function loadAcceptTplFromStorage(){
+  try{
+    const s=localStorage.getItem('xzgz_accept_tpl_v1');
+    if(s){
+      const custom=JSON.parse(s);
+      if(custom&&typeof custom==='object'){
+        Object.keys(custom).forEach(k=>{
+          if(Array.isArray(custom[k])){ PARENT_ACCEPTANCE_TEMPLATES[k]=custom[k]; }
+        });
+      }
+    }
+  }catch(e){}
 }
 // 验收单图片：直接复用现场记录添加 + 自动锁定 stepId
 function sbAddAcceptDoc(i){
@@ -13754,6 +13865,7 @@ document.addEventListener('click',function(e){
 // ============================================================
 async function init(){
   load();
+  loadAcceptTplFromStorage();
   updateHeroGreeting();
   startHeroClock();
   /* ── 立即着陆：用本地数据先显示 app，不等待云端同步（离线优先） ──
