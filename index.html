@@ -456,6 +456,14 @@ a{color:#003a8c;text-decoration:none}
 .sb-empty a{color:#1677ff;cursor:pointer}
 .sb-rel-add{margin-top:8px}
 
+/* ── 包含工序（子节点列表） ── */
+.sb-child-list{display:flex;flex-direction:column;gap:4px;padding:4px 0}
+.sb-child-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fafffe;border-radius:6px;transition:background .15s}
+.sb-child-item:hover{background:#e6f4ff}
+.sb-child-dot{width:6px;height:6px;border-radius:50%;background:#91caff;flex-shrink:0}
+.sb-child-name{font-size:12.5px;color:#333;flex:1}
+.sb-child-days{font-size:11px;color:#999;flex-shrink:0}
+
 /* ── 节点详情：左右两栏布局（可拖拽分割） ── */
 .step-body-grid{display:grid;grid-template-columns:var(--sb-left-w,1fr) 8px minmax(260px,1fr);gap:14px;width:100%;align-items:flex-start}
 .step-body-left{display:flex;flex-direction:column;min-width:0}
@@ -7825,6 +7833,21 @@ function renderProcess(){
           </div><!-- /sb-sec-body -->
         </div>
 
+        ${(step.isParent?(function(){
+          const kids=steps.filter(s=>s.parentId===step.id);
+          if(!kids.length) return '';
+          return `<div class="sb-section">
+            <div class="sb-sec-title">包含工序<span class="sb-badge">${kids.length}</span><span class="sb-sec-hint">该阶段包含以下子工序，验收以母节点整体验收为准</span></div>
+            <div class="sb-child-list">
+              ${kids.map((k,ki)=>`<div class="sb-child-item">
+                <span class="sb-child-dot"></span>
+                <span class="sb-child-name">${escHtml(k.name)}</span>
+                ${k.days?`<span class="sb-child-days">${k.days}天</span>`:''}
+              </div>`).join('')}
+            </div>
+          </div>`;
+        })():'')}
+
         <!-- ② 计划 vs 实际 -->
         <div class="sb-section">
           <div class="sb-sec-title">计划 vs 实际</div>
@@ -8093,23 +8116,16 @@ function renderProcessNav(){
   const p=cur();if(!p)return;
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
-  navList.innerHTML=steps.map((step,i)=>{
-    /* 母节点：渲染为不可点击的阶段分组标题 */
-    if(step.isParent){
-      const kids=steps.filter(s=>s.parentId===step.id);
-      const kidDone=kids.filter(s=>isStepFullyAccepted(p,s)).length;
-      return `<li class="process-nav-item nav-parent" id="processNavItem-${i}" data-index="${i}">
-        <span class="process-nav-parent-icon">📂</span>
-        <span class="process-nav-name nav-parent-name">${escHtml(step.name)}</span>
-        <span class="nav-parent-count">${kidDone}/${kids.length}</span>
-      </li>`;
-    }
-    const done=isStepFullyAccepted(p,step);
-    const numStr=String(i+1).padStart(2,'0');
-    return `<li class="process-nav-item${done?' disabled':''}" id="processNavItem-${i}" data-index="${i}"${done?'':' onclick="scrollToStep('+i+')"'}>
-      <span class="process-nav-dot${done?' active':''}"></span>
-      <span class="process-nav-num${done?' done':''}">${numStr}</span>
-      <span class="process-nav-name${done?' done':''}">${escHtml(step.name)}</span>
+  /* 只渲染母节点（isParent），子节点不在左侧导航显示 */
+  const parentSteps=steps.filter(s=>s.isParent);
+  navList.innerHTML=parentSteps.map((step,pi)=>{
+    const origIdx=steps.indexOf(step);
+    const kids=steps.filter(s=>s.parentId===step.id);
+    const kidDone=kids.filter(s=>isStepFullyAccepted(p,s)).length;
+    return `<li class="process-nav-item nav-parent" id="processNavItem-${origIdx}" data-index="${origIdx}">
+      <span class="process-nav-parent-icon">📂</span>
+      <span class="process-nav-name nav-parent-name">${escHtml(step.name)}</span>
+      <span class="nav-parent-count">${kidDone}/${kids.length}</span>
     </li>`;
   }).join('');
 }
