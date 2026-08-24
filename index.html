@@ -7901,7 +7901,6 @@ function renderProcess(){
                 <span class="sb-child-name">${escHtml(k.name)}</span>
                 <span class="sb-child-date"><input type="date" value="${k.childCompleteDate||''}" placeholder="完成时间" onchange="saveChildField('${step.id}','${k.id}','childCompleteDate',this.value)"></span>
                 <span class="sb-child-note"><input type="text" value="${escHtml(k.childNote||'')}" placeholder="备注" onchange="saveChildField('${step.id}','${k.id}','childNote',this.value)"></span>
-                ${k.days?`<span class="sb-child-days">${k.days}天</span>`:''}
               </div>`).join('')}
             </div>
           </div>`;
