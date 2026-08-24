@@ -479,10 +479,10 @@ a{color:#003a8c;text-decoration:none}
 .sb-sec-collapsible>.sb-child-list,.sb-sec-collapsible>.sb-collapsible-body{overflow:hidden;transition:max-height .3s ease,opacity .2s ease}
 .sb-sec-collapsible.collapsed>.sb-child-list,.sb-sec-collapsible.collapsed>.sb-collapsible-body{max-height:0!important;opacity:0;padding-top:0;padding-bottom:0}
 /* 子节点操作按钮 */
-.sb-child-ops{display:flex;gap:2px;flex-shrink:0}
-.sb-child-op-btn{width:22px;height:22px;border-radius:4px;border:1px solid #d9d9d9;background:#fff;font-size:14px;line-height:20px;text-align:center;cursor:pointer;padding:0;transition:all .15s;color:#666;display:inline-flex;align-items:center;justify-content:center}
-.sb-child-op-btn.add:hover{border-color:#1677ff;color:#1677ff;background:#e6f4ff}
-.sb-child-op-btn.del:hover{border-color:#ff4d4f;color:#ff4d4f;background:#fff1f0}
+.sb-child-ops{display:flex;gap:6px;flex-shrink:0;align-items:center}
+.sb-child-op-btn{border:none;background:none;font-size:18px;line-height:1;cursor:pointer;padding:0 2px;transition:color .15s;color:#999;display:inline-flex;align-items:center;justify-content:center}
+.sb-child-op-btn.add:hover{color:#1677ff}
+.sb-child-op-btn.del:hover{color:#ff4d4f}
 
 /* ── 节点详情：左右两栏布局（可拖拽分割） ── */
 .step-body-grid{display:grid;grid-template-columns:var(--sb-left-w,1fr) 8px minmax(260px,1fr);gap:14px;width:100%;align-items:flex-start}
