@@ -7734,8 +7734,9 @@ function printRectifyRecord(){
   setTimeout(function(){ window.print(); }, 250);
 }
 function sbEditAcceptItem(i,idx){
-  sbEditStep(i);
-  // 滚动到验收区后高亮该项的 label 输入框
+  /* 直接滚动到必检项区域并聚焦目标输入框，不调用 sbEditStep（避免聚焦折叠区内的名称输入框导致节点信息自动展开） */
+  const acceptSec=document.getElementById('sb_accept_'+i);
+  if(acceptSec)acceptSec.scrollIntoView({behavior:'smooth',block:'center'});
   setTimeout(()=>{
     const input=document.querySelector('#sb_accept_'+i+' .sb-accept-row:nth-child('+(idx+1)+') .sb-acc-label');
     if(input){input.focus();input.select&&input.select();}
