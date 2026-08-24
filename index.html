@@ -4450,6 +4450,9 @@ const PARENT_ACCEPTANCE_TEMPLATES={
     {label:'回访计划确认',text:'质保期内回访时间节点约定'}
   ]
 };
+/* 默认标准必检项模板（深拷贝自初始值，永不修改，作为 fallback）
+   当运行时 PARENT_ACCEPTANCE_TEMPLATES 某节点被清空时，从此处恢复原始标准项 */
+const DEFAULT_PARENT_ACCEPTANCE_TEMPLATES=JSON.parse(JSON.stringify(PARENT_ACCEPTANCE_TEMPLATES));
 
 /* 将某个房屋类型的母/子节点模板展平为带 parentId 的节点数组
    母节点：isParent=true，parentId=null；子节点：isParent=false，parentId=母节点id
@@ -7844,19 +7847,29 @@ function sbImportAcceptTemplate(i){
   persist();renderProcessKeepExpanded(i);
 }
 /* 套用该节点专属的系统标准必检项（来自 PARENT_ACCEPTANCE_TEMPLATES）：
-   按 label 匹配保留已通过状态，模板新增项置为待检查。用于旧项目 / 手动调整后一键对齐。 */
+   按 label 匹配保留已通过状态，模板新增项置为待检查。
+   若运行时模板为空则从 DEFAULT_PARENT_ACCEPTANCE_TEMPLATES 恢复原始标准项，并自动去重。 */
 function sbApplyNodeStdAccept(i){
   const p=cur();if(!p)return;
   const step=(p.processSteps||[])[i];if(!step)return;
   ensureProjectSteps(p);
-  const tpl=PARENT_ACCEPTANCE_TEMPLATES[step.id]||[];
-  if(!tpl.length){ alert('该节点暂无系统标准必检项模板'); return; }
+  /* 优先取运行时模板；若为空则 fallback 到默认模板（用户在管理弹窗中删空了也能恢复） */
+  let tpl=PARENT_ACCEPTANCE_TEMPLATES[step.id]||[];
+  if(!tpl.length){
+    tpl=DEFAULT_PARENT_ACCEPTANCE_TEMPLATES[step.id]||[];
+    if(!tpl.length){ alert('该节点暂无系统标准必检项模板'); return; }
+    /* 将恢复的默认模板同步回运行时模板（下次不用再 fallback） */
+    PARENT_ACCEPTANCE_TEMPLATES[step.id]=JSON.parse(JSON.stringify(tpl));
+    try{ localStorage.setItem('xzgz_accept_tpl_v1',JSON.stringify(PARENT_ACCEPTANCE_TEMPLATES)); }catch(e){}
+  }
   const prev=new Map((step.acceptance||[]).map(a=>[a.label, a.status]));
-  step.acceptance=tpl.map(a=>({
-    label:a.label, text:a.text,
-    status: prev.get(a.label)==='passed'?'passed':'pending',
-    rectifyPassed:false, rectifyId:''
+  /* 去重：只添加当前节点尚不存在的 label */
+  const existingLabels=new Set((step.acceptance||[]).map(a=>a.label));
+  const newItems=tpl.filter(a=>!existingLabels.has(a.label)).map(a=>({
+    label:a.label, text:a.text, status:'pending', rectifyPassed:false, rectifyId:''
   }));
+  /* 保留原有项（维持已有状态），追加新项 */
+  step.acceptance=(step.acceptance||[]).concat(newItems);
   persist(); renderProcessKeepExpanded(i);
 }
 function sbManageAcceptTemplates(){
