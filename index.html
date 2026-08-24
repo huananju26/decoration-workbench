@@ -8274,7 +8274,7 @@ function renderProcess(){
           <div class="sb-accept">
             <div class="sb-sec-sub">验收标准</div>
             <div id="sb_accept_${i}" class="sb-accept-list">
-              ${(step.acceptance&&step.acceptance.length?step.acceptance:[]).map(a=>`<div class="sb-accept-row"><input class="sb-acc-label" placeholder="项（如：防水）" value="${escAttr(a.label||'')}"><input class="sb-acc-text" placeholder="标准说明" value="${escAttr(a.text||'')}"><span class="sb-acc-del" title="删除" onclick="this.parentNode.remove()">×</span></div>`).join('')}
+              ${(step.acceptance&&step.acceptance.length?step.acceptance:[]).map(a=>`<div class="sb-accept-row"><input class="sb-acc-label" placeholder="项（如：防水）" value="${escAttr(a.label||'')}"><input class="sb-acc-text" placeholder="标准说明" value="${escAttr(a.text||'')}"><span class="sb-acc-del" title="删除" onclick="sbLeftDelAcceptRow(${i},this)">×</span></div>`).join('')}
             </div>
             <button class="sb-mini-btn" type="button" onclick="addAcceptRow(${i})">＋ 增加验收项</button>
           </div>
@@ -8734,6 +8734,29 @@ function addAcceptRow(i){
   row.innerHTML='<input class="sb-acc-label" placeholder="项（如：防水）" value=""><input class="sb-acc-text" placeholder="标准说明" value=""><span class="sb-acc-del" title="删除" onclick="this.parentNode.remove()">×</span>';
   box.appendChild(row);
 }
+/* 左侧「验收标准」区域的 × 删除按钮：删 DOM 行 + 立即回写数据 + 同步右侧「节点必检项」 */
+function sbLeftDelAcceptRow(i, btn){
+  const row=btn.parentNode;
+  if(!row)return;
+  const label=(row.querySelector('.sb-acc-label')||{}).value||'';
+  /* 二次确认 */
+  if(label && !confirm('确认删除验收标准「'+label+'」？\n\n同时会同步删除右侧节点必检项中的同名项。'))return;
+  row.remove();
+  /* 立即将剩余 DOM 行回写到 step.acceptance 数据（与 saveStepDetail 同逻辑） */
+  const p=cur();if(!p)return;
+  const step=(p.processSteps||[])[i];if(!step)return;
+  ensureProjectSteps(p);
+  const acc=[];
+  document.querySelectorAll('#sb_accept_'+i+' .sb-accept-row').forEach(function(r){
+    const l=r.querySelector('.sb-acc-label').value.trim();
+    const t=r.querySelector('.sb-acc-text').value.trim();
+    if(l||t)acc.push({label:l,text:t});
+  });
+  step.acceptance=acc;
+  persist();
+  renderProcessKeepExpanded(i);
+}
+
 /* 保存节点可编辑信息（名称/计划起止/描述/验收标准）到项目并持久化 */
 function saveStepDetail(i){
   const p=cur();if(!p)return;
