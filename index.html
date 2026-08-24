@@ -630,7 +630,8 @@ a{color:#003a8c;text-decoration:none}
 .ry-photo-cell{flex:1 1 0;border:1px dashed #c2d5f0;border-radius:8px;background:#f8fbff;padding:10px 12px;min-width:0}
 .ry-photo-cell-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#003a8c;font-weight:600;margin-bottom:6px}
 .ry-photo-cell-count{font-size:11px;color:#888;font-weight:400}
-.ry-photo-empty{text-align:center;color:#a8b6cf;font-size:12px;padding:14px 0;border-top:1px dashed #d9e2f3;border-bottom:1px dashed #d9e2f3;margin:2px 0}
+.ry-photo-empty{text-align:center;color:#a8b6cf;font-size:12px;padding:18px 0;border-radius:8px;margin:2px 0;cursor:pointer;user-select:none;transition:background .15s}
+.ry-photo-empty:hover{background:#fff1f0;color:#ff4d4f;border-color:#ffccc7}
 .ry-photo-strip{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .ry-photo-thumb{position:relative;width:64px;height:64px;flex-shrink:0}
 .ry-photo-thumb img{width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #eee;cursor:pointer;display:block}
@@ -8481,11 +8482,11 @@ function renderProcess(){
                 <div class="ry-photo-row">
                   <div class="ry-photo-cell">
                     <div class="ry-photo-cell-head"><span>整改前图片</span><span class="ry-photo-cell-count">${beforeCnt} 张</span></div>
-                    ${beforeCnt?renderThumbs(r.beforePhotos||r.photos):`<div class="ry-photo-empty">未上传整改前图片</div>`}
+                    ${beforeCnt?renderThumbs(r.beforePhotos||r.photos):`<div class="ry-photo-empty" onclick="openRectifyEditModal('${r.id}')" title="点击上传整改前图片">📷 未上传整改前图片</div>`}
                   </div>
                   <div class="ry-photo-cell">
                     <div class="ry-photo-cell-head"><span>整改后图片</span><span class="ry-photo-cell-count">${afterCnt} 张</span></div>
-                    ${afterCnt?renderThumbs(r.afterPhotos):`<div class="ry-photo-empty">整改完成后再上传</div>`}
+                    ${afterCnt?renderThumbs(r.afterPhotos):`<div class="ry-photo-empty" onclick="ryUploadAfterPhotos('${r.id}')" title="点击上传整改后图片">📷 整改完成后再上传</div>`}
                   </div>
                 </div>
                 <div class="ry-actions">
