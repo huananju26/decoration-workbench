@@ -3008,15 +3008,17 @@ a{color:#003a8c;text-decoration:none}
 
 <!-- ═══ 节点验收图文报告·预览 ═══ -->
 <div class="modal-overlay" id="sbReportModal">
-  <div class="modal" style="max-width:560px;width:94%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
-    <div class="modal-header" style="flex-shrink:0"><div class="modal-title">节点验收图文报告 · 预览</div><div class="modal-close" onclick="closeModal('sbReportModal')">✕</div></div>
-    <div class="adj-subtitle" style="flex-shrink:0">示意正式生成的客户版 PDF 排版，按节点汇总照片、整改、验收与客户同步记录。</div>
-    <div class="modal-body" id="sbReportBody" style="overflow-y:auto;padding:20px;background:#fff">
-      <div style="text-align:center;color:#888;font-size:13px">正在生成预览…</div>
+  <div class="modal" style="max-width:860px;width:96%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0"><div class="modal-title">节点验收图文报告</div><div class="modal-close" onclick="closeModal('sbReportModal')">✕</div></div>
+    <div class="adj-subtitle" style="flex-shrink:0">按节点汇总照片、整改、验收与客户同步记录，统一制版式。</div>
+    <div class="modal-body" id="sbReportBody" style="overflow-y:auto;padding:0;background:#f5f5f5">
+      <div style="text-align:center;padding:40px 20px;color:#888;font-size:13px">正在生成预览…</div>
     </div>
-    <div class="modal-footer" style="flex-shrink:0">
-      <button class="btn-outline" onclick="closeModal('sbReportModal')">关闭预览</button>
-      <button class="btn-primary" onclick="alert('PDF 导出接入开发中，请先用「数据备份」截图节点报告')">导出 PDF（待开发）</button>
+    <div class="modal-footer" style="flex-shrink:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:11px;color:#bbb;margin-right:auto" id="sbReportDims"></span>
+      <button class="btn-outline" onclick="openCompanyCfgModal()" style="padding:8px 16px;font-size:13px">⊙ 企业抬头</button>
+      <button class="btn-outline" onclick="closeModal('sbReportModal')" style="padding:8px 20px;font-size:13px">关闭预览</button>
+      <button class="btn-primary" onclick="alert('PDF 导出接入开发中，请先用「数据备份」截图节点报告')" style="padding:10px 22px;font-size:13px;background:#003a8c;border-color:#003a8c">下载 PDF 文件</button>
     </div>
   </div>
 </div>
@@ -8035,7 +8037,7 @@ function sbAddAcceptDoc(i){
     if(sel){sel.value=step.id;updateSiteRecordTitle();}
   },50);
 }
-// 预览报告样式：弹窗显示按当前节点的统计卡片示意
+// 预览报告：合同收款计划表同款统一制版式（cpr 风格 + 深蓝系）
 function sbPreviewReport(i){
   const p=cur();if(!p||!p.processSteps||!p.processSteps[i])return;
   const step=p.processSteps[i];
@@ -8047,28 +8049,108 @@ function sbPreviewReport(i){
   const cliSyncCnt=getStepClientSyncCount(step);
   const done=isStepChecked(step.id);
   const fullyAccepted=isStepFullyAccepted(p,step);
-  const company=(window.companyName&&companyName())||'企业';
+  /* 日期格式化 */
+  const fmtDate=(d)=>{if(!d)return '—';const t=new Date(d);return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`};
+  const fmtDT=(d)=>{if(!d)return '—';const t=new Date(d);return `${fmtDate(d)} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`};
+  const nowStr=fmtDate(new Date().toISOString());
+  const actEndStr=step.completedAt?fmtDT(step.completedAt):'—';
+  const planEndStr=step.planEndDate?fmtDate(step.planEndDate):'—';
+  /* 报告编号 */
+  const rptId='NODE-'+nowStr.replace(/-/g,'')+'-'+String(i+1).padStart(2,'0').toUpperCase()+Math.random().toString(36).substr(2,4).toUpperCase();
+  /* 负责人 */
+  const owner=(step.owner||(p.profile&&p.profile.owner)||companyName()||'—');
+  /* 验收结论 */
+  let conclusionLabel='待验收', conclusionCls='pending', conclusionDesc='当前为版式预览；节点完成并通过必检项后可正式出具';
+  if(fullyAccepted){conclusionLabel='验收通过';conclusionCls='passed';conclusionDesc='本节点全部必检项已通过，现场照片与整改记录齐全';}
+  else if(ac.issue>0){conclusionLabel='存在问题';conclusionCls='issue';conclusionDesc=`存在 ${ac.issue} 项整改中，待闭环复核`;}
+  else if(ac.passed>0&&ac.passed<ac.total){conclusionLabel='部分通过';conclusionCls='partial';conclusionDesc=`已通过 ${ac.passed}/${ac.total} 项，剩余项待检查`;}
+  /* 照片数据 */
+  const recByStep=(p.siteRecords||[]).filter(r=>(r.stepId||'')===step.id);
+  const photos=[];recByStep.forEach(r=>{(r.photos||[]).forEach(ph=>photos.push(ph));});
+  /* 必检项明细行 */
+  const acceptRows=(step.acceptance||[]).map((a,idx)=>{
+    const st=a.status||'pending';
+    const stTag=st==='passed'?'<span style="color:#003a8c;font-weight:600">✓ 通过</span>':st==='issue'?'<span style="color:#ff4d4f;font-weight:600">✗ 问题</span>':'<span style="color:#999">○ 待检</span>';
+    return `<tr><td style="padding:9px 14px;border-bottom:1px solid #f5f5f5;color:#999;font-size:12px;width:40px;text-align:center">${String(idx+1).padStart(2,'0')}</td><td style="padding:9px 14px;border-bottom:1px solid #f5f5f5;font-size:13px">${escHtml(a.label||'(未命名)')}</td><td style="padding:9px 14px;border-bottom:1px solid #f5f5f5;font-size:12px;color:#666">${escHtml(a.text||'—')}</td><td style="padding:9px 14px;border-bottom:1px solid #f5f5f5;text-align:center">${stTag}</td></tr>`;
+  }).join('');
+  /* 统一色变量 */
+  const C='#003a8c', CL='#1677ff', CBG='#e6f4ff', CBd='#91caff';
+
   const body=document.getElementById('sbReportBody');
   if(body){
     body.innerHTML=`
-      <div style="text-align:center;padding:14px 0 12px;border-bottom:2px solid #003a8c">
-        <div style="font-size:18px;font-weight:700;color:#003a8c">${escHtml(company)}</div>
-        <div style="font-size:12px;color:#888;margin-top:4px">节点验收图文报告 · ${escHtml((window.companyTagline&&companyTagline())||'真实记录每一处施工细节')}</div>
+    <div class="cpr-sheet" id="nodeAcceptReportSheet" style="border-radius:10px 10px 0 0">
+      <!-- ═ 顶部：Logo+公司名（左） / 标题（右）═ -->
+      <div class="cpr-top">
+        ${companyName()?`<div class="cpr-brand">
+          ${companyLogo()?'<img class="cpr-logo-img" src="'+companyLogo()+'">':'<div class="cpr-logo">'+(companyName()||'').charAt(0)+'</div>'}
+          <div>
+            <div class="cpr-company">${escHtml(companyName())}</div>
+            <div class="cpr-tagline">${escHtml(companyTagline()||'让生活更焕新，让居住更安心')}</div>
+          </div>
+        </div>`:''}
+        <div class="cpr-title-area">
+          <div class="cpr-main-title">节点验收报告</div>
+          <div class="cpr-sub-title">ACCEPTANCE REPORT</div>
+        </div>
       </div>
-      <div style="padding:14px 0">
-        <div style="font-size:15px;font-weight:600;color:#1a1a1a">${i+1}. ${escHtml(step.name)}</div>
-        <div style="font-size:12px;color:#888;margin-top:4px">状态：${fullyAccepted?'✓ 已完成':'进行中'} · 客户同步：${cliSyncCnt} 次</div>
+
+      <!-- ═ 节点名称 ═ -->
+      <div class="cpr-project-name">${escHtml(step.name)}</div>
+      <div class="cpr-project-meta">
+        <span class="cpr-meta-item">报告编号：<b>${rptId}</b></span>
+        <span class="cpr-meta-item">出具日期：${nowStr}</span>
+        <span class="cpr-meta-item">计划完成：${planEndStr}</span>
+        <span class="cpr-meta-item">实际完成：${actEndStr}</span>
       </div>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;color:#333">
-        <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff;width:30%">现场照片</td><td style="padding:8px;border:1px solid #eee">${photoCnt} 张 ${photoCnt<photoReq?`(未达标 ${photoReq-photoCnt} 张)`:''}</td></tr>
-        <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff">验收单图片</td><td style="padding:8px;border:1px solid #eee">${accDocCnt} 张</td></tr>
-        <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff">整改记录</td><td style="padding:8px;border:1px solid #eee">${fixCnt} 项</td></tr>
-        <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff">必检项</td><td style="padding:8px;border:1px solid #eee">${ac.total} 项 · 通过 ${ac.passed} 项 · 有 ${ac.issue} 项整改中</td></tr>
-        <tr><td style="padding:8px;border:1px solid #eee;background:#fafcff">客户同步</td><td style="padding:8px;border:1px solid #eee">${cliSyncCnt} 次</td></tr>
-      </table>
-      <div style="margin-top:14px;padding:10px 12px;background:#e6f4ff;border:1px solid #91caff;border-radius:6px;font-size:12px;color:#003a8c">
-        报告由「${escHtml(company)}」自动汇总 · 仅含本节点公开记录
-      </div>`;
+
+      <!-- ═ 验收结论横幅 ═ -->
+      <div style="margin:16px 0;padding:12px 20px;border-radius:8px;display:flex;align-items:center;gap:16px;background:${conclusionCls==='passed'?'#f6ffed':conclusionCls==='issue'?'#fff2f0':conclusionCls==='partial'?'#fffbe6':CBG};border:1px solid ${conclusionCls==='passed'?'#b7eb8f':conclusionCls==='issue'?'#ffccc7':conclusionCls==='partial'?'#ffe58f':CBd}">
+        <span style="font-size:12px;color:#888;white-space:nowrap;font-weight:600">验收结论</span>
+        <span style="font-size:15px;font-weight:700;color:${conclusionCls==='passed'?'#389e0d':conclusionCls==='issue'?'#ff4d4f':conclusionCls==='partial'?'#d48806':C}">${conclusionLabel}</span>
+        <span style="font-size:12px;color:#666;margin-left:auto">${conclusionDesc}</span>
+      </div>
+
+      <!-- ═ 汇总卡片（4列）═ -->
+      <div class="cpr-summary-row">
+        <div class="cpr-sum-card"><div class="cpr-sum-label">验收图片</div><div class="cpr-sum-val${photoCnt>=photoReq?' ok':''}">${photoCnt}<small style="font-size:11px;color:#999;font-weight:400"> 张</small>${photoCnt<photoReq?`<div style="font-size:11px;color:#ff4d4f;margin-top:2px">未达标 ${photoReq-photoCnt} 张</div>`:''}</div></div>
+        <div class="cpr-sum-card"><div class="cpr-sum-label">已通过必检</div><div class="cpr-sum-val${ac.passed===ac.total&&ac.total>0?' ok':''}">${ac.passed}<small style="font-size:11px;color:#999;font-weight:400"> / ${ac.total} 项</small></div></div>
+        <div class="cpr-sum-card"><div class="cpr-sum-label">整改记录</div><div class="cpr-sum-val${fixCnt===0?' ok':''}" style="${fixCnt>0?'color:#ff4d4f':''}">${fixCnt}<small style="font-size:11px;color:#999;font-weight:400"> 项</small></div></div>
+        <div class="cpr-sum-card"><div class="cpr-sum-label">客户同步</div><div class="cpr-sum-val">${cliSyncCnt}<small style="font-size:11px;color:#999;font-weight:400"> 次</small></div></div>
+      </div>
+
+      <!-- ═ 必检项明细表 ═ -->
+      ${(step.acceptance&&step.acceptance.length)?`
+      <div class="cpr-table-wrap" style="margin-top:16px">
+        <table class="cpr-table">
+          <thead><tr>
+            <th class="num-col">序号</th><th>必检项</th><th>标准说明</th><th style="text-align:center;width:80px">状态</th>
+          </tr></thead>
+          <tbody>${acceptRows}</tbody>
+        </table>
+      </div>`:`<div style="margin-top:16px;padding:24px;text-align:center;color:#bbb;font-size:13px;border:1px dashed #e8e8e8;border-radius:8px">暂无必检项 · 可在左侧「验收标准」中添加</div>`}
+
+      <!-- ═ 现场照片网格 ═ -->
+      <div style="margin-top:18px">
+        <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">现场照片 <span style="color:#999;font-weight:400">(${photos.length}/${photoReq})</span></div>
+        ${photos.length?`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${photos.slice(0,8).map(ph=>`<div style="aspect-ratio:1;border-radius:6px;overflow:hidden;background:#f0f0f0;border:1px solid #eee"><img src="${ph}" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;color:#bbb;font-size:11px\\'>加载失败</div>'"></div>`).join('')}${photos.length>8?`<div style="aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;background:#f5f7fa;border:1px solid #eee;color:#999;font-size:12px">+${photos.length-8}</div>`:''}</div>`
+        :`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${[1,2,3,4].map(()=>`<div style="aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;border:1px solid #eee;color:#bbb;font-size:12px">暂无照片</div>`).join('')}</div>`}
+      </div>
+
+      <!-- ═ 底部说明 ═ -->
+      <div class="cpr-foot">
+        <div class="cpr-foot-note">
+          <b style="color:${C}">报告说明</b>&nbsp; 本报告由系统自动汇总当前节点的现场照片、施工说明、验收结果；正式交付需所有必检项通过且现场照片达标。
+        </div>
+        <div class="cpr-foot-sign">${companyName()?`由 ${escHtml(companyName())} 生成`:'自动生成'} · 节点负责人：${escHtml(owner)}</div>
+      </div>
+    </div>`;
+    /* 更新尺寸提示 */
+    setTimeout(()=>{
+      const el=document.getElementById('nodeAcceptReportSheet');
+      const dm=document.getElementById('sbReportDims');
+      if(el&&dm)dm.textContent=Math.round(el.scrollWidth)+' × '+Math.round(el.scrollHeight)+'px · A4 横版 · 可打印 / PDF';
+    },100);
   }
   showModal('sbReportModal');
 }
