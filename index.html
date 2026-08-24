@@ -2150,14 +2150,28 @@ a{color:#003a8c;text-decoration:none}
 .gs-brand{display:flex;align-items:center;gap:14px}
 .gs-logo{width:56px;height:56px;border-radius:0;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
 .gs-logo-img{height:56px;width:auto;max-width:220px;border-radius:0;object-fit:contain;background:#fff;border:none;flex-shrink:0}
-/* 打印 / 导出 PDF：直接 DOM 打印方案 */
-.gs-print-host{display:none}
-#gsPrintOverlay{display:none}
+/* ── 客户版表格打印隔离（class 方案，与整改记录单/成本对账单同源） ── */
 @media print{
-  body>*:not(#gsPrintOverlay){display:none !important}
-  #gsPrintOverlay{display:block !important;position:absolute;left:0;top:0;width:100%;height:auto;background:#fff;z-index:999998;overflow:visible!important}
-  #gsPrintClone{position:relative!important;left:0!important;top:0!important;width:auto!important;max-width:none!important;z-index:999999;background:#fff;padding:20px 30px;box-sizing:border-box;margin:0 auto}
-  @page{size:A4 landscape;margin:5mm}
+  html.gs-printing-sheet,html.gs-printing-sheet body{margin:0!important;padding:0!important}
+  html.gs-printing-sheet *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  html.gs-printing-sheet body>*:not(.gs-print-target){display:none!important}
+  html.gs-printing-sheet .gs-print-target{
+    position:absolute!important;left:0!important;top:0!important;right:auto!important;bottom:auto!important;
+    width:100%!important;height:auto!important;min-height:0!important;
+    background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;z-index:auto!important
+  }
+  html.gs-printing-sheet .gs-print-target .modal{
+    max-width:none!important;width:100%!important;max-height:none!important;min-height:0!important;
+    height:auto!important;box-shadow:none!important;border-radius:0!important;display:block!important;
+    overflow:visible!important
+  }
+  html.gs-printing-sheet .gs-print-target .modal-header,
+  html.gs-printing-sheet .gs-print-target .form-actions{display:none!important}
+  html.gs-printing-sheet .gs-print-target .modal-body{
+    overflow:visible!important;max-height:none!important;max-width:none!important;height:auto!important;
+    padding:0!important;background:#fff!important
+  }
+  @page{size:A4;margin:8mm}
 }
 .gs-company{font-size:15px;font-weight:700;color:#003a8c}
 .gs-tagline{font-size:11px;color:#999;margin-top:1px}
@@ -10154,22 +10168,19 @@ function _doGeneratePDF(el,sheetId,fileBase){
 function printSheet(sheetId){
   const el=$(sheetId); if(!el) return;
   zoomGsReset(sheetId);
-  /* 直接 DOM 打印：克隆目标内容 → 全屏覆盖（原始尺寸，靠 @page A4 landscape 自适应缩放）→ window.print() → 恢复 */
-  const clone=el.cloneNode(true);
-  clone.id='gsPrintClone';
-  clone.style.cssText='position:relative;left:0;top:0;width:auto;max-width:none;z-index:999999;background:#fff;padding:20px 30px;box-sizing:border-box';
-  const overlay=document.createElement('div');
-  overlay.id='gsPrintOverlay';
-  overlay.style.cssText='position:fixed;left:0;top:0;width:100%;height:auto;min-height:100%;z-index:999998;background:#fff;overflow:visible';
-  overlay.appendChild(clone);
-  document.body.appendChild(overlay);
-  document.documentElement.classList.add('gs-printing');
-  setTimeout(function(){ window.print(); }, 200);
+  /* class 隔离方案（与 printRectifyRecord / previewCostRecon 同源）：
+     找到 sheet 所在的 modal-overlay → 加 gs-print-target 标记 → @media print 只保留该弹窗 */
+  var modal=el.closest('.modal-overlay');
+  if(!modal){ alert('未找到表格所在弹窗'); return; }
+  modal.classList.add('gs-print-target');
+  document.documentElement.classList.add('gs-printing-sheet');
+  setTimeout(function(){ window.print(); }, 250);
 }
 window.addEventListener('afterprint',function(){
-  const ov=$('gsPrintOverlay');
-  if(ov){ ov.remove(); }
-  document.documentElement.classList.remove('gs-printing');
+  /* 清理 printSheet 的标记 */
+  var t=document.querySelector('.gs-print-target');
+  if(t) t.classList.remove('gs-print-target');
+  document.documentElement.classList.remove('gs-printing-sheet');
 });
 window.addEventListener('afterprint',function(){
   document.documentElement.classList.remove('gs-printing-rectify');
