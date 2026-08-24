@@ -426,6 +426,10 @@ a{color:#003a8c;text-decoration:none}
 .sb-accept-row{display:flex;gap:6px;align-items:center}
 .sb-acc-label{flex:0 0 110px;padding:6px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:12px;background:#fff;color:#1a1a1a}
 .sb-acc-text{flex:1;min-width:0;padding:6px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:12px;background:#fff;color:#1a1a1a}
+/* 右侧「节点必检项」内的可编辑 input（与左侧验收标准同源，常驻可编辑） */
+.sb-acc-inline{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sb-acc-label.right{flex:0 0 120px;padding:4px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:12px;background:#fff;color:#1a1a1a;min-width:0}
+.sb-acc-text.right{flex:1;min-width:120px;padding:4px 8px;border:1px solid #d9e2f3;border-radius:6px;font-size:12px;background:#fff;color:#1a1a1a}
 .sb-acc-del{flex:0 0 auto;cursor:pointer;color:#ff4d4f;font-weight:700;padding:0 6px;font-size:16px;user-select:none}
 .sb-mini-btn{font-size:12px;padding:5px 12px;border-radius:16px;border:1px solid #91caff;color:#003a8c;background:#e6f4ff;cursor:pointer;transition:background .15s}
 .sb-mini-btn:hover{background:#d6ebff}
@@ -7057,28 +7061,30 @@ function renderStepRightPanel(p,step,i){
   const checks=computeAcceptChecks(p,step);
 
   // 节点必检项列表（来自 step.acceptance，每项带 status）
+  // 每项 label/text 直接渲染为可编辑 input，编辑即回写 step.acceptance（单一数据源），
+  // 完全不依赖左侧「节点信息」折叠区，因此点「编辑」不会展开左侧节点信息（问题①根因级修复）。
   const acceptListHtml = ac.items.length?
     `<div class="sb-rel-list sb-acc-items">${ac.items.map((a,idx)=>{
       const st=a.status||'pending';
       const tagCls=st==='passed'?'done':(st==='issue'?'issue':'wait');
       const tagLabel=st==='passed'?(a.rectifyPassed?'已完成整改，本必检项通过':'本必检项通过'):(st==='issue'?'有问题 · 整改中':'待检查');
       const opRight=
-        `<button class="sb-acc-act ${st==='passed'?'on':(st==='issue'?'muted':'')}" type="button" onclick="sbMarkItemOK(${i},${idx})">检查无问题</button>`+
-        `<button class="sb-acc-act issue ${st==='issue'?'on':(st==='passed'?'muted':'')}" type="button" onclick="sbMarkItemIssue(${i},${idx})">有问题 · 发整改</button>`;
+        `<button class="sb-acc-act ${st==='passed'?'on':(st==='issue'?'muted':'')}" type="button" onclick="event.stopPropagation();sbMarkItemOK(${i},${idx})">检查无问题</button>`+
+        `<button class="sb-acc-act issue ${st==='issue'?'on':(st==='passed'?'muted':'')}" type="button" onclick="event.stopPropagation();sbMarkItemIssue(${i},${idx})">有问题 · 发整改</button>`;
       return `<div class="sb-rel-item">
-        <div class="sb-rel-main">
+        <div class="sb-rel-main sb-acc-inline">
           <span class="sb-acc-item-tag ${tagCls}">${tagLabel}</span>
-          <span class="sb-rel-name">${escHtml(a.label||'(未命名项)')}</span>
-          ${a.text?`<span class="sb-rel-sub">${escHtml(a.text)}</span>`:''}
+          <input class="sb-acc-label right" value="${escAttr(a.label||'')}" placeholder="必检项" onchange="event.stopPropagation();sbRightSetAccept(${i},${idx},'label',this.value)">
+          <input class="sb-acc-text right" value="${escAttr(a.text||'')}" placeholder="标准说明" onchange="event.stopPropagation();sbRightSetAccept(${i},${idx},'text',this.value)">
         </div>
         <div class="sb-acc-actions">
           ${opRight}
           <button class="sb-acc-act" type="button" onclick="event.stopPropagation();sbEditAcceptItem(${i},${idx})">编辑</button>
-          <button class="sb-acc-act del" type="button" onclick="sbDelAcceptItem(${i},${idx})">删除</button>
+          <button class="sb-acc-act del" type="button" onclick="event.stopPropagation();sbDelAcceptItem(${i},${idx})">删除</button>
         </div>
       </div>`;
     }).join('')}</div>`
-    : `<div class="sb-empty">未配置必检项 · <a href="javascript:void(0)" onclick="sbFocusName(${i});setTimeout(()=>addAcceptRow(${i}),100)">去添加</a></div>`;
+    : `<div class="sb-empty">未配置必检项 · <a href="javascript:void(0)" onclick="event.stopPropagation();sbFocusName(${i});setTimeout(()=>addAcceptRow(${i}),100)">去添加</a></div>`;
 
   // 报告还差哪些项（红色提示）——以五项验收条件全部通过为准
   const missing=[];
@@ -7737,22 +7743,23 @@ function printRectifyRecord(){
   setTimeout(function(){ window.print(); }, 250);
 }
 function sbEditAcceptItem(i,idx){
-  /* 1) 先记录左侧「节点信息」的折叠状态 */
-  const infoSec=document.getElementById('sbInfoSec_'+i);
-  const wasInfoCollapsed=infoSec&&infoSec.classList.contains('collapsed');
-  /* 2) 直接滚动到必检项区域并聚焦目标输入框，不调用 sbEditStep（避免聚焦折叠区内的名称输入框导致节点信息自动展开） */
-  const acceptSec=document.getElementById('sb_accept_'+i);
-  if(acceptSec)acceptSec.scrollIntoView({behavior:'smooth',block:'center'});
-  setTimeout(()=>{
-    /* 3) 聚焦目标输入框 */
-    const input=document.querySelector('#sb_accept_'+i+' .sb-accept-row:nth-child('+(idx+1)+') .sb-acc-label');
-    if(input){input.focus();input.select&&input.select();}
-    /* 4) 防御性恢复：如果节点信息被意外展开，强制恢复为折叠状态 */
-    if(wasInfoCollapsed){
-      const sec=document.getElementById('sbInfoSec_'+i);
-      if(sec&&!sec.classList.contains('collapsed'))sec.classList.add('collapsed');
-    }
-  },320);
+  /* 纯就地编辑：聚焦右侧「节点必检项」区域的目标输入框，
+     完全不触碰左侧「节点信息」折叠区、不触发任何 rerender、不调用 sbEditStep。
+     彻底杜绝「点编辑导致节点信息自动展开」的连锁反应。 */
+  event&&event.stopPropagation&&event.stopPropagation();
+  const input=document.querySelector('#sbAcceptSec_'+i+' .sb-acc-items .sb-rel-item:nth-child('+(idx+1)+') .sb-acc-label.right');
+  if(input){ try{ input.focus({preventScroll:true}); input.select&&input.select(); }catch(e){ input.focus(); } }
+}
+/* 右侧「节点必检项」input 即时回写单一数据源 step.acceptance（与左侧验收标准同源同步） */
+function sbRightSetAccept(i,idx,field,val){
+  const p=cur();if(!p)return;
+  const step=(p.processSteps||[])[i];if(!step)return;
+  ensureProjectSteps(p);
+  if(!step.acceptance||!step.acceptance[idx])return;
+  step.acceptance[idx][field]=val;
+  persist();
+  /* 仅刷新卡片徽章统计，不重建 DOM（避免输入框失焦问题）；左侧验收标准会在下次 rerender 同步显示 */
+  if(field==='label'){ /* label 变更会影响左侧，做一次轻量重渲染以保持一致 */ renderProcessKeepExpanded(i); }
 }
 function sbDelAcceptItem(i,idx){
   if(!confirm('确认删除该必检项？\n\n同时会从企业标准模板中删除同名验收项。'))return;
@@ -7780,8 +7787,9 @@ function sbDelAcceptItem(i,idx){
     });
   }
   persist();renderProcessKeepExpanded(i);
-  /* 联动：从企业标准模板中删除同名验收项 */
-  if(targetLabel) syncDeleteTemplateByLabel(stepId,targetLabel);
+  /* 注意：节点删除某必检项【不】联动删除企业模板。
+     企业模板是企业标准，仅在「管理企业模板」弹窗中维护；节点级删除只影响当前节点，
+     避免误删模板导致「部分删除后套用节点标准必检项」无法恢复（问题②/③根因）。 */
 }
 /* 联动删除：模板弹窗删某项 → 同步从当前展开节点中按 label 删除同名必检项 */
 function syncDeleteNodeAcceptByLabel(stepId,label){
@@ -7847,8 +7855,11 @@ function sbImportAcceptTemplate(i){
   persist();renderProcessKeepExpanded(i);
 }
 /* 套用该节点专属的系统标准必检项（来自 PARENT_ACCEPTANCE_TEMPLATES）：
-   按 label 匹配保留已通过状态，模板新增项置为待检查。
-   若运行时模板为空则从 DEFAULT_PARENT_ACCEPTANCE_TEMPLATES 恢复原始标准项，并自动去重。 */
+   全量对齐语义——以「模板项 ∪ 节点已有项」为最终集合：
+   ① 模板中每个 label 若在节点缺失则补回（status 默认 pending，保留已 passed 状态）；
+   ② 节点中不在模板里的项（用户手动添加的自定义项）一律保留，绝不误删；
+   ③ 不删除节点中任何已存在的项，保证「只删个别几项后套用」也能把缺失的模板项恢复回来。
+   若运行时模板为空则从 DEFAULT_PARENT_ACCEPTANCE_TEMPLATES 恢复原始标准项。 */
 function sbApplyNodeStdAccept(i){
   const p=cur();if(!p)return;
   const step=(p.processSteps||[])[i];if(!step)return;
@@ -7862,14 +7873,29 @@ function sbApplyNodeStdAccept(i){
     PARENT_ACCEPTANCE_TEMPLATES[step.id]=JSON.parse(JSON.stringify(tpl));
     try{ localStorage.setItem('xzgz_accept_tpl_v1',JSON.stringify(PARENT_ACCEPTANCE_TEMPLATES)); }catch(e){}
   }
-  const prev=new Map((step.acceptance||[]).map(a=>[a.label, a.status]));
-  /* 去重：只添加当前节点尚不存在的 label */
-  const existingLabels=new Set((step.acceptance||[]).map(a=>a.label));
-  const newItems=tpl.filter(a=>!existingLabels.has(a.label)).map(a=>({
-    label:a.label, text:a.text, status:'pending', rectifyPassed:false, rectifyId:''
-  }));
-  /* 保留原有项（维持已有状态），追加新项 */
-  step.acceptance=(step.acceptance||[]).concat(newItems);
+  const old=step.acceptance||[];
+  const oldByLabel=new Map(old.map(a=>[(a.label||'').trim(), a]));
+  const result=[];
+  const seen=new Set();
+  /* 1) 先放模板项：缺失则补回，已存在则保留其原 status */
+  tpl.forEach(a=>{
+    const key=(a.label||'').trim();
+    if(seen.has(key))return;          /* 模板内部去重 */
+    seen.add(key);
+    const exist=oldByLabel.get(key);
+    if(exist){
+      result.push(exist);             /* 保留原项（含 passed 状态） */
+    }else{
+      result.push({label:a.label, text:a.text, status:'pending', rectifyPassed:false, rectifyId:''});
+    }
+  });
+  /* 2) 再放用户自定义项（不在模板 label 集合里的，全部保留） */
+  const tplLabels=new Set(tpl.map(a=>(a.label||'').trim()));
+  old.forEach(a=>{
+    const key=(a.label||'').trim();
+    if(!tplLabels.has(key)) result.push(a);
+  });
+  step.acceptance=result;
   persist(); renderProcessKeepExpanded(i);
 }
 function sbManageAcceptTemplates(){
@@ -8274,7 +8300,7 @@ function renderProcess(){
           <div class="sb-accept">
             <div class="sb-sec-sub">验收标准</div>
             <div id="sb_accept_${i}" class="sb-accept-list">
-              ${(step.acceptance&&step.acceptance.length?step.acceptance:[]).map(a=>`<div class="sb-accept-row"><input class="sb-acc-label" placeholder="项（如：防水）" value="${escAttr(a.label||'')}"><input class="sb-acc-text" placeholder="标准说明" value="${escAttr(a.text||'')}"><span class="sb-acc-del" title="删除" onclick="sbLeftDelAcceptRow(${i},this)">×</span></div>`).join('')}
+              ${(step.acceptance&&step.acceptance.length?step.acceptance:[]).map((a,ai)=>`<div class="sb-accept-row"><input class="sb-acc-label" placeholder="项（如：防水）" value="${escAttr(a.label||'')}" onchange="event.stopPropagation();sbLeftSetAccept(${i},${ai},'label',this.value)"><input class="sb-acc-text" placeholder="标准说明" value="${escAttr(a.text||'')}" onchange="event.stopPropagation();sbLeftSetAccept(${i},${ai},'text',this.value)"><span class="sb-acc-del" title="删除" onclick="sbLeftDelAcceptRow(${i},this)">×</span></div>`).join('')}
             </div>
             <button class="sb-mini-btn" type="button" onclick="addAcceptRow(${i})">＋ 增加验收项</button>
           </div>
@@ -8733,6 +8759,16 @@ function addAcceptRow(i){
   const row=document.createElement('div');row.className='sb-accept-row';
   row.innerHTML='<input class="sb-acc-label" placeholder="项（如：防水）" value=""><input class="sb-acc-text" placeholder="标准说明" value=""><span class="sb-acc-del" title="删除" onclick="this.parentNode.remove()">×</span>';
   box.appendChild(row);
+}
+/* 左侧「验收标准」区域 input 即时回写单一数据源 step.acceptance（与右侧节点必检项同源同步） */
+function sbLeftSetAccept(i,idx,field,val){
+  const p=cur();if(!p)return;
+  const step=(p.processSteps||[])[i];if(!step)return;
+  ensureProjectSteps(p);
+  if(!step.acceptance||!step.acceptance[idx])return;
+  step.acceptance[idx][field]=val;
+  persist();
+  if(field==='label'){ renderProcessKeepExpanded(i); } /* label 变更需同步右侧 */
 }
 /* 左侧「验收标准」区域的 × 删除按钮：删 DOM 行 + 立即回写数据 + 同步右侧「节点必检项」 */
 function sbLeftDelAcceptRow(i, btn){
