@@ -13229,7 +13229,6 @@ function handleSearch(q){
   if(!show.length){
     panel.innerHTML='<div class="search-empty">未找到与“'+escHtml(q.trim())+'”相关的结果</div>';
     panel.style.display='block';
-    const inp0=$('globalSearch'); if(inp0)inp0.value=''; /* 搜索后清空输入框，页面仅空白显示 */
     return;
   }
   panel.innerHTML='<div class="search-head">🔍 搜索：“'+escHtml(q.trim())+'”　共 '+show.length+' 条</div>'+
@@ -13238,15 +13237,14 @@ function handleSearch(q){
     `<span class="sr-text"><span class="sr-label">${escHtml(r.label)}</span><span class="sr-sub">${escHtml(r.sub)}</span></span>`+
     `</div>`).join('');
   panel.style.display='block';
-  /* 搜索后清空输入框：结果已显示在浮层，输入框保持空白 */
-  const inp=$('globalSearch'); if(inp)inp.value='';
   /* 绑定点击跳转 */
   panel.querySelectorAll('.search-result-item').forEach(el=>{
     el.onclick=()=>{
       const r=show[+el.dataset.i];
       doSearchJump(r);
       panel.style.display='none';
-      const inp=$('globalSearch'); if(inp)inp.blur();
+      /* 跳转到目标后，清空搜索框（此时输入已完成，结果已跳转） */
+      const inp=$('globalSearch'); if(inp){inp.value='';}
     };
   });
 }
