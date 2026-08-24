@@ -8039,7 +8039,7 @@ function renderProcess(){
   };
   /* 母节点统一用原版下拉卡片式渲染 */
   let _parentDisplayIdx=0;
-  const renderProcessItem=({step:i})=>{const di=++_parentDisplayIdx;return renderOneCard({step,i,di},false);};
+  const renderProcessItem=({step,i})=>{const di=++_parentDisplayIdx;return renderOneCard({step,i,di},false);};
   /* 分组拼接：已完成组(折叠) + 未完成组(展开) */
   let html='';
   if(doneSteps.length){
@@ -11588,7 +11588,7 @@ function projTotalAm(p){
   if(p.totalAmount!==undefined&&p.totalAmount!==null&&p.totalAmount!==''){
     return (parseFloat(p.totalAmount)||0)+adj;
   }
-  const incSum=p.income.reduce((s,i)=>s+(i.amount||0),0);
+  const incSum=(p.income||[]).reduce((s,i)=>s+(i.amount||0),0);
   return incSum+adj;
 }
 /* 项目显示名：编号_名称（无编号则仅名称） */
@@ -11603,7 +11603,7 @@ function projFinance(p){
   const incomeReceived=(p.income||[]).reduce((s,i)=>s+incReceivedAmt(i),0);  /* 基于receipts计算 */
   const adjReceived=(p.adjustments||[]).filter(a=>a.status==='已确认'&&a.clientConfirmed).reduce((s,a)=>s+adjReceivedAmt(a),0);
   const received=incomeReceived+adjReceived;
-  const totalCost=p.expense.reduce((s,e)=>s+(e.amount||0),0);
+  const totalCost=(p.expense||[]).reduce((s,e)=>s+(e.amount||0),0);
   const paid=p.expense.filter(e=>e.paid).reduce((s,e)=>s+(e.amount||0),0);
   return{totalIncome,received,pendingReceive:totalIncome-received,totalCost,paid,pendingPay:totalCost-paid,grossProfit:received-paid};
 }
