@@ -496,6 +496,13 @@ a{color:#003a8c;text-decoration:none}
 .step-child-badge{font-size:10px;font-weight:600;padding:1px 7px;border-radius:8px;background:#fff2f0;color:#ff4d4f;border:1px solid #ffccc7;white-space:nowrap}
 .step-child-badge.done{background:#e6f4ff;color:#003a8c;border-color:#91caff}
 .step-child-empty{font-size:12px;color:#aaa;padding:6px 8px;font-style:italic}
+.step-child-main{display:flex;align-items:center;gap:8px;width:100%}
+.step-child-desc{font-size:11px;color:#666;padding:2px 0 2px 22px;line-height:1.5;white-space:pre-wrap}
+.step-child-ops{display:flex;gap:6px;padding:2px 0 2px 22px}
+.step-child-tpl-tag{font-size:11px;margin-left:2px;opacity:.8}
+.btn-mini{font-size:11px;padding:2px 10px;border-radius:6px;border:1px solid #1677ff;background:#e6f4ff;color:#003a8c;cursor:pointer;white-space:nowrap}
+.btn-mini:hover{background:#d6ecff}
+.btn-mini.ghost{background:#fff;border-color:#91caff;color:#0050b3}
 /* 左侧导航：母节点分组标题（可点击展开） */
 .process-nav-item.nav-parent{cursor:pointer;background:#e6f4ff;border:1px solid #bae0ff;margin:8px 0 2px;font-weight:700;color:#003a8c;padding:7px 10px;border-radius:8px;display:flex;align-items:center;gap:6px}
 .process-nav-item.nav-parent:hover{background:#d6ecff}
@@ -4126,7 +4133,7 @@ function load(){
 // GLOBAL TEMPLATES (same for all projects; per-project state in project data)
 // ============================================================
 const HOUSE_TYPES={new:'新房毛胚',old:'旧房改造',renovated:'精装升级',local:'局部改造',elderly:'适老改造',commercial:'工装项目'};
-const HOUSE_ICONS={new:'🏠',old:'🔨',renovated:'✨',commercial:'🏢'};
+const HOUSE_ICONS={new:'🏠',old:'🔨',renovated:'✨',local:'🛠️',elderly:'♿',commercial:'🏢'};
 
 /* ════════════════════════════════════════════════════════════════
    施工节点模板（母节点 + 子节点 两级结构，职责清晰分离）
@@ -4140,91 +4147,133 @@ const HOUSE_ICONS={new:'🏠',old:'🔨',renovated:'✨',commercial:'🏢'};
    · processSteps = [{id,name,days,desc,acceptance,articles,isParent:true,children:[子节点...]}]
    · 子节点 = {id,name,days,desc,acceptance,articles,photosRequired}（无 isParent，不进计划排期）
    ════════════════════════════════════════════════════════════════ */
+/* 基准母节点库（单一数据源）：新建毛胚的全部 18 个阶段 + 98 子节点（取自用户 Excel）。
+   其余类型通过 PARENT_GROUPS 的 include 清单从本库选配，避免重复维护。 */
+const BASE_PARENT_GROUPS=[
+  {id:'mg_prep',name:'前期准备',days:'14',children:[
+    {id:'sg_prep_1',name:'现场测量'},{id:'sg_prep_2',name:'设计效果'},{id:'sg_prep_3',name:'签订合同'},
+    {id:'sg_prep_4',name:'装修手续'},{id:'sg_prep_5',name:'围挡搭建'},{id:'sg_prep_6',name:'成品保护'},{id:'sg_prep_7',name:'封闭阳台'}
+  ]},
+  {id:'mg_demo',name:'拆除施工',days:'7',children:[
+    {id:'sg_demo_1',name:'拆除交底'},{id:'sg_demo_2',name:'拆除铲灰'},{id:'sg_demo_3',name:'垃圾清运'}
+  ]},
+  {id:'mg_wall',name:'新建墙体',days:'14',children:[
+    {id:'sg_wall_1',name:'材料配送'},{id:'sg_wall_2',name:'墙体放样'},{id:'sg_wall_3',name:'制作地梁'},
+    {id:'sg_wall_4',name:'砌筑墙体'},{id:'sg_wall_5',name:'砌墙粉刷'},{id:'sg_wall_6',name:'墙体养护'},{id:'sg_wall_7',name:'归方找平'}
+  ]},
+  {id:'mg_water',name:'水电施工',days:'14',children:[
+    {id:'sg_water_1',name:'水电入户'},{id:'sg_water_2',name:'水电放样'},{id:'sg_water_3',name:'墙地开槽'},
+    {id:'sg_water_4',name:'材料配送'},{id:'sg_water_5',name:'水电施工'},{id:'sg_water_6',name:'预埋配件'},
+    {id:'sg_water_7',name:'烟道止逆阀'},{id:'sg_water_8',name:'宽带入户'},{id:'sg_water_9',name:'试压及VR'},{id:'sg_water_10',name:'后期水电安装'}
+  ]},
+  {id:'mg_equip_loc',name:'设备定位',days:'5',children:[
+    {id:'sg_equip_1',name:'燃气改管'},{id:'sg_equip_2',name:'燃热定位'},{id:'sg_equip_3',name:'家电定位'},
+    {id:'sg_equip_4',name:'空调定位'},{id:'sg_equip_5',name:'新风定位'},{id:'sg_equip_6',name:'地暖定位'}
+  ]},
+  {id:'mg_equip_inst',name:'设备安装',days:'14',children:[
+    {id:'sg_inst_1',name:'智能安装'},{id:'sg_inst_2',name:'空调安装'},{id:'sg_inst_3',name:'新风安装'},
+    {id:'sg_inst_4',name:'消防改造'},{id:'sg_inst_5',name:'其他设备'}
+  ]},
+  {id:'mg_window',name:'门窗封装',days:'30',children:[
+    {id:'sg_win_1',name:'窗户测量'},{id:'sg_win_2',name:'门窗生产'},{id:'sg_win_3',name:'窗户安装'},{id:'sg_win_4',name:'纱窗安装'}
+  ]},
+  {id:'mg_wood',name:'木作施工',days:'14',children:[
+    {id:'sg_wood_1',name:'材料配送'},{id:'sg_wood_2',name:'木作施工'}
+  ]},
+  {id:'mg_masonry',name:'泥瓦施工',days:'21',children:[
+    {id:'sg_mas_1',name:'地面找平'},{id:'sg_mas_2',name:'防水施工'},{id:'sg_mas_3',name:'闭水试验'},
+    {id:'sg_mas_4',name:'瓷砖测量'},{id:'sg_mas_5',name:'瓷砖加工'},{id:'sg_mas_6',name:'瓷砖送货'},
+    {id:'sg_mas_7',name:'辅材配送'},{id:'sg_mas_8',name:'瓷砖铺贴'},{id:'sg_mas_9',name:'石材测量'},
+    {id:'sg_mas_10',name:'石材铺贴'},{id:'sg_mas_11',name:'购买地漏'},{id:'sg_mas_12',name:'美缝施工'},{id:'sg_mas_13',name:'自流平'}
+  ]},
+  {id:'mg_paint_pre',name:'前期油漆',days:'14',children:[
+    {id:'sg_pp_1',name:'材料进场'},{id:'sg_pp_2',name:'基础扒底'},{id:'sg_pp_3',name:'修补扒底'},{id:'sg_pp_4',name:'腻子打磨'}
+  ]},
+  {id:'mg_custom',name:'整木定制',days:'45',children:[
+    {id:'sg_cus_1',name:'整木测量'},{id:'sg_cus_2',name:'整木方案'},{id:'sg_cus_3',name:'整木生产'},
+    {id:'sg_cus_4',name:'整木送货'},{id:'sg_cus_5',name:'整木安装'}
+  ]},
+  {id:'mg_paint_post',name:'后期油漆',days:'14',children:[
+    {id:'sg_po_1',name:'乳胶漆'},{id:'sg_po_2',name:'艺术漆'},{id:'sg_po_3',name:'氟碳漆'},
+    {id:'sg_po_4',name:'环氧漆'},{id:'sg_po_5',name:'后期油漆修补'}
+  ]},
+  {id:'mg_main_inst',name:'主材安装',days:'14',children:[
+    {id:'sg_mi_1',name:'入户门测量安装'},{id:'sg_mi_2',name:'防火门测量安装'},{id:'sg_mi_3',name:'玻璃不锈钢测量安装'},
+    {id:'sg_mi_4',name:'招牌LOGO测量安装'},{id:'sg_mi_5',name:'集成吊顶安装'},{id:'sg_mi_6',name:'木地板测量安装'},
+    {id:'sg_mi_7',name:'踢脚线测量安装'},{id:'sg_mi_8',name:'淋浴房测量安装'},{id:'sg_mi_9',name:'洁具卫浴安装'},
+    {id:'sg_mi_10',name:'厨房设备安装'},{id:'sg_mi_11',name:'窗帘测量安装'},{id:'sg_mi_12',name:'软硬包测量安装'},
+    {id:'sg_mi_13',name:'开关插座灯具'},{id:'sg_mi_14',name:'申请宽带开通'}
+  ]},
+  {id:'mg_clean',name:'卫生保洁',days:'3',children:[
+    {id:'sg_cl_1',name:'施工保洁'},{id:'sg_cl_2',name:'开荒保洁'},{id:'sg_cl_3',name:'围挡拆除'}
+  ]},
+  {id:'mg_soft',name:'软装家具',days:'10',children:[
+    {id:'sg_sf_1',name:'窗帘安装'},{id:'sg_sf_2',name:'家具进场'},{id:'sg_sf_3',name:'家电进场'},
+    {id:'sg_sf_4',name:'床品进场'},{id:'sg_sf_5',name:'装饰进场'},{id:'sg_sf_6',name:'软装搭配'}
+  ]},
+  {id:'mg_accept',name:'竣工验收',days:'2',children:[
+    {id:'sg_ac_1',name:'隐蔽验收'},{id:'sg_ac_2',name:'竣工验收'}
+  ]},
+  {id:'mg_rectify',name:'问题整改',days:'5',children:[
+    {id:'sg_rc_1',name:'整改内容'}
+  ]},
+  {id:'mg_warranty',name:'完工维保',days:'',children:[
+    {id:'sg_wa_1',name:'维保日期'}
+  ]}
+];
+/* 房屋类型 → 阶段选配：include 为需要的母节点 id 列表；'*' 或省略 = 全部 18 阶段。
+   overrides 可针对某阶段微调 days（可选）。 */
 const PARENT_GROUPS={
-  new:[
-    {id:'mg_prep',name:'前期准备',days:'14',children:[
-      {id:'sg_prep_1',name:'现场测量'},{id:'sg_prep_2',name:'设计效果'},{id:'sg_prep_3',name:'签订合同'},
-      {id:'sg_prep_4',name:'装修手续'},{id:'sg_prep_5',name:'围挡搭建'},{id:'sg_prep_6',name:'成品保护'},{id:'sg_prep_7',name:'封闭阳台'}
-    ]},
-    {id:'mg_demo',name:'拆除施工',days:'7',children:[
-      {id:'sg_demo_1',name:'拆除交底'},{id:'sg_demo_2',name:'拆除铲灰'},{id:'sg_demo_3',name:'垃圾清运'}
-    ]},
-    {id:'mg_wall',name:'新建墙体',days:'14',children:[
-      {id:'sg_wall_1',name:'材料配送'},{id:'sg_wall_2',name:'墙体放样'},{id:'sg_wall_3',name:'制作地梁'},
-      {id:'sg_wall_4',name:'砌筑墙体'},{id:'sg_wall_5',name:'砌墙粉刷'},{id:'sg_wall_6',name:'墙体养护'},{id:'sg_wall_7',name:'归方找平'}
-    ]},
-    {id:'mg_water',name:'水电施工',days:'14',children:[
-      {id:'sg_water_1',name:'水电入户'},{id:'sg_water_2',name:'水电放样'},{id:'sg_water_3',name:'墙地开槽'},
-      {id:'sg_water_4',name:'材料配送'},{id:'sg_water_5',name:'水电施工'},{id:'sg_water_6',name:'预埋配件'},
-      {id:'sg_water_7',name:'烟道止逆阀'},{id:'sg_water_8',name:'宽带入户'},{id:'sg_water_9',name:'试压及VR'},{id:'sg_water_10',name:'后期水电安装'}
-    ]},
-    {id:'mg_equip_loc',name:'设备定位',days:'5',children:[
-      {id:'sg_equip_1',name:'燃气改管'},{id:'sg_equip_2',name:'燃热定位'},{id:'sg_equip_3',name:'家电定位'},
-      {id:'sg_equip_4',name:'空调定位'},{id:'sg_equip_5',name:'新风定位'},{id:'sg_equip_6',name:'地暖定位'}
-    ]},
-    {id:'mg_equip_inst',name:'设备安装',days:'14',children:[
-      {id:'sg_inst_1',name:'智能安装'},{id:'sg_inst_2',name:'空调安装'},{id:'sg_inst_3',name:'新风安装'},
-      {id:'sg_inst_4',name:'消防改造'},{id:'sg_inst_5',name:'其他设备'}
-    ]},
-    {id:'mg_window',name:'门窗封装',days:'30',children:[
-      {id:'sg_win_1',name:'窗户测量'},{id:'sg_win_2',name:'门窗生产'},{id:'sg_win_3',name:'窗户安装'},{id:'sg_win_4',name:'纱窗安装'}
-    ]},
-    {id:'mg_wood',name:'木作施工',days:'14',children:[
-      {id:'sg_wood_1',name:'材料配送'},{id:'sg_wood_2',name:'木作施工'}
-    ]},
-    {id:'mg_masonry',name:'泥瓦施工',days:'21',children:[
-      {id:'sg_mas_1',name:'地面找平'},{id:'sg_mas_2',name:'防水施工'},{id:'sg_mas_3',name:'闭水试验'},
-      {id:'sg_mas_4',name:'瓷砖测量'},{id:'sg_mas_5',name:'瓷砖加工'},{id:'sg_mas_6',name:'瓷砖送货'},
-      {id:'sg_mas_7',name:'辅材配送'},{id:'sg_mas_8',name:'瓷砖铺贴'},{id:'sg_mas_9',name:'石材测量'},
-      {id:'sg_mas_10',name:'石材铺贴'},{id:'sg_mas_11',name:'购买地漏'},{id:'sg_mas_12',name:'美缝施工'},{id:'sg_mas_13',name:'自流平'}
-    ]},
-    {id:'mg_paint_pre',name:'前期油漆',days:'14',children:[
-      {id:'sg_pp_1',name:'材料进场'},{id:'sg_pp_2',name:'基础扒底'},{id:'sg_pp_3',name:'修补扒底'},{id:'sg_pp_4',name:'腻子打磨'}
-    ]},
-    {id:'mg_custom',name:'整木定制',days:'45',children:[
-      {id:'sg_cus_1',name:'整木测量'},{id:'sg_cus_2',name:'整木方案'},{id:'sg_cus_3',name:'整木生产'},
-      {id:'sg_cus_4',name:'整木送货'},{id:'sg_cus_5',name:'整木安装'}
-    ]},
-    {id:'mg_paint_post',name:'后期油漆',days:'14',children:[
-      {id:'sg_po_1',name:'乳胶漆'},{id:'sg_po_2',name:'艺术漆'},{id:'sg_po_3',name:'氟碳漆'},
-      {id:'sg_po_4',name:'环氧漆'},{id:'sg_po_5',name:'后期油漆修补'}
-    ]},
-    {id:'mg_main_inst',name:'主材安装',days:'14',children:[
-      {id:'sg_mi_1',name:'入户门测量安装'},{id:'sg_mi_2',name:'防火门测量安装'},{id:'sg_mi_3',name:'玻璃不锈钢测量安装'},
-      {id:'sg_mi_4',name:'招牌LOGO测量安装'},{id:'sg_mi_5',name:'集成吊顶安装'},{id:'sg_mi_6',name:'木地板测量安装'},
-      {id:'sg_mi_7',name:'踢脚线测量安装'},{id:'sg_mi_8',name:'淋浴房测量安装'},{id:'sg_mi_9',name:'洁具卫浴安装'},
-      {id:'sg_mi_10',name:'厨房设备安装'},{id:'sg_mi_11',name:'窗帘测量安装'},{id:'sg_mi_12',name:'软硬包测量安装'},
-      {id:'sg_mi_13',name:'开关插座灯具'},{id:'sg_mi_14',name:'申请宽带开通'}
-    ]},
-    {id:'mg_clean',name:'卫生保洁',days:'3',children:[
-      {id:'sg_cl_1',name:'施工保洁'},{id:'sg_cl_2',name:'开荒保洁'},{id:'sg_cl_3',name:'围挡拆除'}
-    ]},
-    {id:'mg_soft',name:'软装家具',days:'10',children:[
-      {id:'sg_sf_1',name:'窗帘安装'},{id:'sg_sf_2',name:'家具进场'},{id:'sg_sf_3',name:'家电进场'},
-      {id:'sg_sf_4',name:'床品进场'},{id:'sg_sf_5',name:'装饰进场'},{id:'sg_sf_6',name:'软装搭配'}
-    ]},
-    {id:'mg_accept',name:'竣工验收',days:'2',children:[
-      {id:'sg_ac_1',name:'隐蔽验收'},{id:'sg_ac_2',name:'竣工验收'}
-    ]},
-    {id:'mg_rectify',name:'问题整改',days:'5',children:[
-      {id:'sg_rc_1',name:'整改内容'}
-    ]},
-    {id:'mg_warranty',name:'完工维保',days:'',children:[
-      {id:'sg_wa_1',name:'维保日期'}
-    ]}
-  ]
+  new:{include:'*'},
+  old:{include:'*'},
+  commercial:{include:'*'},
+  renovated:{include:['mg_prep','mg_water','mg_equip_loc','mg_equip_inst','mg_wood','mg_masonry','mg_paint_pre','mg_custom','mg_paint_post','mg_main_inst','mg_clean','mg_soft','mg_accept','mg_rectify','mg_warranty']},
+  local:{include:['mg_prep','mg_water','mg_equip_inst','mg_masonry','mg_paint_pre','mg_paint_post','mg_main_inst','mg_clean','mg_accept','mg_rectify','mg_warranty']},
+  elderly:{include:['mg_prep','mg_demo','mg_water','mg_equip_loc','mg_equip_inst','mg_masonry','mg_paint_pre','mg_paint_post','mg_main_inst','mg_clean','mg_soft','mg_accept','mg_rectify','mg_warranty']}
 };
 
-/* 节点套用库（Step C 填充）：同名子节点可在此预设 desc/acceptance/articles
-   目前毛胚模板子节点仅含名称，后续可在工作台内编辑后自动回写本库复用。
+/* 节点套用库（Step C）：同名子节点预设 desc/acceptance/articles/photosRequired。
+   流程页展开母节点时，子节点若匹配到本库预设则直接展示；也可在工作台内编辑后回写本库复用。
    NODE_TEMPLATES key = 子节点名；值为 {days,desc,acceptance[],articles[],photosRequired} */
-const NODE_TEMPLATES={};
+const NODE_TEMPLATES={
+  '现场测量':{desc:'复核房屋原始尺寸、梁柱位置、管道走向，输出测绘图。',acceptance:[{item:'测量误差≤5mm',req:'关键点位复测'},{item:'与图纸一致',req:'无明显偏差'}],articles:['测绘图','户型尺寸表'],photosRequired:3},
+  '设计效果':{desc:'确认平面布置、效果图、材料选型，业主签字确认。',acceptance:[{item:'效果图签字',req:'业主确认无误'}],articles:['效果图','材料清单'],photosRequired:4},
+  '签订合同':{desc:'施工合同、预算单、工期约定签署完成。',acceptance:[{item:'合同签署',req:'双方盖章'}],articles:['施工合同','预算单'],photosRequired:2},
+  '装修手续':{desc:'物业登记、施工许可、邻里告知。',acceptance:[{item:'手续齐全',req:'取得施工许可'}],articles:['施工许可证'],photosRequired:2},
+  '围挡搭建':{desc:'入户过道、电梯厅成品保护围挡。',acceptance:[{item:'围挡牢固',req:'无安全隐患'}],articles:[],photosRequired:3},
+  '成品保护':{desc:'入户门、地面、门窗、管道口覆盖保护。',acceptance:[{item:'保护到位',req:'无遗漏'}],articles:[],photosRequired:3},
+  '拆除交底':{desc:'与拆除班组确认拆除范围、保留项、垃圾堆放点。',acceptance:[{item:'交底签字',req:'班组清楚范围'}],articles:['拆除范围图'],photosRequired:3},
+  '拆除铲灰':{desc:'墙体铲灰、旧饰面拆除至基层。',acceptance:[{item:'铲至基层',req:'无空鼓残留'}],articles:[],photosRequired:3},
+  '垃圾清运':{desc:'拆除垃圾装袋、外运至指定消纳点。',acceptance:[{item:'清运完毕',req:'现场无堆积'}],articles:['清运单据'],photosRequired:2},
+  '墙体放样':{desc:'按图纸弹线定位新建墙体位置。',acceptance:[{item:'放样准确',req:'与图纸一致'}],articles:['放样线照片'],photosRequired:3},
+  '砌筑墙体':{desc:'轻砌块/砖墙砌筑，垂直平整。',acceptance:[{item:'垂直度≤3mm',req:'2m靠尺检查'}],articles:[],photosRequired:3},
+  '砌墙粉刷':{desc:'墙体双面抹灰找平。',acceptance:[{item:'无空鼓',req:'空鼓锤全检'}],articles:[],photosRequired:3},
+  '水电放样':{desc:'水电点位弹线定位，业主确认。',acceptance:[{item:'点位确认',req:'业主签字'}],articles:['放样图'],photosRequired:4},
+  '墙地开槽':{desc:'按放样走向机械开槽，严禁横向开槽。',acceptance:[{item:'无横槽',req:'符合规范'}],articles:[],photosRequired:3},
+  '水电施工':{desc:'给排水管、强弱电管线敷设，横平竖直。',acceptance:[{item:'管线间距',req:'强弱电交叉屏蔽'},{item:'管路通畅',req:'无堵塞'}],articles:['管线走向图'],photosRequired:5},
+  '试压及VR':{desc:'水管打压试验（0.8MPa 30分钟）、电路VR全景留存。',acceptance:[{item:'打压合格',req:'压降≤0.05MPa'},{item:'VR归档',req:'全景上传'}],articles:['打压记录','VR全景'],photosRequired:4},
+  '防水施工':{desc:'卫生间/阳台/厨房防水涂刷，墙面不低于1.8m。',acceptance:[{item:'涂刷均匀',req:'无漏刷'}],articles:[],photosRequired:4},
+  '闭水试验':{desc:'蓄水24-48小时，楼下无渗漏。',acceptance:[{item:'闭水合格',req:'楼下无渗'}],articles:['闭水照片'],photosRequired:3},
+  '瓷砖铺贴':{desc:'墙地砖铺贴，空鼓率≤5%，留缝均匀。',acceptance:[{item:'空鼓率≤5%',req:'空鼓锤检查'},{item:'平整度',req:'2m靠尺≤2mm'}],articles:[],photosRequired:4},
+  '美缝施工':{desc:'砖缝清理、美缝剂填充压缝。',acceptance:[{item:'无气泡',req:'表面平滑'}],articles:[],photosRequired:3},
+  '基础扒底':{desc:'基层清理、界面剂涂刷。',acceptance:[{item:'基层洁净',req:'无浮灰'}],articles:[],photosRequired:3},
+  '腻子打磨':{desc:'腻子批刮找平、砂纸打磨。',acceptance:[{item:'平整度',req:'灯光侧照无波浪'}],articles:[],photosRequired:3},
+  '乳胶漆':{desc:'底漆+面漆滚涂，无色差、无流挂。',acceptance:[{item:'无色差',req:'自然光检查'}],articles:[],photosRequired:3},
+  '隐蔽验收':{desc:'水电/防水等隐蔽工程验收签字。',acceptance:[{item:'验收签字',req:'业主确认'}],articles:['隐蔽验收单'],photosRequired:4},
+  '竣工验收':{desc:'全屋竣工验收，交付业主。',acceptance:[{item:'竣工验收单',req:'双方签字'}],articles:['竣工验收单'],photosRequired:5},
+  '整改内容':{desc:'记录验收发现的问题项及整改要求。',acceptance:[],articles:[],photosRequired:3}
+};
 
 /* 将某个房屋类型的母/子节点模板转为「母节点数组（含嵌套 children）」
    · 只产出 18 个母节点（isParent:true），子节点作为母节点的 children 细节补充，不进计划排期
    · 保持旧逻辑兼容：母节点仍是数组元素（可用下标 / step.id 索引） */
 function buildParentSteps(houseType){
-  const groups=PARENT_GROUPS[houseType]||PARENT_GROUPS.new;
+  const cfg=PARENT_GROUPS[houseType]||PARENT_GROUPS.new;
+  /* 从 BASE_PARENT_GROUPS 按 include 选配（'*' 或省略 = 全部） */
+  let groups=BASE_PARENT_GROUPS;
+  const inc=cfg.include;
+  if(Array.isArray(inc)) groups=BASE_PARENT_GROUPS.filter(g=>inc.includes(g.id));
+  const overrides=cfg.overrides||{};
   return groups.map(g=>{
     const children=(g.children||[]).map(c=>{
       const tpl=NODE_TEMPLATES[c.name]||{};
@@ -4236,8 +4285,9 @@ function buildParentSteps(houseType){
         checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
       };
     });
+    const ov=overrides[g.id]||{};
     return {
-      id:g.id, name:g.name, days:String(g.days||''), desc:'',
+      id:g.id, name:ov.name||g.name, days:String(ov.days!=null?ov.days:g.days||''), desc:'',
       acceptance:[], articles:[], isParent:true,
       children, checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
     };
@@ -4405,8 +4455,19 @@ let wizPayPlanNodes=[];    // Step3: 收款节点临时数据 [{id,name,pct,amou
 let wizPayPlanSplit={laborAmt:0,laborMethod:'pct',materialAmt:0,materialMethod:'pct'};
 
 function selectHouseType(t){
+  if(t===selectedHouseType)return;
+  /* 若向导已加载过施工计划（用户可能已调整天数/顺序），切换类型需确认重置 */
+  if(wizPlanNodes.length>0){
+    if(!confirm('切换房屋类型将按「'+HOUSE_TYPES[t]+'」重新载入施工计划，当前已调整的计划内容会丢失，确认切换？')){
+      /* 取消：把选中态恢复到原类型 */
+      document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type===selectedHouseType));
+      return;
+    }
+  }
   selectedHouseType=t;
   document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type===t));
+  /* 重置计划为当前类型模板（下次进入 Step2 时自动按新类型载入） */
+  wizPlanNodes=[];
 }
 
 /* ── 向导步骤切换 ── */
@@ -7702,6 +7763,41 @@ function toggleChildDone(cid){
   updateProcProgress();
 }
 
+/* 套用库预设到子节点：用 NODE_TEMPLATES[name] 覆盖该子节点的 desc/acceptance/articles/photosRequired */
+function applyNodeTemplate(parentId,cid){
+  const p=cur();if(!p)return;
+  const g=(p.processSteps||[]).find(s=>s.id===parentId);
+  const c=g&&(g.children||[]).find(x=>x.id===cid);
+  const tpl=NODE_TEMPLATES[c?c.name:''];
+  if(!c||!tpl){alert('未找到对应套用库预设');return;}
+  c.desc=tpl.desc||'';
+  c.acceptance=(tpl.acceptance||[]).map(a=>({...a}));
+  c.articles=(tpl.articles||[]).map(a=>({...a}));
+  c.photosRequired=tpl.photosRequired||3;
+  persist();
+  renderProcess();
+  alert('已套用「'+c.name+'」的库预设（描述/验收/材料/照片数）。');
+}
+
+/* 把子节点当前内容回写到 NODE_TEMPLATES 套用库（同名复用） */
+function saveNodeTemplate(parentId,cid){
+  const p=cur();if(!p)return;
+  const g=(p.processSteps||[]).find(s=>s.id===parentId);
+  const c=g&&(g.children||[]).find(x=>x.id===cid);
+  if(!c){return;}
+  if(!confirm('将「'+c.name+'」当前的内容（描述/验收/材料/照片数）保存到套用库，供今后其他项目同名节点一键套用？'))return;
+  NODE_TEMPLATES[c.name]={
+    days:c.days?parseFloat(c.days):undefined,
+    desc:c.desc||'',
+    acceptance:(c.acceptance||[]).map(a=>({...a})),
+    articles:(c.articles||[]).map(a=>({...a})),
+    photosRequired:c.photosRequired||3
+  };
+  persist();
+  renderProcess();
+  alert('已保存到套用库：'+c.name);
+}
+
 function renderProcess(){
   const p=cur();if(!p){showNoProject('process');return;}hideNoProject();
   /* 渲染项目详情顶栏 */
@@ -8051,12 +8147,28 @@ function renderProcess(){
       /* 阶段完成：手动标记 step.checked（优先）；否则以子节点全部完成为参考 */
       const stageDone=!!step.checked;
       const expanded=_expandedParents.has(step.id);
-      const childHtml=kids.map(c=>`<div class="step-child-row" onclick="toggleChildDone('${c.id}')" title="点击标记/取消完成">
-        <span class="step-child-dot${isStepChecked(c.id)?' done':''}"></span>
-        <span class="step-child-name">${escHtml(c.name)}</span>
-        ${c.days?`<span class="step-child-days">${escHtml(c.days)}天</span>`:''}
-        ${isStepChecked(c.id)?'<span class="step-child-badge done">已完成</span>':'<span class="step-child-badge">待完成</span>'}
-      </div>`).join('')||'<div class="step-child-empty">（该阶段暂未配置子节点细节）</div>';
+      const childHtml=kids.map(c=>{
+        const tpl=NODE_TEMPLATES[c.name];
+        const hasDesc=!!(c.desc&&c.desc.trim());
+        const canApply=!!tpl && !hasDesc;            /* 命中库预设且本地未填 → 可套用 */
+        const canSave=hasDesc && !!tpl;              /* 本地已填且库中有同名 → 可回写更新库 */
+        const canNewSave=hasDesc && !tpl;            /* 本地已填但库无同名 → 可新增到库 */
+        return `<div class="step-child-row" id="childRow-${c.id}">
+          <div class="step-child-main" onclick="toggleChildDone('${c.id}')" title="点击标记/取消完成">
+            <span class="step-child-dot${isStepChecked(c.id)?' done':''}"></span>
+            <span class="step-child-name">${escHtml(c.name)}</span>
+            ${c.days?`<span class="step-child-days">${escHtml(c.days)}天</span>`:''}
+            ${isStepChecked(c.id)?'<span class="step-child-badge done">已完成</span>':'<span class="step-child-badge">待完成</span>'}
+            ${tpl?'<span class="step-child-tpl-tag" title="已接入套用库">📚</span>':''}
+          </div>
+          ${(hasDesc||(tpl&&tpl.desc))?`<div class="step-child-desc">${escHtml(hasDesc?c.desc:(tpl.desc||''))}</div>`:''}
+          <div class="step-child-ops">
+            ${canApply?`<button class="btn-mini" onclick="applyNodeTemplate('${step.id}','${c.id}')">套用库预设</button>`:''}
+            ${canSave?`<button class="btn-mini ghost" onclick="saveNodeTemplate('${step.id}','${c.id}')">更新到库</button>`:''}
+            ${canNewSave?`<button class="btn-mini ghost" onclick="saveNodeTemplate('${step.id}','${c.id}')">存到套用库</button>`:''}
+          </div>
+        </div>`;
+      }).join('')||'<div class="step-child-empty">（该阶段暂未配置子节点细节）</div>';
       return `<div class="step-parent-block" id="stepParent-${i}" data-index="${i}">
         <div class="step-parent-header${stageDone?' done':''}" onclick="toggleParentExpand('${step.id}')">
           <span class="step-parent-caret">${expanded?'▼':'▶'}</span>
