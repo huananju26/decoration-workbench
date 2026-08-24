@@ -8728,6 +8728,20 @@ function toggleStepExpand(idx){
   }else{
     card.classList.add('expanded');
     const fsImgs=card.querySelectorAll('img.fs-photo');if(fsImgs.length)loadFsPhotos(card);
+    /* 展开时自动滚到卡片顶部（与左侧导航 scrollToStep 行为一致） */
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        const main=document.querySelector('.main');
+        const topBar=document.querySelector('.top-bar');
+        const offset=(topBar?topBar.getBoundingClientRect().height:0)+12;
+        if(main){
+          const mainRect=main.getBoundingClientRect();
+          const cardRect=card.getBoundingClientRect();
+          const target=main.scrollTop+(cardRect.top-mainRect.top)-offset;
+          main.scrollTo({top:Math.max(0,target),behavior:'smooth'});
+        }
+      });
+    });
   }
   /* 同步左侧导航深蓝高亮（仅展开的节点点亮） */
   syncNavActiveStates();
