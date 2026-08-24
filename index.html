@@ -7107,7 +7107,6 @@ function renderStepRightPanel(p,step,i){
       <div class="sb-sec-body">
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
           <button type="button" class="sb-mini-add" onclick="addAcceptRow(${i})">＋ 添加必检项</button>
-          <button type="button" class="sb-mini-add" onclick="sbImportAcceptTemplate(${i})">从模板导入</button>
           <button type="button" class="sb-mini-add" onclick="sbManageAcceptTemplates()">管理企业模板</button>
           <button type="button" class="sb-mini-primary" onclick="sbApplyNodeStdAccept(${i})">套用节点标准必检项</button>
         </div>
@@ -7744,12 +7743,14 @@ function sbEditAcceptItem(i,idx){
   },320);
 }
 function sbDelAcceptItem(i,idx){
-  if(!confirm('确认删除该必检项？'))return;
+  if(!confirm('确认删除该必检项？\n\n同时会从企业标准模板中删除同名验收项。'))return;
   const p=cur();if(!p)return;
   const step=(p.processSteps||[])[i];if(!step)return;
   ensureProjectSteps(p);
   if(!step.acceptance)return;
   const stepId=step.id;
+  /* 记录被删项的 label（用于联动删除模板） */
+  const targetLabel=(step.acceptance[idx]||{}).label;
   // 1. 找出该必检项对应的全部整改记录并一并删除，同时同步删除关联待办
   if(p.siteRecords){
     const rectifyRecs=p.siteRecords.filter(r=>r.tag==='整改'&&r.stepId===stepId&&r.acceptanceKey===idx);
@@ -7767,6 +7768,39 @@ function sbDelAcceptItem(i,idx){
     });
   }
   persist();renderProcessKeepExpanded(i);
+  /* 联动：从企业标准模板中删除同名验收项 */
+  if(targetLabel) syncDeleteTemplateByLabel(stepId,targetLabel);
+}
+/* 联动删除：模板弹窗删某项 → 同步从当前展开节点中按 label 删除同名必检项 */
+function syncDeleteNodeAcceptByLabel(stepId,label){
+  const p=cur();if(!p)return;
+  const step=(p.processSteps||[]).find(s=>s.id===stepId);if(!step||!step.acceptance)return;
+  const idx=step.acceptance.findIndex(a=>a.label===label);
+  if(idx===-1)return;
+  step.acceptance.splice(idx,1);
+  /* 对齐整改记录 acceptanceKey */
+  if(p.siteRecords){
+    p.siteRecords.forEach(r=>{
+      if(r.tag==='整改'&&r.stepId===stepId&&typeof r.acceptanceKey==='number'&&r.acceptanceKey>idx){ r.acceptanceKey-=1; }
+    });
+  }
+  persist();
+  renderProcessKeepExpanded(p.processSteps.indexOf(step));
+}
+/* 联动删除：节点必检项删某项 → 同步从企业标准模板中按 label 删除同名验收项，并持久化 */
+function syncDeleteTemplateByLabel(stepId,label){
+  if(!PARENT_ACCEPTANCE_TEMPLATES[stepId])return;
+  const tpl=PARENT_ACCEPTANCE_TEMPLATES[stepId];
+  const idx=tpl.findIndex(a=>a.label===label);
+  if(idx===-1)return;
+  tpl.splice(idx,1);
+  /* 同步更新编辑态（弹窗打开时） */
+  if(window._acceptTplEdit&&window._acceptTplEdit[stepId]){
+    const ei=window._acceptTplEdit[stepId].findIndex(a=>a.label===label);
+    if(ei>=0) window._acceptTplEdit[stepId].splice(ei,1);
+  }
+  /* 持久化 */
+  try{ localStorage.setItem('xzgz_accept_tpl_v1',JSON.stringify(PARENT_ACCEPTANCE_TEMPLATES)); }catch(e){}
 }
 // 从模板导入必检项（默认土建·水电·防水·油漆 4 个，可扩展）
 function sbImportAcceptTemplate(i){
@@ -7869,8 +7903,14 @@ function delAcceptTplItem(gi,ii){
   const groups=BASE_PARENT_GROUPS;if(!groups[gi])return;
   const gid=groups[gi].id;
   if(!data[gid])return;
+  const item=data[gid][ii];if(!item)return;
+  /* 二次确认：提示同时会删除当前展开节点的同名必检项 */
+  if(!confirm('确认删除验收标准「'+(item.label||'未命名')+'」？\n\n同时会同步删除当前项目中该节点的同名必检项。'))return;
+  const targetLabel=item.label;
   data[gid].splice(ii,1);
   renderAcceptTplModal();
+  /* 联动：从当前展开节点中删除同名必检项（按 label 匹配） */
+  syncDeleteNodeAcceptByLabel(gid,targetLabel);
 }
 /* 保存模板：写回 PARENT_ACCEPTANCE_TEMPLATES + localStorage 持久化 */
 function saveAcceptTplModal(){
