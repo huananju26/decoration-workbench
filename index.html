@@ -67,6 +67,7 @@ a{color:#003a8c;text-decoration:none}
 /* 全局搜索结果浮层 */
 .search-results-panel{display:none;position:absolute;top:42px;right:0;width:340px;max-height:60vh;overflow-y:auto;background:#fff;border:1px solid #91caff;border-radius:12px;box-shadow:0 8px 28px rgba(0,58,140,.16);z-index:1200;padding:6px}
 .search-results-panel .search-empty{padding:18px 14px;color:#8c8c8c;font-size:13px;text-align:center}
+.search-results-panel .search-head{padding:8px 12px;font-size:12px;color:#003a8c;font-weight:600;border-bottom:1px solid #e6f4ff;margin-bottom:4px;position:sticky;top:0;background:#fff}
 .search-result-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer}
 .search-result-item:hover{background:#e6f4ff}
 .search-result-item .sr-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
@@ -13228,13 +13229,17 @@ function handleSearch(q){
   if(!show.length){
     panel.innerHTML='<div class="search-empty">未找到与“'+escHtml(q.trim())+'”相关的结果</div>';
     panel.style.display='block';
+    const inp0=$('globalSearch'); if(inp0)inp0.value=''; /* 搜索后清空输入框，页面仅空白显示 */
     return;
   }
-  panel.innerHTML=show.map((r,i)=>`<div class="search-result-item" data-i="${i}">`+
+  panel.innerHTML='<div class="search-head">🔍 搜索：“'+escHtml(q.trim())+'”　共 '+show.length+' 条</div>'+
+    show.map((r,i)=>`<div class="search-result-item" data-i="${i}">`+
     `<span class="sr-icon">${r.icon}</span>`+
     `<span class="sr-text"><span class="sr-label">${escHtml(r.label)}</span><span class="sr-sub">${escHtml(r.sub)}</span></span>`+
     `</div>`).join('');
   panel.style.display='block';
+  /* 搜索后清空输入框：结果已显示在浮层，输入框保持空白 */
+  const inp=$('globalSearch'); if(inp)inp.value='';
   /* 绑定点击跳转 */
   panel.querySelectorAll('.search-result-item').forEach(el=>{
     el.onclick=()=>{
