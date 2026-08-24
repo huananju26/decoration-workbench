@@ -472,8 +472,8 @@ a{color:#003a8c;text-decoration:none}
 .sb-child-note input:focus{border-color:#1677ff;box-shadow:0 0 0 2px rgba(22,119,255,.1)}
 /* 折叠区域 */
 .sb-sec-collapsible>.sb-sec-title{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px}
-.sb-sec-collapsible>.sb-sec-title::before{content:'';display:inline-block;width:0;height:0;border-left:5px solid #999;border-top:3px solid transparent;border-bottom:3px solid transparent;transition:transform .2s;flex-shrink:0;margin-left:2px}
-.sb-sec-collapsible.collapsed>.sb-sec-title::before{transform:rotate(-90deg)}
+.sb-sec-collapsible>.sb-sec-title::after{content:'';display:inline-block;width:0;height:0;border-left:5px solid #999;border-top:3px solid transparent;border-bottom:3px solid transparent;transition:transform .2s;flex-shrink:0;margin-left:auto}
+.sb-sec-collapsible.collapsed>.sb-sec-title::after{transform:rotate(-90deg)}
 .sb-sec-collapsible>.sb-child-list,.sb-sec-collapsible>.sb-collapsible-body{overflow:hidden;transition:max-height .3s ease,opacity .2s ease}
 .sb-sec-collapsible.collapsed>.sb-child-list,.sb-sec-collapsible.collapsed>.sb-collapsible-body{max-height:0!important;opacity:0;padding-top:0;padding-bottom:0}
 
