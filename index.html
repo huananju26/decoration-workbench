@@ -7773,30 +7773,47 @@ function sbDelAcceptItem(i,idx){
 }
 /* 联动删除：模板弹窗删某项 → 同步从当前展开节点中按 label 删除同名必检项 */
 function syncDeleteNodeAcceptByLabel(stepId,label){
-  const p=cur();if(!p)return;
-  const step=(p.processSteps||[]).find(s=>s.id===stepId);if(!step||!step.acceptance)return;
-  const idx=step.acceptance.findIndex(a=>a.label===label);
-  if(idx===-1)return;
-  step.acceptance.splice(idx,1);
-  /* 对齐整改记录 acceptanceKey */
-  if(p.siteRecords){
-    p.siteRecords.forEach(r=>{
-      if(r.tag==='整改'&&r.stepId===stepId&&typeof r.acceptanceKey==='number'&&r.acceptanceKey>idx){ r.acceptanceKey-=1; }
-    });
+  /* 遍历所有项目（不限于当前项目），按 stepId + label 精确匹配删除 */
+  const projects=App.projects||[];
+  let deletedAny=false;
+  projects.forEach(p=>{
+    const steps=p.processSteps||[];
+    const stepIdx=steps.findIndex(s=>s.id===stepId);
+    if(stepIdx<0||!steps[stepIdx].acceptance)return;
+    const step=steps[stepIdx];
+    const idx=step.acceptance.findIndex(a=>(a.label||'').trim()===(label||'').trim());
+    if(idx===-1)return;
+    /* 删除必检项 */
+    step.acceptance.splice(idx,1);
+    /* 对齐整改记录 acceptanceKey */
+    if(p.siteRecords){
+      p.siteRecords.forEach(r=>{
+        if(r.tag==='整改'&&r.stepId===stepId&&typeof r.acceptanceKey==='number'&&r.acceptanceKey>idx){ r.acceptanceKey-=1; }
+      });
+    }
+    deletedAny=true;
+  });
+  if(deletedAny){
+    persist();
+    /* 仅刷新当前项目（避免影响其他项目视图） */
+    const p=cur();
+    if(p){
+      const step=(p.processSteps||[]).find(s=>s.id===stepId);
+      if(step)renderProcessKeepExpanded(p.processSteps.indexOf(step));
+    }
   }
-  persist();
-  renderProcessKeepExpanded(p.processSteps.indexOf(step));
 }
 /* 联动删除：节点必检项删某项 → 同步从企业标准模板中按 label 删除同名验收项，并持久化 */
 function syncDeleteTemplateByLabel(stepId,label){
   if(!PARENT_ACCEPTANCE_TEMPLATES[stepId])return;
   const tpl=PARENT_ACCEPTANCE_TEMPLATES[stepId];
-  const idx=tpl.findIndex(a=>a.label===label);
+  const normalizedLabel=(label||'').trim();
+  const idx=tpl.findIndex(a=>(a.label||'').trim()===normalizedLabel);
   if(idx===-1)return;
   tpl.splice(idx,1);
   /* 同步更新编辑态（弹窗打开时） */
   if(window._acceptTplEdit&&window._acceptTplEdit[stepId]){
-    const ei=window._acceptTplEdit[stepId].findIndex(a=>a.label===label);
+    const ei=window._acceptTplEdit[stepId].findIndex(a=>(a.label||'').trim()===normalizedLabel);
     if(ei>=0) window._acceptTplEdit[stepId].splice(ei,1);
   }
   /* 持久化 */
@@ -7912,9 +7929,9 @@ function delAcceptTplItem(gi,ii){
   /* 联动：从当前展开节点中删除同名必检项（按 label 匹配） */
   syncDeleteNodeAcceptByLabel(gid,targetLabel);
 }
-/* 保存模板：写回 PARENT_ACCEPTANCE_TEMPLATES + localStorage 持久化 */
+/* 保存模板：写回 PARENT_ACCEPTANCE_TEMPLATES + localStorage 持久化 + 全量对齐所有项目 */
 function saveAcceptTplModal(){
-  const src=window._acceptTplEdit;if(!src)return;
+  const src=window._acceptTplEdit;if(!src);
   /* 写回运行时常量（用 Object.assign 逐 key 覆盖保持引用） */
   Object.keys(PARENT_ACCEPTANCE_TEMPLATES).forEach(k=>{ delete PARENT_ACCEPTANCE_TEMPLATES[k]; });
   Object.keys(src).forEach(k=>{ PARENT_ACCEPTANCE_TEMPLATES[k]=src[k]; });
@@ -7922,8 +7939,23 @@ function saveAcceptTplModal(){
   try{
     localStorage.setItem('xzgz_accept_tpl_v1',JSON.stringify(PARENT_ACCEPTANCE_TEMPLATES));
   }catch(e){}
+  /* 全量对齐：遍历所有项目，把每个母节点的必检项与模板对齐（删除模板中已不存在的项） */
+  let needRerender=false;
+  (App.projects||[]).forEach(p=>{
+    const steps=p.processSteps||[];
+    steps.forEach(step=>{
+      if(!step.isParent||!step.acceptance||!PARENT_ACCEPTANCE_TEMPLATES[step.id])return;
+      const tplLabels=PARENT_ACCEPTANCE_TEMPLATES[step.id].map(t=>(t.label||'').trim());
+      const beforeLen=step.acceptance.length;
+      step.acceptance=step.acceptance.filter(a=>tplLabels.includes((a.label||'').trim()));
+      if(step.acceptance.length!==beforeLen)needRerender=true;
+    });
+  });
+  if(needRerender)persist();
   closeModal('acceptTplModal');
   window._acceptTplEdit=null;
+  /* 刷新视图以反映对齐结果 */
+  if(needRerender&&cur())renderProcessKeepExpanded();
 }
 /* 启动时从 localStorage 恢复企业自定义模板（如有） */
 function loadAcceptTplFromStorage(){
