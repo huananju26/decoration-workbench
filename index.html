@@ -8372,8 +8372,8 @@ function renderProcess(){
         <!-- ① 可编辑节点信息 -->
         <div class="sb-section ${isSbInfoCollapsed(i)?'collapsed':''}" id="sbInfoSec_${i}">
           <div class="sb-sec-title sb-sec-clickable" onclick="toggleSbInfoCollapse(${i})">节点信息<span class="chev" style="margin-left:auto">▾</span></div>
-          <div class="sb-sec-hint-row">可直接修改后点保存</div>
           <div class="sb-sec-body">
+          <div style="font-size:11px;color:#999;margin-bottom:10px">可直接修改后点保存</div>
           <div class="sb-edit-grid">
             <label class="sb-field sb-field-name">节点名称
               <input id="sb_name_${i}" class="sb-input" value="${escAttr(step.name)}">
@@ -8406,7 +8406,7 @@ function renderProcess(){
           const secId='sbChild_'+step.id;
           return `<div class="sb-section sb-sec-collapsible collapsed" id="${secId}">
             <div class="sb-sec-title" onclick="toggleChildList('${secId}')">包含工序<span class="sb-badge" id="${secId}_count">${kids.length}</span><span class="chev" style="margin-left:auto">▾</span></div>
-            <div class="sb-sec-hint-row">该阶段包含以下子工序，验收以母节点整体验收为准</div>
+            <div style="font-size:11px;color:#999;margin-bottom:10px">该阶段包含以下子工序，验收以母节点整体验收为准</div>
             <div class="sb-child-list">
               ${kids.map((k,ki)=>`<div class="sb-child-item" id="${secId}_row_${k.id}">
                 <span class="sb-child-dot"></span>
