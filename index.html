@@ -10191,46 +10191,45 @@ function _doGeneratePDF(el,sheetId,fileBase){
 function printSheet(sheetId){
   const el=$(sheetId); if(!el) return;
   zoomGsReset(sheetId);
-  /* ── 核弹级 DOM 隔离方案 ──
-     打印前直接把 body 下除目标弹窗外的所有子元素 display:none（从渲染树移除），
-     不依赖 @media print 的 CSS 解析，100% 可靠 */
-  var modal=el.closest('.modal-overlay');
-  if(!modal){ alert('未找到表格所在弹窗'); return; }
-  var mid=modal.id;
-  /* 记录并隐藏 body 所有子元素（目标弹窗除外） */
-  var hiddenEls=[];
-  Array.from(document.body.children).forEach(function(ch){
-    if(ch!==modal && ch.style.display!=='none'){
-      hiddenEls.push({el:ch,prev:ch.style.display});
-      ch.style.display='none';
-    }
-  });
-  /* 清除上次注入的残留 */
-  var old=document.getElementById('printSheetStyle'); if(old) old.remove();
-  /* 仅注入布局净化 + 纸张方向（隐藏已由 DOM 操作完成，不再需要 visibility/display 隔离 CSS） */
+  /* ── 终极方案：新窗口 document.write ──
+     完全脱离原页面 DOM，在新窗口写入纯净 HTML + 内联样式，再调 print()。
+     不依赖原页面任何 CSS/JS/@media print 规则，100% 隔离。 */
   var landscape=el.classList.contains('gs-sheet');
-  var pageRule=landscape ? 'size:auto;margin:8mm' : 'size:A4;margin:8mm';
-  var css='@media print{'+
-    '#'+mid+'{position:absolute;left:0;top:0;width:auto!important;background:#fff!important;display:block!important;box-shadow:none!important;border:none!important;padding:0!important;overflow:visible!important} '+
-    '#'+mid+' .modal{max-width:none!important;width:auto!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important} '+
-    '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important} '+
-    '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:0!important;background:#fff!important} '+
-    '#'+mid+' .gs-zoom-pad{width:auto!important;height:auto!important;overflow:visible!important} '+
-    '#'+mid+' .gs-sheet{width:auto!important;height:auto!important;transform:none!important;overflow:visible!important} '+
-    '#'+mid+' .gs-chart{overflow:visible!important} '+
-    '@page{'+pageRule+'}'+
-  '}';
-  var ps=document.createElement('style'); ps.id='printSheetStyle'; ps.textContent=css;
-  document.head.appendChild(ps);
-  /* afterprint 负责恢复（无论用户点打印还是取消都触发），避免 setTimeout 竞态窗口 */
-  function _restoreSheetPrint(){
-    hiddenEls.forEach(function(item){ item.el.style.display=item.prev||''; });
-    var s=document.getElementById('printSheetStyle'); if(s) s.remove();
-    window.removeEventListener('afterprint',_restoreSheetPrint);
-  }
-  window.addEventListener('afterprint',_restoreSheetPrint);
-  /* 同步隐藏后立即打印，最小化竞态 */
-  window.print();
+  /* 提取表格的 outerHTML（含全部内联样式） */
+  var contentHTML=el.outerHTML;
+  /* 构建标题 */
+  var title='装修工作台';
+  if(sheetId==='cprSheet') title='合同收款计划表';
+  else if(sheetId==='clientTimelineSheet') title='施工进度表';
+  else if(sheetId==='planVsActualSheet') title='计划与实际进度表';
+  /* 纸张方向 */
+  var pageCSS=landscape
+    ? '@page{size:A4 landscape;margin:6mm}'
+    : '@page{size:A4;margin:10mm}';
+  /* 完整打印文档 */
+  var printDoc='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
+    '<style>'+
+      'body{margin:0;padding:20px 24px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#333;background:#fff}'+
+      '*{box-sizing:border-box}'+
+      'table{width:100%;border-collapse:collapse;font-size:12px}'+
+      'th,td{border:1px solid #d9d9d9;padding:6px 10px;text-align:left;word-break:break-all}'+
+      'th{background:#e6f4ff;color:#003a8c;font-weight:600;white-space:nowrap}'+
+      '.cpr-sheet .cpr-title{font-size:18px;font-weight:700;color:#003a8c;text-align:center;margin-bottom:16px}'+
+      '.cpr-sheet .cpr-subtitle{font-size:13px;color:#666;text-align:center;margin-bottom:12px}'+
+      '.cpr-sheet table{margin-top:8px}'+
+      '.cpr-sheet tfoot td{font-weight:700;background:#fafafa}'+
+      '.gs-sheet{width:auto!important;min-width:100%!important}'+
+      '.gs-chart{overflow:visible!important}'+
+      '.gs-zoom-pad{width:auto!important;overflow:visible!important}'+
+      pageCSS+
+    '</style></head><body>'+
+    '<h2 style="text-align:center;margin:0 0 16px;font-size:20px;color:#003a8c">'+title+'</h2>'+
+    contentHTML+
+    '<script>window.onload=function(){ window.print(); }<\/script></body></html>';
+  var w=window.open('','_blank','width=1000,height=700');
+  if(!w){ alert('请允许弹出窗口后重试'); return; }
+  w.document.write(printDoc);
+  w.document.close();
 }
 window.addEventListener('afterprint',function(){
   document.documentElement.classList.remove('gs-printing-rectify');
