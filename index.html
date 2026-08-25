@@ -1035,6 +1035,15 @@ a{color:#003a8c;text-decoration:none}
 
 /* ── 底部说明行 ── */
 .fin-dash-note{font-size:11.5px;color:#aaa;margin-top:8px;padding-top:10px;border-top:1px dashed #eee;line-height:1.5}
+.fin-acct-title{font-size:12px;font-weight:600;color:#003a8c;margin:14px 0 8px}
+.fin-acct-split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fin-acct-card{border:1px solid #e8e8e8;border-radius:10px;padding:10px 12px;background:#fafafa}
+.fin-acct-card.gong{border-left:3px solid #003a8c}
+.fin-acct-card.si{border-left:3px solid #fa8c16}
+.fin-acct-h{font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:6px}
+.fin-acct-line{font-size:12px;color:#666;margin:2px 0}
+.fin-acct-line b{color:#1a1a1a}
+.fin-acct-net{font-size:12px;font-weight:600;margin-top:4px;color:#003a8c}
 
 /* 支出分类网格 — 扁平化、一行 7 个、高度压缩、保留分类色 */
 .fin-cat-section{margin-bottom:14px}
@@ -2934,6 +2943,13 @@ a{color:#003a8c;text-decoration:none}
             <div class="house-type-opt" data-type="commercial" onclick="selectHouseType('commercial')"><div class="ht-icon">🏢</div><div class="ht-name">工装项目</div></div>
           </div>
         </div>
+        <div class="form-group"><label class="form-label">业务性质 / 开票属性</label>
+          <select id="projBizType">
+            <option value="个人">个人（住宅 / 散户业主，通常不走票）</option>
+            <option value="企业">企业（工装 / 可开票主体）</option>
+          </select>
+          <div class="form-hint">仅决定合同主体与是否默认要票；资金走对公/对私在「记一笔」逐笔标记（企业项目也可能对私付款）。</div>
+        </div>
       </div>
 
       <!-- Step2: 施工计划 -->
@@ -3717,6 +3733,13 @@ a{color:#003a8c;text-decoration:none}
           <option value="income">收款（项目金额/已收款）</option>
           <option value="expense">付款（项目成本/已付款）</option>
         </select>
+      </div>
+      <div class="form-group"><label class="form-label">账户性质 *</label>
+        <select id="fAccountType">
+          <option value="对私">对私（个人卡 / 微信支付宝 / 业主个人付）</option>
+          <option value="对公">对公（对公户 / 可开票主体）</option>
+        </select>
+        <div class="form-hint">资金真实走账性质；同一项目可混用（如业主个人转你=对私，向品牌商采购=对公）。</div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">金额 *</label><input type="number" id="fAmount" placeholder="0.00"></div>
@@ -4521,12 +4544,30 @@ function migrateV0ToV1(app){
   migrateGlobalArchive();   // 项目级人材档案 → 账号级 archive（按 name 去重，幂等）
   migrateChecked();         // 旧步骤 ID t1..t27 → ps01..ps22（仅处理 t 前缀，幂等）
 }
+/* ── 对公/对私 两层模型 ──
+   bizType（项目级·业务性质/开票属性）：'个人' | '企业' —— 只决定合同主体与是否默认要票，绝不决定钱怎么付
+   accountType（流水级·账户性质）：'对公' | '对私' —— 每笔收付款的真实走账性质（真相源），可逐笔覆盖 */
+const BIZ_TYPES=['个人','企业'];
+const ACCOUNT_TYPES=['对私','对公'];
+function bizTypeFromHouse(h){return h==='commercial'?'企业':'个人';}
+/* 流水账户性质的默认值：优先取 rec.accountType；旧数据无标记时按分类启发（对公转账→对公），其余默认对私 */
+function defaultAccountType(rec,p){
+  if(rec.accountType==='对公'||rec.accountType==='对私')return rec.accountType;
+  if(rec.cat==='对公转账')return '对公';
+  return '对私';
+}
+/* 项目默认账户性质（记一笔时的初始种子，可逐笔改）：企业项目→对公，个人项目→对私 */
+function defaultAccountTypeForProject(p){
+  return (p&&p.bizType==='企业')?'对公':'对私';
+}
+
 /* v1 → v2：新增「合同管理 / 发票管理」全局数组（带 projectId），仅做数组兜底初始化。
-   幂等：已存在则不动；不修改任何现有数据。 */
+   幂等：已存在则不动；不修改任何现有数据。同时为旧项目补 bizType 默认（按房屋类型推导）。 */
 function migrateV1ToV2(app){
   ensureAppShape(app);
   if(!Array.isArray(app.contracts)) app.contracts = [];
   if(!Array.isArray(app.invoices)) app.invoices = [];
+  (app.projects||[]).forEach(p=>{ if(p&&!p.bizType) p.bizType = bizTypeFromHouse(p.houseType); });
 }
 
 const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2 ];
@@ -5030,6 +5071,7 @@ function selectHouseType(t){
     }
   }
   selectedHouseType=t;
+  const _bz=$('projBizType'); if(_bz)_bz.value=bizTypeFromHouse(t);
   document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type===t));
   /* 同步系统模板下拉框选中状态 */
   const tplSel=$('planTemplateSelect');if(tplSel)tplSel.value=t;
@@ -5705,6 +5747,7 @@ function openProjectModal(id){
     if(p){
       editingProjectId=id;
       selectedHouseType=p.houseType||'new';
+      const _ebz=$('projBizType'); if(_ebz)_ebz.value=p.bizType||bizTypeFromHouse(p.houseType||'new');
       $('projCode').value=p.code||'';$('projName').value=p.name||'';$('projTotalAmount').value=(p.totalAmount!==undefined&&p.totalAmount!==null&&p.totalAmount!=='')?p.totalAmount:'';$('projArea').value=p.area||'';$('projSignMonth').value=p.signMonth||'';
       document.querySelectorAll('.house-type-opt').forEach(o=>o.classList.toggle('active',o.dataset.type===selectedHouseType));
       $('wPlanStartDate').value=(p.profile&&p.profile.startDate)||'';
@@ -5753,6 +5796,7 @@ function openProjectModal(id){
   wizStep=1;wizPlanNodes=[];
   wizPayPlanMode='pct';wizPayPlanNodes=[];wizPayPlanSplit={laborAmt:0,laborMethod:'pct',materialAmt:0,materialMethod:'pct'};
   selectedHouseType='new';
+  const _nbz=$('projBizType'); if(_nbz)_nbz.value='个人';
   $('projectModalTitle').textContent='新建项目';
   $('wizSubtitle').style.display='';document.querySelector('.wizard-steps').style.display='';
   $('wizTab3').style.display='';
@@ -5991,6 +6035,7 @@ function createProjectFromWizard(){
   const p={
     id:'p_'+uid(),name:name,code:code,houseType:selectedHouseType,createdAt:todayISO(),
     totalAmount:totalAmount,area:area,signMonth:signMonth,adjustment:0,
+    bizType:$('projBizType').value||bizTypeFromHouse(selectedHouseType),
     payPlanMode:wizPayPlanMode,
     profile:{style:'',layout:'',mode:'',startDate:$('wPlanStartDate').value||''},
     tasks:[],purchases:[],income:income,expense:[],diaries:[],compares:[],checked:{},
@@ -6021,7 +6066,7 @@ function saveProject(){
     const idx=App.projects.findIndex(x=>x.id===editingProjectId);
     if(idx>=0){
       const p=App.projects[idx];
-      p.name=name;p.code=code;p.totalAmount=totalAmount;p.area=area;p.signMonth=signMonth;p.houseType=selectedHouseType;p.payPlanMode=wizPayPlanMode;
+      p.name=name;p.code=code;p.totalAmount=totalAmount;p.area=area;p.signMonth=signMonth;p.houseType=selectedHouseType;p.payPlanMode=wizPayPlanMode;p.bizType=$('projBizType').value||bizTypeFromHouse(selectedHouseType);
       p.profile=p.profile||{};p.profile.startDate=$('wPlanStartDate').value||'';
       p.processSteps=processSteps;
       p.income=saveEditIncome(p.income||[], totalAmount);
@@ -13254,7 +13299,8 @@ function renderFinance(){
       <div class="fin-dash-sm"><div class="fin-dash-sm-val ${af.grossProfit>=0?'blue':'red'}">¥${fmt(af.grossProfit)}</div><div class="fin-dash-sm-label">总项目账面毛利</div></div>
       <div class="fin-dash-sm"><div class="fin-dash-sm-val ${sumMarginRate>=0?'blue':'red'}">${sumMarginRate}%</div><div class="fin-dash-sm-label">总项目账面毛利率</div></div>
     </div>
-    <div class="fin-dash-note">账面毛利 = 累计已收 − 实际已支出，仅反映当前账面情况，不代表项目最终利润。毛利率 = 账面毛利 ÷ 累计已收。</div>`;
+    <div class="fin-dash-note">账面毛利 = 累计已收 − 实际已支出，仅反映当前账面情况，不代表项目最终利润。毛利率 = 账面毛利 ÷ 累计已收。</div>`+
+    `<div class="fin-acct-title">资金性质拆分（按每笔收付款标记，企业项目也可能对私付款）</div>`+acctSplitHTML(accountSplitAll());
 
   // 2. 当前项目标签（显示编号，不显示名称）
   $('finCurrentLabel').textContent='当前项目：'+projDisplayName(p);
@@ -13351,7 +13397,8 @@ function renderFinance(){
     </div>`+
 
     /* ── 底部说明 ── */
-    `<div class="fin-dash-note">账面毛利 = 累计已收 − 实际已支出，仅反映当前账面情况，不代表项目最终利润。毛利率 = 账面毛利 ÷ 累计已收。</div>`;
+    `<div class="fin-dash-note">账面毛利 = 累计已收 − 实际已支出，仅反映当前账面情况，不代表项目最终利润。毛利率 = 账面毛利 ÷ 累计已收。</div>`+
+    `<div class="fin-acct-title">资金性质拆分（按每笔收付款标记）</div>`+acctSplitHTML(accountSplit(p));
 
   // 4. 支出分类网格
   const cats=getExpenseCategories(p);
@@ -13486,6 +13533,38 @@ function allProjectsFinance(){
   let r={totalIncome:0,received:0,totalCost:0,paid:0};
   App.projects.forEach(p=>{const f=projFinance(p);r.totalIncome+=f.totalIncome;r.received+=f.received;r.totalCost+=f.totalCost;r.paid+=f.paid;});
   r.pendingReceive=r.totalIncome-r.received;r.pendingPay=r.totalCost-r.paid;r.grossProfit=r.received-r.paid;return r;
+}
+/* 按账户性质（对公/对私）拆分某项目的已收/已付资金流 */
+function accountSplit(p){
+  const g={received:0,paid:0}, s={received:0,paid:0};
+  (p.income||[]).forEach(i=>{
+    const at=defaultAccountType(i,p);
+    (i.receipts||[]).forEach(r=>{ if(at==='对公') g.received+=(r.amount||0); else s.received+=(r.amount||0); });
+  });
+  (p.expense||[]).forEach(e=>{ if(!e.paid)return; const amt=e.amount||0; if(defaultAccountType(e,p)==='对公') g.paid+=amt; else s.paid+=amt; });
+  return {g,s};
+}
+function accountSplitAll(){
+  const g={received:0,paid:0}, s={received:0,paid:0};
+  App.projects.forEach(p=>{const x=accountSplit(p);g.received+=x.g.received;g.paid+=x.g.paid;s.received+=x.s.received;s.paid+=x.s.paid;});
+  return {g,s};
+}
+function acctSplitHTML(x){
+  const g=x.g, s=x.s;
+  return `<div class="fin-acct-split">
+    <div class="fin-acct-card gong">
+      <div class="fin-acct-h">对公资金流</div>
+      <div class="fin-acct-line">收 <b>¥${fmt(g.received)}</b></div>
+      <div class="fin-acct-line">付 <b>¥${fmt(g.paid)}</b></div>
+      <div class="fin-acct-net">净额 ¥${fmt(g.received-g.paid)}</div>
+    </div>
+    <div class="fin-acct-card si">
+      <div class="fin-acct-h">对私资金流</div>
+      <div class="fin-acct-line">收 <b>¥${fmt(s.received)}</b></div>
+      <div class="fin-acct-line">付 <b>¥${fmt(s.paid)}</b></div>
+      <div class="fin-acct-net">净额 ¥${fmt(s.received-s.paid)}</div>
+    </div>
+  </div>`;
 }
 
 // ============================================================
@@ -13634,12 +13713,17 @@ function renderLedger(){
     let flowBadge='';
     if(r.type==='income'){const v=(App.invoices||[]).find(x=>x.linkedIncomeId===r.rec.id);if(v)flowBadge=' <span class="archive-tag blue" title="已开销项发票">🧾销项票</span>';}
     else if(r.type==='expense'){const v=(App.invoices||[]).find(x=>x.linkedExpenseId===r.rec.id);if(v)flowBadge=' <span class="archive-tag blue" title="已收进项发票">🧾进项票</span>';}
+    /* 账户性质徽章：对公（深蓝）/ 对私（橙），真相源为每笔 rec.accountType */
+    const at=defaultAccountType(r.rec,r.proj);
+    const acctBadge = at==='对公'
+      ? ' <span class="archive-tag" style="background:#e6f4ff;color:#003a8c;border:1px solid #91caff" title="对公账户（对公户 / 可开票主体）">对公</span>'
+      : ' <span class="archive-tag" style="background:#fff7e6;color:#d48806;border:1px solid #ffd591" title="对私账户（个人卡 / 微信 / 业主个人付）">对私</span>';
     html+='<tr class="'+cls.trim()+'">'+
       '<td>'+r._idx+'</td>'+
       '<td class="ld-date">'+(r.date||'-')+'</td>'+
       '<td><span class="ld-tag'+tagCls+'">'+tagText+'</span></td>'+
       '<td class="ld-proj" onclick="switchToProject(\''+r.proj.id+'\');switchPage(\'finance\')">'+escHtml(projDisplayName(r.proj))+'</td>'+
-      '<td class="ld-detail" title="'+escHtml(r.detail)+'">'+escHtml(r.detail)+flowBadge+'</td>'+
+      '<td class="ld-detail" title="'+escHtml(r.detail)+'">'+escHtml(r.detail)+flowBadge+acctBadge+'</td>'+
       '<td class="ld-person">'+escHtml(r.person)+'</td>'+
       '<td class="amt-in">'+(isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
       '<td class="amt-out">'+(!isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
@@ -13718,6 +13802,7 @@ function editFinance(type,id){
   if(type==='income'){$('fIncomeCat').value=found.cat||'预付款';$('fPayer').value=found.payer||'';}
   else{$('fCat').value=(EXPENSE_CAT_RENAME[found.cat]||found.cat)||'材料采购';$('fPayee').value=found.payee||'';}
   $('fDate').value=found.date||todayISO();$('fNote').value=found.note||'';
+  $('fAccountType').value=found.accountType||defaultAccountType(found,foundP);
   /* 所属阶段必须在所有同步 DOM 操作完成后设值（setTimeout 0 确保 openFinanceModal 的 populateStageSelect 不覆盖） */
   if(type==='expense'){setTimeout(()=>{populateStageSelect('fStage');$('fStage').value=origStage;},0);}
   editingFinance={type:type,id:id,projectId:foundP.id};
@@ -13749,6 +13834,9 @@ function openFinanceModal(){
   toggleFinType('expense');
   populateStageSelect('fStage');
   refreshContactDatalists(App.projects.find(x=>x.id===$('fProject').value));
+  /* 账户性质默认继承项目（企业→对公，个人→对私），可逐笔改 */
+  const _defP=App.projects.find(x=>x.id===$('fProject').value);
+  $('fAccountType').value=defaultAccountTypeForProject(_defP);
   showModal('financeModal');
 }
 function toggleFinType(t){
@@ -14353,7 +14441,7 @@ function saveFinance(){
       if(oi>-1)oarr.splice(oi,1);
     }
   }
-  const rec={id:uid(),name:name,amount:amount,date:$('fDate').value,note:$('fNote').value,_source:'manual'};
+  const rec={id:uid(),name:name,amount:amount,date:$('fDate').value,note:$('fNote').value,_source:'manual',accountType:$('fAccountType').value};
   if(type==='income'){rec.received=status;rec.cat=$('fIncomeCat').value;rec.payer=$('fPayer').value;target.income.push(rec);saveContactHistory('payer',rec.payer);}
   else{rec.paid=status;rec.cat=$('fCat').value;rec.stage=$('fStage').value;rec.payee=$('fPayee').value;target.expense.push(rec);saveContactHistory('payee',rec.payee);autoArchiveSupplier(target,rec.payee,'','','');}
   persist();closeModal('financeModal');editingFinance=null;renderFinance();renderHome();
