@@ -1809,6 +1809,10 @@ a{color:#003a8c;text-decoration:none}
 .aq-check-inv{background:#fff1f0;border-color:#ffa39e;color:#cf1322;font-size:12px;cursor:pointer;}
 .aq-kind-inv{background:#fff1f0;color:#cf1322;border:1px solid #ffa39e;}
 .aq-item-inv{background:#fffaf7;}
+/* ── 发票/合同「未开/未签」版块：红色高亮 ── */
+.inv-unissued,.con-unissued{border-color:#ffa39e!important;background:#fff7f6;}
+.badge-red{background:#fff1f0!important;color:#cf1322!important;border:1px solid #ffa39e!important;}
+.tab-badge{display:inline-block;min-width:16px;margin-left:5px;padding:0 5px;font-size:11px;font-weight:700;line-height:16px;text-align:center;color:#fff;background:#ff4d4f;border-radius:9px;}
 .aq-check-con{background:#e6f4ff;border-color:#91caff;color:#003a8c;font-size:12px;cursor:pointer;}
 .aq-kind-con{background:#e6f4ff;color:#003a8c;border:1px solid #91caff;}
 .aq-item-con{background:#f5f9ff;}
@@ -11681,9 +11685,10 @@ const CONTRACT_STATUS=['草稿','已签','执行中','已完成','已终止'];
 const INVOICE_DIRECTIONS=['销项','进项'];
 const INVOICE_TYPES=['数电专票','数电普票','电子发票','专票','普票'];
 const INVOICE_STATUS=['草稿','已开','已收票','已认证','已抵扣','作废'];
+const INV_ISSUED_STATUS=['已开','已收票','已认证','已抵扣']; /* 已开具/已收票 = 已开，移出「未开」版块 */
 const DEDUCT_STATUS=['待抵扣','已抵扣','不抵扣'];
 const VERIFY_STATUS=['未查验','已查验'];
-const TAX_RATES=[9,3,1];
+const TAX_RATES=[0,1,3,6,9,13]; /* 含 0% / 6% / 13% */
 const DEFAULT_TAX_RATE=9;
 let _conTab='全部';
 let _invTab='全部';
@@ -11754,7 +11759,8 @@ function renderContracts(){
   let base=list.slice();
   if(filterProj)base=base.filter(c=>c.projectId===filterProj);
   let arr=base.slice();
-  if(_conTab!=='全部')arr=arr.filter(c=>c.type===_conTab);
+  if(_conTab==='未开')arr=arr.filter(c=>(c.status==='草稿')||!c.status);
+  else if(_conTab!=='全部')arr=arr.filter(c=>c.type===_conTab);
   let cards='';
   if(arr.length>0){
     cards=arr.map(c=>{
@@ -11762,12 +11768,15 @@ function renderContracts(){
       const sup=contractSupName(c);
       const stepName=c.linkedStepId?stepNameById(c.projectId,c.linkedStepId):'';
       const purName=c.linkedPurchaseId?purchaseNameById(c.projectId,c.linkedPurchaseId):'';
-      return `<div class="archive-item">
+      const unsigned=(c.status==='草稿')||!c.status;
+      const stTxt=CONTRACT_STATUS.includes(c.status)?c.status:'草稿';
+      return `<div class="archive-item ${unsigned?'con-unissued':''}">
         <div class="archive-item-head">
           <div class="archive-item-name">${escHtml(c.title||'—')}</div>
           <span class="archive-tag blue">${escHtml(c.type||'')}</span>
-          <span class="archive-tag">${escHtml(CONTRACT_STATUS.includes(c.status)?c.status:'草稿')}</span>
+          <span class="archive-tag ${unsigned?'badge-red':''}">${escHtml(stTxt)}</span>
           <div class="archive-item-ops">
+            ${unsigned?`<button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#cf1322;border-color:#ffa39e;background:#fff2f0" onclick="markContractSigned('${c.id}')">标记已签</button>`:''}
             <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editContract('${c.id}')">编辑</button>
             <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deleteContract('${c.id}')">删除</button>
           </div>
@@ -11790,7 +11799,8 @@ function renderContracts(){
   const totalAmt=base.reduce((s,c)=>s+(parseFloat(c.amount)||0),0);
   const activeCount=base.filter(c=>['已签','执行中'].includes(c.status)).length;
   const scanCount=base.reduce((s,c)=>s+((c.scanImages&&c.scanImages.length)||0),0);
-  const conTabs=['全部'].concat(CONTRACT_TYPES);
+  const unissuedConCount=base.filter(c=>(c.status==='草稿')||!c.status).length;
+  const conTabs=['全部','未开'].concat(CONTRACT_TYPES);
   const projName=filterProj?projNameById(filterProj):'全部项目';
   el.innerHTML=
     `<div class="module-head">
@@ -11801,7 +11811,7 @@ function renderContracts(){
        <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
      </div>
      <div class="proj-tab-bar" id="conTabBar">
-       ${conTabs.map(t=>`<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}</button>`).join('')}
+       ${conTabs.map(t=>{const dot=(t==='未开'&&unissuedConCount>0)?`<span class="tab-badge">${unissuedConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
      </div>
      <div class="proj-stats-row" id="conStatsRow">
        <div class="proj-stat-item"><div class="proj-stat-label">合同份数</div><div class="proj-stat-val">${base.length}</div></div>
@@ -11815,6 +11825,13 @@ function renderContracts(){
      </div>`;
 }
 function switchContractTab(t){_conTab=t;renderContracts();}
+/* 一键把未签合同标记为已签（从「未开」版块移出） */
+function markContractSigned(id){
+  const c=contractById(id);if(!c)return;
+  if(!confirm('标记该合同为「已签」？\n（将从「未开」版块移出）'))return;
+  c.status='已签';
+  persist();renderContracts();
+}
 function contractSupName(c){
   if(c.supplierId){const s=(App.archive.suppliers||[]).find(x=>x.id===c.supplierId);if(s)return s.contact?(s.name+' '+s.contact):s.name;}
   return c.party||'';
@@ -11847,7 +11864,7 @@ function openAddContract(prefill){
   if(prefill&&prefill.type)$('conType').value=prefill.type;
   $('conParty').value='';$('conSupplier').value='';
   $('conAmount').value='';$('conSignDate').value=todayISO();
-  $('conStatus').value='已签';$('conNote').value='';
+  $('conStatus').value=prefill?'已签':'草稿';$('conNote').value='';
   if(prefill&&prefill.targetKind==='step'&&prefill.targetId)$('conStep').value=prefill.targetId;
   /* 标题建议，减少手动输入 */
   if(prefill){
@@ -11961,18 +11978,22 @@ function renderInvoices(){
   let arr=base.slice();
   if(_invTab==='销项')arr=arr.filter(v=>v.direction==='销项');
   else if(_invTab==='进项')arr=arr.filter(v=>v.direction==='进项');
-  else if(_invTab==='已开')arr=arr.filter(v=>v.status==='已开');
+  else if(_invTab==='未开')arr=arr.filter(v=>(v.status==='草稿')||!v.status);
+  else if(_invTab==='已开')arr=arr.filter(v=>INV_ISSUED_STATUS.includes(v.status));
   let cards='';
   if(arr.length>0){
     cards=arr.map(v=>{
       const con=v.linkedContractId?contractById(v.linkedContractId):null;
       const badgeCls=v.direction==='销项'?'blue':'';
-      return `<div class="archive-item">
+      const unissued=(v.status==='草稿')||!v.status;
+      const stTxt=INVOICE_STATUS.includes(v.status)?v.status:'草稿';
+      return `<div class="archive-item ${unissued?'inv-unissued':''}">
         <div class="archive-item-head">
           <div class="archive-item-name">${escHtml(v.type||'发票')} · ${escHtml(v.direction||'')}</div>
           <span class="archive-tag ${badgeCls}">${escHtml(v.direction||'')}</span>
-          <span class="archive-tag">${escHtml(INVOICE_STATUS.includes(v.status)?v.status:'草稿')}</span>
+          <span class="archive-tag ${unissued?'badge-red':''}">${escHtml(stTxt)}</span>
           <div class="archive-item-ops">
+            ${unissued?`<button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#cf1322;border-color:#ffa39e;background:#fff1f0" onclick="markInvoiceIssued('${v.id}')">标记已开</button>`:''}
             <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editInvoice('${v.id}')">编辑</button>
             <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deleteInvoice('${v.id}')">删除</button>
           </div>
@@ -11992,7 +12013,8 @@ function renderInvoices(){
     }).join('');
   }
   const tax=computeTaxSummary(fProj);
-  const invTabs=['全部','销项','进项','已开'];
+  const unissuedCount=base.filter(v=>(v.status==='草稿')||!v.status).length;
+  const invTabs=['全部','未开','已开','销项','进项'];
   const projName=fProj?projNameById(fProj):'全部项目';
   el.innerHTML=
     `<div class="module-head">
@@ -12003,7 +12025,7 @@ function renderInvoices(){
        <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
      </div>
      <div class="proj-tab-bar" id="invTabBar">
-       ${invTabs.map(t=>`<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}</button>`).join('')}
+       ${invTabs.map(t=>{const dot=(t==='未开'&&unissuedCount>0)?`<span class="tab-badge">${unissuedCount}</span>`:'';return `<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}${dot}</button>`;}).join('')}
      </div>
      <div class="proj-stats-row" id="invStatsRow">
        <div class="proj-stat-item"><div class="proj-stat-label">发票张数</div><div class="proj-stat-val">${base.length}</div></div>
@@ -12017,6 +12039,13 @@ function renderInvoices(){
      </div>`;
 }
 function switchInvoiceTab(t){_invTab=t;renderInvoices();}
+/* 一键把未开发票标记为已开：销项→已开，进项→已收票（从「未开」版块移出） */
+function markInvoiceIssued(id){
+  const v=invoiceById(id);if(!v)return;
+  if(!confirm('标记该发票为「已开」？\n（销项→已开，进项→已收票，将从「未开」版块移出）'))return;
+  v.status=(v.direction==='进项')?'已收票':'已开';
+  persist();renderInvoices();
+}
 let _editingInvoiceId=null;
 function refreshInvContractOptions(){
   const pid=$('invProject')?$('invProject').value:'';
@@ -12072,7 +12101,7 @@ function openAddInvoice(prefill){
   $('invAmountNoTax').value='';$('invTaxRate').value=DEFAULT_TAX_RATE;calcInvAmounts();
   $('invIssuer').value='';$('invPayee').value='';$('invPayer').value='';
   $('invDate').value=todayISO();
-  $('invStatus').value='已开';$('invDeduct').value='待抵扣';$('invVerify').value='未查验';$('invNote').value='';
+  $('invStatus').value=prefill?'已开':'草稿';$('invDeduct').value='待抵扣';$('invVerify').value='未查验';$('invNote').value='';
   /* 从「记一笔 / 待办」跳转新建：预填方向、项目、关联流水与金额，保存后自动回写关联 */
   if(prefill&&prefill.financeId){
     const direction=prefill.type==='income'?'销项':'进项';
