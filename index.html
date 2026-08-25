@@ -2301,6 +2301,7 @@ a{color:#003a8c;text-decoration:none}
       <div class="nav-item" data-page="process" onclick="switchPage('process')"><span class="nav-icon">📋</span>项目管理</div>
       <div class="nav-item" data-page="finance" onclick="switchPage('finance')"><span class="nav-icon">💰</span>装修记账</div>
       <div class="nav-item" data-page="ledger" onclick="switchPage('ledger')"><span class="nav-icon">📒</span>收支流水</div>
+      <div class="nav-item" data-page="archive" onclick="switchPage('archive')"><span class="nav-icon">👷</span>人材档案</div>
       <div class="nav-item" data-page="purchase" onclick="switchPage('purchase')"><span class="nav-icon">🛒</span>采购清单</div>
       <div class="nav-item" data-page="compare" onclick="switchPage('compare')"><span class="nav-icon">⚖️</span>比价选品</div>
     </div>
@@ -2764,6 +2765,11 @@ a{color:#003a8c;text-decoration:none}
         <div class="ledger-empty-icon">📒</div>
         <p>暂无收支记录，请先在「装修记账」中录入</p>
       </div>
+    </div>
+
+    <!-- PAGE: 人材档案（账号级全局，跨项目永久可用） -->
+    <div class="page" id="page-archive">
+      <div id="archivePanel"></div>
     </div>
 
     </div><!-- end pagesWrapper -->
@@ -4213,8 +4219,8 @@ function updateCloudUI(){
   if($('cloudStatus2'))$('cloudStatus2').textContent=CloudSync.loggedIn?'登录状态正常，改动自动同步到云端。':'—';
 }
 
-let App={version:2,currentProjectId:null,projects:[]};
-const APP_DEFAULT={version:2,currentProjectId:null,projects:[]};
+let App={version:2,currentProjectId:null,projects:[],archive:{personnel:[],suppliers:[]}};
+const APP_DEFAULT={version:2,currentProjectId:null,projects:[],archive:{personnel:[],suppliers:[]}};
 /* 年度余额手动编辑值：null=未手动设置（显示自动计算值），数字=用户手动覆盖 */
 window.__ledgerManualBalance=0;
 
@@ -4267,6 +4273,20 @@ function migrateChecked(){
     });
   });
   if(changed)persist();
+}
+/* 迁移：把各项目历史人材档案(p.personnel / p.suppliers)合并进账号级全局档案 App.archive（按 name 去重，不覆盖已有） */
+function migrateGlobalArchive(){
+  if(!App||!App.projects)return;
+  const arc=App.archive||(App.archive={personnel:[],suppliers:[]});
+  const mergeInto=(arr,src)=>{
+    (src||[]).forEach(x=>{
+      if(!x||!x.name)return;
+      const exists=arr.find(y=>y.name===x.name && (x.contact?y.contact===x.contact:true));
+      if(exists)return;
+      arr.push(Object.assign({id:(/^sup/.test(x.id||'')?'sup_':'per_')+uid()},x));
+    });
+  };
+  App.projects.forEach(p=>{ mergeInto(arc.personnel,p.personnel); mergeInto(arc.suppliers,p.suppliers); });
 }
 
 /* 项目字段默认骨架：未来版本若新增字段，旧项目加载时自动用默认值补齐（"新增项自动带入"） */
@@ -4346,6 +4366,11 @@ function load(){
   if(App.currentProjectId&&!App.projects.find(p=>p.id===App.currentProjectId)){
     App.currentProjectId=App.projects.length?App.projects[0].id:null;
   }
+  /* 人材档案：统一为账号级全局数据源（跨项目永久可用、删除项目不丢） */
+  App.archive=App.archive||{personnel:[],suppliers:[]};
+  if(!Array.isArray(App.archive.personnel))App.archive.personnel=[];
+  if(!Array.isArray(App.archive.suppliers))App.archive.suppliers=[];
+  migrateGlobalArchive();
   migrateChecked();
   // 启动时检测存储是否可用，不可用则立即提示用户（避免"导入成功但关掉就没了"的静默丢失）
   if(!storageAvailable()){
@@ -5871,8 +5896,8 @@ function switchPage(page){
   $('page-'+page).classList.add('active');
   document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
   document.querySelectorAll('.mtab').forEach(t=>t.classList.toggle('active',t.dataset.page===page));
-  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识'};
-  const btnMap={home:'新增待办',process:'新建项目',purchase:'新增待购物品',finance:'记一笔',ledger:'',compare:'导出比价',tools:'',quote:'',diary:'写日记',knowledge:'返回总览'};
+  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识',archive:'人材档案'};
+  const btnMap={home:'新增待办',process:'新建项目',purchase:'新增待购物品',finance:'记一笔',ledger:'',compare:'导出比价',tools:'',quote:'',diary:'写日记',knowledge:'返回总览',archive:'新增人员'};
   $('bc-page').textContent=bcMap[page]||'';
   const tp=$('topPrimaryBtn');
   if(btnMap[page]){tp.style.display='';tp.textContent=btnMap[page]}else{tp.style.display='none'}
@@ -5889,6 +5914,7 @@ function switchPage(page){
   if(page==='knowledge')renderKnowledge();
   if(page==='ledger')renderLedger();
   if(page==='quote')renderQuote();
+  if(page==='archive')renderArchive('archivePanel');
   /* 按页面控制顶部项目选择器显隐：全局聚合页(总览/工具/日记/知识/流水/报价)隐藏，项目专属页(流程/采购/记账/比价)显示 */
   const ps=$('topProjectSwitcher');
   if(ps){const hidePages=['home','tools','diary','knowledge','ledger','quote'];ps.style.display=hidePages.includes(page)?'none':'';}
@@ -11090,10 +11116,10 @@ function renderProcessDiary(){
 /* ════════════════════════════════════════
    人材档案子页面（施工人员 + 材料供应商）
    ════════════════════════════════════════ */
-function renderProcessArchive(){
-  const p=cur();if(!p){$('processArchivePanel').innerHTML='<div class="proc-empty">请先选择项目</div>';return;}
-  const personnel=p.personnel||[];
-  const suppliers=p.suppliers||[];
+function renderArchive(targetId){
+  const el=$(targetId); if(!el)return;
+  const personnel=App.archive.personnel||[];
+  const suppliers=App.archive.suppliers||[];
 
   /* 左栏：施工人员档案卡片 */
   let personCards='';
@@ -11139,7 +11165,7 @@ function renderProcessArchive(){
       </div>`).join('');
   }
 
-  $('processArchivePanel').innerHTML=
+  el.innerHTML=
     `<div class="archive-hint">施工人员与材料供应商首次在「材料与厂家调配」中填写后会自动归档于此；也可在此直接新建、编辑与删除。</div>
     <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
       <!-- 左栏：施工人员档案 -->
@@ -11165,28 +11191,31 @@ function renderProcessArchive(){
     </div>`;
 }
 
+/* 项目内「人材档案」Tab 复用全局渲染 */
+function renderProcessArchive(){ renderArchive('processArchivePanel'); }
+
 /* 自动将人员/供应商归档（去重，按 name 匹配） */
+/* 自动归档写账号级全局档案 App.archive（p 仅保留兼容旧调用，不再写入项目级） */
 function autoArchivePersonnel(p,name,phone,trade){
-  if(!p||!name)return;
-  p.personnel=p.personnel||[];
-  if(p.personnel.some(x=>x.name===name))return;
-  p.personnel.push({id:'per_'+uid(),name:name,phone:phone||'',idCard:'',trade:trade||'',since:todayISO().slice(0,7),note:''});
+  if(!name)return;
+  const arc=App.archive; arc.personnel=arc.personnel||[];
+  if(arc.personnel.some(x=>x.name===name))return;
+  arc.personnel.push({id:'per_'+uid(),name:name,phone:phone||'',idCard:'',trade:trade||'',since:todayISO().slice(0,7),note:''});
 }
 function autoArchiveSupplier(p,raw,phone,category,contact){
-  if(!p||!raw)return;
-  p.suppliers=p.suppliers||[];
+  if(!raw)return;
+  const arc=App.archive; arc.suppliers=arc.suppliers||[];
   const norm=String(raw).trim();
   /* 跳过已存在的：精确 name 匹配，或「name + 联系人」组合匹配（调取时带联系人） */
-  if(p.suppliers.some(x=>x.name===norm || (x.contact && (x.name+' '+x.contact).trim()===norm)))return;
-  p.suppliers.push({id:'sup_'+uid(),name:norm,contact:contact||'',phone:phone||'',category:category||'',since:todayISO().slice(0,7),note:''});
+  if(arc.suppliers.some(x=>x.name===norm || (x.contact && (x.name+' '+x.contact).trim()===norm)))return;
+  arc.suppliers.push({id:'sup_'+uid(),name:norm,contact:contact||'',phone:phone||'',category:category||'',since:todayISO().slice(0,7),note:''});
 }
 
 /* 从供应商联想选中后，自动反查并填入电话 */
 function onPickSupplier(inputEl, phoneFieldId){
   const val=(inputEl.value||'').trim();
   if(!val)return;
-  const p=cur();if(!p)return;
-  const sups=p.suppliers||[];
+  const sups=App.archive.suppliers||[];
   /* 精确匹配 name 或「name + contact」组合 */
   const found=sups.find(s=>s.name===val || (s.contact && (s.name+' '+s.contact).trim()===val));
   if(found&&found.phone){
@@ -11195,10 +11224,15 @@ function onPickSupplier(inputEl, phoneFieldId){
   }
 }
 
-/* ── 施工人员档案 增删改 ── */
+/* ── 人材档案 增删改（账号级全局数据源 App.archive）── */
+function rerenderArchiveAll(){
+  /* 重新渲染人材档案：项目内 Tab 面板（若可见）+ 全局页面，并刷新收付款人联想 */
+  if($('processArchivePanel')&&$('processArchivePanel').style.display!=='none')renderArchive('processArchivePanel');
+  if($('archivePanel'))renderArchive('archivePanel');
+  refreshContactDatalists();
+}
 let _editingPersonnelId=null;
 function openAddPersonnel(){
-  const p=cur();if(!p){alert('请先选择项目');return;}
   _editingPersonnelId=null;
   $('personnelModalTitle').textContent='新增施工人员档案';
   $('perSaveBtn').textContent='保存人员档案';
@@ -11207,26 +11241,24 @@ function openAddPersonnel(){
   showModal('addPersonnelModal');
 }
 function savePersonnel(){
-  const p=cur();if(!p){closeModal('addPersonnelModal');return;}
   const name=$('perName').value.trim();
   if(!name){alert('请填写姓名');$('perName').focus();return;}
   const data={name:name,trade:$('perTrade').value.trim(),phone:$('perPhone').value.trim(),idCard:$('perIdCard').value.trim(),since:$('perSince').value,note:$('perNote').value.trim()};
-  p.personnel=p.personnel||[];
+  const arr=App.archive.personnel;
   if(_editingPersonnelId){
-    const idx=p.personnel.findIndex(x=>x.id===_editingPersonnelId);
-    if(idx>=0)p.personnel[idx]=Object.assign(p.personnel[idx],data);
+    const idx=arr.findIndex(x=>x.id===_editingPersonnelId);
+    if(idx>=0)arr[idx]=Object.assign(arr[idx],data);
     _editingPersonnelId=null;
   }else{
     data.id='per_'+uid();
-    p.personnel.push(data);
+    arr.push(data);
   }
   persist();
   closeModal('addPersonnelModal');
-  renderProcessArchive();
+  rerenderArchiveAll();
 }
 function editPersonnel(id){
-  const p=cur();if(!p)return;
-  const x=(p.personnel||[]).find(i=>i.id===id);
+  const x=(App.archive.personnel||[]).find(i=>i.id===id);
   if(!x){alert('未找到该人员档案');return;}
   _editingPersonnelId=id;
   $('personnelModalTitle').textContent='编辑施工人员档案';
@@ -11236,19 +11268,17 @@ function editPersonnel(id){
   showModal('addPersonnelModal');
 }
 function deletePersonnel(id){
-  const p=cur();if(!p)return;
-  const x=(p.personnel||[]).find(i=>i.id===id);
+  const x=(App.archive.personnel||[]).find(i=>i.id===id);
   if(!x)return;
   if(!confirm(`确定删除「${x.name}」的施工人员档案吗？`))return;
-  p.personnel=(p.personnel||[]).filter(i=>i.id!==id);
+  App.archive.personnel=App.archive.personnel.filter(i=>i.id!==id);
   persist();
-  renderProcessArchive();
+  rerenderArchiveAll();
 }
 
 /* ── 供应商档案 增删改 ── */
 let _editingSupplierId=null;
 function openAddSupplier(){
-  const p=cur();if(!p){alert('请先选择项目');return;}
   _editingSupplierId=null;
   $('supplierModalTitle').textContent='新增供应商档案';
   $('supSaveBtn').textContent='保存供应商档案';
@@ -11257,26 +11287,24 @@ function openAddSupplier(){
   showModal('addSupplierModal');
 }
 function saveSupplier(){
-  const p=cur();if(!p){closeModal('addSupplierModal');return;}
   const name=$('supName').value.trim();
   if(!name){alert('请填写供应商名称');$('supName').focus();return;}
   const data={name:name,category:$('supCategory').value.trim(),contact:$('supContact').value.trim(),phone:$('supPhone').value.trim(),since:$('supSince').value,note:$('supNote').value.trim()};
-  p.suppliers=p.suppliers||[];
+  const arr=App.archive.suppliers;
   if(_editingSupplierId){
-    const idx=p.suppliers.findIndex(x=>x.id===_editingSupplierId);
-    if(idx>=0)p.suppliers[idx]=Object.assign(p.suppliers[idx],data);
+    const idx=arr.findIndex(x=>x.id===_editingSupplierId);
+    if(idx>=0)arr[idx]=Object.assign(arr[idx],data);
     _editingSupplierId=null;
   }else{
     data.id='sup_'+uid();
-    p.suppliers.push(data);
+    arr.push(data);
   }
   persist();
   closeModal('addSupplierModal');
-  renderProcessArchive();
+  rerenderArchiveAll();
 }
 function editSupplier(id){
-  const p=cur();if(!p)return;
-  const x=(p.suppliers||[]).find(i=>i.id===id);
+  const x=(App.archive.suppliers||[]).find(i=>i.id===id);
   if(!x){alert('未找到该供应商档案');return;}
   _editingSupplierId=id;
   $('supplierModalTitle').textContent='编辑供应商档案';
@@ -11286,13 +11314,12 @@ function editSupplier(id){
   showModal('addSupplierModal');
 }
 function deleteSupplier(id){
-  const p=cur();if(!p)return;
-  const x=(p.suppliers||[]).find(i=>i.id===id);
+  const x=(App.archive.suppliers||[]).find(i=>i.id===id);
   if(!x)return;
   if(!confirm(`确定删除「${x.name}」的供应商档案吗？`))return;
-  p.suppliers=(p.suppliers||[]).filter(i=>i.id!==id);
+  App.archive.suppliers=App.archive.suppliers.filter(i=>i.id!==id);
   persist();
-  renderProcessArchive();
+  rerenderArchiveAll();
 }
 
 /* 辅助函数：切换收入已收状态 */
@@ -11802,11 +11829,11 @@ function openAddMaterialPlan(){
   const buyerSel=$('mpBuyer');
   const buyerNames=new Set();
   (p.members||[]).forEach(m=>{if(m&&m.name)buyerNames.add(m.name);});
-  (p.personnel||[]).forEach(m=>{if(m&&m.name)buyerNames.add(m.name);});
+  (App.archive.personnel||[]).forEach(m=>{if(m&&m.name)buyerNames.add(m.name);});
   buyerSel.innerHTML='<option value="">暂不指定</option>'+Array.from(buyerNames).map(n=>`<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
   /* 填充厂家名称联想列表（从供应商档案调取，可直接复用历史厂家） */
   const vdl=$('mpVendorList');
-  if(vdl)vdl.innerHTML=(p.suppliers||[]).map(s=>`<option value="${escHtml(s.contact?`${s.name} ${s.contact}`:s.name)}">`).join('');
+  if(vdl)vdl.innerHTML=(App.archive.suppliers||[]).map(s=>`<option value="${escHtml(s.contact?`${s.name} ${s.contact}`:s.name)}">`).join('');
   /* 填充材料名称联想列表（从已有采购+系统推荐材料） */
   const dl=$('mpNameList');
   const existingNames=(p.purchases||[]).map(x=>x.name);
@@ -13095,7 +13122,7 @@ function openExpenseNodeModal(editId){
   sel.innerHTML='<option value="">暂不关联节点</option>'+steps.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
   /* 供应商/收款方联想：从人材档案（供应商 + 施工人员）直接调取 */
   const enPayeeList=$('enPayeeList');
-  if(enPayeeList)enPayeeList.innerHTML=(p.suppliers||[]).map(s=>`<option value="${escHtml(s.contact?`${s.name} ${s.contact}`:s.name)}">`).join('')+(p.personnel||[]).map(m=>`<option value="${escHtml(m.name)}">`).join('');
+  if(enPayeeList)enPayeeList.innerHTML=(App.archive.suppliers||[]).map(s=>`<option value="${escHtml(s.contact?`${s.name} ${s.contact}`:s.name)}">`).join('')+(App.archive.personnel||[]).map(m=>`<option value="${escHtml(m.name)}">`).join('');
   if(editId){
     const node=(p.expenseNodes||[]).find(n=>n.id===editId);
     if(!node)return;
@@ -13696,13 +13723,13 @@ function saveContactHistory(type,name){
 }
 function refreshContactDatalists(proj){
   const hist=getContactHistory();
-  const p=proj||cur();
+  const arc=App.archive||{personnel:[],suppliers:[]};
   /* 收款人/付款人联想：合并「联系人历史 + 人材档案（供应商 + 施工人员）」，可直接调取 */
   const payeeNames=new Set((hist.payee||[]));
   const payerNames=new Set((hist.payer||[]));
-  (p?p.suppliers||[]:[]).forEach(s=>{if(s.name)payeeNames.add(s.contact?`${s.name} ${s.contact}`:s.name);});
-  (p?p.personnel||[]:[]).forEach(m=>{if(m.name){payeeNames.add(m.name);payerNames.add(m.name);}});
-  (p?p.suppliers||[]:[]).forEach(s=>{if(s.name)payerNames.add(s.contact?`${s.name} ${s.contact}`:s.name);});
+  (arc.suppliers||[]).forEach(s=>{if(s.name)payeeNames.add(s.contact?`${s.name} ${s.contact}`:s.name);});
+  (arc.personnel||[]).forEach(m=>{if(m.name){payeeNames.add(m.name);payerNames.add(m.name);}});
+  (arc.suppliers||[]).forEach(s=>{if(s.name)payerNames.add(s.contact?`${s.name} ${s.contact}`:s.name);});
   const payeeList=$('payeeHistoryList');
   const payerList=$('payerHistoryList');
   if(payeeList)payeeList.innerHTML=Array.from(payeeNames).map(n=>`<option value="${escHtml(n)}">`).join('');
@@ -14699,7 +14726,7 @@ function confirmClearAll(){
   switchPage('home');
 }
 function handleTopPrimary(){
-  const a={home:()=>openTaskModal(),process:()=>openProjectModal(),purchase:()=>openPurchaseModal(),finance:()=>openFinanceModal(),compare:()=>{},tools:()=>{},diary:()=>openDiaryModal(),knowledge:()=>{}};
+  const a={home:()=>openTaskModal(),process:()=>openProjectModal(),purchase:()=>openPurchaseModal(),finance:()=>openFinanceModal(),compare:()=>{},tools:()=>{},diary:()=>openDiaryModal(),knowledge:()=>{},archive:()=>openAddPersonnel()};
   if(a[currentPage])a[currentPage]();
 }
 /* ══════════════════════════════════════════
