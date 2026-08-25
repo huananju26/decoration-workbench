@@ -10234,8 +10234,15 @@ function printSheet(sheetId){
         var pageCSS=isLandscape ? '@page{size:A4 landscape;margin:5mm}' : '@page{size:A4;margin:8mm}';
         var doc='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
           '<style>'+
-            'body{margin:0;padding:0;display:flex;justify-content:center;align-items:flex-start;background:#fff}'+
-            'img{max-width:100%;height:auto;display:block}'+
+            '*{margin:0;padding:0;box-sizing:border-box}'+
+            'html,body{width:100%;height:auto;overflow:hidden;background:#fff}'+
+            'body{display:flex;justify-content:center;align-items:flex-start}'+
+            'img{max-width:100vw;height:auto;display:block;width:100%!important}'+
+            '@media print{'+
+              'html,body{width:100%;height:auto;overflow:hidden!important;margin:0;padding:0}'+
+              'img{max-width:100%!important;height:auto!important;page-break-inside:avoid;page-break-after:avoid}'+
+              '@page{margin:0}'+
+            '}'+
             pageCSS+
           '</style></head><body>'+
           '<img src="'+blobUrl+'" onload="window.__imgLoaded=true">'+
