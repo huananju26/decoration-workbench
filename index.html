@@ -4514,7 +4514,7 @@ function upgradeLegacyAcceptance(){
    - 所有迁移必须幂等（重复运行结果一致），绝不直接销毁用户数据
    - 加载时校验结构，损坏则从最近备份恢复，避免渲染乱码
    ════════════════════════════════════════════════════════════════ */
-const DATA_VERSION = 3;
+const DATA_VERSION = 4;
 const MIGRATION_BACKUP_PREFIX = 'xzgz_app_v2_bak_';
 const MIGRATION_BACKUP_KEEP = 3;
 
@@ -4610,7 +4610,34 @@ function migrateV2ToV3(app){
     (p.purchases||[]).forEach(x=>{ if(x&&x.linkedContractId===undefined)x.linkedContractId=''; });
   });
 }
-const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2, migrateV2ToV3 ];
+/* 存量回填：给旧数据中「对公 + 未开票」的收/付款流水补建一张草稿发票，
+   使其自然进入发票管理「未开」版块（与新增记一笔的行为对齐）。 */
+function migrateV3ToV4(app){
+  if(!Array.isArray(app.invoices)) app.invoices=[];
+  (app.projects||[]).forEach(p=>{
+    const types=[['income',p.income||[]],['expense',p.expense||[]]];
+    types.forEach(([type,arr])=>{
+      arr.forEach(rec=>{
+        if(defaultAccountType(rec,p)!=='对公') return;
+        if(rec.invoiceStatus==='已开票') return;
+        const hasLinked=app.invoices.some(v=> type==='income' ? v.linkedIncomeId===rec.id : v.linkedExpenseId===rec.id);
+        if(hasLinked) return;
+        const direction=type==='income'?'销项':'进项';
+        const rate=DEFAULT_TAX_RATE;
+        const no=rec.amount||0;
+        app.invoices.push({
+          id:'inv_'+uid(), direction, type:INVOICE_TYPES[0], projectId:p.id,
+          linkedContractId:'', linkedIncomeId:type==='income'?rec.id:'', linkedExpenseId:type==='expense'?rec.id:'',
+          amountNoTax:no, taxRate:rate, tax:invoiceTax(no,rate), amountTotal:invoiceTotal(no,rate),
+          issuer:'', payer:type==='income'?(rec.payer||''):'', payee:type==='expense'?(rec.payee||''):'',
+          issueDate:rec.date||todayISO(), status:'草稿', deductStatus:direction==='进项'?'待抵扣':'不抵扣', verifyStatus:'未查验',
+          note:'存量数据补建（对公未开票）：'+(rec.name||'')
+        });
+      });
+    });
+  });
+}
+const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2, migrateV2ToV3, migrateV3ToV4 ];
 
 /* 顺序执行迁移，直到数据版本达到当前版本；每步前自动备份 */
 function runMigrations(app){
@@ -7272,12 +7299,13 @@ function renderActionQueueAll(projects){
         });
       }
     });
-    /* 对公未开票提醒：每笔对公收/付款若无关联发票，进入待办跟进 */
+    /* 对公未开票提醒：每笔对公收/付款若无「已开」发票，进入待办跟进（草稿发票仍算未开） */
     [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
       arr.forEach(rec=>{
         if(defaultAccountType(rec,p)!=='对公') return;
-        if(findLinkedInvoice(rec.id,tt)) return; /* 已开票（已在发票系统登记） */
         if(rec.invoiceStatus==='已开票') return; /* 显式标记已开票 */
+        const linked=findLinkedInvoice(rec.id,tt);
+        if(linked && INV_ISSUED_STATUS.includes(linked.status)) return; /* 关联发票已开，不再提醒 */
         items.push({
           id:'fin_'+rec.id, title:(rec.name||'对公'+(tt==='income'?'收款':'付款')), done:false,
           due:'', _kind:'invoice', _proj:pn, _pid:p.id, _finType:tt, _finId:rec.id,
@@ -7290,15 +7318,17 @@ function renderActionQueueAll(projects){
     if(!mainContractForProject(p.id)){
       items.push({id:'con_main_'+p.id, title:projDisplayName(p)+' · 主合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'购销', _targetKind:'project', _targetId:p.id, note:'项目尚未签订主合同（施工/购销），需跟进签约'});
     }
-    /* 2) 采购项缺采购合同 */
+    /* 2) 采购项缺采购合同（仅当已关联且已签才视为补齐） */
     (p.purchases||[]).forEach(pur=>{
-      if(contractForPurchase(p.id,pur.id))return;
+      const c=contractForPurchase(p.id,pur.id);
+      if(c && c.status==='已签')return;
       items.push({id:'con_pur_'+pur.id, title:(pur.name||'采购项')+' · 采购合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'采购', _targetKind:'purchase', _targetId:pur.id, note:'采购项「'+(pur.name||'')+'」未关联采购合同，需补签'});
     });
-    /* 3) 施工节点缺施工合同（仅标记"需签合同"的节点） */
+    /* 3) 施工节点缺施工合同（仅标记"需签合同"的节点；仅已签才视为补齐） */
     (p.processSteps||[]).forEach(s=>{
       if(!s.needContract)return;
-      if(contractForStep(p.id,s.id))return;
+      const c=contractForStep(p.id,s.id);
+      if(c && c.status==='已签')return;
       items.push({id:'con_step_'+s.id, title:(s.name||'节点')+' · 施工合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'施工', _targetKind:'step', _targetId:s.id, note:'节点「'+(s.name||'')+'」需签施工合同，尚未关联'});
     });
   });
@@ -11865,7 +11895,7 @@ function openAddContract(prefill){
   if(prefill&&prefill.type)$('conType').value=prefill.type;
   $('conParty').value='';$('conSupplier').value='';
   $('conAmount').value='';$('conSignDate').value=todayISO();
-  $('conStatus').value=prefill?'已签':'草稿';$('conNote').value='';
+  $('conStatus').value='草稿';$('conNote').value='';
   if(prefill&&prefill.targetKind==='step'&&prefill.targetId)$('conStep').value=prefill.targetId;
   /* 标题建议，减少手动输入 */
   if(prefill){
@@ -14692,27 +14722,41 @@ function saveFinance(){
     if(invSt==='已开票'){
       let invId=$('fInvoiceSelect').value||'';
       if(!invId){
-        /* 自动关联：未选已有发票时，自动创建一张草稿发票并双向关联 */
-        const inv=finAutoCreateInvoice(rec,type,target);
+        /* 自动关联：未选已有发票时，自动创建一张「已开」发票并双向关联 */
+        const inv=finAutoCreateInvoice(rec,type,target,'已开');
         invId=inv.id;
       }
       rec.invoiceId=invId;
       const inv=invoiceById(invId);
-      if(inv){ if(type==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; }
+      if(inv){ if(type==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; if(inv.status==='草稿'||!inv.status) inv.status='已开'; }
     }else{
-      /* 切回未开票：清除与该笔流水可能的旧关联 */
-      if(rec.invoiceId){ const old=invoiceById(rec.invoiceId); if(old){ if(type==='income') old.linkedIncomeId=''; else old.linkedExpenseId=''; } }
-      rec.invoiceId='';
+      /* 未开票：确保一张「草稿」发票挂到发票管理「未开」版块并双向关联；
+         若此前已关联过发票（含已开），先解除旧关联再建草稿，避免脏数据。 */
+      let invId=$('fInvoiceSelect').value||'';
+      if(!invId){
+        const existing=findLinkedInvoice(recId,type);
+        if(existing && (existing.status==='草稿'||!existing.status)) invId=existing.id;
+        else{
+          (App.invoices||[]).forEach(v=>{ if(type==='income'){if(v.linkedIncomeId===recId)v.linkedIncomeId='';}else{if(v.linkedExpenseId===recId)v.linkedExpenseId='';} });
+          const inv=finAutoCreateInvoice(rec,type,target,'草稿'); invId=inv.id;
+        }
+      }
+      rec.invoiceId=invId;
+      const inv=invoiceById(invId);
+      if(inv && (inv.status==='草稿'||!inv.status)){ if(type==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; }
     }
   }else{
     rec.invoiceStatus='';rec.invoiceId='';
+    /* 切回对私：解除该笔流水侧的所有发票关联，草稿发票不再挂到本笔流水 */
+    (App.invoices||[]).forEach(v=>{ if(type==='income'){if(v.linkedIncomeId===recId)v.linkedIncomeId='';}else{if(v.linkedExpenseId===recId)v.linkedExpenseId='';} });
   }
   if(type==='income'){rec.received=status;rec.cat=$('fIncomeCat').value;rec.payer=$('fPayer').value;target.income.push(rec);saveContactHistory('payer',rec.payer);}
   else{rec.paid=status;rec.cat=$('fCat').value;rec.stage=$('fStage').value;rec.payee=$('fPayee').value;target.expense.push(rec);saveContactHistory('payee',rec.payee);autoArchiveSupplier(target,rec.payee,'','','');}
   persist();closeModal('financeModal');editingFinance=null;renderFinance();renderLedger&&renderLedger();renderHome();
 }
-/* 由「记一笔」自动创建草稿发票并关联（满足对公开票自动进入发票管理） */
-function finAutoCreateInvoice(rec,type,target){
+/* 由「记一笔」自动创建发票并关联（满足对公开票自动进入发票管理）。
+   status 缺省 '草稿'（未开票路径）；已开票路径传 '已开'。 */
+function finAutoCreateInvoice(rec,type,target,status){
   const direction=type==='income'?'销项':'进项';
   const rate=DEFAULT_TAX_RATE;
   const no=rec.amount||0;
@@ -14723,7 +14767,7 @@ function finAutoCreateInvoice(rec,type,target){
     linkedContractId:'', linkedIncomeId:type==='income'?rec.id:'', linkedExpenseId:type==='expense'?rec.id:'',
     amountNoTax:no, taxRate:rate, tax:tax, amountTotal:total,
     issuer:'', payer:type==='income'?(rec.payer||''):'', payee:type==='expense'?(rec.payee||''):'',
-    issueDate:rec.date||todayISO(), status:'草稿', deductStatus:direction==='进项'?'待抵扣':'不抵扣', verifyStatus:'未查验',
+    issueDate:rec.date||todayISO(), status:status||'草稿', deductStatus:direction==='进项'?'待抵扣':'不抵扣', verifyStatus:'未查验',
     note:'由「记一笔」自动关联创建：'+(rec.name||'')
   };
   App.invoices.push(inv);
