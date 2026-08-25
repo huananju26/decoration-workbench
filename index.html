@@ -13074,7 +13074,7 @@ let _editingExpenseNodeId=null;
 function openExpenseNodeModal(editId){
   const p=cur();if(!p){alert('请先选择项目');return;}
   ensureProjectSteps(p);
-  const steps=p.processSteps||[];
+  const steps=STAGES||[];
   const sel=$('enStepId');
   sel.innerHTML='<option value="">暂不关联节点</option>'+steps.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
   /* 供应商/收款方联想：从人材档案（供应商 + 施工人员）直接调取 */
@@ -13227,7 +13227,7 @@ th,td{border:1px solid #ddd;padding:8px 10px;text-align:left}th{background:#f5f5
 function openSiteRecordModal(){
   const p=cur();if(!p){alert('请先选择项目');return;}
   ensureProjectSteps(p);
-  const steps=p.processSteps||[];
+  const steps=STAGES||[];
   const sel=$('srStepId');
   /* 智能选中当前进行中的节点（与项目顶栏"当前节点"逻辑一致）：
      1. 优先找 status=inprogress 的节点
@@ -13273,7 +13273,7 @@ function openSiteRecordModal(){
 function updateSiteRecordTitle(){
   const p=cur();if(!p)return;
   const stepId=$('srStepId').value;
-  const step=(p.processSteps||[]).find(s=>s.id===stepId);
+  const step=(STAGES||[]).find(s=>s.id===stepId);
   if(step){
     $('srStepName').textContent=step.name;
     $('siteRecordTitle').textContent='📷 '+step.name+' · 添加现场照片与日志';
@@ -13518,7 +13518,7 @@ async function saveSiteRecord(){
   const date=$('srDate').value;
   if(!date){alert('请选择现场记录日期');$('srDate').focus();return;}
   const stepId=$('srStepId').value;
-  const step=(p.processSteps||[]).find(s=>s.id===stepId);
+  const step=(STAGES||[]).find(s=>s.id===stepId);
   p.siteRecords=p.siteRecords||[];
   const recordId=window._editingSiteRecordId||uid();
   /* 读图：始终生成 base64 用于显示（保证任何环境都能看到）；
