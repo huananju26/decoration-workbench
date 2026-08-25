@@ -11172,11 +11172,13 @@ function autoArchivePersonnel(p,name,phone,trade){
   if(p.personnel.some(x=>x.name===name))return;
   p.personnel.push({id:'per_'+uid(),name:name,phone:phone||'',idCard:'',trade:trade||'',since:todayISO().slice(0,7),note:''});
 }
-function autoArchiveSupplier(p,name,phone,category,contact){
-  if(!p||!name)return;
+function autoArchiveSupplier(p,raw,phone,category,contact){
+  if(!p||!raw)return;
   p.suppliers=p.suppliers||[];
-  if(p.suppliers.some(x=>x.name===name))return;
-  p.suppliers.push({id:'sup_'+uid(),name:name,contact:contact||'',phone:phone||'',category:category||'',since:todayISO().slice(0,7),note:''});
+  const norm=String(raw).trim();
+  /* 跳过已存在的：精确 name 匹配，或「name + 联系人」组合匹配（调取时带联系人） */
+  if(p.suppliers.some(x=>x.name===norm || (x.contact && (x.name+' '+x.contact).trim()===norm)))return;
+  p.suppliers.push({id:'sup_'+uid(),name:norm,contact:contact||'',phone:phone||'',category:category||'',since:todayISO().slice(0,7),note:''});
 }
 
 /* ── 施工人员档案 增删改 ── */
@@ -11790,7 +11792,7 @@ function openAddMaterialPlan(){
   buyerSel.innerHTML='<option value="">暂不指定</option>'+Array.from(buyerNames).map(n=>`<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
   /* 填充厂家名称联想列表（从供应商档案调取，可直接复用历史厂家） */
   const vdl=$('mpVendorList');
-  if(vdl)vdl.innerHTML=(p.suppliers||[]).map(s=>`<option value="${escHtml(s.name)}">`).join('');
+  if(vdl)vdl.innerHTML=(p.suppliers||[]).map(s=>`<option value="${escHtml(s.contact?`${s.name} ${s.contact}`:s.name)}">`).join('');
   /* 填充材料名称联想列表（从已有采购+系统推荐材料） */
   const dl=$('mpNameList');
   const existingNames=(p.purchases||[]).map(x=>x.name);
@@ -13079,7 +13081,7 @@ function openExpenseNodeModal(editId){
   sel.innerHTML='<option value="">暂不关联节点</option>'+steps.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
   /* 供应商/收款方联想：从人材档案（供应商 + 施工人员）直接调取 */
   const enPayeeList=$('enPayeeList');
-  if(enPayeeList)enPayeeList.innerHTML=(p.suppliers||[]).map(s=>`<option value="${escHtml(s.name)}">`).join('')+(p.personnel||[]).map(m=>`<option value="${escHtml(m.name)}">`).join('');
+  if(enPayeeList)enPayeeList.innerHTML=(p.suppliers||[]).map(s=>`<option value="${escHtml(s.contact?`${s.name} ${s.contact}`:s.name)}">`).join('')+(p.personnel||[]).map(m=>`<option value="${escHtml(m.name)}">`).join('');
   if(editId){
     const node=(p.expenseNodes||[]).find(n=>n.id===editId);
     if(!node)return;
@@ -13684,9 +13686,9 @@ function refreshContactDatalists(proj){
   /* 收款人/付款人联想：合并「联系人历史 + 人材档案（供应商 + 施工人员）」，可直接调取 */
   const payeeNames=new Set((hist.payee||[]));
   const payerNames=new Set((hist.payer||[]));
-  (p?p.suppliers||[]:[]).forEach(s=>{if(s.name)payeeNames.add(s.name);});
+  (p?p.suppliers||[]:[]).forEach(s=>{if(s.name)payeeNames.add(s.contact?`${s.name} ${s.contact}`:s.name);});
   (p?p.personnel||[]:[]).forEach(m=>{if(m.name){payeeNames.add(m.name);payerNames.add(m.name);}});
-  (p?p.suppliers||[]:[]).forEach(s=>{if(s.name)payerNames.add(s.name);});
+  (p?p.suppliers||[]:[]).forEach(s=>{if(s.name)payerNames.add(s.contact?`${s.name} ${s.contact}`:s.name);});
   const payeeList=$('payeeHistoryList');
   const payerList=$('payerHistoryList');
   if(payeeList)payeeList.innerHTML=Array.from(payeeNames).map(n=>`<option value="${escHtml(n)}">`).join('');
