@@ -10231,18 +10231,16 @@ function printSheet(sheetId){
         if(!blob){ _printSheetFallback(el,sheetId,title); return; }
         var blobUrl=URL.createObjectURL(blob);
         var isLandscape=(r.w>r.h);
+        /* A4 横版: 297×210mm, 纵版: 210×297mm; 减去边距 = 可打印区域 */
+        var pw=isLandscape?287:194; /* mm, A4横297-2×5 或 纵210-2×8 */
         var pageCSS=isLandscape ? '@page{size:A4 landscape;margin:5mm}' : '@page{size:A4;margin:8mm}';
         var doc='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
           '<style>'+
-            '*{margin:0;padding:0;box-sizing:border-box}'+
-            'html,body{width:100%;height:auto;overflow:hidden;background:#fff}'+
-            'body{display:flex;justify-content:center;align-items:flex-start}'+
-            'img{max-width:100vw;height:auto;display:block;width:100%!important}'+
-            '@media print{'+
-              'html,body{width:100%;height:auto;overflow:hidden!important;margin:0;padding:0}'+
-              'img{max-width:100%!important;height:auto!important;page-break-inside:avoid;page-break-after:avoid}'+
-              '@page{margin:0}'+
-            '}'+
+            '*{margin:0;padding:0}'+
+            'html{width:'+pw+'mm;overflow:hidden}'+
+            'body{width:'+pw+'mm;overflow:hidden;background:#fff;display:flex;justify-content:center;align-items:flex-start}'+
+            /* 关键：用 mm 单位硬编码 img 宽度 = 可打印区域宽度，强制等比缩放进一页 */
+            'img{width:'+pw+'mm!important;height:auto!important;display:block;max-width:none}'+
             pageCSS+
           '</style></head><body>'+
           '<img src="'+blobUrl+'" onload="window.__imgLoaded=true">'+
