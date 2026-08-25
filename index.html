@@ -247,6 +247,21 @@ a{color:#003a8c;text-decoration:none}
 @media(max-width:900px){.proc-two-col{grid-template-columns:1fr}}
 /* 卡片 */
 .proc-card{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:20px 22px;margin-bottom:16px;display:flex;flex-direction:column;height:100%}
+/* ── 人材档案 ── */
+.archive-hint{font-size:12px;color:#888;background:#f0f5ff;border:1px solid #d6e4ff;border-radius:8px;padding:10px 14px;margin-bottom:16px;line-height:1.5}
+.archive-item{background:#fff;border:1px solid #eaeef2;border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.archive-item-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.archive-item-name{font-size:14px;font-weight:700;color:#003a8c}
+.archive-tag{font-size:11px;padding:1px 9px;border-radius:10px;border:1px solid #91caff;background:#e6f4ff;color:#003a8c;white-space:nowrap}
+.archive-tag.blue{color:#003a8c}
+.archive-item-ops{margin-left:auto;display:flex;gap:6px;flex-shrink:0}
+.archive-item-rows{display:flex;flex-direction:column;gap:4px}
+.archive-row{display:flex;gap:8px;font-size:12.5px;line-height:1.5}
+.archive-row-label{color:#999;flex-shrink:0;width:64px}
+.archive-row-val{color:#333;flex:1;min-width:0;word-break:break-all}
+@media(max-width:780px){
+  .archive-grid{grid-template-columns:1fr!important}
+}
 .proc-card-title{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
 .adj-show{padding:6px 0}
 .adj-amt{font-size:26px;font-weight:800;line-height:1.2}
@@ -2484,6 +2499,7 @@ a{color:#003a8c;text-decoration:none}
         <div class="proj-tab" data-tab="finance" onclick="switchProjTab(this,'finance')">合同收款</div>
         <div class="proj-tab" data-tab="purchase" onclick="switchProjTab(this,'purchase')">材料成本</div>
         <div class="proj-tab" data-tab="diary" onclick="switchProjTab(this,'diary')">客户交付</div>
+        <div class="proj-tab" data-tab="archive" onclick="switchProjTab(this,'archive')">人材档案</div>
       </div>
       <!-- 统计行 -->
       <div class="proj-stats-row" id="projStatsRow">
@@ -2547,6 +2563,9 @@ a{color:#003a8c;text-decoration:none}
 
       <!-- ═══ 客户交付面板（Tab=客户交付） ═══ -->
       <div class="proc-sub-panel" id="processDiaryPanel" style="display:none"></div>
+
+      <!-- ═══ 人材档案面板（Tab=人材档案） ═══ -->
+      <div class="proc-sub-panel" id="processArchivePanel" style="display:none"></div>
     </div>
 
     <!-- PAGE: 采购清单 -->
@@ -3017,7 +3036,7 @@ a{color:#003a8c;text-decoration:none}
           <div class="form-group"><label class="form-label">关联施工节点</label><select id="mpStepId"><option value="">暂不关联</option></select></div>
           <div class="form-group"><label class="form-label">所属费用总项</label><select id="mpCostCat"><option value="">不归入，费用用总项</option><option value="材料费">材料费</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="设计费">设计费</option><option value="管理费">管理费</option><option value="其他">其他</option></select></div>
           <div class="form-group"><label class="form-label">调配负责人</label><select id="mpBuyer"><option value="">暂不指定</option></select></div>
-          <div class="form-group"><label class="form-label">厂家名称 <b style="color:#ff4d4f">*</b></label><input id="mpVendor" type="text" placeholder="例如：某某全屋定制工厂"></div>
+          <div class="form-group"><label class="form-label">厂家名称 <b style="color:#ff4d4f">*</b></label><input id="mpVendor" type="text" placeholder="例如：某某全屋定制工厂" list="mpVendorList" autocomplete="off"><datalist id="mpVendorList"></datalist></div>
           <div class="form-group"><label class="form-label">厂家电话</label><input id="mpVendorPhone" type="tel" placeholder=""></div>
           <div class="form-group"><label class="form-label">数量</label><input id="mpQty" type="number" value="1" min="0"></div>
           <div class="form-group"><label class="form-label">单位</label><input id="mpUnit" type="text" value="项"></div>
@@ -3075,6 +3094,50 @@ a{color:#003a8c;text-decoration:none}
         <button class="btn-outline" style="color:#ff4d4f;border-color:#ffccc7" onclick="deleteMplSelected()" id="mplDelBtn">🗑 删除选中</button>
         <button class="btn-primary" onclick="closeModal('materialPlanListModal');openAddMaterialPlan()">+ 新增厂家调配</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 新增/编辑 施工人员档案 ═══ -->
+<div class="modal-overlay" id="addPersonnelModal">
+  <div class="modal" style="max-width:560px;width:94%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0"><div class="modal-title" id="personnelModalTitle">新增施工人员档案</div><div class="modal-close" onclick="closeModal('addPersonnelModal')">✕</div></div>
+    <div class="adj-subtitle" style="flex-shrink:0">记录工人基本信息与合作关系；在「材料与厂家调配」中首次填写后会自动归档。</div>
+    <div class="modal-body" style="overflow-y:auto;padding:16px 20px">
+      <div class="form-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label class="form-label">姓名 <b style="color:#ff4d4f">*</b></label><input id="perName" type="text" placeholder="例如：张师傅"></div>
+        <div class="form-group"><label class="form-label">工种</label><input id="perTrade" type="text" placeholder="例如：水电工 / 泥瓦工"></div>
+        <div class="form-group"><label class="form-label">手机号</label><input id="perPhone" type="tel" placeholder=""></div>
+        <div class="form-group"><label class="form-label">身份证号</label><input id="perIdCard" type="text" placeholder=""></div>
+        <div class="form-group"><label class="form-label">合作时间</label><input id="perSince" type="date"></div>
+      </div>
+      <div class="form-group" style="margin-top:12px"><label class="form-label">合作备注</label><textarea id="perNote" rows="3" style="resize:vertical" placeholder="施工特点、结算方式、信誉评价等"></textarea></div>
+    </div>
+    <div class="form-actions" style="flex-shrink:0;padding:14px 20px;border-top:1px solid #f0f0f0">
+      <button class="btn-outline" onclick="closeModal('addPersonnelModal')">取消</button>
+      <button class="btn-primary" id="perSaveBtn" onclick="savePersonnel()">保存人员档案</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 新增/编辑 供应商档案 ═══ -->
+<div class="modal-overlay" id="addSupplierModal">
+  <div class="modal" style="max-width:560px;width:94%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0"><div class="modal-title" id="supplierModalTitle">新增供应商档案</div><div class="modal-close" onclick="closeModal('addSupplierModal')">✕</div></div>
+    <div class="adj-subtitle" style="flex-shrink:0">记录厂家与品类信息；在「材料与厂家调配」中首次填写后会自动归档，供后续直接调取。</div>
+    <div class="modal-body" style="overflow-y:auto;padding:16px 20px">
+      <div class="form-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label class="form-label">供应商名称 <b style="color:#ff4d4f">*</b></label><input id="supName" type="text" placeholder="例如：某某全屋定制工厂"></div>
+        <div class="form-group"><label class="form-label">主营品类</label><input id="supCategory" type="text" placeholder="例如：定制柜 / 瓷砖 / 卫浴"></div>
+        <div class="form-group"><label class="form-label">联系人</label><input id="supContact" type="text" placeholder=""></div>
+        <div class="form-group"><label class="form-label">手机号</label><input id="supPhone" type="tel" placeholder=""></div>
+        <div class="form-group"><label class="form-label">合作时间</label><input id="supSince" type="date"></div>
+      </div>
+      <div class="form-group" style="margin-top:12px"><label class="form-label">合作备注</label><textarea id="supNote" rows="3" style="resize:vertical" placeholder="供货特点、账期、质量评价等"></textarea></div>
+    </div>
+    <div class="form-actions" style="flex-shrink:0;padding:14px 20px;border-top:1px solid #f0f0f0">
+      <button class="btn-outline" onclick="closeModal('addSupplierModal')">取消</button>
+      <button class="btn-primary" id="supSaveBtn" onclick="saveSupplier()">保存供应商档案</button>
     </div>
   </div>
 </div>
@@ -5687,7 +5750,7 @@ function createProjectFromWizard(){
     payPlanMode:wizPayPlanMode,
     profile:{style:'',layout:'',mode:'',startDate:$('wPlanStartDate').value||''},
     tasks:[],purchases:[],income:income,expense:[],diaries:[],compares:[],checked:{},
-    processSteps:processSteps
+    processSteps:processSteps,personnel:[],suppliers:[]
   };
   App.projects.push(p);
   App.currentProjectId=p.id;
@@ -9622,10 +9685,12 @@ function switchProjTab(el,tab){
   $('processFinancePanel').style.display=(tab==='finance'?'':'none');
   $('processPurchasePanel').style.display=(tab==='purchase'?'':'none');
   $('processDiaryPanel').style.display=(tab==='diary'?'':'none');
+  $('processArchivePanel').style.display=(tab==='archive'?'':'none');
   /* 渲染对应面板 */
   if(tab==='finance')renderProcessFinance();
   else if(tab==='purchase')renderProcessPurchase();
   else if(tab==='diary')renderProcessDiary();
+  else if(tab==='archive')renderProcessArchive();
 }
 
 /* ════════════════════════════════════════
@@ -11022,6 +11087,198 @@ function renderProcessDiary(){
     </div>`;
 }
 
+/* ════════════════════════════════════════
+   人材档案子页面（施工人员 + 材料供应商）
+   ════════════════════════════════════════ */
+function renderProcessArchive(){
+  const p=cur();if(!p){$('processArchivePanel').innerHTML='<div class="proc-empty">请先选择项目</div>';return;}
+  const personnel=p.personnel||[];
+  const suppliers=p.suppliers||[];
+
+  /* 左栏：施工人员档案卡片 */
+  let personCards='';
+  if(personnel.length>0){
+    personCards=personnel.map(x=>`
+      <div class="archive-item">
+        <div class="archive-item-head">
+          <div class="archive-item-name">${escHtml(x.name||'—')}</div>
+          ${x.trade?`<span class="archive-tag blue">${escHtml(x.trade)}</span>`:''}
+          <div class="archive-item-ops">
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editPersonnel('${x.id}')">编辑</button>
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deletePersonnel('${x.id}')">删除</button>
+          </div>
+        </div>
+        <div class="archive-item-rows">
+          ${x.phone?`<div class="archive-row"><span class="archive-row-label">手机号</span><span class="archive-row-val">${escHtml(x.phone)}</span></div>`:''}
+          ${x.idCard?`<div class="archive-row"><span class="archive-row-label">身份证号</span><span class="archive-row-val">${escHtml(x.idCard)}</span></div>`:''}
+          ${x.since?`<div class="archive-row"><span class="archive-row-label">合作时间</span><span class="archive-row-val">${escHtml(x.since)}</span></div>`:''}
+          ${x.note?`<div class="archive-row"><span class="archive-row-label">合作备注</span><span class="archive-row-val">${escHtml(x.note)}</span></div>`:''}
+        </div>
+      </div>`).join('');
+  }
+
+  /* 右栏：供应商档案卡片 */
+  let supplierCards='';
+  if(suppliers.length>0){
+    supplierCards=suppliers.map(x=>`
+      <div class="archive-item">
+        <div class="archive-item-head">
+          <div class="archive-item-name">${escHtml(x.name||'—')}</div>
+          ${x.category?`<span class="archive-tag blue">${escHtml(x.category)}</span>`:''}
+          <div class="archive-item-ops">
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editSupplier('${x.id}')">编辑</button>
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deleteSupplier('${x.id}')">删除</button>
+          </div>
+        </div>
+        <div class="archive-item-rows">
+          ${x.contact?`<div class="archive-row"><span class="archive-row-label">联系人</span><span class="archive-row-val">${escHtml(x.contact)}</span></div>`:''}
+          ${x.phone?`<div class="archive-row"><span class="archive-row-label">手机号</span><span class="archive-row-val">${escHtml(x.phone)}</span></div>`:''}
+          ${x.since?`<div class="archive-row"><span class="archive-row-label">合作时间</span><span class="archive-row-val">${escHtml(x.since)}</span></div>`:''}
+          ${x.note?`<div class="archive-row"><span class="archive-row-label">合作备注</span><span class="archive-row-val">${escHtml(x.note)}</span></div>`:''}
+        </div>
+      </div>`).join('');
+  }
+
+  $('processArchivePanel').innerHTML=
+    `<div class="archive-hint">施工人员与材料供应商首次在「材料与厂家调配」中填写后会自动归档于此；也可在此直接新建、编辑与删除。</div>
+    <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+      <!-- 左栏：施工人员档案 -->
+      <div class="proc-card">
+        <div class="proc-sub-header" style="margin-bottom:12px">
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:#999;margin-bottom:4px;text-transform:uppercase">PERSONNEL</div>
+            <div class="proc-sub-title">施工人员档案</div><div class="proc-sub-desc">记录工人姓名、手机号、身份证号、工种与合作关系。</div></div>
+          <button class="proc-sub-btn primary" onclick="openAddPersonnel()">+ 新增人员</button>
+        </div>
+        ${personCards||'<div class="proc-empty" style="padding:24px">还没有施工人员档案。</div>'}
+      </div>
+      <!-- 右栏：供应商档案 -->
+      <div class="proc-card">
+        <div class="proc-sub-header" style="margin-bottom:12px">
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:#999;margin-bottom:4px;text-transform:uppercase">SUPPLIER</div>
+            <div class="proc-sub-title">供应商档案</div><div class="proc-sub-desc">记录厂家名称、联系人、品类与合作关系，供调配时直接调取。</div></div>
+          <button class="proc-sub-btn primary" onclick="openAddSupplier()">+ 新增供应商</button>
+        </div>
+        ${supplierCards||'<div class="proc-empty" style="padding:24px">还没有供应商档案。</div>'}
+      </div>
+    </div>`;
+}
+
+/* 自动将人员/供应商归档（去重，按 name 匹配） */
+function autoArchivePersonnel(p,name,phone,trade){
+  if(!p||!name)return;
+  p.personnel=p.personnel||[];
+  if(p.personnel.some(x=>x.name===name))return;
+  p.personnel.push({id:'per_'+uid(),name:name,phone:phone||'',idCard:'',trade:trade||'',since:todayISO().slice(0,7),note:''});
+}
+function autoArchiveSupplier(p,name,phone,category,contact){
+  if(!p||!name)return;
+  p.suppliers=p.suppliers||[];
+  if(p.suppliers.some(x=>x.name===name))return;
+  p.suppliers.push({id:'sup_'+uid(),name:name,contact:contact||'',phone:phone||'',category:category||'',since:todayISO().slice(0,7),note:''});
+}
+
+/* ── 施工人员档案 增删改 ── */
+let _editingPersonnelId=null;
+function openAddPersonnel(){
+  const p=cur();if(!p){alert('请先选择项目');return;}
+  _editingPersonnelId=null;
+  $('personnelModalTitle').textContent='新增施工人员档案';
+  $('perSaveBtn').textContent='保存人员档案';
+  $('perName').value='';$('perTrade').value='';$('perPhone').value='';
+  $('perIdCard').value='';$('perSince').value=todayISO();$('perNote').value='';
+  showModal('addPersonnelModal');
+}
+function savePersonnel(){
+  const p=cur();if(!p){closeModal('addPersonnelModal');return;}
+  const name=$('perName').value.trim();
+  if(!name){alert('请填写姓名');$('perName').focus();return;}
+  const data={name:name,trade:$('perTrade').value.trim(),phone:$('perPhone').value.trim(),idCard:$('perIdCard').value.trim(),since:$('perSince').value,note:$('perNote').value.trim()};
+  p.personnel=p.personnel||[];
+  if(_editingPersonnelId){
+    const idx=p.personnel.findIndex(x=>x.id===_editingPersonnelId);
+    if(idx>=0)p.personnel[idx]=Object.assign(p.personnel[idx],data);
+    _editingPersonnelId=null;
+  }else{
+    data.id='per_'+uid();
+    p.personnel.push(data);
+  }
+  persist();
+  closeModal('addPersonnelModal');
+  renderProcessArchive();
+}
+function editPersonnel(id){
+  const p=cur();if(!p)return;
+  const x=(p.personnel||[]).find(i=>i.id===id);
+  if(!x){alert('未找到该人员档案');return;}
+  _editingPersonnelId=id;
+  $('personnelModalTitle').textContent='编辑施工人员档案';
+  $('perSaveBtn').textContent='更新人员档案';
+  $('perName').value=x.name||'';$('perTrade').value=x.trade||'';$('perPhone').value=x.phone||'';
+  $('perIdCard').value=x.idCard||'';$('perSince').value=x.since||todayISO();$('perNote').value=x.note||'';
+  showModal('addPersonnelModal');
+}
+function deletePersonnel(id){
+  const p=cur();if(!p)return;
+  const x=(p.personnel||[]).find(i=>i.id===id);
+  if(!x)return;
+  if(!confirm(`确定删除「${x.name}」的施工人员档案吗？`))return;
+  p.personnel=(p.personnel||[]).filter(i=>i.id!==id);
+  persist();
+  renderProcessArchive();
+}
+
+/* ── 供应商档案 增删改 ── */
+let _editingSupplierId=null;
+function openAddSupplier(){
+  const p=cur();if(!p){alert('请先选择项目');return;}
+  _editingSupplierId=null;
+  $('supplierModalTitle').textContent='新增供应商档案';
+  $('supSaveBtn').textContent='保存供应商档案';
+  $('supName').value='';$('supCategory').value='';$('supContact').value='';
+  $('supPhone').value='';$('supSince').value=todayISO();$('supNote').value='';
+  showModal('addSupplierModal');
+}
+function saveSupplier(){
+  const p=cur();if(!p){closeModal('addSupplierModal');return;}
+  const name=$('supName').value.trim();
+  if(!name){alert('请填写供应商名称');$('supName').focus();return;}
+  const data={name:name,category:$('supCategory').value.trim(),contact:$('supContact').value.trim(),phone:$('supPhone').value.trim(),since:$('supSince').value,note:$('supNote').value.trim()};
+  p.suppliers=p.suppliers||[];
+  if(_editingSupplierId){
+    const idx=p.suppliers.findIndex(x=>x.id===_editingSupplierId);
+    if(idx>=0)p.suppliers[idx]=Object.assign(p.suppliers[idx],data);
+    _editingSupplierId=null;
+  }else{
+    data.id='sup_'+uid();
+    p.suppliers.push(data);
+  }
+  persist();
+  closeModal('addSupplierModal');
+  renderProcessArchive();
+}
+function editSupplier(id){
+  const p=cur();if(!p)return;
+  const x=(p.suppliers||[]).find(i=>i.id===id);
+  if(!x){alert('未找到该供应商档案');return;}
+  _editingSupplierId=id;
+  $('supplierModalTitle').textContent='编辑供应商档案';
+  $('supSaveBtn').textContent='更新供应商档案';
+  $('supName').value=x.name||'';$('supCategory').value=x.category||'';$('supContact').value=x.contact||'';
+  $('supPhone').value=x.phone||'';$('supSince').value=x.since||todayISO();$('supNote').value=x.note||'';
+  showModal('addSupplierModal');
+}
+function deleteSupplier(id){
+  const p=cur();if(!p)return;
+  const x=(p.suppliers||[]).find(i=>i.id===id);
+  if(!x)return;
+  if(!confirm(`确定删除「${x.name}」的供应商档案吗？`))return;
+  p.suppliers=(p.suppliers||[]).filter(i=>i.id!==id);
+  persist();
+  renderProcessArchive();
+}
+
 /* 辅助函数：切换收入已收状态 */
 /* ── 登记本次到账（替代原来的简单 toggle）── */
 let _riCurPid='',_riCurIid='';
@@ -11525,10 +11782,15 @@ function openAddMaterialPlan(){
   /* 填充关联施工节点下拉（自动关联相关步骤及节点） */
   const sel=$('mpStepId');
   sel.innerHTML='<option value="">暂不关联</option>'+steps.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
-  /* 填充调配负责人下拉（从项目成员） */
+  /* 填充调配负责人下拉（项目成员 + 施工人员档案 联合调取，去重） */
   const buyerSel=$('mpBuyer');
-  buyerSel.innerHTML='<option value="">暂不指定</option>';
-  (p.members||[]).forEach(m=>{buyerSel.innerHTML+=`<option value="${m.name}">${escHtml(m.name)}</option>`;});
+  const buyerNames=new Set();
+  (p.members||[]).forEach(m=>{if(m&&m.name)buyerNames.add(m.name);});
+  (p.personnel||[]).forEach(m=>{if(m&&m.name)buyerNames.add(m.name);});
+  buyerSel.innerHTML='<option value="">暂不指定</option>'+Array.from(buyerNames).map(n=>`<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+  /* 填充厂家名称联想列表（从供应商档案调取，可直接复用历史厂家） */
+  const vdl=$('mpVendorList');
+  if(vdl)vdl.innerHTML=(p.suppliers||[]).map(s=>`<option value="${escHtml(s.name)}">`).join('');
   /* 填充材料名称联想列表（从已有采购+系统推荐材料） */
   const dl=$('mpNameList');
   const existingNames=(p.purchases||[]).map(x=>x.name);
@@ -11680,9 +11942,13 @@ function saveMaterialPlanBatch(){
   }
   /* 同步采购付款状态到项目支出账单 */
   syncPurchaseToExpense(p, data);
+  /* 自动归档：厂家 → 供应商档案；调配负责人 → 施工人员档案（首次填写自动录入） */
+  autoArchiveSupplier(p, data.vendor, data.vendorPhone, '', '');
+  autoArchivePersonnel(p, data.buyer, '', '');
   persist();
   closeModal('addMaterialPlanModal');
   renderProcessPurchase();renderPurchase();renderHome();renderFinance();
+  if($('processArchivePanel').style.display!=='none')renderProcessArchive();
 }
 
 /* 标记采购材料已到场 */
