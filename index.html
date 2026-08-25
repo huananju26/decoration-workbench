@@ -2271,6 +2271,20 @@ a{color:#003a8c;text-decoration:none}
   .gs-axis{padding-left:0}
   .gs-axis-weekdays{padding-left:0}
 }
+/* 合同扫描件上传与预览 */
+.scan-uploader{border:1px dashed #91caff;background:#f5faff;border-radius:10px;padding:10px}
+.scan-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.scan-thumb{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid #91caff;background:#fff}
+.scan-thumb img{width:100%;height:100%;object-fit:cover}
+.scan-thumb-del{position:absolute;top:2px;right:2px;width:18px;height:18px;border:none;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:18px;cursor:pointer;padding:0}
+.scan-empty{color:#999;font-size:12px}
+.scan-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.scan-add-btn{cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.scan-tip{color:#999;font-size:11px}
+.scan-lightbox-inner{display:flex;flex-direction:column;align-items:center;max-width:92vw}
+.scan-lightbox-inner img{max-width:92vw;max-height:80vh;border-radius:10px;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.con-scan-strip{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed #e8e8e8}
+.con-scan-thumb2{width:54px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #91caff;cursor:pointer}
 </style>
 </head>
 <body>
@@ -2814,7 +2828,7 @@ a{color:#003a8c;text-decoration:none}
     <div class="modal-body">
       <div class="form-group"><label class="form-label">合同名称 <b style="color:#ff4d4f">*</b></label><input type="text" id="conTitle" placeholder="如：水电施工合同 / 主材采购合同"></div>
       <div class="form-row-2">
-        <div class="form-group"><label class="form-label">合同类型</label><select id="conType">${CONTRACT_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">合同类型</label><select id="conType"></select></div>
         <div class="form-group"><label class="form-label">归属项目</label><select id="conProject" onchange="refreshConStepOptions()"></select></div>
       </div>
       <div class="form-row-2">
@@ -2827,11 +2841,28 @@ a{color:#003a8c;text-decoration:none}
       </div>
       <div class="form-row-2">
         <div class="form-group"><label class="form-label">签订日期</label><input type="date" id="conSignDate"></div>
-        <div class="form-group"><label class="form-label">状态</label><select id="conStatus">${CONTRACT_STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">状态</label><select id="conStatus"></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">合同扫描件 / 拍照</label>
+        <div class="scan-uploader">
+          <div class="scan-thumbs" id="conScanThumbs"></div>
+          <div class="scan-actions">
+            <label class="btn-outline scan-add-btn">＋ 上传/拍照<input type="file" id="conScanInput" accept="image/*" capture="environment" multiple style="display:none" onchange="onContractScanPick(event)"></label>
+            <span class="scan-tip">最多 6 张，自动压缩，仅存本地浏览器</span>
+          </div>
+        </div>
       </div>
       <div class="form-group"><label class="form-label">备注</label><textarea id="conNote" rows="2" placeholder="补充说明"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('contractModal')">取消</button><button class="btn-primary" id="conSaveBtn" onclick="saveContract()">保存合同</button></div>
+  </div>
+</div>
+
+<!-- 合同扫描件预览灯箱 -->
+<div class="modal-overlay" id="contractScanLightbox" onclick="if(event.target===this)closeContractScanPreview()">
+  <div class="scan-lightbox-inner">
+    <img id="contractScanImg" alt="合同扫描件">
+    <button class="btn-outline" style="margin-top:12px;color:#fff;border-color:#fff" onclick="closeContractScanPreview()">关闭</button>
   </div>
 </div>
 
@@ -2842,7 +2873,7 @@ a{color:#003a8c;text-decoration:none}
     <div class="modal-body">
       <div class="form-row-2">
         <div class="form-group"><label class="form-label">发票方向</label><select id="invDirection" onchange="onInvDirectionChange()"><option>销项</option><option>进项</option></select></div>
-        <div class="form-group"><label class="form-label">发票类型</label><select id="invType">${INVOICE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">发票类型</label><select id="invType"></select></div>
       </div>
       <div class="form-group"><label class="form-label">归属项目</label><select id="invProject" onchange="refreshInvContractOptions();refreshInvFlowOptions()"></select></div>
       <div class="form-group"><label class="form-label">关联合同</label><select id="invLinkedContract" onchange="onInvContractChange()"></select></div>
@@ -2850,7 +2881,7 @@ a{color:#003a8c;text-decoration:none}
       <div id="invLinkedExpenseWrap" class="form-group" style="display:none"><label class="form-label">关联付款（进项）</label><select id="invLinkedExpense"></select></div>
       <div class="form-row-3">
         <div class="form-group"><label class="form-label">不含税金额 (¥) <b style="color:#ff4d4f">*</b></label><input type="number" id="invAmountNoTax" oninput="calcInvAmounts()" placeholder="0"></div>
-        <div class="form-group"><label class="form-label">税率</label><select id="invTaxRate" onchange="calcInvAmounts()">${TAX_RATES.map(r=>`<option value="${r}">${r}%</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">税率</label><select id="invTaxRate" onchange="calcInvAmounts()"></select></div>
         <div class="form-group"><label class="form-label">税额 / 价税合计</label><div style="display:flex;gap:6px"><input type="text" id="invTax" readonly placeholder="税额" style="flex:1"><input type="text" id="invTotal" readonly placeholder="价税合计" style="flex:1"></div></div>
       </div>
       <div class="form-row-3">
@@ -2860,11 +2891,11 @@ a{color:#003a8c;text-decoration:none}
       </div>
       <div class="form-row-3">
         <div class="form-group"><label class="form-label">开票日期</label><input type="date" id="invDate"></div>
-        <div class="form-group"><label class="form-label">状态</label><select id="invStatus">${INVOICE_STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
-        <div class="form-group"><label class="form-label">查验状态</label><select id="invVerify">${VERIFY_STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">状态</label><select id="invStatus"></select></div>
+        <div class="form-group"><label class="form-label">查验状态</label><select id="invVerify"></select></div>
       </div>
       <div class="form-row-2">
-        <div class="form-group"><label class="form-label">抵扣状态（进项）</label><select id="invDeduct">${DEDUCT_STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">抵扣状态（进项）</label><select id="invDeduct"></select></div>
         <div class="form-group"><label class="form-label">备注</label><input type="text" id="invNote" placeholder="补充说明"></div>
       </div>
     </div>
@@ -11569,7 +11600,9 @@ function renderContracts(){
           ${stepName?`<div class="archive-row"><span class="archive-row-label">关联节点</span><span class="archive-row-val">${escHtml(stepName)}</span></div>`:''}
           ${invCount?`<div class="archive-row"><span class="archive-row-label">关联发票</span><span class="archive-row-val"><span class="archive-tag blue">${invCount} 张</span></span></div>`:''}
           ${c.note?`<div class="archive-row"><span class="archive-row-label">备注</span><span class="archive-row-val">${escHtml(c.note)}</span></div>`:''}
+          ${(c.scanImages&&c.scanImages.length)?`<div class="archive-row"><span class="archive-row-label">扫描件</span><span class="archive-row-val"><span class="archive-tag blue">${c.scanImages.length} 张</span></span></div>`:''}
         </div>
+        ${(c.scanImages&&c.scanImages.length)?`<div class="con-scan-strip">${c.scanImages.map(s=>`<img class="con-scan-thumb2" src="${s.src}" alt="扫描件" title="点击放大" onclick="previewContractScan(this.src)" onerror="this.style.display='none'">`).join('')}</div>`:''}
       </div>`;
     }).join('');
   }
@@ -11591,6 +11624,8 @@ function contractSupName(c){
   return c.party||'';
 }
 let _editingContractId=null;
+let _editingContractScans=[];
+function fillSelect(sel,arr){if(!sel)return;sel.innerHTML=arr.map(o=>`<option value="${o}">${o}</option>`).join('');}
 function refreshConSupplierOptions(){
   const sel=$('conSupplier');if(!sel)return;
   sel.innerHTML='<option value="">（手工填写对方名称）</option>'+(App.archive.suppliers||[]).map(s=>`<option value="${s.id}">${escHtml(s.contact?(s.name+' '+s.contact):s.name)}</option>`).join('');
@@ -11606,8 +11641,12 @@ function openAddContract(){
   $('contractModalTitle').textContent='新增合同';
   $('conSaveBtn').textContent='保存合同';
   $('conTitle').value='';$('conType').value=CONTRACT_TYPES[0];
+  _editingContractScans=[];
+  renderContractScanThumbs();
+  $('conProject').innerHTML='<option value="">（不关联项目）</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
   $('conProject').value=App.currentProjectId||(App.projects[0]?App.projects[0].id:'');
   refreshConStepOptions();refreshConSupplierOptions();
+  fillSelect($('conType'),CONTRACT_TYPES);fillSelect($('conStatus'),CONTRACT_STATUS);
   $('conParty').value='';$('conSupplier').value='';
   $('conAmount').value='';$('conSignDate').value=todayISO();
   $('conStatus').value='已签';$('conNote').value='';
@@ -11620,7 +11659,8 @@ function saveContract(){
     title:title,type:$('conType').value,projectId:$('conProject').value||'',
     supplierId:$('conSupplier').value||'',party:$('conParty').value.trim(),
     linkedStepId:$('conStep').value||'',amount:parseFloat($('conAmount').value)||0,
-    signDate:$('conSignDate').value,status:$('conStatus').value,note:$('conNote').value.trim()
+    signDate:$('conSignDate').value,status:$('conStatus').value,note:$('conNote').value.trim(),
+    scanImages:_editingContractScans.map(x=>({id:x.id,src:x.src,name:x.name||''}))
   };
   const arr=App.contracts;
   if(_editingContractId){const idx=arr.findIndex(x=>x.id===_editingContractId);if(idx>=0)arr[idx]=Object.assign(arr[idx],data);_editingContractId=null;}
@@ -11633,13 +11673,17 @@ function editContract(id){
   $('contractModalTitle').textContent='编辑合同';
   $('conSaveBtn').textContent='更新合同';
   $('conTitle').value=c.title||'';$('conType').value=c.type||CONTRACT_TYPES[0];
+  $('conProject').innerHTML='<option value="">（不关联项目）</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
   $('conProject').value=c.projectId||'';
   refreshConStepOptions();refreshConSupplierOptions();
+  fillSelect($('conType'),CONTRACT_TYPES);fillSelect($('conStatus'),CONTRACT_STATUS);
   $('conStep').value=c.linkedStepId||'';
   $('conSupplier').value=c.supplierId||'';
   $('conParty').value=c.party||'';
   $('conAmount').value=c.amount||'';$('conSignDate').value=c.signDate||'';
   $('conStatus').value=c.status||'已签';$('conNote').value=c.note||'';
+  _editingContractScans=(c.scanImages||[]).map(x=>({id:x.id||uid(),src:x.src,name:x.name||''}));
+  renderContractScanThumbs();
   showModal('contractModal');
 }
 function deleteContract(id){
@@ -11648,6 +11692,46 @@ function deleteContract(id){
   App.contracts=App.contracts.filter(x=>x.id!==id);
   (App.invoices||[]).forEach(v=>{if(v.linkedContractId===id)v.linkedContractId='';});
   persist();renderContracts();
+}
+/* 合同扫描件：缩略图渲染（编辑态） */
+function renderContractScanThumbs(){
+  const box=$('conScanThumbs');if(!box)return;
+  box.innerHTML=_editingContractScans.map(s=>`<div class="scan-thumb"><img src="${s.src}" alt=""><button type="button" class="scan-thumb-del" title="移除" onclick="removeContractScan('${s.id}')">✕</button></div>`).join('')||'<span class="scan-empty">尚未添加扫描件</span>';
+}
+/* 选择图片：复用现场照片压缩（最大 1280px / JPEG 0.82），并做 localStorage 配额保护 */
+function onContractScanPick(e){
+  const files=e.target.files;if(!files||!files.length){return;}
+  const MAX=6;
+  let remaining=MAX-_editingContractScans.length;
+  if(remaining<=0){alert('每份合同最多上传 6 张扫描件');if(e.target)e.target.value='';return;}
+  const filesArr=[...files].slice(0,remaining);
+  const baseLen=JSON.stringify(App).length;
+  let added=0,stopped=false;
+  (async()=>{
+    for(const f of filesArr){
+      if(stopped)break;
+      try{
+        const durl=await readPhotoAsDataURL(f);
+        if(baseLen+added+durl.length>4500000){alert('本地存储空间即将用尽，已停止添加更多扫描件。\n建议：导出 JSON 备份后清理部分图片，或改用云端同步版本。');stopped=true;break;}
+        _editingContractScans.push({id:uid(),src:durl,name:f.name||'scan'});
+        added+=durl.length;
+      }catch(err){console.warn('扫描件读取失败',err);}
+    }
+    renderContractScanThumbs();
+    if(e.target)e.target.value='';
+  })();
+}
+function removeContractScan(id){
+  _editingContractScans=_editingContractScans.filter(x=>x.id!==id);
+  renderContractScanThumbs();
+}
+function previewContractScan(src){
+  const img=$('contractScanImg');if(!img)return;
+  img.src=src;
+  const ov=$('contractScanLightbox');if(ov)ov.classList.add('show');
+}
+function closeContractScanPreview(){
+  const ov=$('contractScanLightbox');if(ov)ov.classList.remove('show');
 }
 
 /* ── 发票管理：列表 + CRUD + 税额自动算 ── */
@@ -11749,8 +11833,11 @@ function openAddInvoice(){
   $('invSaveBtn').textContent='保存发票';
   $('invDirection').value='销项';onInvDirectionChange();
   $('invType').value=INVOICE_TYPES[0];
+  $('invProject').innerHTML='<option value="">（不关联项目）</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
   $('invProject').value=App.currentProjectId||(App.projects[0]?App.projects[0].id:'');
   refreshInvContractOptions();refreshInvFlowOptions();
+  fillSelect($('invType'),INVOICE_TYPES);fillSelect($('invStatus'),INVOICE_STATUS);fillSelect($('invVerify'),VERIFY_STATUS);fillSelect($('invDeduct'),DEDUCT_STATUS);
+  $('invTaxRate').innerHTML=TAX_RATES.map(r=>`<option value="${r}">${r}%</option>`).join('');
   $('invLinkedContract').value='';$('invLinkedIncome').value='';$('invLinkedExpense').value='';
   $('invAmountNoTax').value='';$('invTaxRate').value=DEFAULT_TAX_RATE;calcInvAmounts();
   $('invIssuer').value='';$('invPayee').value='';$('invPayer').value='';
@@ -11788,8 +11875,11 @@ function editInvoice(id){
   $('invSaveBtn').textContent='更新发票';
   $('invDirection').value=v.direction||'销项';onInvDirectionChange();
   $('invType').value=v.type||INVOICE_TYPES[0];
+  $('invProject').innerHTML='<option value="">（不关联项目）</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
   $('invProject').value=v.projectId||'';
   refreshInvContractOptions();refreshInvFlowOptions();
+  fillSelect($('invType'),INVOICE_TYPES);fillSelect($('invStatus'),INVOICE_STATUS);fillSelect($('invVerify'),VERIFY_STATUS);fillSelect($('invDeduct'),DEDUCT_STATUS);
+  $('invTaxRate').innerHTML=TAX_RATES.map(r=>`<option value="${r}">${r}%</option>`).join('');
   $('invLinkedContract').value=v.linkedContractId||'';
   $('invLinkedIncome').value=(v.direction==='销项')?(v.linkedIncomeId||''):'';
   $('invLinkedExpense').value=(v.direction==='进项')?(v.linkedExpenseId||''):'';
