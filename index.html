@@ -10234,37 +10234,42 @@ function printSheet(sheetId){
         /* A4 横版: 297×210mm, 纵版: 210×297mm; 减去边距 = 可打印区域 */
         var pw=isLandscape?287:194; /* mm, A4横297-2×5 或 纵210-2×8 */
         var pageCSS=isLandscape ? '@page{size:A4 landscape;margin:5mm}' : '@page{size:A4;margin:8mm}';
+        /* 图片不设 CSS 宽度，留待 JS 在 load 后按 96dpi 动态设置像素尺寸（最可靠） */
         var doc='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
           '<style>'+
             '*{margin:0;padding:0}'+
-            'html{width:'+pw+'mm;overflow:hidden}'+
-            'body{width:'+pw+'mm;overflow:hidden;background:#fff;display:flex;justify-content:center;align-items:flex-start}'+
-            /* 关键：用 mm 单位硬编码 img 宽度 = 可打印区域宽度，强制等比缩放进一页 */
-            'img{width:'+pw+'mm!important;height:auto!important;display:block;max-width:none}'+
+            'html,body{width:'+pw+'mm;background:#fff;overflow:hidden}'+
+            'body{display:flex;justify-content:center;align-items:flex-start}'+
+            'img{display:block}'+
             pageCSS+
           '</style></head><body>'+
-          '<img src="'+blobUrl+'" onload="window.__imgLoaded=true">'+
+          '<img id="__pimg" src="'+blobUrl+'">'+
           '</body></html>';
         var w=window.open('','_blank');
         if(!w){ URL.revokeObjectURL(blobUrl); alert('请允许弹出窗口后重试'); return; }
         w.document.write(doc);
         w.document.close();
-        /* 等图片加载完成后再 print */
-        var tries=0;
-        var timer=setInterval(function(){
-          tries++;
-          if(w.__imgLoaded||w.document&&w.document.images[0]&&w.document.images[0].complete){
-            clearInterval(timer);
-            setTimeout(function(){ try{ w.print(); }catch(e){void 0;} }, 200);
-            /* 打印后延迟释放 blob URL */
-            setTimeout(function(){ try{ URL.revokeObjectURL(blobUrl); }catch(e){void 0;} }, 30000);
-          }else if(tries>40){
-            clearInterval(timer);
+        /* load 后图片已就绪：用 JS 按打印 DPI 计算并强制设置像素宽度，确保等比缩放进一页 */
+        w.addEventListener('load',function(){
+          var img=w.document.getElementById('__pimg');
+          if(!img){ _printSheetFallback(el,sheetId,title); return; }
+          var targetPx=Math.round(pw/25.4*96); /* 96dpi 下 A4 可打印宽度(px) */
+          if(img.naturalWidth>targetPx){
+            img.style.width=targetPx+'px';
+            img.style.height='auto';
+          }
+          setTimeout(function(){ try{ w.print(); }catch(e){void 0;} }, 300);
+          /* 打印后延迟释放 blob URL */
+          setTimeout(function(){ try{ URL.revokeObjectURL(blobUrl); }catch(e){void 0;} }, 30000);
+        });
+        /* 兜底：若 4 秒后仍未触发 load（极少见），直接回退 */
+        setTimeout(function(){
+          if(!w.document.getElementById('__pimg')||!w.document.getElementById('__pimg').complete){
             try{ w.close(); }catch(e){void 0;}
             URL.revokeObjectURL(blobUrl);
             _printSheetFallback(el,sheetId,title);
           }
-        }, 150);
+        }, 4000);
       },'image/png');
     }).catch(function(err){
       console.warn('[printSheet] Layer1 图片方案失败:',err&&(err.message||err));
