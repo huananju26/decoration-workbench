@@ -460,6 +460,7 @@ a{color:#003a8c;text-decoration:none}
 .sb-compare-diff.late{background:#fff2f0;color:#fa541c}
 .sb-compare-diff.early{background:#e6f4ff;color:#003a8c}
 .sb-badge{font-size:11px;font-weight:600;color:#003a8c;background:#e6f4ff;border-radius:10px;padding:1px 8px;min-width:18px;text-align:center}
+.sb-badge-warn{color:#d48806;background:#fff7e6;border:1px solid #ffd591;}
 .sb-rel-list{display:flex;flex-direction:column;gap:8px}
 .sb-rel-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:#fff;border:1px solid #eef2f7;border-radius:8px}
 .sb-rel-main{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -1808,6 +1809,9 @@ a{color:#003a8c;text-decoration:none}
 .aq-check-inv{background:#fff1f0;border-color:#ffa39e;color:#cf1322;font-size:12px;cursor:pointer;}
 .aq-kind-inv{background:#fff1f0;color:#cf1322;border:1px solid #ffa39e;}
 .aq-item-inv{background:#fffaf7;}
+.aq-check-con{background:#e6f4ff;border-color:#91caff;color:#003a8c;font-size:12px;cursor:pointer;}
+.aq-kind-con{background:#e6f4ff;color:#003a8c;border:1px solid #91caff;}
+.aq-item-con{background:#f5f9ff;}
 .aq-filter-tabs{display:flex;gap:4px;padding:8px 0 4px;border-bottom:1px solid #f0f0f0;margin-bottom:6px;}
 .aq-ftab{font-size:12px;padding:3px 12px;border-radius:12px;cursor:pointer;color:#666;background:transparent;transition:.2s;user-select:none;}
 .aq-ftab:hover{color:#003a8c;background:#e6f4ff;}
@@ -3091,6 +3095,7 @@ a{color:#003a8c;text-decoration:none}
         <div class="form-group"><label class="form-label">计划完成</label><div class="date-field placeholder" id="planEndField2" onclick="openPdmDatePop(this,'end','step')"><span id="planEndText2">选择日期</span><span class="date-field-icon">📅</span></div><input type="hidden" id="planEndDate"></div>
       </div>
       <div class="form-group"><label class="form-label">施工说明</label><textarea id="stepDesc" rows="4" placeholder="施工要点、注意事项..."></textarea></div>
+      <div class="form-group"><label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400"><input type="checkbox" id="stepNeedContract" style="width:16px;height:16px"> 需签施工分包合同（勾选后若未关联施工合同，将进入待办提醒）</label></div>
       <div class="form-group"><label class="form-label">验收标准（每行一项）</label><textarea id="stepAcceptance" rows="3" placeholder="如：闭水试验48h无渗漏"></textarea></div>
       <div class="form-group"><label class="form-label">攻略文章（每行一项）</label><textarea id="stepArticles" rows="3" placeholder="如：防水施工避坑指南"></textarea></div>
     </div>
@@ -4461,6 +4466,9 @@ function mergeProject(p){
   if(!p||typeof p!=='object')return defaultProject();
   const out=Object.assign({}, defaultProject(), p);
   ['tasks','purchases','income','expense','diaries','compares','processSteps'].forEach(k=>{ if(!Array.isArray(out[k])) out[k]=[]; });
+  /* 合同联动字段向后兼容：节点 needContract/linkedContractId、采购项 linkedContractId */
+  if(Array.isArray(out.processSteps)) out.processSteps=out.processSteps.map(s=>Object.assign({needContract:false,linkedContractId:''}, s));
+  if(Array.isArray(out.purchases)) out.purchases=out.purchases.map(x=>Object.assign({linkedContractId:''}, x));
   if(!out.checked||typeof out.checked!=='object') out.checked={};
   if(!out.profile||typeof out.profile!=='object') out.profile={};
   out.profile=Object.assign({style:'',layout:'',mode:'',startDate:''}, out.profile);
@@ -4501,7 +4509,7 @@ function upgradeLegacyAcceptance(){
    - 所有迁移必须幂等（重复运行结果一致），绝不直接销毁用户数据
    - 加载时校验结构，损坏则从最近备份恢复，避免渲染乱码
    ════════════════════════════════════════════════════════════════ */
-const DATA_VERSION = 2;
+const DATA_VERSION = 3;
 const MIGRATION_BACKUP_PREFIX = 'xzgz_app_v2_bak_';
 const MIGRATION_BACKUP_KEEP = 3;
 
@@ -4588,7 +4596,16 @@ function migrateV1ToV2(app){
   (app.projects||[]).forEach(p=>{ if(p&&!p.bizType) p.bizType = bizTypeFromHouse(p.houseType); });
 }
 
-const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2 ];
+function migrateV2ToV3(app){
+  ensureAppShape(app);
+  if(!Array.isArray(app.contracts)) app.contracts=[];
+  app.contracts.forEach(c=>{ if(c&&c.linkedPurchaseId===undefined) c.linkedPurchaseId=''; });
+  (app.projects||[]).forEach(p=>{
+    (p.processSteps||[]).forEach(s=>{ if(s&&s.needContract===undefined)s.needContract=false; if(s&&s.linkedContractId===undefined)s.linkedContractId=''; });
+    (p.purchases||[]).forEach(x=>{ if(x&&x.linkedContractId===undefined)x.linkedContractId=''; });
+  });
+}
+const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2, migrateV2ToV3 ];
 
 /* 顺序执行迁移，直到数据版本达到当前版本；每步前自动备份 */
 function runMigrations(app){
@@ -7263,6 +7280,22 @@ function renderActionQueueAll(projects){
         });
       });
     });
+    /* 缺合同提醒：项目主合同 / 采购项采购合同 / 施工节点施工合同 缺失 → 待办跟进 */
+    /* 1) 项目主合同（施工/购销）缺失 */
+    if(!mainContractForProject(p.id)){
+      items.push({id:'con_main_'+p.id, title:projDisplayName(p)+' · 主合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'购销', _targetKind:'project', _targetId:p.id, note:'项目尚未签订主合同（施工/购销），需跟进签约'});
+    }
+    /* 2) 采购项缺采购合同 */
+    (p.purchases||[]).forEach(pur=>{
+      if(contractForPurchase(p.id,pur.id))return;
+      items.push({id:'con_pur_'+pur.id, title:(pur.name||'采购项')+' · 采购合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'采购', _targetKind:'purchase', _targetId:pur.id, note:'采购项「'+(pur.name||'')+'」未关联采购合同，需补签'});
+    });
+    /* 3) 施工节点缺施工合同（仅标记"需签合同"的节点） */
+    (p.processSteps||[]).forEach(s=>{
+      if(!s.needContract)return;
+      if(contractForStep(p.id,s.id))return;
+      items.push({id:'con_step_'+s.id, title:(s.name||'节点')+' · 施工合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'施工', _targetKind:'step', _targetId:s.id, note:'节点「'+(s.name||'')+'」需签施工合同，尚未关联'});
+    });
   });
   items.sort((a,b)=>{
     /* 未完成排前面，已完成排后面（!!统一处理 purchase 无 done 字段的情况） */
@@ -7315,18 +7348,21 @@ function renderActionQueueAll(projects){
     const checkHtml=isStep?`<div class="aq-check aq-check-step" onclick="event.stopPropagation();switchToProject('${item._pid}');switchPage('process');">⚠</div>`
       :(kind==='adjust'?`<div class="aq-check" title="点击登记到账" onclick="event.stopPropagation();openRecordAdjModal('${item.id}');switchToProject('${item._pid}');">¥</div>`
       :(kind==='invoice'?`<div class="aq-check aq-check-inv" title="点击去开票（关联发票后提醒自动消失）" onclick="event.stopPropagation();openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')">🧾</div>`
-      :`<div class="aq-check ${item.done?'checked':''}" onclick="toggleItem('${item.id}','${kind}','${item._pid}')">${item.done?'✓':''}</div>`));
+      :(kind==='contract'?`<div class="aq-check aq-check-con" title="点击去补签合同（关联后提醒自动消失）" onclick="event.stopPropagation();openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')">📑</div>`
+      :`<div class="aq-check ${item.done?'checked':''}" onclick="toggleItem('${item.id}','${kind}','${item._pid}')">${item.done?'✓':''}</div>`)));
     /* 当前状态：pending / overdue / done —— 用于原位编辑高亮 */
     const curStatus=item.done?'done':(isOver?'overdue':'pending');
-    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?'未开票':(isStep?'节点逾期':(item.done?'已完成':'待办'))));
-    /* 未开票提醒项点击右侧标签也跳转去开票，而非打开状态编辑 */
+    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?'未开票':(isStep?'节点逾期':(kind==='contract'?'缺合同':(item.done?'已完成':'待办')))));
+    /* 未开票/缺合同提醒项点击右侧标签也跳转，而非打开状态编辑 */
     const labelOnclick = kind==='invoice'
       ? `openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')`
-      : `openAqStatusPop(this,'${item.id}','${kind}','${item._pid}','${curStatus}')`;
-    return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${isToday?'today':''}">${checkHtml}
+      : (kind==='contract'
+      ? `openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')`
+      : `openAqStatusPop(this,'${item.id}','${kind}','${item._pid}','${curStatus}')`);
+    return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''} ${isToday?'today':''}">${checkHtml}
       <div class="aq-info"><div class="aq-title ${isOver?'overdue':''}">${item.title||item.name}${isOver?' <span style="color:#ff4d4f;font-size:11px">'+(isStep?'已逾期':'逾期')+'</span>':''}</div>
       <div class="aq-meta">${datePrefix}${item._proj||''}${dateSuffix} ${item.stage?'· '+getStageName(item.stage):''}</div>${noteHtml}</div>
-      <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-kind-inv':''}" title="点击去开票" onclick="event.stopPropagation();${labelOnclick}">${kindLabel}<span class="aq-kind-caret">▾</span></span></li>`;
+      <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-kind-inv':''} ${item._kind==='contract'?'aq-kind-con':''}" title="点击去补签合同" onclick="event.stopPropagation();${labelOnclick}">${kindLabel}<span class="aq-kind-caret">▾</span></span></li>`;
   }).join('');
 
   /* 分页器（原位翻页，不跳转整页） */
@@ -8918,6 +8954,14 @@ function renderProcess(){
         <!-- ③ 关联采购 -->
         <div class="sb-section">
           ${(function(){const rel=getRel(purByStep,step,true);return `<div class="sb-sec-title">关联采购<span class="sb-badge">${rel.length}</span></div>`+((function(){if(!rel.length)return `<div class="sb-empty">暂无关联采购 · <a href="javascript:void(0)" onclick="openPurchaseModalForStep('${step.id}')">去添加</a></div>`;return `<div class="sb-rel-list">${rel.map(x=>`<div class="sb-rel-item"><div class="sb-rel-main"><span class="sb-rel-name">${escHtml(x.name||'')}</span>${x.qty?`<span class="sb-rel-sub">${escHtml(x.qty+'')}${escAttr(x.unit||'项')}</span>`:''}</div><div class="sb-rel-right"><span class="sb-rel-amt">¥${fmt(x.budget||0)}</span><span class="sb-status ${statusCls(x.status)}">${escHtml(x.status||'待购')}</span></div></div>`).join('')}</div><div class="sb-rel-add"><button class="sb-mini-btn" type="button" onclick="openPurchaseModalForStep('${step.id}')">＋ 关联采购</button></div>`})());})()}
+        </div>
+
+        <!-- ② 关联合同 -->
+        <div class="sb-section">
+          ${(function(){const c=contractForStep(p.id,step.id);const need=!!step.needContract;return `<div class="sb-sec-title">关联合同${need?'<span class="sb-badge sb-badge-warn">需签</span>':''}</div>`+(
+            c?`<div class="sb-rel-list"><div class="sb-rel-item"><div class="sb-rel-main"><span class="sb-rel-name">${escHtml(c.title||'')}</span><span class="sb-rel-sub">${escHtml(c.type||'')}${c.status?(' · '+escHtml(c.status)):''}</span></div><div class="sb-rel-right"><a href="javascript:void(0)" onclick="switchPage('contracts')">查看</a></div></div></div>`
+              :`<div class="sb-empty">${need?'该节点需签施工合同，':'尚未关联合同 '}· <a href="javascript:void(0)" onclick="openContractForTarget('${p.id}','施工','step','${step.id}','${escAttr(step.name)}')">去补签</a></div>`
+          );})()}
         </div>
 
         <!-- ④ 关联任务 -->
@@ -11632,7 +11676,7 @@ function deleteSupplier(id){
    - 与项目管理 / 人材档案供应商 / 流程节点 / 收支流水 对接联通
    - 发票税额自动算；财务汇总税务面板只读派生
    ════════════════════════════════════════════════════════════════ */
-const CONTRACT_TYPES=['施工','采购','设计','其他'];
+const CONTRACT_TYPES=['施工','采购','设计','其他','购销'];
 const CONTRACT_STATUS=['草稿','已签','执行中','已完成','已终止'];
 const INVOICE_DIRECTIONS=['销项','进项'];
 const INVOICE_TYPES=['数电专票','数电普票','电子发票','专票','普票'];
@@ -11647,6 +11691,32 @@ let _invTab='全部';
 let currentFinRecId='';      /* 当前记一笔记录的 id（新建时预生成，编辑时取原 id，保证与发票互链一致） */
 let currentFinInvoiceId='';  /* 当前已关联发票 id */
 let _pendingFinInvoiceLink=null; /* 从记一笔/待办新建发票时的回写上下文 {financeId,projectId,type} */
+/* ═══ 缺合同 → 待办 联动 ═══ */
+const MAIN_CONTRACT_TYPES=['施工','购销'];   /* 项目主合同（与客户签约）类型 */
+const MAIN_CONTRACT_OK=['已签','执行中','已完成']; /* 主合同"已具备"状态 */
+let _pendingConLink=null; /* 从待办/节点/采购新建合同时的回写上下文 {targetKind,targetId,pid,conType} */
+/* 项目是否已有具备效力的主合同（施工/购销，且已签/执行中/已完成） */
+function mainContractForProject(pid){
+  return (App.contracts||[]).find(c=>c.projectId===pid && MAIN_CONTRACT_TYPES.includes(c.type) && MAIN_CONTRACT_OK.includes(c.status));
+}
+/* 某采购项是否已关联采购合同 */
+function contractForPurchase(pid,purId){
+  if(!purId)return null;
+  return (App.contracts||[]).find(c=>c.projectId===pid && c.linkedPurchaseId===purId);
+}
+/* 某施工节点是否已关联施工合同 */
+function contractForStep(pid,stepId){
+  if(!stepId)return null;
+  return (App.contracts||[]).find(c=>c.projectId===pid && c.linkedStepId===stepId);
+}
+function findStepById(pid,sid){const p=App.projects.find(x=>x.id===pid);if(!p)return null;return (p.processSteps||[]).find(s=>s.id===sid)||null;}
+function findPurchaseById(pid,puid){const p=App.projects.find(x=>x.id===pid);if(!p)return null;return (p.purchases||[]).find(x=>x.id===puid)||null;}
+function purchaseNameById(pid,puid){const x=findPurchaseById(pid,puid);return x?(x.name||''):'';}
+/* 从待办/节点/采购点击"去补签"：打开新增合同并预填项目/类型/关联对象 */
+function openContractForTarget(pid,conType,targetKind,targetId,targetName){
+  _pendingConLink={pid:pid,conType:conType,targetKind:targetKind,targetId:targetId};
+  openAddContract({projectId:pid,type:conType,targetKind:targetKind,targetId:targetId,targetName:targetName});
+}
 
 function projNameById(id){const p=App.projects.find(x=>x.id===id);return p?projDisplayName(p):'—';}
 function contractById(id){return (App.contracts||[]).find(c=>c.id===id);}
@@ -11691,6 +11761,7 @@ function renderContracts(){
       const invCount=(App.invoices||[]).filter(v=>v.linkedContractId===c.id).length;
       const sup=contractSupName(c);
       const stepName=c.linkedStepId?stepNameById(c.projectId,c.linkedStepId):'';
+      const purName=c.linkedPurchaseId?purchaseNameById(c.projectId,c.linkedPurchaseId):'';
       return `<div class="archive-item">
         <div class="archive-item-head">
           <div class="archive-item-name">${escHtml(c.title||'—')}</div>
@@ -11707,6 +11778,7 @@ function renderContracts(){
           ${c.amount?`<div class="archive-row"><span class="archive-row-label">合同金额</span><span class="archive-row-val">¥${fmt(c.amount)}</span></div>`:''}
           ${c.signDate?`<div class="archive-row"><span class="archive-row-label">签订日期</span><span class="archive-row-val">${escHtml(c.signDate)}</span></div>`:''}
           ${stepName?`<div class="archive-row"><span class="archive-row-label">关联节点</span><span class="archive-row-val">${escHtml(stepName)}</span></div>`:''}
+          ${purName?`<div class="archive-row"><span class="archive-row-label">关联采购项</span><span class="archive-row-val">${escHtml(purName)}</span></div>`:''}
           ${invCount?`<div class="archive-row"><span class="archive-row-label">关联发票</span><span class="archive-row-val"><span class="archive-tag blue">${invCount} 张</span></span></div>`:''}
           ${c.note?`<div class="archive-row"><span class="archive-row-label">备注</span><span class="archive-row-val">${escHtml(c.note)}</span></div>`:''}
           ${(c.scanImages&&c.scanImages.length)?`<div class="archive-row"><span class="archive-row-label">扫描件</span><span class="archive-row-val"><span class="archive-tag blue">${c.scanImages.length} 张</span></span></div>`:''}
@@ -11760,7 +11832,7 @@ function refreshConStepOptions(){
   const steps=stepsOfProject(pid);
   sel.innerHTML='<option value="">（不关联节点）</option>'+steps.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
 }
-function openAddContract(){
+function openAddContract(prefill){
   _editingContractId=null;
   $('contractModalTitle').textContent='新增合同';
   $('conSaveBtn').textContent='保存合同';
@@ -11769,11 +11841,21 @@ function openAddContract(){
   renderContractScanThumbs();
   $('conProject').innerHTML='<option value="">（不关联项目）</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
   $('conProject').value=App.currentProjectId||(App.projects[0]?App.projects[0].id:'');
+  if(prefill&&prefill.projectId)$('conProject').value=prefill.projectId;
   refreshConStepOptions();refreshConSupplierOptions();
   fillSelect($('conType'),CONTRACT_TYPES);fillSelect($('conStatus'),CONTRACT_STATUS);
+  if(prefill&&prefill.type)$('conType').value=prefill.type;
   $('conParty').value='';$('conSupplier').value='';
   $('conAmount').value='';$('conSignDate').value=todayISO();
   $('conStatus').value='已签';$('conNote').value='';
+  if(prefill&&prefill.targetKind==='step'&&prefill.targetId)$('conStep').value=prefill.targetId;
+  /* 标题建议，减少手动输入 */
+  if(prefill){
+    const nm=prefill.targetName||'';
+    if(prefill.type==='采购'&&nm)$('conTitle').value=nm+' 采购合同';
+    else if(prefill.type==='施工'&&nm)$('conTitle').value=nm+' 施工分包合同';
+    else if(prefill.type==='购销')$('conTitle').value='装修主合同（购销）';
+  }
   showModal('contractModal');
 }
 function saveContract(){
@@ -11787,8 +11869,16 @@ function saveContract(){
     scanImages:_editingContractScans.map(x=>({id:x.id,src:x.src,name:x.name||''}))
   };
   const arr=App.contracts;
-  if(_editingContractId){const idx=arr.findIndex(x=>x.id===_editingContractId);if(idx>=0)arr[idx]=Object.assign(arr[idx],data);_editingContractId=null;}
-  else{data.id='con_'+uid();arr.push(data);}
+  let savedId;
+  if(_editingContractId){const idx=arr.findIndex(x=>x.id===_editingContractId);if(idx>=0)arr[idx]=Object.assign(arr[idx],data);savedId=_editingContractId;_editingContractId=null;}
+  else{data.id='con_'+uid();arr.push(data);savedId=data.id;}
+  /* 关联回写：从待办/节点/采购跳转创建的合同，自动关联目标对象（双向互链） */
+  if(_pendingConLink){
+    const link=_pendingConLink;
+    if(link.targetKind==='step'){ data.linkedStepId=link.targetId; const st=findStepById(link.pid,link.targetId); if(st)st.linkedContractId=savedId; }
+    else if(link.targetKind==='purchase'){ data.linkedPurchaseId=link.targetId; const pur=findPurchaseById(link.pid,link.targetId); if(pur)pur.linkedContractId=savedId; }
+    _pendingConLink=null;
+  }
   persist();closeModal('contractModal');renderContracts();
 }
 function editContract(id){
@@ -11813,6 +11903,9 @@ function editContract(id){
 function deleteContract(id){
   const c=contractById(id);if(!c)return;
   if(!confirm('确定删除合同「'+(c.title||'')+'」吗？\n（关联发票不会被删除，但会解除关联）'))return;
+  /* 解除与被关联对象（施工节点 / 采购项）的互链 */
+  if(c.linkedStepId){const st=findStepById(c.projectId,c.linkedStepId);if(st&&st.linkedContractId===id)st.linkedContractId='';}
+  if(c.linkedPurchaseId){const pur=findPurchaseById(c.projectId,c.linkedPurchaseId);if(pur&&pur.linkedContractId===id)pur.linkedContractId='';}
   App.contracts=App.contracts.filter(x=>x.id!==id);
   (App.invoices||[]).forEach(v=>{if(v.linkedContractId===id)v.linkedContractId='';});
   persist();renderContracts();
@@ -12442,6 +12535,7 @@ function openStepEdit(id){
   $('planEndDate').value=step?(step.planEndDate||''):'';
   refreshStepDateFields();
   $('stepDesc').value=step?(step.desc||''):'';
+  if($('stepNeedContract'))$('stepNeedContract').checked=!!(step&&step.needContract);
   $('stepAcceptance').value=step&&step.acceptance?step.acceptance.map(a=>a.text).join('\n'):'';
   $('stepArticles').value=step&&step.articles?step.articles.map(a=>a.text).join('\n'):'';
   showModal('stepEditModal');
@@ -12513,7 +12607,7 @@ function saveStep(){
   const articles=$('stepArticles').value.split('\n').map(l=>l.trim()).filter(Boolean).map(t=>({label:'攻略',text:t}));
   /* 向导模式：写入本项目的施工计划临时节点 wizPlanNodes */
   if(stepEditMode==='wizard'){
-    const obj={id:'custom_'+uid(),name:name,days:days,status:'pending',planStart:'',planEnd:'',desc:desc,acceptance:acceptance,articles:articles};
+    const obj={id:'custom_'+uid(),name:name,days:days,status:'pending',planStart:'',planEnd:'',desc:desc,acceptance:acceptance,articles:articles,needContract:false,linkedContractId:''};
     if(editingWizIdx!=null&&wizPlanNodes[editingWizIdx]){obj.id=wizPlanNodes[editingWizIdx].id;wizPlanNodes[editingWizIdx]=obj;}else{wizPlanNodes.push(obj);}
     recalcPlanSchedule();
     closeModal('stepEditModal');stepEditMode='project';editingWizIdx=null;return;
@@ -12523,7 +12617,7 @@ function saveStep(){
   ensureProjectSteps(p);
   const planStartDate=$('planStartDate').value.trim();
   const planEndDate=$('planEndDate').value.trim();
-  const obj={name:name,days:days,desc:desc,acceptance:acceptance,articles:articles,planStartDate:planStartDate,planEndDate:planEndDate};
+  const obj={name:name,days:days,desc:desc,acceptance:acceptance,articles:articles,planStartDate:planStartDate,planEndDate:planEndDate,needContract:($('stepNeedContract')?$('stepNeedContract').checked:false),linkedContractId:(step?(step.linkedContractId||''):'')};
   if(editingStepId){
     const idx=p.processSteps.findIndex(s=>s.id===editingStepId);
     if(idx>=0){obj.id=editingStepId;p.processSteps[idx]=obj;}
