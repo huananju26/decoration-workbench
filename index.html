@@ -10850,6 +10850,10 @@ function renderProcessPurchase(){
   const arrivedCount=purchases.filter(x=>x.status==='已到场'||x.status==='已完成').length;
   /* 采购待付款 = 未付清的采购金额 */
   const purPendingPay=purchases.filter(x=>x.payStatus!=='已付清').reduce((s,x)=>s+(x.budget||0),0);
+  /* 材料总额 = 所有采购项预算合计 */
+  const materialTotal=purchases.reduce((s,x)=>s+(x.budget||0),0);
+  /* 厂家已安装 = 已到场或已完成 */
+  const factoryInstalled=purchases.filter(x=>x.status==='已到场'||x.status==='已完成').length;
   /* 项目成本（排除采购同步的支出记录，避免与 purPendingPay 重复计算） */
   const expList=(p.expense||[]).filter(e=>e.amount>0 && !e.purchaseId);
   const paidExp=expList.filter(e=>e.paid).reduce((s,e)=>s+e.amount,0);
@@ -10892,17 +10896,19 @@ function renderProcessPurchase(){
   }
 
   $('processPurchasePanel').innerHTML=
-    `<!-- 材料到场计划 -->
+    `<!-- 材料与厂家调配 -->
     <div class="proc-card">
       <div class="proc-sub-header" style="margin-bottom:12px">
-        <div><div class="proc-sub-title">材料到场计划</div><div class="proc-sub-desc">材料关键施工节点管理，延期项目自动提醒，避免工人到场后无料可做。</div></div>
-        <button class="proc-sub-btn primary" onclick="openAddMaterialPlan()">新增材料采购计划</button>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:#999;margin-bottom:4px;text-transform:uppercase">MATERIAL & FACTORY</div>
+          <div class="proc-sub-title">材料与厂家调配</div><div class="proc-sub-desc">每个项目独立记录厂家、材料金额；无需测量的材料可直接更新为已下单或已送货。</div></div>
+        <button class="proc-sub-btn primary" onclick="openAddMaterialPlan()">新增厂家调配</button>
       </div>
       <div class="proc-metric-row" style="padding:18px 14px;margin-bottom:0${planCount?';cursor:pointer':''}" ${planCount?'onclick="openMaterialPlanList()"':''}>
-        <div class="proc-metric-item"><div class="proc-metric-val">${planCount}</div><div class="proc-metric-label">材料计划</div></div>
-        <div class="proc-metric-item"><div class="proc-metric-val">${soonArrive}</div><div class="proc-metric-label">七日内到场</div></div>
-        <div class="proc-metric-item"><div class="proc-metric-val">${arrivedCount}</div><div class="proc-metric-label">已经验期</div></div>
-        <div class="proc-metric-item"><div class="proc-metric-val red">¥${fmt(purPendingPay)}</div><div class="proc-metric-label">采购待付款</div></div>
+        <div class="proc-metric-item"><div class="proc-metric-val">${planCount}</div><div class="proc-metric-label">材料项目</div></div>
+        <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(materialTotal)}</div><div class="proc-metric-label">材料总额</div></div>
+        <div class="proc-metric-item"><div class="proc-metric-val">${factoryInstalled}</div><div class="proc-metric-label">厂家已安装</div></div>
+        <div class="proc-metric-item"><div class="proc-metric-val red">¥${fmt(purPendingPay)}</div><div class="proc-metric-label">材料待付款</div></div>
       </div>
       ${purchaseCards}
       ${planCount&&!purchaseCards?'':(!planCount?'<div class="proc-empty" style="padding:24px">还没有材料采购计划。</div>':'')}
