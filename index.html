@@ -197,6 +197,10 @@ a{color:#003a8c;text-decoration:none}
 .pdh-meta-address{width:100%;max-width:none}
 
 /* ── Tab 栏（独立卡片，四边圆角） ── */
+.module-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.module-head-main{min-width:0;flex:1}
+.module-head-title{font-size:19px;font-weight:700;color:#1a1a1a;letter-spacing:.5px}
+.module-head-desc{font-size:12.5px;color:#999;margin-top:5px;max-width:680px;line-height:1.55}
 .proj-tab-bar{display:flex;border:1px solid #e8e8e8;border-radius:12px;background:#fff;margin-bottom:16px;padding:0 20px;position:relative;z-index:1;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden}
 .proj-tab{padding:13px 22px;font-size:14px;font-weight:600;color:#888;cursor:pointer;position:relative;transition:all .2s;border-bottom:2.5px solid transparent}
 .proj-tab:hover{color:#555}
@@ -11555,6 +11559,8 @@ const DEDUCT_STATUS=['待抵扣','已抵扣','不抵扣'];
 const VERIFY_STATUS=['未查验','已查验'];
 const TAX_RATES=[9,3,1];
 const DEFAULT_TAX_RATE=9;
+let _conTab='全部';
+let _invTab='全部';
 
 function projNameById(id){const p=App.projects.find(x=>x.id===id);return p?projDisplayName(p):'—';}
 function contractById(id){return (App.contracts||[]).find(c=>c.id===id);}
@@ -11573,8 +11579,10 @@ function renderContracts(){
   const el=$('contractsPanel');if(!el)return;
   const list=App.contracts||[];
   let filterProj=$('conFilterProj')?$('conFilterProj').value:'';
-  let arr=list.slice();
-  if(filterProj)arr=arr.filter(c=>c.projectId===filterProj);
+  let base=list.slice();
+  if(filterProj)base=base.filter(c=>c.projectId===filterProj);
+  let arr=base.slice();
+  if(_conTab!=='全部')arr=arr.filter(c=>c.type===_conTab);
   const projOpts='<option value="">全部项目</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
   let cards='';
   if(arr.length>0){
@@ -11606,19 +11614,33 @@ function renderContracts(){
       </div>`;
     }).join('');
   }
+  const totalAmt=base.reduce((s,c)=>s+(parseFloat(c.amount)||0),0);
+  const activeCount=base.filter(c=>['已签','执行中'].includes(c.status)).length;
+  const scanCount=base.reduce((s,c)=>s+((c.scanImages&&c.scanImages.length)||0),0);
+  const conTabs=['全部'].concat(CONTRACT_TYPES);
   el.innerHTML=
-    `<div class="archive-hint">合同管理与企业「商务财税」模块联动：可关联「项目管理」中的具体施工节点与「人材档案」中的供应商，并在「发票管理」中开具体发票。字段与团队版一致，未来可一键升级到云端多人协作（带真实权限隔离）。</div>
-    <div class="archive-filter-bar"><select id="conFilterProj" onchange="renderContracts()">${projOpts}</select><span class="archive-count">共 ${arr.length} 份合同</span></div>
-    <div class="archive-grid" style="display:grid;grid-template-columns:1fr;gap:16px;align-items:start">
-      <div class="proc-card">
-        <div class="proc-sub-header" style="margin-bottom:12px">
-          <div><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:#999;margin-bottom:4px;text-transform:uppercase">CONTRACTS</div><div class="proc-sub-title">合同台账</div><div class="proc-sub-desc">施工合同、采购合同等，统一登记与管理。</div></div>
-          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
-        </div>
-        ${cards||'<div class="proc-empty" style="padding:24px">还没有合同，点击右上角「新增合同」开始登记。</div>'}
-      </div>
-    </div>`;
+    `<div class="module-head">
+       <div class="module-head-main">
+         <div class="module-head-title">合同管理</div>
+         <div class="module-head-desc">登记施工 / 采购 / 设计 / 其他合同，关联项目节点与供应商，并在发票管理开具体发票。</div>
+       </div>
+       <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
+     </div>
+     <div class="proj-tab-bar" id="conTabBar">
+       ${conTabs.map(t=>`<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}</button>`).join('')}
+     </div>
+     <div class="proj-stats-row" id="conStatsRow">
+       <div class="proj-stat-item"><div class="proj-stat-label">合同份数</div><div class="proj-stat-val">${base.length}</div></div>
+       <div class="proj-stat-item"><div class="proj-stat-label">合同总金额</div><div class="proj-stat-val">¥${fmt(totalAmt)}</div></div>
+       <div class="proj-stat-item"><div class="proj-stat-label">已签·执行中</div><div class="proj-stat-val">${activeCount}</div></div>
+       <div class="proj-stat-item"><div class="proj-stat-label">扫描件份数</div><div class="proj-stat-val">${scanCount}</div></div>
+     </div>
+     <div class="archive-filter-bar"><select id="conFilterProj" onchange="renderContracts()">${projOpts}</select><span class="archive-count">${_conTab==='全部'?'全部类型':_conTab} · 共 ${arr.length} 份</span></div>
+     <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
+       ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有合同，点击右上角「新增合同」开始登记。</div>'}
+     </div>`;
 }
+function switchContractTab(t){_conTab=t;renderContracts();}
 function contractSupName(c){
   if(c.supplierId){const s=(App.archive.suppliers||[]).find(x=>x.id===c.supplierId);if(s)return s.contact?(s.name+' '+s.contact):s.name;}
   return c.party||'';
@@ -11739,12 +11761,13 @@ function renderInvoices(){
   const el=$('invoicesPanel');if(!el)return;
   const list=App.invoices||[];
   let fProj=$('invFilterProj')?$('invFilterProj').value:'';
-  let fDir=$('invFilterDir')?$('invFilterDir').value:'';
-  let arr=list.slice();
-  if(fProj)arr=arr.filter(v=>v.projectId===fProj);
-  if(fDir)arr=arr.filter(v=>v.direction===fDir);
+  let base=list.slice();
+  if(fProj)base=base.filter(v=>v.projectId===fProj);
+  let arr=base.slice();
+  if(_invTab==='销项')arr=arr.filter(v=>v.direction==='销项');
+  else if(_invTab==='进项')arr=arr.filter(v=>v.direction==='进项');
+  else if(_invTab==='已开')arr=arr.filter(v=>v.status==='已开');
   const projOpts='<option value="">全部项目</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
-  const dirOpts='<option value="">全部方向</option>'+INVOICE_DIRECTIONS.map(d=>`<option value="${d}">${d}</option>`).join('');
   let cards='';
   if(arr.length>0){
     cards=arr.map(v=>{
@@ -11774,19 +11797,31 @@ function renderInvoices(){
       </div>`;
     }).join('');
   }
+  const tax=computeTaxSummary(fProj);
+  const invTabs=['全部','销项','进项','已开'];
   el.innerHTML=
-    `<div class="archive-hint">发票管理覆盖「销项票（开给业主）」与「进项票（供应商开具）」，税额按「不含税金额 × 税率」自动计算。与合同、收支流水联动，并在「装修记账」汇总出应缴增值税与附加税。</div>
-    <div class="archive-filter-bar"><select id="invFilterProj" onchange="renderInvoices()">${projOpts}</select><select id="invFilterDir" onchange="renderInvoices()">${dirOpts}</select><span class="archive-count">共 ${arr.length} 张发票</span></div>
-    <div class="archive-grid" style="display:grid;grid-template-columns:1fr;gap:16px;align-items:start">
-      <div class="proc-card">
-        <div class="proc-sub-header" style="margin-bottom:12px">
-          <div><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:#999;margin-bottom:4px;text-transform:uppercase">INVOICES</div><div class="proc-sub-title">发票台账</div><div class="proc-sub-desc">进销项发票统一管理，税额自动计算。</div></div>
-          <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
-        </div>
-        ${cards||'<div class="proc-empty" style="padding:24px">还没有发票，点击右上角「新增发票」开始登记。</div>'}
-      </div>
-    </div>`;
+    `<div class="module-head">
+       <div class="module-head-main">
+         <div class="module-head-title">发票管理</div>
+         <div class="module-head-desc">管理销项票（开给业主）与进项票（供应商开具），税额按「不含税金额 × 税率」自动计算，并汇总应缴增值税。</div>
+       </div>
+       <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
+     </div>
+     <div class="proj-tab-bar" id="invTabBar">
+       ${invTabs.map(t=>`<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}</button>`).join('')}
+     </div>
+     <div class="proj-stats-row" id="invStatsRow">
+       <div class="proj-stat-item"><div class="proj-stat-label">发票张数</div><div class="proj-stat-val">${base.length}</div></div>
+       <div class="proj-stat-item"><div class="proj-stat-label">销项税额</div><div class="proj-stat-val" style="color:#003a8c">¥${fmt(tax.output)}</div></div>
+       <div class="proj-stat-item"><div class="proj-stat-label">进项税额</div><div class="proj-stat-val">¥${fmt(tax.input)}</div></div>
+       <div class="proj-stat-item"><div class="proj-stat-label">应缴增值税</div><div class="proj-stat-val" style="color:#fa8c16">¥${fmt(tax.vat)}</div></div>
+     </div>
+     <div class="archive-filter-bar"><select id="invFilterProj" onchange="renderInvoices()">${projOpts}</select><span class="archive-count">${_invTab} · 共 ${arr.length} 张</span></div>
+     <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
+       ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有发票，点击右上角「新增发票」开始登记。</div>'}
+     </div>`;
 }
+function switchInvoiceTab(t){_invTab=t;renderInvoices();}
 let _editingInvoiceId=null;
 function refreshInvContractOptions(){
   const pid=$('invProject')?$('invProject').value:'';
