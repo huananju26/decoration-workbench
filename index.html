@@ -4335,6 +4335,98 @@ function upgradeLegacyAcceptance(){
     console.log('[upgrade] 已将通用必检项节点升级为节点专属标准必检项');
   }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   数据版本化 + 顺序迁移管道（解决"版本更新后数据变乱"）
+   - 每次结构性改动：DATA_VERSION +1，并在 MIGRATIONS 末尾追加一条【幂等】迁移
+   - 迁移前自动备份完整数据到 localStorage（环形缓冲，保留最近 3 份），转坏可回退
+   - 所有迁移必须幂等（重复运行结果一致），绝不直接销毁用户数据
+   - 加载时校验结构，损坏则从最近备份恢复，避免渲染乱码
+   ════════════════════════════════════════════════════════════════ */
+const DATA_VERSION = 1;
+const MIGRATION_BACKUP_PREFIX = 'xzgz_app_v2_bak_';
+const MIGRATION_BACKUP_KEEP = 3;
+
+/* 结构兜底：保证 archive / projects 等基础结构存在（任意版本都需要） */
+function ensureAppShape(app){
+  app.archive = app.archive || {personnel:[],suppliers:[]};
+  if(!Array.isArray(app.archive.personnel)) app.archive.personnel = [];
+  if(!Array.isArray(app.archive.suppliers)) app.archive.suppliers = [];
+  if(!Array.isArray(app.projects)) app.projects = [];
+}
+
+/* 迁移前自动备份：完整快照存 localStorage，环形保留最近 KEEP 份（超出删最旧） */
+function backupBeforeMigrate(app){
+  try{
+    const ts = new Date().toISOString().replace(/[:.]/g,'-');
+    const key = MIGRATION_BACKUP_PREFIX + ts;
+    localStorage.setItem(key, JSON.stringify(app));
+    const keys = Object.keys(localStorage).filter(k=>k.indexOf(MIGRATION_BACKUP_PREFIX)===0).sort();
+    while(keys.length > MIGRATION_BACKUP_KEEP){
+      const old = keys.shift();
+      try{ localStorage.removeItem(old); }catch(e){}
+    }
+  }catch(e){ console.warn('[migration] 自动备份失败（不影响迁移）', e); }
+}
+
+/* 结构校验：损坏则返回 false，触发备份恢复 */
+function validateApp(app){
+  if(!app || typeof app!=='object') return false;
+  if(!Array.isArray(app.projects)) return false;
+  for(const p of app.projects){
+    if(!p || typeof p!=='object') return false;
+    if(!Array.isArray(p.tasks)) return false;
+    if(!Array.isArray(p.purchases)) return false;
+  }
+  return true;
+}
+
+/* 从最近的迁移备份中恢复一份结构合法的数据 */
+function tryRecoverFromBackup(){
+  try{
+    const keys = Object.keys(localStorage).filter(k=>k.indexOf(MIGRATION_BACKUP_PREFIX)===0).sort().reverse();
+    for(const k of keys){
+      try{
+        const b = JSON.parse(localStorage.getItem(k));
+        if(validateApp(b)) return b;
+      }catch(e){}
+    }
+  }catch(e){}
+  return null;
+}
+
+/* v0 → v1：整合历史遗留迁移（均为幂等），并打上 dataVersion=1 标记。
+   仅包含"原本每次加载都会执行"的迁移，不引入任何新数据变换，确保行为不变。 */
+function migrateV0ToV1(app){
+  ensureAppShape(app);
+  migrateGlobalArchive();   // 项目级人材档案 → 账号级 archive（按 name 去重，幂等）
+  migrateChecked();         // 旧步骤 ID t1..t27 → ps01..ps22（仅处理 t 前缀，幂等）
+}
+
+const MIGRATIONS = [ migrateV0ToV1 ];
+
+/* 顺序执行迁移，直到数据版本达到当前版本；每步前自动备份 */
+function runMigrations(app){
+  ensureAppShape(app);
+  let v = app.dataVersion | 0;          // 未标记 → 0（legacy）
+  if(v >= DATA_VERSION) return;
+  const startV = v;
+  let guard = 0;
+  while(v < DATA_VERSION && guard < 50){
+    guard++;
+    backupBeforeMigrate(app);           // 每步前先备份
+    const step = MIGRATIONS[v];
+    if(typeof step === 'function') step(app);
+    v++;
+    app.dataVersion = v;
+    try{ localStorage.setItem(APP_KEY, JSON.stringify(app)); }catch(e){}
+  }
+  app.dataVersion = DATA_VERSION;
+  if(startV < DATA_VERSION){
+    console.info('[migration] 数据已从 v'+startV+' 迁移至 v'+DATA_VERSION+'，已自动备份旧数据');
+  }
+}
+
 function load(){
   // 候选存储键：当前键 + 历史上可能用过的旧键名（防止早期版本命名不同导致"数据丢失"）
   const CANDIDATE_KEYS=[APP_KEY,'xzgz_app_v1','xzgz_app','xzgz_renovation','renovation_app','xzjz_app'];
@@ -4366,12 +4458,13 @@ function load(){
   if(App.currentProjectId&&!App.projects.find(p=>p.id===App.currentProjectId)){
     App.currentProjectId=App.projects.length?App.projects[0].id:null;
   }
-  /* 人材档案：统一为账号级全局数据源（跨项目永久可用、删除项目不丢） */
-  App.archive=App.archive||{personnel:[],suppliers:[]};
-  if(!Array.isArray(App.archive.personnel))App.archive.personnel=[];
-  if(!Array.isArray(App.archive.suppliers))App.archive.suppliers=[];
-  migrateGlobalArchive();
-  migrateChecked();
+  /* 数据版本化 + 顺序迁移管道：迁移前自动备份、幂等安全、结构兜底、损坏可恢复 */
+  runMigrations(App);
+  if(!validateApp(App)){
+    const _rec=tryRecoverFromBackup();
+    if(_rec){ App=_rec; runMigrations(App); }
+    else { console.error('[load] 数据校验失败且无可用备份，已重置为空白'); App=JSON.parse(JSON.stringify(APP_DEFAULT)); }
+  }
   // 启动时检测存储是否可用，不可用则立即提示用户（避免"导入成功但关掉就没了"的静默丢失）
   if(!storageAvailable()){
     __storageBroken=true;
