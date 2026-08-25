@@ -3004,31 +3004,57 @@ a{color:#003a8c;text-decoration:none}
 </div>
 
 <div class="modal-overlay" id="addMaterialPlanModal">
-  <div class="modal" style="max-width:640px;width:94%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
-    <div class="modal-header" style="flex-shrink:0"><div class="modal-title">新增材料采购计划</div><div class="modal-close" onclick="closeModal('addMaterialPlanModal')">✕</div></div>
-    <div class="adj-subtitle" style="flex-shrink:0">从采购、付款、运输到到场验收统一跟踪。</div>
-    <div class="modal-body" style="overflow-y:auto;padding:16px 20px">
-      <div class="form-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group"><label class="form-label">材料名称 <b style="color:#ff4d4f">*</b></label><input id="mpName" type="text" placeholder="例如：客厅地砖" list="mpNameList" autocomplete="off"><datalist id="mpNameList"></datalist></div>
-        <div class="form-group"><label class="form-label">分类 <b style="color:#ff4d4f">*</b></label><select id="mpCat"><option value="材料采购">材料采购</option><option value="人工劳务">人工劳务</option><option value="包工包料">包工包料</option><option value="系统设备">系统设备</option><option value="家电电器">家电电器</option><option value="软装家具">软装家具</option><option value="项目工资">项目工资</option><option value="设计费用">设计费用</option><option value="运营管理">运营管理</option><option value="服务杂项">服务杂项</option></select></div>
-        <div class="form-group"><label class="form-label">关联施工节点</label><select id="mpStepId"><option value="">暂不关联</option></select></div>
-        <div class="form-group"><label class="form-label">采购负责人</label><select id="mpBuyer"><option value="">暂不指定</option></select></div>
-        <div class="form-group"><label class="form-label">供应商</label><input id="mpVendor" type="text" placeholder=""></div>
-        <div class="form-group"><label class="form-label">供应商电话</label><input id="mpVendorPhone" type="tel" placeholder=""></div>
-        <div class="form-group"><label class="form-label">数量</label><input id="mpQty" type="number" value="1" min="0"></div>
-        <div class="form-group"><label class="form-label">单位</label><input id="mpUnit" type="text" value="项"></div>
-        <div class="form-group"><label class="form-label">采购金额（元）</label><input id="mpAmount" type="number" value="0" min="0"></div>
-        <div class="form-group"><label class="form-label">付款状态</label><select id="mpPayStatus"><option value="未付款">未付款</option><option value="部分付款">部分付款</option><option value="已付清">已付清</option></select></div>
-        <div class="form-group"><label class="form-label">采购状态</label><select id="mpStatus"><option value="待采购">待采购</option><option value="已订购">已订购</option><option value="已到场">已到场</option><option value="已完成">已完成</option></select></div>
+  <div class="modal" style="max-width:680px;width:96%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0"><div class="modal-title">新增材料与厂家调配</div><div class="modal-close" onclick="closeModal('addMaterialPlanModal')">✕</div></div>
+    <div class="adj-subtitle" style="flex-shrink:0">材料应付、实时与付时会自动同步下方"项目成本"，无需重复录入。</div>
+    <div class="modal-body" style="overflow-y:auto;padding:16px 22px">
+
+      <!-- ═══ Section 1: 基础信息 ═══ -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;color:#333;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #eee">基础信息　<span style="font-weight:400;color:#888;font-size:11px">材料、厂家与项目归属</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label class="form-label">材料名称 <b style="color:#ff4d4f">*</b></label><input id="mpName" type="text" placeholder="例如：客厅地砖" list="mpNameList" autocomplete="off"><datalist id="mpNameList"></datalist></div>
+          <div class="form-group"><label class="form-label">关联施工节点</label><select id="mpStepId"><option value="">暂不关联</option></select></div>
+          <div class="form-group"><label class="form-label">所属费用总项</label><select id="mpCostCat"><option value="">不归入，费用用总项</option><option value="材料费">材料费</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="设计费">设计费</option><option value="管理费">管理费</option><option value="其他">其他</option></select></div>
+          <div class="form-group"><label class="form-label">调配负责人</label><select id="mpBuyer"><option value="">暂不指定</option></select></div>
+          <div class="form-group"><label class="form-label">厂家名称 <b style="color:#ff4d4f">*</b></label><input id="mpVendor" type="text" placeholder="例如：某某全屋定制工厂"></div>
+          <div class="form-group"><label class="form-label">厂家电话</label><input id="mpVendorPhone" type="tel" placeholder=""></div>
+          <div class="form-group"><label class="form-label">数量</label><input id="mpQty" type="number" value="1" min="0"></div>
+          <div class="form-group"><label class="form-label">单位</label><input id="mpUnit" type="text" value="项"></div>
+        </div>
+        <div style="font-size:11px;color:#999;margin-top:6px;line-height:1.5">选择后，本材料会作为该费用总项下的分项，金额和付款数自动联动。</div>
       </div>
-      <div class="form-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-        <div class="form-group"><label class="form-label">计划到场日期 <b style="color:#ff4d4f">*</b></label><input id="mpDueDate" type="date"></div>
-        <div class="form-group"><label class="form-label">延期原因</label><input id="mpDelayReason" type="text" placeholder="延期时填写"></div>
+
+      <!-- ═══ Section 2: 金额与付款 ═══ -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;color:#333;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #eee">金额与付款　<span style="font-weight:400;color:#888;font-size:11px">付款数据会同步到项目成本</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label class="form-label">材料金额（元）</label><input id="mpAmount" type="number" value="0" min="0"></div>
+          <div class="form-group"><label class="form-label">付款状态</label><select id="mpPayStatus"><option value="未付款">未付款</option><option value="部分付款">部分付款</option><option value="已付清">已付清</option></select></div>
+          <div class="form-group" style="grid-column:1/-1"><label class="form-label">已支付金额（元）</label><input id="mpPaidAmount" type="number" value="0" min="0"></div>
+        </div>
+        <div style="font-size:11px;color:#999;margin-top:6px;line-height:1.5">未付款自动为 0；已付清时自动等于材料金额。</div>
       </div>
-      <div class="form-group" style="margin-top:12px"><label class="form-label">到场 / 验收图片</label><input id="mpPhotos" type="file" multiple accept="image/*"><div style="font-size:11px;color:#bbb;margin-top:2px">选择文件　未选择任何文件</div></div>
-      <div class="form-group" style="margin-top:12px"><label class="form-label">备注</label><textarea id="mpNote" rows="3" style="resize:vertical"></textarea></div>
+
+      <!-- ═══ Section 3: 采购与履约 ═══ -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;color:#333;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #eee">采购与履约　<span style="font-weight:400;color:#888;font-size:11px">采购物选成与厂家履约分别记录</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group"><label class="form-label">采购物选状态</label><select id="mpStatus"><option value="待采购">待采购</option><option value="已订购">已订购</option><option value="已到场">已到场</option><option value="已完成">已完成</option></select></div>
+          <div class="form-group"><label class="form-label">厂家履约状态 <b style="color:#ff4d4f">*</b></label><select id="mpFactoryStatus"><option value="未下单">未下单</option><option value="已下单">已下单</option><option value="生产中">生产中</option><option value="已发货">已发货</option><option value="已安装">已安装</option><option value="已完成">已完成</option></select></div>
+          <div class="form-group"><label class="form-label">计划到场日期 <b style="color:#ff4d4f">*</b></label><input id="mpDueDate" type="date"></div>
+          <div class="form-group"><label class="form-label">补充延期原因<span style="font-weight:400;color:#999;font-size:10px">（延期时填写）</span></label><input id="mpDelayReason" type="text" placeholder="说明延期原因与下一步处理"></div>
+        </div>
+      </div>
+
+      <!-- ═══ Section 4: 到场 / 验收图片 ═══ -->
+      <div class="form-group" style="margin-bottom:14px"><label class="form-label">到场 / 验收图片</label><input id="mpPhotos" type="file" multiple accept="image/*"><div style="font-size:11px;color:#bbb;margin-top:2px">选择文件　未选择任何文件</div></div>
+
+      <!-- ═══ Section 5: 备注 ═══ -->
+      <div class="form-group" style="margin-bottom:0"><label class="form-label">备注</label><textarea id="mpNote" rows="3" style="resize:vertical"></textarea></div>
+
     </div>
-    <div class="form-actions" style="flex-shrink:0;padding:14px 20px;border-top:1px solid #f0f0f0">
+    <div class="form-actions" style="flex-shrink:0;padding:14px 22px;border-top:1px solid #f0f0f0">
       <button class="btn-outline" onclick="closeModal('addMaterialPlanModal')">取消</button>
       <button class="btn-primary" onclick="saveMaterialPlanBatch()">保存材料计划</button>
     </div>
@@ -3047,7 +3073,7 @@ a{color:#003a8c;text-decoration:none}
       <button class="btn-outline" onclick="closeModal('materialPlanListModal')">关闭</button>
       <div style="display:flex;gap:8px">
         <button class="btn-outline" style="color:#ff4d4f;border-color:#ffccc7" onclick="deleteMplSelected()" id="mplDelBtn">🗑 删除选中</button>
-        <button class="btn-primary" onclick="closeModal('materialPlanListModal');openAddMaterialPlan()">+ 新增材料采购计划</button>
+        <button class="btn-primary" onclick="closeModal('materialPlanListModal');openAddMaterialPlan()">+ 新增厂家调配</button>
       </div>
     </div>
   </div>
@@ -11496,31 +11522,33 @@ function openAddMaterialPlan(){
   const p=cur();if(!p){alert('请先选择项目');return;}
   ensureProjectSteps(p);
   const steps=p.processSteps||[];
-  /* 填充关联施工节点下拉 */
+  /* 填充关联施工节点下拉（自动关联相关步骤及节点） */
   const sel=$('mpStepId');
   sel.innerHTML='<option value="">暂不关联</option>'+steps.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
-  /* 填充采购负责人下拉（从项目成员或常用） */
+  /* 填充调配负责人下拉（从项目成员） */
   const buyerSel=$('mpBuyer');
   buyerSel.innerHTML='<option value="">暂不指定</option>';
   (p.members||[]).forEach(m=>{buyerSel.innerHTML+=`<option value="${m.name}">${escHtml(m.name)}</option>`;});
-  /* 填充材料名称联想列表（从已有采购清单+系统推荐材料） */
+  /* 填充材料名称联想列表（从已有采购+系统推荐材料） */
   const dl=$('mpNameList');
   const existingNames=(p.purchases||[]).map(x=>x.name);
-  /* 去重 + 系统推荐材料 */
   const allNames=new Set(existingNames);
   PURCHASE_CATS.forEach(c=>(c.items||[]).forEach(n=>allNames.add(n)));
   dl.innerHTML=Array.from(allNames).map(n=>`<option value="${escHtml(n)}">`).join('');
   /* 重置表单 */
   $('mpName').value='';
   $('mpStepId').value='';
+  $('mpCostCat').value='';
   $('mpBuyer').value='';
   $('mpVendor').value='';
   $('mpVendorPhone').value='';
   $('mpAmount').value='0';
+  $('mpPaidAmount').value='0';
   $('mpQty').value='1';
   $('mpUnit').value='项';
   $('mpPayStatus').value='未付款';
   $('mpStatus').value='待采购';
+  $('mpFactoryStatus').value='未下单';
   $('mpDueDate').value=todayISO();
   $('mpDelayReason').value='';
   $('mpNote').value='';
@@ -11599,7 +11627,7 @@ function syncPurchaseToExpense(p, purchase){
   }
 }
 
-/* 保存单条材料采购计划（从表单） */
+/* 保存单条材料与厂家调配（从表单） */
 function saveMaterialPlanBatch(){
   const p=cur();if(!p){closeModal('addMaterialPlanModal');return;}
   const name=$('mpName').value.trim();
@@ -11609,19 +11637,27 @@ function saveMaterialPlanBatch(){
   const stepId=$('mpStepId').value;
   const step=stepId?(p.processSteps||[]).find(s=>s.id===stepId):null;
   p.purchases=p.purchases||[];
+  /* 已支付金额联动：未付款自动为0；已付清时自动等于材料金额 */
+  let paidAmt=parseFloat($('mpPaidAmount').value)||0;
+  const payStatus=$('mpPayStatus').value;
+  if(payStatus==='未付款')paidAmt=0;
+  else if(payStatus==='已付清')paidAmt=parseFloat($('mpAmount').value)||0;
   const data={
     name:name,
-    cat:$('mpCat').value||'材料采购',
+    cat:$('mpCostCat').value||'材料采购',
+    costCat:$('mpCostCat').value||'',
     stage:step?step.name:'',
     stageId:stepId||'',
     buyer:$('mpBuyer').value,
     vendor:$('mpVendor').value.trim(),
     vendorPhone:$('mpVendorPhone').value.trim(),
     budget:parseFloat($('mpAmount').value)||0,
+    paidAmount:paidAmt,
     qty:parseFloat($('mpQty').value)||1,
     unit:$('mpUnit').value.trim()||'项',
-    payStatus:$('mpPayStatus').value,
+    payStatus:payStatus,
     status:$('mpStatus').value,
+    factoryStatus:$('mpFactoryStatus').value,
     dueDate:dueDate,
     delayReason:$('mpDelayReason').value.trim(),
     note:$('mpNote').value.trim()
@@ -11674,16 +11710,18 @@ function editPurchaseItem(id){
   /* 复用新增弹窗，预填数据 */
   openAddMaterialPlan();
   $('mpName').value=item.name||'';
-  $('mpCat').value=item.cat||'材料采购';
+  $('mpCostCat').value=item.costCat||item.cat||'材料采购';
   $('mpStepId').value=item.stageId||'';
   $('mpBuyer').value=item.buyer||'';
   $('mpVendor').value=item.vendor||'';
   $('mpVendorPhone').value=item.vendorPhone||'';
   $('mpAmount').value=String(item.budget||0);
+  $('mpPaidAmount').value=String(item.paidAmount||0);
   $('mpQty').value=String(item.qty||1);
   $('mpUnit').value=item.unit||'项';
   $('mpPayStatus').value=item.payStatus||'未付款';
   $('mpStatus').value=item.status||'待采购';
+  $('mpFactoryStatus').value=item.factoryStatus||'未下单';
   $('mpDueDate').value=item.dueDate||'';
   $('mpDelayReason').value=item.delayReason||'';
   $('mpNote').value=item.note||'';
