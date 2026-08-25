@@ -6088,7 +6088,7 @@ function refreshProjectUI(){
 // ============================================================
 // PAGE NAV
 // ============================================================
-const PROJECT_SCOPED=new Set(['home','process','purchase','finance','diary']);
+const PROJECT_SCOPED=new Set(['home','process','purchase','finance','diary','contracts','invoices']);
 function showNoProject(page){
   const el=$('noProjectOverlay'); if(!el)return;
   const has=App.projects.length>0;
@@ -6136,9 +6136,9 @@ function switchPage(page){
   if(page==='archive')renderArchive('archivePanel');
   if(page==='contracts')renderContracts();
   if(page==='invoices')renderInvoices();
-  /* 按页面控制顶部项目选择器显隐：全局聚合页(总览/工具/日记/知识/流水/报价/合同/发票)隐藏，项目专属页(流程/采购/记账/比价)显示 */
+  /* 按页面控制顶部项目选择器显隐：全局聚合页(总览/工具/日记/知识/流水/报价)隐藏，项目专属页(流程/采购/记账/比价/合同/发票)显示 */
   const ps=$('topProjectSwitcher');
-  if(ps){const hidePages=['home','tools','diary','knowledge','ledger','quote','contracts','invoices'];ps.style.display=hidePages.includes(page)?'none':'';}
+  if(ps){const hidePages=['home','tools','diary','knowledge','ledger','quote'];ps.style.display=hidePages.includes(page)?'none':'';}
   /* 切换页面时始终置顶 */
   window.scrollTo(0,0);
 }
@@ -11578,12 +11578,11 @@ function stepNameById(pid,sid){
 function renderContracts(){
   const el=$('contractsPanel');if(!el)return;
   const list=App.contracts||[];
-  let filterProj=$('conFilterProj')?$('conFilterProj').value:'';
+  let filterProj=App.currentProjectId||'';
   let base=list.slice();
   if(filterProj)base=base.filter(c=>c.projectId===filterProj);
   let arr=base.slice();
   if(_conTab!=='全部')arr=arr.filter(c=>c.type===_conTab);
-  const projOpts='<option value="">全部项目</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
   let cards='';
   if(arr.length>0){
     cards=arr.map(c=>{
@@ -11618,6 +11617,7 @@ function renderContracts(){
   const activeCount=base.filter(c=>['已签','执行中'].includes(c.status)).length;
   const scanCount=base.reduce((s,c)=>s+((c.scanImages&&c.scanImages.length)||0),0);
   const conTabs=['全部'].concat(CONTRACT_TYPES);
+  const projName=filterProj?projNameById(filterProj):'全部项目';
   el.innerHTML=
     `<div class="module-head">
        <div class="module-head-main">
@@ -11635,7 +11635,7 @@ function renderContracts(){
        <div class="proj-stat-item"><div class="proj-stat-label">已签·执行中</div><div class="proj-stat-val">${activeCount}</div></div>
        <div class="proj-stat-item"><div class="proj-stat-label">扫描件份数</div><div class="proj-stat-val">${scanCount}</div></div>
      </div>
-     <div class="archive-filter-bar"><select id="conFilterProj" onchange="renderContracts()">${projOpts}</select><span class="archive-count">${_conTab==='全部'?'全部类型':_conTab} · 共 ${arr.length} 份</span></div>
+     <div class="archive-filter-bar"><span class="archive-count">${_conTab==='全部'?'全部类型':_conTab} · 共 ${arr.length} 份（${escHtml(projName)}）</span></div>
      <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
        ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有合同，点击右上角「新增合同」开始登记。</div>'}
      </div>`;
@@ -11760,14 +11760,13 @@ function closeContractScanPreview(){
 function renderInvoices(){
   const el=$('invoicesPanel');if(!el)return;
   const list=App.invoices||[];
-  let fProj=$('invFilterProj')?$('invFilterProj').value:'';
+  let fProj=App.currentProjectId||'';
   let base=list.slice();
   if(fProj)base=base.filter(v=>v.projectId===fProj);
   let arr=base.slice();
   if(_invTab==='销项')arr=arr.filter(v=>v.direction==='销项');
   else if(_invTab==='进项')arr=arr.filter(v=>v.direction==='进项');
   else if(_invTab==='已开')arr=arr.filter(v=>v.status==='已开');
-  const projOpts='<option value="">全部项目</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
   let cards='';
   if(arr.length>0){
     cards=arr.map(v=>{
@@ -11799,6 +11798,7 @@ function renderInvoices(){
   }
   const tax=computeTaxSummary(fProj);
   const invTabs=['全部','销项','进项','已开'];
+  const projName=fProj?projNameById(fProj):'全部项目';
   el.innerHTML=
     `<div class="module-head">
        <div class="module-head-main">
@@ -11816,7 +11816,7 @@ function renderInvoices(){
        <div class="proj-stat-item"><div class="proj-stat-label">进项税额</div><div class="proj-stat-val">¥${fmt(tax.input)}</div></div>
        <div class="proj-stat-item"><div class="proj-stat-label">应缴增值税</div><div class="proj-stat-val" style="color:#fa8c16">¥${fmt(tax.vat)}</div></div>
      </div>
-     <div class="archive-filter-bar"><select id="invFilterProj" onchange="renderInvoices()">${projOpts}</select><span class="archive-count">${_invTab} · 共 ${arr.length} 张</span></div>
+     <div class="archive-filter-bar"><span class="archive-count">${_invTab} · 共 ${arr.length} 张（${escHtml(projName)}）</span></div>
      <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
        ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有发票，点击右上角「新增发票」开始登记。</div>'}
      </div>`;
