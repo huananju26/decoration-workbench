@@ -1805,6 +1805,9 @@ a{color:#003a8c;text-decoration:none}
 .aq-item.today .aq-kind{background:#fff1b8;color:#ad6800;}
 .aq-check-step{background:#fff1f0;border-color:#ffa39e;color:#ff4d4f;font-weight:700;font-size:13px;cursor:pointer;}
 .aq-kind-step{background:#fff2e8;color:#fa8c16;border:1px solid #ffd591;}
+.aq-check-inv{background:#fff1f0;border-color:#ffa39e;color:#cf1322;font-size:12px;cursor:pointer;}
+.aq-kind-inv{background:#fff1f0;color:#cf1322;border:1px solid #ffa39e;}
+.aq-item-inv{background:#fffaf7;}
 .aq-filter-tabs{display:flex;gap:4px;padding:8px 0 4px;border-bottom:1px solid #f0f0f0;margin-bottom:6px;}
 .aq-ftab{font-size:12px;padding:3px 12px;border-radius:12px;cursor:pointer;color:#666;background:transparent;transition:.2s;user-select:none;}
 .aq-ftab:hover{color:#003a8c;background:#e6f4ff;}
@@ -3726,7 +3729,7 @@ a{color:#003a8c;text-decoration:none}
     <div class="modal-header"><div class="modal-title" id="financeModalTitle">记一笔</div><div class="modal-close" onclick="closeModal('financeModal')">✕</div></div>
     <div class="modal-body">
       <div class="form-group"><label class="form-label">归属项目 *</label>
-        <select id="fProject" onchange="refreshContactDatalists(App.projects.find(x=>x.id===this.value))"></select>
+        <select id="fProject" onchange="refreshContactDatalists(App.projects.find(x=>x.id===this.value));toggleFinInvoice()"></select>
       </div>
       <div class="form-group"><label class="form-label">类型</label>
         <select id="fType" onchange="toggleFinType(this.value)">
@@ -3735,11 +3738,26 @@ a{color:#003a8c;text-decoration:none}
         </select>
       </div>
       <div class="form-group"><label class="form-label">账户性质 *</label>
-        <select id="fAccountType">
+        <select id="fAccountType" onchange="toggleFinInvoice()">
           <option value="对私">对私（个人卡 / 微信支付宝 / 业主个人付）</option>
           <option value="对公">对公（对公户 / 可开票主体）</option>
         </select>
         <div class="form-hint">资金真实走账性质；同一项目可混用（如业主个人转你=对私，向品牌商采购=对公）。</div>
+      </div>
+      <div class="form-group" id="fInvoiceGroup" style="display:none">
+        <label class="form-label">开票状态 *</label>
+        <select id="fInvoiceStatus" onchange="toggleFinInvoice()">
+          <option value="未开票">未开票（需跟进开/取票）</option>
+          <option value="已开票">已开票（已开具 / 已索取）</option>
+        </select>
+        <div class="form-hint">对公走账应开具或索取发票；未开票将自动进入「待办事项」提醒跟进。</div>
+        <div id="fInvoiceLinkRow" style="display:none;margin-top:8px">
+          <div class="form-row">
+            <select id="fInvoiceSelect" style="flex:1"></select>
+            <button type="button" class="btn-outline" onclick="finOpenInvoiceForLink()">＋ 新建并关联</button>
+          </div>
+          <div class="form-hint">选择已有的对应发票关联，或新建一张并自动关联到本笔流水。</div>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">金额 *</label><input type="number" id="fAmount" placeholder="0.00"></div>
@@ -7232,6 +7250,19 @@ function renderActionQueueAll(projects){
         });
       }
     });
+    /* 对公未开票提醒：每笔对公收/付款若无关联发票，进入待办跟进 */
+    [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
+      arr.forEach(rec=>{
+        if(defaultAccountType(rec,p)!=='对公') return;
+        if(findLinkedInvoice(rec.id,tt)) return; /* 已开票（已在发票系统登记） */
+        if(rec.invoiceStatus==='已开票') return; /* 显式标记已开票 */
+        items.push({
+          id:'fin_'+rec.id, title:(rec.name||'对公'+(tt==='income'?'收款':'付款')), done:false,
+          due:'', _kind:'invoice', _proj:pn, _pid:p.id, _finType:tt, _finId:rec.id,
+          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(rec.amount||0)+' 未开票，需跟进开/取票'
+        });
+      });
+    });
   });
   items.sort((a,b)=>{
     /* 未完成排前面，已完成排后面（!!统一处理 purchase 无 done 字段的情况） */
@@ -7261,6 +7292,7 @@ function renderActionQueueAll(projects){
 
   if(!total){
     emptyEl.style.display='';listEl.style.display='none';pagerEl.style.display='none';
+    listEl.innerHTML=''; /* 清空旧内容，避免隐藏态残留已解决项 */
     $('aqFilterTabs').style.display='';
     return;
   }
@@ -7279,17 +7311,22 @@ function renderActionQueueAll(projects){
     const metaDate = doneDate ? doneDate : rawDate;
     const datePrefix = item.done ? metaDate+' · ' : '';
     const dateSuffix = item.done ? '' : ' · '+metaDate;
-    /* step 类型：左侧⚠跳转流程页；adjust 类型：点击勾选=去登记到账（收齐后自动移出待办） */
+    /* step 类型：左侧⚠跳转流程页；adjust 类型：点击勾选=去登记到账；invoice 类型：点击🧾去开票 */
     const checkHtml=isStep?`<div class="aq-check aq-check-step" onclick="event.stopPropagation();switchToProject('${item._pid}');switchPage('process');">⚠</div>`
       :(kind==='adjust'?`<div class="aq-check" title="点击登记到账" onclick="event.stopPropagation();openRecordAdjModal('${item.id}');switchToProject('${item._pid}');">¥</div>`
-      :`<div class="aq-check ${item.done?'checked':''}" onclick="toggleItem('${item.id}','${kind}','${item._pid}')">${item.done?'✓':''}</div>`);
+      :(kind==='invoice'?`<div class="aq-check aq-check-inv" title="点击去开票（关联发票后提醒自动消失）" onclick="event.stopPropagation();openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')">🧾</div>`
+      :`<div class="aq-check ${item.done?'checked':''}" onclick="toggleItem('${item.id}','${kind}','${item._pid}')">${item.done?'✓':''}</div>`));
     /* 当前状态：pending / overdue / done —— 用于原位编辑高亮 */
     const curStatus=item.done?'done':(isOver?'overdue':'pending');
-    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(isStep?'节点逾期':(item.done?'已完成':'待办')));
-    return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${isToday?'today':''}">${checkHtml}
+    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?'未开票':(isStep?'节点逾期':(item.done?'已完成':'待办'))));
+    /* 未开票提醒项点击右侧标签也跳转去开票，而非打开状态编辑 */
+    const labelOnclick = kind==='invoice'
+      ? `openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')`
+      : `openAqStatusPop(this,'${item.id}','${kind}','${item._pid}','${curStatus}')`;
+    return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${isToday?'today':''}">${checkHtml}
       <div class="aq-info"><div class="aq-title ${isOver?'overdue':''}">${item.title||item.name}${isOver?' <span style="color:#ff4d4f;font-size:11px">'+(isStep?'已逾期':'逾期')+'</span>':''}</div>
       <div class="aq-meta">${datePrefix}${item._proj||''}${dateSuffix} ${item.stage?'· '+getStageName(item.stage):''}</div>${noteHtml}</div>
-      <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''}" title="点击修改状态" onclick="event.stopPropagation();openAqStatusPop(this,'${item.id}','${kind}','${item._pid}','${curStatus}')">${kindLabel}<span class="aq-kind-caret">▾</span></span></li>`;
+      <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-kind-inv':''}" title="点击去开票" onclick="event.stopPropagation();${labelOnclick}">${kindLabel}<span class="aq-kind-caret">▾</span></span></li>`;
   }).join('');
 
   /* 分页器（原位翻页，不跳转整页） */
@@ -11606,10 +11643,30 @@ const TAX_RATES=[9,3,1];
 const DEFAULT_TAX_RATE=9;
 let _conTab='全部';
 let _invTab='全部';
+/* 记一笔 ↔ 发票管理 联动状态 */
+let currentFinRecId='';      /* 当前记一笔记录的 id（新建时预生成，编辑时取原 id，保证与发票互链一致） */
+let currentFinInvoiceId='';  /* 当前已关联发票 id */
+let _pendingFinInvoiceLink=null; /* 从记一笔/待办新建发票时的回写上下文 {financeId,projectId,type} */
 
 function projNameById(id){const p=App.projects.find(x=>x.id===id);return p?projDisplayName(p):'—';}
 function contractById(id){return (App.contracts||[]).find(c=>c.id===id);}
 function invoiceById(id){return (App.invoices||[]).find(v=>v.id===id);}
+/* 找到与某笔收/付款流水互链的发票（依据 invoice.linkedIncomeId / linkedExpenseId） */
+function findLinkedInvoice(recId,type){
+  if(!recId)return null;
+  return (App.invoices||[]).find(v=> type==='income' ? v.linkedIncomeId===recId : v.linkedExpenseId===recId);
+}
+/* 找某项目下某条收/付款流水记录对象（用于从待办跳转开票时预填金额/名称） */
+function findFinRec(pid,recId){
+  const p=App.projects.find(x=>x.id===pid);if(!p||!recId)return null;
+  return (p.income||[]).concat(p.expense||[]).find(r=>r.id===recId)||null;
+}
+/* 该笔流水是否已开票（已有关联发票即视为已开票，单一真相源） */
+function isFinInvoiced(recId,type){return !!findLinkedInvoice(recId,type);}
+/* 从待办「未开票」提醒跳转：打开发票弹窗并预填关联该笔流水 */
+function openInvoiceForFlow(pid,finId,type){
+  openAddInvoice({financeId:finId, projectId:pid, type:type});
+}
 function stepsOfProject(pid){const p=App.projects.find(x=>x.id===pid);return (p&&p.processSteps)||[];}
 function invoiceTax(no,rate){const n=parseFloat(no)||0,r=parseFloat(rate)||0;return Math.round(n*r/100*100)/100;}
 function invoiceTotal(no,tax){return Math.round(((parseFloat(no)||0)+(parseFloat(tax)||0))*100)/100;}
@@ -11907,8 +11964,8 @@ function onInvContractChange(){
     calcInvAmounts();
   }
 }
-function openAddInvoice(){
-  _editingInvoiceId=null;
+function openAddInvoice(prefill){
+  _editingInvoiceId=null;_pendingFinInvoiceLink=null;
   $('invoiceModalTitle').textContent='新增发票';
   $('invSaveBtn').textContent='保存发票';
   $('invDirection').value='销项';onInvDirectionChange();
@@ -11923,6 +11980,17 @@ function openAddInvoice(){
   $('invIssuer').value='';$('invPayee').value='';$('invPayer').value='';
   $('invDate').value=todayISO();
   $('invStatus').value='已开';$('invDeduct').value='待抵扣';$('invVerify').value='未查验';$('invNote').value='';
+  /* 从「记一笔 / 待办」跳转新建：预填方向、项目、关联流水与金额，保存后自动回写关联 */
+  if(prefill&&prefill.financeId){
+    const direction=prefill.type==='income'?'销项':'进项';
+    $('invDirection').value=direction;onInvDirectionChange();
+    if(prefill.projectId)$('invProject').value=prefill.projectId;
+    refreshInvContractOptions();refreshInvFlowOptions();
+    if(direction==='销项')$('invLinkedIncome').value=prefill.financeId;else $('invLinkedExpense').value=prefill.financeId;
+    const rec=findFinRec(prefill.projectId,prefill.financeId);
+    if(rec){ $('invAmountNoTax').value=rec.amount||'';calcInvAmounts(); $('invNote').value='关联：'+(rec.name||''); if(rec.date)$('invDate').value=rec.date; }
+    _pendingFinInvoiceLink={financeId:prefill.financeId,projectId:prefill.projectId,type:prefill.type};
+  }
   showModal('invoiceModal');
 }
 function saveInvoice(){
@@ -11944,8 +12012,17 @@ function saveInvoice(){
     verifyStatus:$('invVerify').value,note:$('invNote').value.trim()
   };
   const arr=App.invoices;
-  if(_editingInvoiceId){const idx=arr.findIndex(x=>x.id===_editingInvoiceId);if(idx>=0)arr[idx]=Object.assign(arr[idx],data);_editingInvoiceId=null;}
-  else{data.id='inv_'+uid();arr.push(data);}
+  let _savedInvId=null;
+  if(_editingInvoiceId){const idx=arr.findIndex(x=>x.id===_editingInvoiceId);if(idx>=0){arr[idx]=Object.assign(arr[idx],data);_savedInvId=arr[idx].id;}_editingInvoiceId=null;}
+  else{data.id='inv_'+uid();arr.push(data);_savedInvId=data.id;}
+  /* 从「记一笔 / 待办」新建的发票：回写关联流水，并同步记一笔弹窗 UI */
+  if(_pendingFinInvoiceLink&&_pendingFinInvoiceLink.financeId){
+    const inv=arr.find(x=>x.id===_savedInvId);
+    if(inv){ if(inv.direction==='销项') inv.linkedIncomeId=_pendingFinInvoiceLink.financeId; else inv.linkedExpenseId=_pendingFinInvoiceLink.financeId; }
+    currentFinInvoiceId=_savedInvId;
+    if($('fInvoiceStatus')){ $('fInvoiceStatus').value='已开票'; toggleFinInvoice(); if($('fInvoiceSelect'))$('fInvoiceSelect').value=_savedInvId; }
+    _pendingFinInvoiceLink=null;
+  }
   persist();closeModal('invoiceModal');renderInvoices();if(typeof renderFinance==='function')renderFinance();
 }
 function editInvoice(id){
@@ -13711,19 +13788,25 @@ function renderLedger(){
     const tagText=isIncome?'收入':'支出';
     // 发票反向徽章：收款行→已开销项票；付款行→已收进项票（现查，不存储重复数据）
     let flowBadge='';
-    if(r.type==='income'){const v=(App.invoices||[]).find(x=>x.linkedIncomeId===r.rec.id);if(v)flowBadge=' <span class="archive-tag blue" title="已开销项发票">🧾销项票</span>';}
-    else if(r.type==='expense'){const v=(App.invoices||[]).find(x=>x.linkedExpenseId===r.rec.id);if(v)flowBadge=' <span class="archive-tag blue" title="已收进项发票">🧾进项票</span>';}
+    const linkedInv = r.type==='income'
+      ? (App.invoices||[]).find(x=>x.linkedIncomeId===r.rec.id)
+      : (App.invoices||[]).find(x=>x.linkedExpenseId===r.rec.id);
+    if(linkedInv) flowBadge=' <span class="archive-tag blue" title="已开'+(r.type==='income'?'销项':'进项')+'发票">🧾'+(r.type==='income'?'销项票':'进项票')+'</span>';
     /* 账户性质徽章：对公（深蓝）/ 对私（橙），真相源为每笔 rec.accountType */
     const at=defaultAccountType(r.rec,r.proj);
     const acctBadge = at==='对公'
       ? ' <span class="archive-tag" style="background:#e6f4ff;color:#003a8c;border:1px solid #91caff" title="对公账户（对公户 / 可开票主体）">对公</span>'
       : ' <span class="archive-tag" style="background:#fff7e6;color:#d48806;border:1px solid #ffd591" title="对私账户（个人卡 / 微信 / 业主个人付）">对私</span>';
+    /* 对公未开票提醒徽章：已在发票系统登记则不再提示 */
+    const noInvBadge = (at==='对公' && !linkedInv)
+      ? ' <span class="archive-tag" style="background:#fff1f0;color:#cf1322;border:1px solid #ffa39e" title="对公走账但未开票，请跟进开/取票">⚠ 未开票</span>'
+      : '';
     html+='<tr class="'+cls.trim()+'">'+
       '<td>'+r._idx+'</td>'+
       '<td class="ld-date">'+(r.date||'-')+'</td>'+
       '<td><span class="ld-tag'+tagCls+'">'+tagText+'</span></td>'+
       '<td class="ld-proj" onclick="switchToProject(\''+r.proj.id+'\');switchPage(\'finance\')">'+escHtml(projDisplayName(r.proj))+'</td>'+
-      '<td class="ld-detail" title="'+escHtml(r.detail)+'">'+escHtml(r.detail)+flowBadge+acctBadge+'</td>'+
+      '<td class="ld-detail" title="'+escHtml(r.detail)+'">'+escHtml(r.detail)+flowBadge+acctBadge+noInvBadge+'</td>'+
       '<td class="ld-person">'+escHtml(r.person)+'</td>'+
       '<td class="amt-in">'+(isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
       '<td class="amt-out">'+(!isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
@@ -13803,6 +13886,12 @@ function editFinance(type,id){
   else{$('fCat').value=(EXPENSE_CAT_RENAME[found.cat]||found.cat)||'材料采购';$('fPayee').value=found.payee||'';}
   $('fDate').value=found.date||todayISO();$('fNote').value=found.note||'';
   $('fAccountType').value=found.accountType||defaultAccountType(found,foundP);
+  /* 开票状态与关联发票回显 */
+  currentFinRecId=found.id;currentFinInvoiceId='';_pendingFinInvoiceLink=null;
+  const _linked=findLinkedInvoice(found.id,type);
+  $('fInvoiceStatus').value=_linked?'已开票':'未开票';
+  if(_linked)currentFinInvoiceId=_linked.id;
+  toggleFinInvoice();
   /* 所属阶段必须在所有同步 DOM 操作完成后设值（setTimeout 0 确保 openFinanceModal 的 populateStageSelect 不覆盖） */
   if(type==='expense'){setTimeout(()=>{populateStageSelect('fStage');$('fStage').value=origStage;},0);}
   editingFinance={type:type,id:id,projectId:foundP.id};
@@ -13826,18 +13915,46 @@ function openFinanceModal(){
   if(App.projects.length===0){alert('请先创建项目再记账');return;}
   $('financeModalTitle').textContent='记一笔';
   editingFinance=null;
+  currentFinRecId=uid();currentFinInvoiceId='';_pendingFinInvoiceLink=null;
   populateProjectSelect('fProject');
   if(cur())$('fProject').value=cur().id;
   else if(App.projects.length)$('fProject').value=App.projects[0].id;
   $('fType').value='expense';$('fDetail').value='';$('fAmount').value='';
   $('fStatus').value='received';$('fCat').value='材料采购';$('fStage').value='';$('fIncomeCat').value='预付款';$('fPayer').value='';$('fPayee').value='';$('fDate').value=todayISO();$('fNote').value='';
+  $('fInvoiceStatus').value='未开票';
   toggleFinType('expense');
   populateStageSelect('fStage');
   refreshContactDatalists(App.projects.find(x=>x.id===$('fProject').value));
   /* 账户性质默认继承项目（企业→对公，个人→对私），可逐笔改 */
   const _defP=App.projects.find(x=>x.id===$('fProject').value);
   $('fAccountType').value=defaultAccountTypeForProject(_defP);
+  toggleFinInvoice();
   showModal('financeModal');
+}
+/* 记一笔·开票状态联动：仅对公显示；已开票时列出可关联发票 */
+function toggleFinInvoice(){
+  if(!$('fInvoiceGroup'))return;
+  const isCorp=$('fAccountType').value==='对公';
+  $('fInvoiceGroup').style.display=isCorp?'block':'none';
+  if(!isCorp){ if($('fInvoiceLinkRow'))$('fInvoiceLinkRow').style.display='none'; return; }
+  const st=$('fInvoiceStatus').value;
+  if($('fInvoiceLinkRow'))$('fInvoiceLinkRow').style.display=(st==='已开票')?'block':'none';
+  if(st==='已开票') populateFinInvoiceSelect();
+}
+/* 列出当前项目下、与所选收/付方向匹配的发票供关联 */
+function populateFinInvoiceSelect(){
+  if(!$('fInvoiceSelect'))return;
+  const direction=$('fType').value==='income'?'销项':'进项';
+  const pid=$('fProject').value||'';
+  const cands=(App.invoices||[]).filter(v=>v.direction===direction && (v.projectId||'')===pid);
+  $('fInvoiceSelect').innerHTML='<option value="">— 选择已有发票关联 —</option>'+
+    cands.map(v=>`<option value="${v.id}">${escHtml(v.type||'')} · ¥${fmt(v.amountTotal||0)} · ${escHtml(v.status||'')}</option>`).join('');
+  if(currentFinInvoiceId && cands.some(v=>v.id===currentFinInvoiceId)) $('fInvoiceSelect').value=currentFinInvoiceId;
+}
+/* 从记一笔弹窗「新建并关联」：打开发票弹窗并预填，保存后自动回写关联 */
+function finOpenInvoiceForLink(){
+  const type=$('fType').value;
+  openAddInvoice({financeId:currentFinRecId, projectId:$('fProject').value||'', type:type});
 }
 function toggleFinType(t){
   const isIncome=t==='income';
@@ -14441,10 +14558,52 @@ function saveFinance(){
       if(oi>-1)oarr.splice(oi,1);
     }
   }
-  const rec={id:uid(),name:name,amount:amount,date:$('fDate').value,note:$('fNote').value,_source:'manual',accountType:$('fAccountType').value};
+  const recId=currentFinRecId||uid();
+  const at=$('fAccountType').value;
+  const rec={id:recId,name:name,amount:amount,date:$('fDate').value,note:$('fNote').value,_source:'manual',accountType:at};
+  /* 开票状态与发票关联（仅对公走账有意义） */
+  if(at==='对公'){
+    const invSt=$('fInvoiceStatus').value;
+    rec.invoiceStatus=invSt;
+    if(invSt==='已开票'){
+      let invId=$('fInvoiceSelect').value||'';
+      if(!invId){
+        /* 自动关联：未选已有发票时，自动创建一张草稿发票并双向关联 */
+        const inv=finAutoCreateInvoice(rec,type,target);
+        invId=inv.id;
+      }
+      rec.invoiceId=invId;
+      const inv=invoiceById(invId);
+      if(inv){ if(type==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; }
+    }else{
+      /* 切回未开票：清除与该笔流水可能的旧关联 */
+      if(rec.invoiceId){ const old=invoiceById(rec.invoiceId); if(old){ if(type==='income') old.linkedIncomeId=''; else old.linkedExpenseId=''; } }
+      rec.invoiceId='';
+    }
+  }else{
+    rec.invoiceStatus='';rec.invoiceId='';
+  }
   if(type==='income'){rec.received=status;rec.cat=$('fIncomeCat').value;rec.payer=$('fPayer').value;target.income.push(rec);saveContactHistory('payer',rec.payer);}
   else{rec.paid=status;rec.cat=$('fCat').value;rec.stage=$('fStage').value;rec.payee=$('fPayee').value;target.expense.push(rec);saveContactHistory('payee',rec.payee);autoArchiveSupplier(target,rec.payee,'','','');}
-  persist();closeModal('financeModal');editingFinance=null;renderFinance();renderHome();
+  persist();closeModal('financeModal');editingFinance=null;renderFinance();renderLedger&&renderLedger();renderHome();
+}
+/* 由「记一笔」自动创建草稿发票并关联（满足对公开票自动进入发票管理） */
+function finAutoCreateInvoice(rec,type,target){
+  const direction=type==='income'?'销项':'进项';
+  const rate=DEFAULT_TAX_RATE;
+  const no=rec.amount||0;
+  const tax=invoiceTax(no,rate);
+  const total=invoiceTotal(no,tax);
+  const inv={
+    id:'inv_'+uid(), direction, type:INVOICE_TYPES[0], projectId:target.id,
+    linkedContractId:'', linkedIncomeId:type==='income'?rec.id:'', linkedExpenseId:type==='expense'?rec.id:'',
+    amountNoTax:no, taxRate:rate, tax:tax, amountTotal:total,
+    issuer:'', payer:type==='income'?(rec.payer||''):'', payee:type==='expense'?(rec.payee||''):'',
+    issueDate:rec.date||todayISO(), status:'草稿', deductStatus:direction==='进项'?'待抵扣':'不抵扣', verifyStatus:'未查验',
+    note:'由「记一笔」自动关联创建：'+(rec.name||'')
+  };
+  App.invoices.push(inv);
+  return inv;
 }
 /* 收付款人历史记录（localStorage） */
 const CONTACT_KEY='xzgz_contacts';
