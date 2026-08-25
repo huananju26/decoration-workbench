@@ -3153,7 +3153,7 @@ a{color:#003a8c;text-decoration:none}
       <div class="form-group"><label class="form-label">费用类别 <b style="color:#ff4d4f">*</b></label><select id="enCategory"><option value="材料费">材料费</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="设计费">设计费</option><option value="管理费">管理费</option><option value="其他">其他</option></select></div>
       <div class="form-group"><label class="form-label">预计支出金额（元）<b style="color:#ff4d4f">*</b></label><input id="enAmount" type="number" placeholder="" min="0"></div>
       <div class="form-group"><label class="form-label">预计支出日期 <b style="color:#ff4d4f">*</b></label><input id="enDate" type="date"></div>
-      <div class="form-group"><label class="form-label">供应商 / 收款方</label><input id="enPayee" type="text" placeholder=""></div>
+      <div class="form-group"><label class="form-label">供应商 / 收款方</label><input id="enPayee" type="text" placeholder="" list="enPayeeList" autocomplete="off"><datalist id="enPayeeList"></datalist></div>
       <div class="form-group"><label class="form-label">费用说明</label><textarea id="enNote" rows="3" style="resize:vertical"></textarea></div>
     </div>
     <div class="form-actions" style="flex-shrink:0;padding:14px 20px;border-top:1px solid #f0f0f0">
@@ -3587,7 +3587,7 @@ a{color:#003a8c;text-decoration:none}
     <div class="modal-header"><div class="modal-title" id="financeModalTitle">记一笔</div><div class="modal-close" onclick="closeModal('financeModal')">✕</div></div>
     <div class="modal-body">
       <div class="form-group"><label class="form-label">归属项目 *</label>
-        <select id="fProject"></select>
+        <select id="fProject" onchange="refreshContactDatalists(App.projects.find(x=>x.id===this.value))"></select>
       </div>
       <div class="form-group"><label class="form-label">类型</label>
         <select id="fType" onchange="toggleFinType(this.value)">
@@ -13055,6 +13055,7 @@ function openFinanceModal(){
   $('fStatus').value='received';$('fCat').value='材料采购';$('fStage').value='';$('fIncomeCat').value='预付款';$('fPayer').value='';$('fPayee').value='';$('fDate').value=todayISO();$('fNote').value='';
   toggleFinType('expense');
   populateStageSelect('fStage');
+  refreshContactDatalists(App.projects.find(x=>x.id===$('fProject').value));
   showModal('financeModal');
 }
 function toggleFinType(t){
@@ -13076,6 +13077,9 @@ function openExpenseNodeModal(editId){
   const steps=p.processSteps||[];
   const sel=$('enStepId');
   sel.innerHTML='<option value="">暂不关联节点</option>'+steps.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+  /* 供应商/收款方联想：从人材档案（供应商 + 施工人员）直接调取 */
+  const enPayeeList=$('enPayeeList');
+  if(enPayeeList)enPayeeList.innerHTML=(p.suppliers||[]).map(s=>`<option value="${escHtml(s.name)}">`).join('')+(p.personnel||[]).map(m=>`<option value="${escHtml(m.name)}">`).join('');
   if(editId){
     const node=(p.expenseNodes||[]).find(n=>n.id===editId);
     if(!node)return;
@@ -13110,6 +13114,8 @@ function saveExpenseNode(){
   } else {
     p.expenseNodes.push(data);
   }
+  /* 收款方首次填写时自动录入供应商档案 */
+  autoArchiveSupplier(p,data.payee,'','','');
   persist();closeModal('expenseNodeModal');_editingExpenseNodeId=null;
   renderFinance();renderHome();
 }
@@ -13656,7 +13662,7 @@ function saveFinance(){
   }
   const rec={id:uid(),name:name,amount:amount,date:$('fDate').value,note:$('fNote').value,_source:'manual'};
   if(type==='income'){rec.received=status;rec.cat=$('fIncomeCat').value;rec.payer=$('fPayer').value;target.income.push(rec);saveContactHistory('payer',rec.payer);}
-  else{rec.paid=status;rec.cat=$('fCat').value;rec.stage=$('fStage').value;rec.payee=$('fPayee').value;target.expense.push(rec);saveContactHistory('payee',rec.payee);}
+  else{rec.paid=status;rec.cat=$('fCat').value;rec.stage=$('fStage').value;rec.payee=$('fPayee').value;target.expense.push(rec);saveContactHistory('payee',rec.payee);autoArchiveSupplier(target,rec.payee,'','','');}
   persist();closeModal('financeModal');editingFinance=null;renderFinance();renderHome();
 }
 /* 收付款人历史记录（localStorage） */
@@ -13672,12 +13678,19 @@ function saveContactHistory(type,name){
   try{localStorage.setItem(CONTACT_KEY,JSON.stringify(hist));}catch(e){}
   refreshContactDatalists();
 }
-function refreshContactDatalists(){
+function refreshContactDatalists(proj){
   const hist=getContactHistory();
+  const p=proj||cur();
+  /* 收款人/付款人联想：合并「联系人历史 + 人材档案（供应商 + 施工人员）」，可直接调取 */
+  const payeeNames=new Set((hist.payee||[]));
+  const payerNames=new Set((hist.payer||[]));
+  (p?p.suppliers||[]:[]).forEach(s=>{if(s.name)payeeNames.add(s.name);});
+  (p?p.personnel||[]:[]).forEach(m=>{if(m.name){payeeNames.add(m.name);payerNames.add(m.name);}});
+  (p?p.suppliers||[]:[]).forEach(s=>{if(s.name)payerNames.add(s.name);});
   const payeeList=$('payeeHistoryList');
   const payerList=$('payerHistoryList');
-  if(payeeList)payeeList.innerHTML=(hist.payee||[]).map(n=>`<option value="${n}">`).join('');
-  if(payerList)payerList.innerHTML=(hist.payer||[]).map(n=>`<option value="${n}">`).join('');
+  if(payeeList)payeeList.innerHTML=Array.from(payeeNames).map(n=>`<option value="${escHtml(n)}">`).join('');
+  if(payerList)payerList.innerHTML=Array.from(payerNames).map(n=>`<option value="${escHtml(n)}">`).join('');
 }
 function delFinance(type,id){
   const p=cur();if(!p)return;
