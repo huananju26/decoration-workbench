@@ -2301,6 +2301,8 @@ a{color:#003a8c;text-decoration:none}
       <div class="nav-item" data-page="process" onclick="switchPage('process')"><span class="nav-icon">📋</span>项目管理</div>
       <div class="nav-item" data-page="finance" onclick="switchPage('finance')"><span class="nav-icon">💰</span>装修记账</div>
       <div class="nav-item" data-page="ledger" onclick="switchPage('ledger')"><span class="nav-icon">📒</span>收支流水</div>
+      <div class="nav-item" data-page="contracts" onclick="switchPage('contracts')"><span class="nav-icon">📑</span>合同管理</div>
+      <div class="nav-item" data-page="invoices" onclick="switchPage('invoices')"><span class="nav-icon">🧾</span>发票管理</div>
       <div class="nav-item" data-page="archive" onclick="switchPage('archive')"><span class="nav-icon">👷</span>人材档案</div>
       <div class="nav-item" data-page="purchase" onclick="switchPage('purchase')"><span class="nav-icon">🛒</span>采购清单</div>
       <div class="nav-item" data-page="compare" onclick="switchPage('compare')"><span class="nav-icon">⚖️</span>比价选品</div>
@@ -2602,6 +2604,9 @@ a{color:#003a8c;text-decoration:none}
       <!-- 全部项目汇总（深绿卡片） -->
       <div class="fin-summary-card" id="finSummaryCard"></div>
 
+      <!-- 税务汇总面板（进项/销项 → 应缴增值税 + 附加税，只读派生，不碰 money 口径） -->
+      <div class="fin-summary-card fin-tax-card" id="finTaxCard"></div>
+
       <!-- 当前项目标签 -->
       <div class="fin-current-label" id="finCurrentLabel"></div>
 
@@ -2772,6 +2777,16 @@ a{color:#003a8c;text-decoration:none}
       <div id="archivePanel"></div>
     </div>
 
+    <!-- PAGE: 合同管理（账号级全局，带 projectId） -->
+    <div class="page" id="page-contracts">
+      <div id="contractsPanel"></div>
+    </div>
+
+    <!-- PAGE: 发票管理（账号级全局，带 projectId，进项/销项 + 税率） -->
+    <div class="page" id="page-invoices">
+      <div id="invoicesPanel"></div>
+    </div>
+
     </div><!-- end pagesWrapper -->
   </div>
 </main>
@@ -2783,6 +2798,8 @@ a{color:#003a8c;text-decoration:none}
     <div class="mtab" data-page="purchase" onclick="switchPage('purchase')"><span class="mtab-icon">🛒</span>采购</div>
     <div class="mtab" data-page="finance" onclick="switchPage('finance')"><span class="mtab-icon">💰</span>记账</div>
     <div class="mtab" data-page="ledger" onclick="switchPage('ledger')"><span class="mtab-icon">📒</span>流水</div>
+    <div class="mtab" data-page="contracts" onclick="switchPage('contracts')"><span class="mtab-icon">📑</span>合同</div>
+    <div class="mtab" data-page="invoices" onclick="switchPage('invoices')"><span class="mtab-icon">🧾</span>发票</div>
     <div class="mtab" data-page="tools" onclick="switchPage('tools')"><span class="mtab-icon">🔧</span>工具</div>
   </div>
 </nav>
@@ -2790,6 +2807,71 @@ a{color:#003a8c;text-decoration:none}
 </div>
 
 <!-- MODALS -->
+<!-- 合同管理 弹窗 -->
+<div class="modal-overlay" id="contractModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="contractModalTitle">新增合同</div><div class="modal-close" onclick="closeModal('contractModal')">✕</div></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">合同名称 <b style="color:#ff4d4f">*</b></label><input type="text" id="conTitle" placeholder="如：水电施工合同 / 主材采购合同"></div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">合同类型</label><select id="conType">${CONTRACT_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">归属项目</label><select id="conProject" onchange="refreshConStepOptions()"></select></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">关联供应商（人材档案）</label><select id="conSupplier" onchange="if(this.value){const s=(App.archive.suppliers||[]).find(x=>x.id===this.value);if(s)$('conParty').value=s.contact?(s.name+' '+s.contact):s.name;}"></select></div>
+        <div class="form-group"><label class="form-label">对方名称（手工）</label><input type="text" id="conParty" placeholder="如：业主姓名 / 厂家名"></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">关联施工节点</label><select id="conStep"></select></div>
+        <div class="form-group"><label class="form-label">合同金额 (¥)</label><input type="number" id="conAmount" placeholder="0"></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">签订日期</label><input type="date" id="conSignDate"></div>
+        <div class="form-group"><label class="form-label">状态</label><select id="conStatus">${CONTRACT_STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-group"><label class="form-label">备注</label><textarea id="conNote" rows="2" placeholder="补充说明"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('contractModal')">取消</button><button class="btn-primary" id="conSaveBtn" onclick="saveContract()">保存合同</button></div>
+  </div>
+</div>
+
+<!-- 发票管理 弹窗 -->
+<div class="modal-overlay" id="invoiceModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="invoiceModalTitle">新增发票</div><div class="modal-close" onclick="closeModal('invoiceModal')">✕</div></div>
+    <div class="modal-body">
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">发票方向</label><select id="invDirection" onchange="onInvDirectionChange()"><option>销项</option><option>进项</option></select></div>
+        <div class="form-group"><label class="form-label">发票类型</label><select id="invType">${INVOICE_TYPES.map(t=>`<option>${t}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-group"><label class="form-label">归属项目</label><select id="invProject" onchange="refreshInvContractOptions();refreshInvFlowOptions()"></select></div>
+      <div class="form-group"><label class="form-label">关联合同</label><select id="invLinkedContract" onchange="onInvContractChange()"></select></div>
+      <div id="invLinkedIncomeWrap" class="form-group"><label class="form-label">关联收款（销项）</label><select id="invLinkedIncome"></select></div>
+      <div id="invLinkedExpenseWrap" class="form-group" style="display:none"><label class="form-label">关联付款（进项）</label><select id="invLinkedExpense"></select></div>
+      <div class="form-row-3">
+        <div class="form-group"><label class="form-label">不含税金额 (¥) <b style="color:#ff4d4f">*</b></label><input type="number" id="invAmountNoTax" oninput="calcInvAmounts()" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">税率</label><select id="invTaxRate" onchange="calcInvAmounts()">${TAX_RATES.map(r=>`<option value="${r}">${r}%</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">税额 / 价税合计</label><div style="display:flex;gap:6px"><input type="text" id="invTax" readonly placeholder="税额" style="flex:1"><input type="text" id="invTotal" readonly placeholder="价税合计" style="flex:1"></div></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label class="form-label">开票方</label><input type="text" id="invIssuer" placeholder="销项=本公司"></div>
+        <div class="form-group"><label class="form-label">收票方</label><input type="text" id="invPayee" placeholder="销项=业主"></div>
+        <div class="form-group"><label class="form-label">付款方</label><input type="text" id="invPayer" placeholder="进项=本公司"></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label class="form-label">开票日期</label><input type="date" id="invDate"></div>
+        <div class="form-group"><label class="form-label">状态</label><select id="invStatus">${INVOICE_STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">查验状态</label><select id="invVerify">${VERIFY_STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group"><label class="form-label">抵扣状态（进项）</label><select id="invDeduct">${DEDUCT_STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">备注</label><input type="text" id="invNote" placeholder="补充说明"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('invoiceModal')">取消</button><button class="btn-primary" id="invSaveBtn" onclick="saveInvoice()">保存发票</button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="projectModal">
   <div class="modal wizard-modal">
     <div class="modal-header"><div class="modal-title" id="projectModalTitle">新建项目</div><div class="modal-close" onclick="closeProjectWizard()">✕</div></div>
@@ -4219,8 +4301,8 @@ function updateCloudUI(){
   if($('cloudStatus2'))$('cloudStatus2').textContent=CloudSync.loggedIn?'登录状态正常，改动自动同步到云端。':'—';
 }
 
-let App={version:2,currentProjectId:null,projects:[],archive:{personnel:[],suppliers:[]}};
-const APP_DEFAULT={version:2,currentProjectId:null,projects:[],archive:{personnel:[],suppliers:[]}};
+let App={version:2,currentProjectId:null,projects:[],archive:{personnel:[],suppliers:[]},contracts:[],invoices:[]};
+const APP_DEFAULT={version:2,currentProjectId:null,projects:[],archive:{personnel:[],suppliers:[]},contracts:[],invoices:[]};
 /* 年度余额手动编辑值：null=未手动设置（显示自动计算值），数字=用户手动覆盖 */
 window.__ledgerManualBalance=0;
 
@@ -4343,7 +4425,7 @@ function upgradeLegacyAcceptance(){
    - 所有迁移必须幂等（重复运行结果一致），绝不直接销毁用户数据
    - 加载时校验结构，损坏则从最近备份恢复，避免渲染乱码
    ════════════════════════════════════════════════════════════════ */
-const DATA_VERSION = 1;
+const DATA_VERSION = 2;
 const MIGRATION_BACKUP_PREFIX = 'xzgz_app_v2_bak_';
 const MIGRATION_BACKUP_KEEP = 3;
 
@@ -4353,6 +4435,8 @@ function ensureAppShape(app){
   if(!Array.isArray(app.archive.personnel)) app.archive.personnel = [];
   if(!Array.isArray(app.archive.suppliers)) app.archive.suppliers = [];
   if(!Array.isArray(app.projects)) app.projects = [];
+  if(!Array.isArray(app.contracts)) app.contracts = [];
+  if(!Array.isArray(app.invoices)) app.invoices = [];
 }
 
 /* 迁移前自动备份：完整快照存 localStorage，环形保留最近 KEEP 份（超出删最旧） */
@@ -4402,8 +4486,15 @@ function migrateV0ToV1(app){
   migrateGlobalArchive();   // 项目级人材档案 → 账号级 archive（按 name 去重，幂等）
   migrateChecked();         // 旧步骤 ID t1..t27 → ps01..ps22（仅处理 t 前缀，幂等）
 }
+/* v1 → v2：新增「合同管理 / 发票管理」全局数组（带 projectId），仅做数组兜底初始化。
+   幂等：已存在则不动；不修改任何现有数据。 */
+function migrateV1ToV2(app){
+  ensureAppShape(app);
+  if(!Array.isArray(app.contracts)) app.contracts = [];
+  if(!Array.isArray(app.invoices)) app.invoices = [];
+}
 
-const MIGRATIONS = [ migrateV0ToV1 ];
+const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2 ];
 
 /* 顺序执行迁移，直到数据版本达到当前版本；每步前自动备份 */
 function runMigrations(app){
@@ -5989,8 +6080,8 @@ function switchPage(page){
   $('page-'+page).classList.add('active');
   document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
   document.querySelectorAll('.mtab').forEach(t=>t.classList.toggle('active',t.dataset.page===page));
-  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识',archive:'人材档案'};
-  const btnMap={home:'新增待办',process:'新建项目',purchase:'新增待购物品',finance:'记一笔',ledger:'',compare:'导出比价',tools:'',quote:'',diary:'写日记',knowledge:'返回总览',archive:'新增人员'};
+  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',contracts:'合同管理',invoices:'发票管理',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识',archive:'人材档案'};
+  const btnMap={home:'新增待办',process:'新建项目',purchase:'新增待购物品',finance:'记一笔',ledger:'',contracts:'新增合同',invoices:'新增发票',compare:'导出比价',tools:'',quote:'',diary:'写日记',knowledge:'返回总览',archive:'新增人员'};
   $('bc-page').textContent=bcMap[page]||'';
   const tp=$('topPrimaryBtn');
   if(btnMap[page]){tp.style.display='';tp.textContent=btnMap[page]}else{tp.style.display='none'}
@@ -6008,9 +6099,11 @@ function switchPage(page){
   if(page==='ledger')renderLedger();
   if(page==='quote')renderQuote();
   if(page==='archive')renderArchive('archivePanel');
-  /* 按页面控制顶部项目选择器显隐：全局聚合页(总览/工具/日记/知识/流水/报价)隐藏，项目专属页(流程/采购/记账/比价)显示 */
+  if(page==='contracts')renderContracts();
+  if(page==='invoices')renderInvoices();
+  /* 按页面控制顶部项目选择器显隐：全局聚合页(总览/工具/日记/知识/流水/报价/合同/发票)隐藏，项目专属页(流程/采购/记账/比价)显示 */
   const ps=$('topProjectSwitcher');
-  if(ps){const hidePages=['home','tools','diary','knowledge','ledger','quote'];ps.style.display=hidePages.includes(page)?'none':'';}
+  if(ps){const hidePages=['home','tools','diary','knowledge','ledger','quote','contracts','invoices'];ps.style.display=hidePages.includes(page)?'none':'';}
   /* 切换页面时始终置顶 */
   window.scrollTo(0,0);
 }
@@ -8865,6 +8958,7 @@ function renderProcess(){
             return head+photoHtml+fixHtml+logHtml;
           })()}
         </div>
+        <div class="sb-section" style="margin-top:8px"><div class="sb-sec-title">关联合同</div><div class="sb-sec-body">${linkedContractsBadge(p,step)||'<span style="color:#999;font-size:12px">本节点暂未关联合同</span>'}</div></div>
         </div><!-- /step-body-left -->
 
         <!-- 中间：可拖拽分割条 -->
@@ -11415,6 +11509,339 @@ function deleteSupplier(id){
   rerenderArchiveAll();
 }
 
+/* ════════════════════════════════════════════════════════════════
+   合同管理 + 发票管理（单文件版，字段对齐团队版 P0 schema）
+   - 全局数组 App.contracts / App.invoices，每条带 projectId
+   - 与项目管理 / 人材档案供应商 / 流程节点 / 收支流水 对接联通
+   - 发票税额自动算；财务汇总税务面板只读派生
+   ════════════════════════════════════════════════════════════════ */
+const CONTRACT_TYPES=['施工','采购','设计','其他'];
+const CONTRACT_STATUS=['草稿','已签','执行中','已完成','已终止'];
+const INVOICE_DIRECTIONS=['销项','进项'];
+const INVOICE_TYPES=['数电专票','数电普票','电子发票','专票','普票'];
+const INVOICE_STATUS=['草稿','已开','已收票','已认证','已抵扣','作废'];
+const DEDUCT_STATUS=['待抵扣','已抵扣','不抵扣'];
+const VERIFY_STATUS=['未查验','已查验'];
+const TAX_RATES=[9,3,1];
+const DEFAULT_TAX_RATE=9;
+
+function projNameById(id){const p=App.projects.find(x=>x.id===id);return p?projDisplayName(p):'—';}
+function contractById(id){return (App.contracts||[]).find(c=>c.id===id);}
+function invoiceById(id){return (App.invoices||[]).find(v=>v.id===id);}
+function stepsOfProject(pid){const p=App.projects.find(x=>x.id===pid);return (p&&p.processSteps)||[];}
+function invoiceTax(no,rate){const n=parseFloat(no)||0,r=parseFloat(rate)||0;return Math.round(n*r/100*100)/100;}
+function invoiceTotal(no,tax){return Math.round(((parseFloat(no)||0)+(parseFloat(tax)||0))*100)/100;}
+function stepNameById(pid,sid){
+  const p=App.projects.find(x=>x.id===pid);if(!p)return '';
+  const all=[];(p.processSteps||[]).forEach(s=>{all.push(s);(s.children||[]).forEach(ch=>all.push(ch));});
+  const f=all.find(s=>s.id===sid);return f?f.name:'';
+}
+
+/* ── 合同管理：列表 + CRUD ── */
+function renderContracts(){
+  const el=$('contractsPanel');if(!el)return;
+  const list=App.contracts||[];
+  let filterProj=$('conFilterProj')?$('conFilterProj').value:'';
+  let arr=list.slice();
+  if(filterProj)arr=arr.filter(c=>c.projectId===filterProj);
+  const projOpts='<option value="">全部项目</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
+  let cards='';
+  if(arr.length>0){
+    cards=arr.map(c=>{
+      const invCount=(App.invoices||[]).filter(v=>v.linkedContractId===c.id).length;
+      const sup=contractSupName(c);
+      const stepName=c.linkedStepId?stepNameById(c.projectId,c.linkedStepId):'';
+      return `<div class="archive-item">
+        <div class="archive-item-head">
+          <div class="archive-item-name">${escHtml(c.title||'—')}</div>
+          <span class="archive-tag blue">${escHtml(c.type||'')}</span>
+          <span class="archive-tag">${escHtml(CONTRACT_STATUS.includes(c.status)?c.status:'草稿')}</span>
+          <div class="archive-item-ops">
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editContract('${c.id}')">编辑</button>
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deleteContract('${c.id}')">删除</button>
+          </div>
+        </div>
+        <div class="archive-item-rows">
+          <div class="archive-row"><span class="archive-row-label">归属项目</span><span class="archive-row-val">${escHtml(projNameById(c.projectId))}</span></div>
+          ${sup?`<div class="archive-row"><span class="archive-row-label">对方/供应商</span><span class="archive-row-val">${escHtml(sup)}</span></div>`:''}
+          ${c.amount?`<div class="archive-row"><span class="archive-row-label">合同金额</span><span class="archive-row-val">¥${fmt(c.amount)}</span></div>`:''}
+          ${c.signDate?`<div class="archive-row"><span class="archive-row-label">签订日期</span><span class="archive-row-val">${escHtml(c.signDate)}</span></div>`:''}
+          ${stepName?`<div class="archive-row"><span class="archive-row-label">关联节点</span><span class="archive-row-val">${escHtml(stepName)}</span></div>`:''}
+          ${invCount?`<div class="archive-row"><span class="archive-row-label">关联发票</span><span class="archive-row-val"><span class="archive-tag blue">${invCount} 张</span></span></div>`:''}
+          ${c.note?`<div class="archive-row"><span class="archive-row-label">备注</span><span class="archive-row-val">${escHtml(c.note)}</span></div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+  el.innerHTML=
+    `<div class="archive-hint">合同管理与企业「商务财税」模块联动：可关联「项目管理」中的具体施工节点与「人材档案」中的供应商，并在「发票管理」中开具体发票。字段与团队版一致，未来可一键升级到云端多人协作（带真实权限隔离）。</div>
+    <div class="archive-filter-bar"><select id="conFilterProj" onchange="renderContracts()">${projOpts}</select><span class="archive-count">共 ${arr.length} 份合同</span></div>
+    <div class="archive-grid" style="display:grid;grid-template-columns:1fr;gap:16px;align-items:start">
+      <div class="proc-card">
+        <div class="proc-sub-header" style="margin-bottom:12px">
+          <div><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:#999;margin-bottom:4px;text-transform:uppercase">CONTRACTS</div><div class="proc-sub-title">合同台账</div><div class="proc-sub-desc">施工合同、采购合同等，统一登记与管理。</div></div>
+          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
+        </div>
+        ${cards||'<div class="proc-empty" style="padding:24px">还没有合同，点击右上角「新增合同」开始登记。</div>'}
+      </div>
+    </div>`;
+}
+function contractSupName(c){
+  if(c.supplierId){const s=(App.archive.suppliers||[]).find(x=>x.id===c.supplierId);if(s)return s.contact?(s.name+' '+s.contact):s.name;}
+  return c.party||'';
+}
+let _editingContractId=null;
+function refreshConSupplierOptions(){
+  const sel=$('conSupplier');if(!sel)return;
+  sel.innerHTML='<option value="">（手工填写对方名称）</option>'+(App.archive.suppliers||[]).map(s=>`<option value="${s.id}">${escHtml(s.contact?(s.name+' '+s.contact):s.name)}</option>`).join('');
+}
+function refreshConStepOptions(){
+  const pid=$('conProject')?$('conProject').value:'';
+  const sel=$('conStep');if(!sel)return;
+  const steps=stepsOfProject(pid);
+  sel.innerHTML='<option value="">（不关联节点）</option>'+steps.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+}
+function openAddContract(){
+  _editingContractId=null;
+  $('contractModalTitle').textContent='新增合同';
+  $('conSaveBtn').textContent='保存合同';
+  $('conTitle').value='';$('conType').value=CONTRACT_TYPES[0];
+  $('conProject').value=App.currentProjectId||(App.projects[0]?App.projects[0].id:'');
+  refreshConStepOptions();refreshConSupplierOptions();
+  $('conParty').value='';$('conSupplier').value='';
+  $('conAmount').value='';$('conSignDate').value=todayISO();
+  $('conStatus').value='已签';$('conNote').value='';
+  showModal('contractModal');
+}
+function saveContract(){
+  const title=$('conTitle').value.trim();
+  if(!title){alert('请填写合同名称');$('conTitle').focus();return;}
+  const data={
+    title:title,type:$('conType').value,projectId:$('conProject').value||'',
+    supplierId:$('conSupplier').value||'',party:$('conParty').value.trim(),
+    linkedStepId:$('conStep').value||'',amount:parseFloat($('conAmount').value)||0,
+    signDate:$('conSignDate').value,status:$('conStatus').value,note:$('conNote').value.trim()
+  };
+  const arr=App.contracts;
+  if(_editingContractId){const idx=arr.findIndex(x=>x.id===_editingContractId);if(idx>=0)arr[idx]=Object.assign(arr[idx],data);_editingContractId=null;}
+  else{data.id='con_'+uid();arr.push(data);}
+  persist();closeModal('contractModal');renderContracts();
+}
+function editContract(id){
+  const c=contractById(id);if(!c){alert('未找到该合同');return;}
+  _editingContractId=id;
+  $('contractModalTitle').textContent='编辑合同';
+  $('conSaveBtn').textContent='更新合同';
+  $('conTitle').value=c.title||'';$('conType').value=c.type||CONTRACT_TYPES[0];
+  $('conProject').value=c.projectId||'';
+  refreshConStepOptions();refreshConSupplierOptions();
+  $('conStep').value=c.linkedStepId||'';
+  $('conSupplier').value=c.supplierId||'';
+  $('conParty').value=c.party||'';
+  $('conAmount').value=c.amount||'';$('conSignDate').value=c.signDate||'';
+  $('conStatus').value=c.status||'已签';$('conNote').value=c.note||'';
+  showModal('contractModal');
+}
+function deleteContract(id){
+  const c=contractById(id);if(!c)return;
+  if(!confirm('确定删除合同「'+(c.title||'')+'」吗？\n（关联发票不会被删除，但会解除关联）'))return;
+  App.contracts=App.contracts.filter(x=>x.id!==id);
+  (App.invoices||[]).forEach(v=>{if(v.linkedContractId===id)v.linkedContractId='';});
+  persist();renderContracts();
+}
+
+/* ── 发票管理：列表 + CRUD + 税额自动算 ── */
+function renderInvoices(){
+  const el=$('invoicesPanel');if(!el)return;
+  const list=App.invoices||[];
+  let fProj=$('invFilterProj')?$('invFilterProj').value:'';
+  let fDir=$('invFilterDir')?$('invFilterDir').value:'';
+  let arr=list.slice();
+  if(fProj)arr=arr.filter(v=>v.projectId===fProj);
+  if(fDir)arr=arr.filter(v=>v.direction===fDir);
+  const projOpts='<option value="">全部项目</option>'+App.projects.map(p=>`<option value="${p.id}">${escHtml(projDisplayName(p))}</option>`).join('');
+  const dirOpts='<option value="">全部方向</option>'+INVOICE_DIRECTIONS.map(d=>`<option value="${d}">${d}</option>`).join('');
+  let cards='';
+  if(arr.length>0){
+    cards=arr.map(v=>{
+      const con=v.linkedContractId?contractById(v.linkedContractId):null;
+      const badgeCls=v.direction==='销项'?'blue':'';
+      return `<div class="archive-item">
+        <div class="archive-item-head">
+          <div class="archive-item-name">${escHtml(v.type||'发票')} · ${escHtml(v.direction||'')}</div>
+          <span class="archive-tag ${badgeCls}">${escHtml(v.direction||'')}</span>
+          <span class="archive-tag">${escHtml(INVOICE_STATUS.includes(v.status)?v.status:'草稿')}</span>
+          <div class="archive-item-ops">
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editInvoice('${v.id}')">编辑</button>
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deleteInvoice('${v.id}')">删除</button>
+          </div>
+        </div>
+        <div class="archive-item-rows">
+          <div class="archive-row"><span class="archive-row-label">归属项目</span><span class="archive-row-val">${escHtml(projNameById(v.projectId))}</span></div>
+          ${con?`<div class="archive-row"><span class="archive-row-label">关联合同</span><span class="archive-row-val">${escHtml(con.title)}</span></div>`:''}
+          <div class="archive-row"><span class="archive-row-label">不含税金额</span><span class="archive-row-val">¥${fmt(v.amountNoTax)}</span></div>
+          <div class="archive-row"><span class="archive-row-label">税率</span><span class="archive-row-val">${v.taxRate}%</span></div>
+          <div class="archive-row"><span class="archive-row-label">税额</span><span class="archive-row-val">¥${fmt(v.tax)}</span></div>
+          <div class="archive-row"><span class="archive-row-label">价税合计</span><span class="archive-row-val"><b>¥${fmt(v.amountTotal)}</b></span></div>
+          ${v.issuer?`<div class="archive-row"><span class="archive-row-label">开票方</span><span class="archive-row-val">${escHtml(v.issuer)}</span></div>`:''}
+          ${v.deductStatus&&v.direction==='进项'?`<div class="archive-row"><span class="archive-row-label">抵扣</span><span class="archive-row-val">${escHtml(v.deductStatus)}</span></div>`:''}
+          ${v.note?`<div class="archive-row"><span class="archive-row-label">备注</span><span class="archive-row-val">${escHtml(v.note)}</span></div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+  el.innerHTML=
+    `<div class="archive-hint">发票管理覆盖「销项票（开给业主）」与「进项票（供应商开具）」，税额按「不含税金额 × 税率」自动计算。与合同、收支流水联动，并在「装修记账」汇总出应缴增值税与附加税。</div>
+    <div class="archive-filter-bar"><select id="invFilterProj" onchange="renderInvoices()">${projOpts}</select><select id="invFilterDir" onchange="renderInvoices()">${dirOpts}</select><span class="archive-count">共 ${arr.length} 张发票</span></div>
+    <div class="archive-grid" style="display:grid;grid-template-columns:1fr;gap:16px;align-items:start">
+      <div class="proc-card">
+        <div class="proc-sub-header" style="margin-bottom:12px">
+          <div><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:#999;margin-bottom:4px;text-transform:uppercase">INVOICES</div><div class="proc-sub-title">发票台账</div><div class="proc-sub-desc">进销项发票统一管理，税额自动计算。</div></div>
+          <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
+        </div>
+        ${cards||'<div class="proc-empty" style="padding:24px">还没有发票，点击右上角「新增发票」开始登记。</div>'}
+      </div>
+    </div>`;
+}
+let _editingInvoiceId=null;
+function refreshInvContractOptions(){
+  const pid=$('invProject')?$('invProject').value:'';
+  const sel=$('invLinkedContract');if(!sel)return;
+  const cons=(App.contracts||[]).filter(c=>!pid||c.projectId===pid);
+  sel.innerHTML='<option value="">（不关联合同）</option>'+cons.map(c=>`<option value="${c.id}">${escHtml(c.title)}${c.projectId?(' · '+projNameById(c.projectId)):''}</option>`).join('');
+}
+function refreshInvFlowOptions(){
+  const pid=$('invProject')?$('invProject').value:'';
+  const p=App.projects.find(x=>x.id===pid);
+  const incSel=$('invLinkedIncome'),expSel=$('invLinkedExpense');
+  if(incSel)incSel.innerHTML='<option value="">（不关联收款）</option>'+((p&&p.income)||[]).map(i=>`<option value="${i.id}">${escHtml(i.name||'收款')} · ¥${fmt(i.amount||0)}</option>`).join('');
+  if(expSel)expSel.innerHTML='<option value="">（不关联付款）</option>'+((p&&p.expense)||[]).map(e=>`<option value="${e.id}">${escHtml(e.name||'付款')} · ¥${fmt(e.amount||0)}</option>`).join('');
+}
+function onInvDirectionChange(){
+  const d=$('invDirection')?$('invDirection').value:'';
+  const incWrap=$('invLinkedIncomeWrap'),expWrap=$('invLinkedExpenseWrap');
+  if(incWrap)incWrap.style.display=d==='销项'?'':'none';
+  if(expWrap)expWrap.style.display=d==='进项'?'':'none';
+}
+function calcInvAmounts(){
+  const no=parseFloat($('invAmountNoTax').value)||0;
+  const rate=parseFloat($('invTaxRate').value)||0;
+  const tax=invoiceTax(no,rate);
+  const total=invoiceTotal(no,tax);
+  if($('invTax'))$('invTax').value=tax.toFixed(2);
+  if($('invTotal'))$('invTotal').value=total.toFixed(2);
+}
+function onInvContractChange(){
+  const cid=$('invLinkedContract')?$('invLinkedContract').value:'';
+  const c=cid?contractById(cid):null;
+  if(c){
+    if($('invProject'))$('invProject').value=c.projectId||'';
+    refreshInvFlowOptions();
+    if($('invTaxRate')&&c.taxRate)$('invTaxRate').value=c.taxRate;
+    if($('invIssuer')&&!$('invIssuer').value)$('invIssuer').value='本公司（销项开票方）';
+    if($('invPayee')&&!$('invPayee').value)$('invPayee').value='业主';
+    calcInvAmounts();
+  }
+}
+function openAddInvoice(){
+  _editingInvoiceId=null;
+  $('invoiceModalTitle').textContent='新增发票';
+  $('invSaveBtn').textContent='保存发票';
+  $('invDirection').value='销项';onInvDirectionChange();
+  $('invType').value=INVOICE_TYPES[0];
+  $('invProject').value=App.currentProjectId||(App.projects[0]?App.projects[0].id:'');
+  refreshInvContractOptions();refreshInvFlowOptions();
+  $('invLinkedContract').value='';$('invLinkedIncome').value='';$('invLinkedExpense').value='';
+  $('invAmountNoTax').value='';$('invTaxRate').value=DEFAULT_TAX_RATE;calcInvAmounts();
+  $('invIssuer').value='';$('invPayee').value='';$('invPayer').value='';
+  $('invDate').value=todayISO();
+  $('invStatus').value='已开';$('invDeduct').value='待抵扣';$('invVerify').value='未查验';$('invNote').value='';
+  showModal('invoiceModal');
+}
+function saveInvoice(){
+  const direction=$('invDirection').value;
+  const no=parseFloat($('invAmountNoTax').value)||0;
+  if(!no){alert('请填写不含税金额');$('invAmountNoTax').focus();return;}
+  const rate=parseFloat($('invTaxRate').value)||0;
+  const tax=invoiceTax(no,rate);
+  const total=invoiceTotal(no,tax);
+  const data={
+    direction:direction,type:$('invType').value,projectId:$('invProject').value||'',
+    linkedContractId:$('invLinkedContract').value||'',
+    linkedIncomeId:direction==='销项'?($('invLinkedIncome').value||''):'',
+    linkedExpenseId:direction==='进项'?($('invLinkedExpense').value||''):'',
+    amountNoTax:no,taxRate:rate,tax:tax,amountTotal:total,
+    issuer:$('invIssuer').value.trim(),payer:$('invPayer').value.trim(),payee:$('invPayee').value.trim(),
+    issueDate:$('invDate').value,status:$('invStatus').value,
+    deductStatus:direction==='进项'?$('invDeduct').value:'不抵扣',
+    verifyStatus:$('invVerify').value,note:$('invNote').value.trim()
+  };
+  const arr=App.invoices;
+  if(_editingInvoiceId){const idx=arr.findIndex(x=>x.id===_editingInvoiceId);if(idx>=0)arr[idx]=Object.assign(arr[idx],data);_editingInvoiceId=null;}
+  else{data.id='inv_'+uid();arr.push(data);}
+  persist();closeModal('invoiceModal');renderInvoices();if(typeof renderFinance==='function')renderFinance();
+}
+function editInvoice(id){
+  const v=invoiceById(id);if(!v){alert('未找到该发票');return;}
+  _editingInvoiceId=id;
+  $('invoiceModalTitle').textContent='编辑发票';
+  $('invSaveBtn').textContent='更新发票';
+  $('invDirection').value=v.direction||'销项';onInvDirectionChange();
+  $('invType').value=v.type||INVOICE_TYPES[0];
+  $('invProject').value=v.projectId||'';
+  refreshInvContractOptions();refreshInvFlowOptions();
+  $('invLinkedContract').value=v.linkedContractId||'';
+  $('invLinkedIncome').value=(v.direction==='销项')?(v.linkedIncomeId||''):'';
+  $('invLinkedExpense').value=(v.direction==='进项')?(v.linkedExpenseId||''):'';
+  $('invAmountNoTax').value=v.amountNoTax||'';
+  $('invTaxRate').value=v.taxRate||DEFAULT_TAX_RATE;calcInvAmounts();
+  $('invIssuer').value=v.issuer||'';$('invPayee').value=v.payee||'';$('invPayer').value=v.payer||'';
+  $('invDate').value=v.issueDate||'';
+  $('invStatus').value=v.status||'已开';
+  $('invDeduct').value=v.deductStatus||'待抵扣';$('invVerify').value=v.verifyStatus||'未查验';
+  $('invNote').value=v.note||'';
+  showModal('invoiceModal');
+}
+function deleteInvoice(id){
+  const v=invoiceById(id);if(!v)return;
+  if(!confirm('确定删除这张发票吗？'))return;
+  App.invoices=App.invoices.filter(x=>x.id!==id);
+  persist();renderInvoices();if(typeof renderFinance==='function')renderFinance();
+}
+
+/* ── 财务汇总税务面板（只读派生，不碰 money 口径）── */
+function computeTaxSummary(projectId){
+  const invs=App.invoices||[];
+  let out=0,inp=0;
+  invs.forEach(v=>{
+    if(projectId && v.projectId!==projectId) return;
+    const t=parseFloat(v.tax)||0;
+    if(v.direction==='销项')out+=t; else if(v.direction==='进项')inp+=t;
+  });
+  const vat=Math.round((out-inp)*100)/100;
+  const add=Math.round(Math.max(0,vat)*0.12*100)/100;
+  return {output:out,input:inp,vat:vat,add:add};
+}
+function renderTaxPanel(){
+  const el=$('finTaxCard');if(!el)return;
+  const t=computeTaxSummary('');
+  el.innerHTML=`<div class="fin-proj-header"><div class="fin-proj-title">税务汇总（只读派生）</div><div class="fin-sum-count">进项 / 销项 → 应缴增值税</div></div>
+    <div class="fin-dash-row2">
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(t.output)}</div><div class="fin-dash-sm-label">销项税额</div></div>
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val">¥${fmt(t.input)}</div><div class="fin-dash-sm-label">进项税额</div></div>
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val ${t.vat>=0?'blue':'red'}">¥${fmt(t.vat)}</div><div class="fin-dash-sm-label">应缴增值税</div></div>
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val">¥${fmt(t.add)}</div><div class="fin-dash-sm-label">附加税(×12%)</div></div>
+    </div>
+    <div class="fin-dash-note">应缴增值税 = 销项税额 − 进项税额；附加税 = 应缴增值税 × 12%（城建7%+教育3%+地方2%），仅对正数计征。本面板不影响「账面毛利」等既有口径。</div>`;
+}
+/* 节点详情：反向显示关联合同数（只读） */
+function linkedContractsBadge(p,step){
+  if(!p||!step)return '';
+  const n=(App.contracts||[]).filter(c=>c.projectId===p.id&&c.linkedStepId===step.id).length;
+  if(!n)return '';
+  return `<span class="archive-tag blue" title="本节点关联的合同">关联合同 ${n} 份</span>`;
+}
+
 /* 辅助函数：切换收入已收状态 */
 /* ── 登记本次到账（替代原来的简单 toggle）── */
 let _riCurPid='',_riCurIid='';
@@ -12807,6 +13234,7 @@ function renderFinance(){
 
   // 5. Tab + 记录列表
   renderFinanceRecords();
+  if($('finTaxCard'))renderTaxPanel();
 }
 /* 保存项目增减项 */
 function saveProjAdjustment(val){
@@ -13077,12 +13505,16 @@ function renderLedger(){
     const cls=isPending?' row-pending':'';
     const tagCls=isIncome?' tag-income':' tag-expense';
     const tagText=isIncome?'收入':'支出';
+    // 发票反向徽章：收款行→已开销项票；付款行→已收进项票（现查，不存储重复数据）
+    let flowBadge='';
+    if(r.type==='income'){const v=(App.invoices||[]).find(x=>x.linkedIncomeId===r.rec.id);if(v)flowBadge=' <span class="archive-tag blue" title="已开销项发票">🧾销项票</span>';}
+    else if(r.type==='expense'){const v=(App.invoices||[]).find(x=>x.linkedExpenseId===r.rec.id);if(v)flowBadge=' <span class="archive-tag blue" title="已收进项发票">🧾进项票</span>';}
     html+='<tr class="'+cls.trim()+'">'+
       '<td>'+r._idx+'</td>'+
       '<td class="ld-date">'+(r.date||'-')+'</td>'+
       '<td><span class="ld-tag'+tagCls+'">'+tagText+'</span></td>'+
       '<td class="ld-proj" onclick="switchToProject(\''+r.proj.id+'\');switchPage(\'finance\')">'+escHtml(projDisplayName(r.proj))+'</td>'+
-      '<td class="ld-detail" title="'+escHtml(r.detail)+'">'+escHtml(r.detail)+'</td>'+
+      '<td class="ld-detail" title="'+escHtml(r.detail)+'">'+escHtml(r.detail)+flowBadge+'</td>'+
       '<td class="ld-person">'+escHtml(r.person)+'</td>'+
       '<td class="amt-in">'+(isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
       '<td class="amt-out">'+(!isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
@@ -14819,7 +15251,7 @@ function confirmClearAll(){
   switchPage('home');
 }
 function handleTopPrimary(){
-  const a={home:()=>openTaskModal(),process:()=>openProjectModal(),purchase:()=>openPurchaseModal(),finance:()=>openFinanceModal(),compare:()=>{},tools:()=>{},diary:()=>openDiaryModal(),knowledge:()=>{},archive:()=>openAddPersonnel()};
+  const a={home:()=>openTaskModal(),process:()=>openProjectModal(),purchase:()=>openPurchaseModal(),finance:()=>openFinanceModal(),contracts:()=>openAddContract(),invoices:()=>openAddInvoice(),compare:()=>{},tools:()=>{},diary:()=>openDiaryModal(),knowledge:()=>{},archive:()=>openAddPersonnel()};
   if(a[currentPage])a[currentPage]();
 }
 /* ══════════════════════════════════════════
