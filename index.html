@@ -10207,17 +10207,23 @@ function _doGeneratePDF(el,sheetId,fileBase){
 function printSheet(sheetId){
   const el=$(sheetId); if(!el) return;
   zoomGsReset(sheetId);
-  /* ── 与 printNodeReport 完全同源的 visibility 注入方案 ──
-     用具体 modal ID + sheet ID 做 @media print 隔离，
-     保留整条祖先链可见，剥离弹窗装饰，直接 window.print() */
+  var isGantt=el.classList.contains('gs-sheet');
+  /* ── 分流 ──
+     甘特图(.gs-sheet)：visibility 方案对其完全空白（SVG+复杂CSS渲染无法恢复），
+                    必须走新窗口 document.write 彻底隔离
+     普通表格(.cpr-sheet)：用与 printNodeReport 同源的 visibility 注入方案 */
+  if(isGantt){
+    printSheetNewWindow(el,sheetId);
+  }else{
+    printSheetVisibility(el,sheetId);
+  }
+}
+/* 普通表格（如合同收款计划表）：visibility 隔离方案 — 与 printNodeReport 同源 */
+function printSheetVisibility(el,sheetId){
   var modal=el.closest('.modal-overlay');
   if(!modal){ alert('未找到表格所在弹窗'); return; }
   var mid=modal.id, sid=sheetId;
-  /* 清除上次注入的残留 */
   var old=document.getElementById('printSheetStyle'); if(old) old.remove();
-  /* 甘特图类横版 A4，其余纵版 */
-  var landscape=el.classList.contains('gs-sheet');
-  var pageRule=landscape ? 'size:A4 landscape;margin:6mm' : 'size:A4;margin:10mm';
   var css='@media print{'+
     'body *{visibility:hidden}'+
     '#'+mid+',#'+mid+' *,#'+sid+',#'+sid+' *{visibility:visible}'+
@@ -10225,17 +10231,45 @@ function printSheet(sheetId){
     '#'+mid+' .modal{max-width:none!important;width:100%!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important;background:#fff!important}'+
     '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important}'+
     '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:16px 24px!important;background:#fff!important}'+
-    /* 甘特图解除 overflow 裁剪，按真实宽度渲染 */
-    '#'+mid+' .gs-zoom-pad{width:auto!important;height:auto!important;overflow:visible!important}'+
-    '#'+mid+' .gs-sheet{width:auto!important;height:auto!important;overflow:visible!important;transform:none!important}'+
-    '#'+mid+' .gs-chart{overflow:visible!important}'+
-    '@page{'+pageRule+'}'+
+    '@page{size:A4;margin:10mm}'+
   '}';
   var ps=document.createElement('style');
   ps.id='printSheetStyle';
   ps.textContent=css;
   document.head.appendChild(ps);
   window.print();
+}
+/* 甘特图（施工进度表/计划实际进度表）：新窗口 document.write 彻底隔离方案
+   原因：甘特图是 SVG+复杂 CSS 渲染，visibility 隐藏→恢复后浏览器打印引擎无法正确重绘 */
+function printSheetNewWindow(el,sheetId){
+  var title='装修工作台';
+  if(sheetId==='clientTimelineSheet') title='施工进度表';
+  else if(sheetId==='planVsActualSheet') title='计划与实际进度表';
+  /* 提取纯净内容（innerHTML 避免 outerHTML 带入容器 id 冲突） */
+  var bodyHTML=el.innerHTML;
+  /* 构建完全独立的打印文档，内联全部必要样式 */
+  var printDoc='<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>'+title+'</title>'+
+    '<style>'+
+      '*{margin:0;padding:0;box-sizing:border-box}'+
+      'body{padding:12px 16px;font-family:-apple-system,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;color:#333;background:#fff;font-size:11px}'+
+      'h2{text-align:center;font-size:18px;font-weight:700;color:#003a8c;margin-bottom:10px}'+
+      '.gs-zoom-pad{width:auto!important;max-width:none!important;overflow:visible!important;height:auto!important}'+
+      '.gs-sheet{width:auto!important;max-width:none!important;overflow:visible!important;height:auto!important;transform:none!important;display:inline-block}'+
+      '.gs-chart{overflow:visible!important;width:auto!important}'+
+      '.gs-grid,.pg-grid{overflow:visible!important}'+
+      '.gs-row,.pg-row{white-space:nowrap}'+
+      '@page{size:A4 landscape;margin:5mm}'+
+      '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'+
+    '</style></head><body>'+
+    '<h2>'+title+'</h2>'+
+    '<div class="gs-print-wrap">'+bodyHTML+'</div>'+
+    '</body></html>';
+  var w=window.open('','_blank','width=1100,height=700');
+  if(!w){ alert('请允许弹出窗口后重试'); return; }
+  w.document.write(printDoc);
+  w.document.close();
+  /* 等待新窗口 DOM + 字体就绪后再调 print */
+  w.addEventListener('load',function(){ setTimeout(function(){ w.print(); }, 300); });
 }
 window.addEventListener('afterprint',function(){
   document.documentElement.classList.remove('gs-printing-rectify');
