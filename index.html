@@ -3036,7 +3036,7 @@ a{color:#003a8c;text-decoration:none}
           <div class="form-group"><label class="form-label">关联施工节点</label><select id="mpStepId"><option value="">暂不关联</option></select></div>
           <div class="form-group"><label class="form-label">所属费用总项</label><select id="mpCostCat"><option value="">不归入，费用用总项</option><option value="材料费">材料费</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="设计费">设计费</option><option value="管理费">管理费</option><option value="其他">其他</option></select></div>
           <div class="form-group"><label class="form-label">调配负责人</label><select id="mpBuyer"><option value="">暂不指定</option></select></div>
-          <div class="form-group"><label class="form-label">厂家名称 <b style="color:#ff4d4f">*</b></label><input id="mpVendor" type="text" placeholder="例如：某某全屋定制工厂" list="mpVendorList" autocomplete="off"><datalist id="mpVendorList"></datalist></div>
+          <div class="form-group"><label class="form-label">厂家名称 <b style="color:#ff4d4f">*</b></label><input id="mpVendor" type="text" placeholder="例如：某某全屋定制工厂" list="mpVendorList" autocomplete="off" oninput="onPickSupplier(this,'mpVendorPhone')"><datalist id="mpVendorList"></datalist></div>
           <div class="form-group"><label class="form-label">厂家电话</label><input id="mpVendorPhone" type="tel" placeholder=""></div>
           <div class="form-group"><label class="form-label">数量</label><input id="mpQty" type="number" value="1" min="0"></div>
           <div class="form-group"><label class="form-label">单位</label><input id="mpUnit" type="text" value="项"></div>
@@ -11179,6 +11179,20 @@ function autoArchiveSupplier(p,raw,phone,category,contact){
   /* 跳过已存在的：精确 name 匹配，或「name + 联系人」组合匹配（调取时带联系人） */
   if(p.suppliers.some(x=>x.name===norm || (x.contact && (x.name+' '+x.contact).trim()===norm)))return;
   p.suppliers.push({id:'sup_'+uid(),name:norm,contact:contact||'',phone:phone||'',category:category||'',since:todayISO().slice(0,7),note:''});
+}
+
+/* 从供应商联想选中后，自动反查并填入电话 */
+function onPickSupplier(inputEl, phoneFieldId){
+  const val=(inputEl.value||'').trim();
+  if(!val)return;
+  const p=cur();if(!p)return;
+  const sups=p.suppliers||[];
+  /* 精确匹配 name 或「name + contact」组合 */
+  const found=sups.find(s=>s.name===val || (s.contact && (s.name+' '+s.contact).trim()===val));
+  if(found&&found.phone){
+    const ph=$(phoneFieldId);
+    if(ph&&!ph.value)ph.value=found.phone; /* 仅在电话为空时自动填入，避免覆盖手动输入 */
+  }
 }
 
 /* ── 施工人员档案 增删改 ── */
