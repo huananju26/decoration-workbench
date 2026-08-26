@@ -6288,12 +6288,16 @@ function delProject(id){
   if(!p)return;
   /* 先关闭项目列表弹窗，使确认弹窗在屏幕正中单独显示；删除后列表弹窗不会再残留 */
   closeModal('projectManageModal');
-  confirmDialog('确认删除项目「'+projDisplayName(p)+'」？\n该项目所有数据将永久清除，不可恢复。',function(){
+  confirmDialog('确认删除项目「'+projDisplayName(p)+'」？\n该项目所有数据（含关联发票、合同）将永久清除，不可恢复。',function(){
+    /* 级联清理：该项目关联的发票 + 合同 */
+    if(App.invoices) App.invoices=App.invoices.filter(v=>v.projectId!==id);
+    if(App.contracts) App.contracts=App.contracts.filter(c=>c.projectId!==id);
     App.projects=App.projects.filter(x=>x.id!==id);
     if(App.currentProjectId===id)App.currentProjectId=App.projects[0]?App.projects[0].id:null;
     persist();
     refreshProjectUI();
     if(currentPage)switchPage(currentPage);
+    renderTaxPanel(); /* 税务汇总需刷新 */
   },{okText:'删除',okClass:'danger'});
 }
 function refreshProjectUI(){
@@ -16228,10 +16232,12 @@ function importData(input){
 }
 function confirmClearAll(){
   if(!confirm('⚠️ 确认清空所有项目与数据？此操作不可恢复！'))return;
-  if(!confirm('再次确认：将清空全部项目数据，是否继续？'))return;
-  localStorage.removeItem(APP_KEY);App={version:2,currentProjectId:null,projects:[]};
+  if(!confirm('再次确认：将清空全部项目数据（含发票、合同、人员档案等），是否继续？'))return;
+  localStorage.removeItem(APP_KEY);
+  App={version:2,currentProjectId:null,projects:[],invoices:[],contracts:[],personnel:[]};
   try{localStorage.setItem('xzgz_current_page','home');}catch(e){}
   refreshProjectUI();
+  renderTaxPanel();
   switchPage('home');
 }
 function handleTopPrimary(){
