@@ -2492,6 +2492,7 @@ a{color:#003a8c;text-decoration:none}
           <button class="btn-outline btn-sm" onclick="exportJSON()">导出全部</button>
           <button class="btn-outline btn-sm" onclick="document.getElementById('importFile').click()">导入</button>
           <button class="btn-outline btn-sm" style="color:#ff4d4f;border-color:#ffa39e" onclick="confirmClearAll()">清空重置</button>
+          <button class="btn-outline btn-sm" onclick="openRecoveryCenter()">🗄 恢复中心</button>
           <input type="file" id="importFile" accept=".json,.csv" style="display:none" onchange="importData(this)">
         </div>
         <div class="data-mgmt" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
@@ -3299,6 +3300,19 @@ a{color:#003a8c;text-decoration:none}
     <div class="form-actions" style="flex-shrink:0;padding:14px 20px;border-top:1px solid #f0f0f0">
       <button class="btn-outline" onclick="closeModal('addSupplierModal')">取消</button>
       <button class="btn-primary" id="supSaveBtn" onclick="saveSupplier()">保存供应商档案</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 数据恢复中心 ═══ -->
+<div class="modal-overlay" id="recoveryCenterModal">
+  <div class="modal" style="max-width:660px;width:94%;max-height:86vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0"><div class="modal-title">🗄 数据恢复中心</div><div class="modal-close" onclick="closeModal('recoveryCenterModal')">✕</div></div>
+    <div class="adj-subtitle" style="flex-shrink:0">系统会在每次数据版本迁移时自动留存一份完整快照（最多 3 份）。若当前数据被意外清空，可在此找回。</div>
+    <div class="modal-body" style="overflow-y:auto;padding:16px 20px" id="recoveryList"></div>
+    <div class="form-actions" style="flex-shrink:0;padding:14px 20px;border-top:1px solid #f0f0f0">
+      <button class="btn-outline" onclick="closeModal('recoveryCenterModal')">关闭</button>
+      <button class="btn-primary" onclick="renderRecoveryList()">🔄 刷新列表</button>
     </div>
   </div>
 </div>
@@ -16322,6 +16336,72 @@ function populateStageSelect(id){const sel=$(id);sel.innerHTML='<option value=""
 // DATA IMPORT/EXPORT
 // ============================================================
 function exportJSON(){download(JSON.stringify(App,null,2),'装修工作台备份_'+todayISO()+'.json','application/json');}
+/* ── 数据恢复中心：列出迁移自动备份，可一键恢复 ── */
+function listBackupKeys(){
+  try{ return Object.keys(localStorage).filter(k=>k.indexOf(MIGRATION_BACKUP_PREFIX)===0).sort().reverse(); }
+  catch(e){ return []; }
+}
+function backupSummary(b){
+  b=b||{};
+  const arc=b.archive||{};
+  return {
+    personnel:(arc.personnel||[]).length,
+    suppliers:(arc.suppliers||[]).length,
+    projects:(b.projects||[]).length,
+    contracts:(b.contracts||[]).length,
+    invoices:(b.invoices||[]).length
+  };
+}
+function renderRecoveryList(){
+  const el=$('recoveryList'); if(!el)return;
+  const cur=backupSummary(App);
+  let html='';
+  html+='<div style="background:#e6f4ff;border:1px solid #91caff;border-radius:8px;padding:10px 12px;font-size:13px;color:#003a8c;margin-bottom:12px">当前数据：人员 '+cur.personnel+' · 供应商 '+cur.suppliers+' · 项目 '+cur.projects+' · 合同 '+cur.contracts+' · 发票 '+cur.invoices+'</div>';
+  const keys=listBackupKeys();
+  if(keys.length===0){
+    html+='<div class="proc-empty" style="padding:24px">未发现自动备份。自动备份在每次数据版本迁移时生成；若你清空过浏览器缓存 / 用了无痕模式 / 换了浏览器，备份会一并清除。</div>';
+    html+='<div style="margin-top:10px;font-size:13px;color:#666;line-height:1.6">💡 更可靠的做法：平时用「导出全部 JSON」存一份本地文件，或开启 ☁️ 云端同步——数据就不再依赖单一浏览器。</div>';
+    el.innerHTML=html;
+    return;
+  }
+  html+='<div style="font-size:13px;color:#666;line-height:1.6;margin-bottom:12px">以下为系统自动生成的备份快照（最多保留最近 3 份）。点「恢复此备份」将用它<strong>整体覆盖</strong>当前数据，建议在恢复前先点「导出全部 JSON」留底。</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:10px">';
+  keys.forEach(k=>{
+    let b=null; try{ b=JSON.parse(localStorage.getItem(k)); }catch(e){}
+    const ts=k.slice(MIGRATION_BACKUP_PREFIX.length);
+    const s=backupSummary(b);
+    html+='<div style="border:1px solid #e3e8ef;border-radius:8px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">';
+    html+='<div><div style="font-size:13px;font-weight:600;color:#003a8c">🕒 '+ts+'</div>';
+    html+='<div style="font-size:12px;color:#666;margin-top:4px">人员 '+s.personnel+' · 供应商 '+s.suppliers+' · 项目 '+s.projects+' · 合同 '+s.contracts+' · 发票 '+s.invoices+'</div></div>';
+    html+='<div style="display:flex;gap:8px">';
+    html+='<button class="btn-outline btn-sm" onclick="restoreFromBackup(\''+k+'\')">恢复此备份</button>';
+    html+='<button class="btn-outline btn-sm" style="color:#ff4d4f;border-color:#ffa39e" onclick="deleteBackup(\''+k+'\')">删除</button>';
+    html+='</div></div>';
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+function openRecoveryCenter(){ renderRecoveryList(); showModal('recoveryCenterModal'); }
+function restoreFromBackup(key){
+  if(!confirm('确定用这份备份【整体覆盖】当前数据吗？\n建议先点「导出全部 JSON」留底，覆盖后不可撤销。'))return;
+  try{
+    const raw=localStorage.getItem(key);
+    if(!raw){alert('备份读取失败');return;}
+    const b=JSON.parse(raw);
+    App=Object.assign({}, JSON.parse(JSON.stringify(APP_DEFAULT)), b);
+    App.projects=(Array.isArray(b.projects)?b.projects:[]).map(mergeProject);
+    ensureAppShape(App);
+    App.dataVersion=DATA_VERSION;
+    persist();
+    closeModal('recoveryCenterModal');
+    alert('已从备份恢复，正在刷新界面…');
+    if(location&&location.reload)location.reload(); else if(typeof renderAll==='function')renderAll();
+  }catch(e){ alert('恢复失败：'+(e&&e.message||e)); }
+}
+function deleteBackup(key){
+  if(!confirm('删除这份自动备份？此操作不可撤销。'))return;
+  try{ localStorage.removeItem(key); renderRecoveryList(); }catch(e){}
+}
 function download(content,filename,type){const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),200);}
 
 /* ───────────────────────────────────────────────────────────
