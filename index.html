@@ -7667,7 +7667,11 @@ function renderActionQueueAll(projects){
       : (kind==='contract'
       ? `openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')`
       : `openAqStatusPop(this,'${item.id}','${kind}','${item._pid}','${curStatus}')`);
-    return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''} ${isToday?'today':''}"${item.done?' style="pointer-events:none" title="已完成，仅查看"':''}>${checkHtml}
+    /* 已完成项：整行只读（pointer-events:none）。未完成且为合同类（缺合同提醒）：整行可点击直接去补签，消除"点整行没反应"的误区 */
+    const liExtra = item.done
+      ? ' style="pointer-events:none" title="已完成，仅查看"'
+      : (item._kind==='contract' ? ` onclick="event.stopPropagation();openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')"` : '');
+    return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''} ${isToday?'today':''}"${liExtra}>${checkHtml}
       <div class="aq-info"><div class="aq-title ${isOver?'overdue':''}">${item.title||item.name}${isOver?' <span style="color:#ff4d4f;font-size:11px">'+(isStep?'已逾期':'逾期')+'</span>':''}</div>
       <div class="aq-meta">${datePrefix}${item._proj||''}${dateSuffix} ${item.stage?'· '+getStageName(item.stage):''}</div>${noteHtml}</div>
       <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''}"${item.done?' title="已完成，仅查看"':' title="点击去补签合同" onclick="event.stopPropagation();'+labelOnclick}'">${kindLabel}${item.done?'':'<span class="aq-kind-caret">▾</span>'}</span></li>`;
@@ -12431,7 +12435,7 @@ function deleteContract(id){
       )){ q.done=false; delete q._completedAt; }
     });
   }
-  persist();renderContracts();
+  persist();renderContracts();renderActionQueueAll(App.projects);
 }
 /* 合同扫描件：缩略图渲染（编辑态） */
 function renderContractScanThumbs(){
