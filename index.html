@@ -11757,7 +11757,7 @@ const CONTRACT_STATUS=['草稿','已签','执行中','已完成','已终止'];
 const INVOICE_DIRECTIONS=['销项','进项'];
 const INVOICE_TYPES=['数电专票','数电普票','电子发票','专票','普票'];
 const INVOICE_STATUS=['草稿','已开','已收票','已认证','已抵扣','作废'];
-const INV_ISSUED_STATUS=['已开','已收票','已认证','已抵扣']; /* 已开具/已收票 = 已开，移出「未开」版块 */
+const INV_ISSUED_STATUS=['已开','已收票','已认证','已抵扣']; /* 已开具/已收票 = 已开，移出「未开票/未收票」版块 */
 const DEDUCT_STATUS=['待抵扣','已抵扣','不抵扣'];
 const VERIFY_STATUS=['未查验','已查验'];
 const TAX_RATES=[0,1,3,6,9,13]; /* 含 0% / 6% / 13% */
@@ -12162,10 +12162,10 @@ function renderInvoices(){
   let base=list.slice();
   if(fProj)base=base.filter(v=>v.projectId===fProj);
   let arr=base.slice();
-  if(_invTab==='销项')arr=arr.filter(v=>v.direction==='销项');
-  else if(_invTab==='进项')arr=arr.filter(v=>v.direction==='进项');
-  else if(_invTab==='未开')arr=arr.filter(v=>(v.status==='草稿')||!v.status);
-  else if(_invTab==='已开')arr=arr.filter(v=>INV_ISSUED_STATUS.includes(v.status));
+  if(_invTab==='销项（客户）')arr=arr.filter(v=>v.direction==='销项');
+  else if(_invTab==='进项（供应商）')arr=arr.filter(v=>v.direction==='进项');
+  else if(_invTab==='未开票')arr=arr.filter(v=>v.direction==='销项'&&((v.status==='草稿')||!v.status));
+  else if(_invTab==='未收票')arr=arr.filter(v=>v.direction==='进项'&&((v.status==='草稿')||!v.status));
   let cards='';
   if(arr.length>0){
     cards=arr.map(v=>{
@@ -12181,7 +12181,7 @@ function renderInvoices(){
           ${isAuto?`<span class="archive-tag" style="color:#003a8c;border-color:#91caff;background:#e6f4ff" title="由收/付款记录自动生成，仅可管理不可手动删除">自动</span>`:''}
           <span class="archive-tag ${unissued?'badge-red':''}">${escHtml(stTxt)}</span>
           <div class="archive-item-ops">
-            ${unissued?`<button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#cf1322;border-color:#ffa39e;background:#fff1f0" onclick="markInvoiceIssued('${v.id}')">标记已开</button>`:''}
+            ${unissued?`<button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#cf1322;border-color:#ffa39e;background:#fff1f0" onclick="markInvoiceIssued('${v.id}')">${v.direction==='进项'?'标记已收票':'标记已开'}</button>`:''}
             <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editInvoice('${v.id}')">编辑</button>
             ${isAuto
               ? `<span class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#999;border-color:#eee;background:#fafafa;cursor:not-allowed" title="该发票由收/付款记录自动生成，需在源头（收款计划/装修记账）删除对应记录时自动同步移除">仅管理</span>`
@@ -12203,19 +12203,20 @@ function renderInvoices(){
     }).join('');
   }
   const tax=computeTaxSummary(fProj);
-  const unissuedCount=base.filter(v=>(v.status==='草稿')||!v.status).length;
-  const invTabs=['全部','未开','已开','销项','进项'];
+  const unissuedSalesCount=base.filter(v=>v.direction==='销项'&&((v.status==='草稿')||!v.status)).length;
+  const unreceivedPurchaseCount=base.filter(v=>v.direction==='进项'&&((v.status==='草稿')||!v.status)).length;
+  const invTabs=['全部','销项（客户）','进项（供应商）','未开票','未收票'];
   const projName=fProj?projNameById(fProj):'全部项目';
   el.innerHTML=
     `<div class="module-head">
        <div class="module-head-main">
          <div class="module-head-title">发票管理</div>
-         <div class="module-head-desc">管理销项票（开给业主）与进项票（供应商开具），税额按「不含税金额 × 税率」自动计算，并汇总应缴增值税。</div>
+         <div class="module-head-desc">管理销项票（开给客户）与进项票（供应商开具），税额按「不含税金额 × 税率」自动计算，并汇总应缴增值税。</div>
        </div>
        <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
      </div>
      <div class="proj-tab-bar" id="invTabBar">
-       ${invTabs.map(t=>{const dot=(t==='未开'&&unissuedCount>0)?`<span class="tab-badge">${unissuedCount}</span>`:'';return `<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}${dot}</button>`;}).join('')}
+       ${invTabs.map(t=>{let dot='';if(t==='未开票'&&unissuedSalesCount>0)dot=`<span class="tab-badge">${unissuedSalesCount}</span>`;if(t==='未收票'&&unreceivedPurchaseCount>0)dot=`<span class="tab-badge">${unreceivedPurchaseCount}</span>`;return `<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}${dot}</button>`;}).join('')}
      </div>
      <div class="proj-stats-row" id="invStatsRow">
        <div class="proj-stat-item"><div class="proj-stat-label">发票张数</div><div class="proj-stat-val">${base.length}</div></div>
@@ -12229,10 +12230,11 @@ function renderInvoices(){
      </div>`;
 }
 function switchInvoiceTab(t){_invTab=t;renderInvoices();}
-/* 一键把未开发票标记为已开：销项→已开，进项→已收票（从「未开」版块移出） */
+/* 一键把未开发票标记为已开：销项→已开（从「未开票」版块移出），进项→已收票（从「未收票」版块移出） */
 function markInvoiceIssued(id){
   const v=invoiceById(id);if(!v)return;
-  if(!confirm('标记该发票为「已开」？\n（销项→已开，进项→已收票，将从「未开」版块移出）'))return;
+  const msg=v.direction==='进项'?'标记该发票为「已收票」？\n（将从「未收票」版块移出）':'标记该发票为「已开」？\n（将从「未开票」版块移出）';
+  if(!confirm(msg))return;
   v.status=(v.direction==='进项')?'已收票':'已开';
   persist();renderInvoices();
 }
@@ -12474,7 +12476,7 @@ function saveRecordIncome(){
   inc.receipts.push(rec);
   /* 账户性质：登记到账时显式选择，决定该笔收款归入对公/对私资金流（影响财务汇总与税费） */
   inc.accountType=$('riAccountType').value;
-  /* 对公走账：自动建/更新一张草稿销项发票挂到发票管理「未开」版块，与待办「对公未开票」提醒同源联动 */
+  /* 对公走账：自动建/更新一张草稿销项发票挂到发票管理「未开票」版块，与待办「对公未开票」提醒同源联动 */
   if(inc.accountType==='对公'){ ensureIncomeInvoice(inc.id, p, incReceivedAmt(inc), inc.name); }
   /* 同步更新 received 标记（兼容旧代码读取） */
   const newTotal=incReceivedAmt(inc);
@@ -12571,7 +12573,7 @@ function saveRecordAdj(){
   a.receipts.push(rec);
   /* 账户性质：登记到账时显式选择，决定该笔收款归入对公/对私资金流（影响财务汇总与税费） */
   a.accountType=$('raAccountType').value;
-  /* 对公走账：自动建/更新一张草稿销项发票挂到发票管理「未开」版块（与收款计划同源） */
+  /* 对公走账：自动建/更新一张草稿销项发票挂到发票管理「未开票」版块（与收款计划同源） */
   if(a.accountType==='对公'){ ensureIncomeInvoice(a.id, p, adjReceivedAbs(a), a.name); }
   /* 同步更新 received 标记 */
   a.received=adjReceivedAbs(a)>=(target-0.005);
@@ -14964,7 +14966,7 @@ function saveFinance(){
       const inv=invoiceById(invId);
       if(inv){ if(type==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; if(inv.status==='草稿'||!inv.status) inv.status='已开'; }
     }else{
-      /* 未开票：确保一张「草稿」发票挂到发票管理「未开」版块并双向关联；
+      /* 未开票：确保一张「草稿」发票挂到发票管理「未开票」版块并双向关联；
          若此前已关联过发票（含已开），先解除旧关联再建草稿，避免脏数据。 */
       let invId=$('fInvoiceSelect').value||'';
       if(!invId){
@@ -15016,7 +15018,7 @@ function finAutoCreateInvoice(rec,type,target,status){
   App.invoices.push(inv);
   return inv;
 }
-/* 收款计划 / 增减项 登记到账（对公）时，确保发票管理「未开」版块有一张草稿销项发票与之联动，
+/* 收款计划 / 增减项 登记到账（对公）时，确保发票管理「未开票」版块有一张草稿销项发票与之联动，
    与「记一笔」对公未开票自动进发票管理的行为对齐；按 linkedIncomeId 去重，避免重复建票。
    - recId：顶层收款记录 id（inc.id / a.id）
    - p：所属项目（取 projectId、业主作为开票 payer）
