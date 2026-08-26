@@ -3690,6 +3690,14 @@ a{color:#003a8c;text-decoration:none}
         <select id="riTaxRate"></select>
         <div class="form-hint">对公金额按含税价登记，不含税价 = 含税价 ÷ (1+税率) 自动倒推。对私忽略。</div>
       </div>
+      <div class="form-group" id="riInvoiceGroup" style="display:none">
+        <label class="form-label">开票状态 *</label>
+        <select id="riInvoiceStatus">
+          <option value="未开票">未开票（需跟进开/取票）</option>
+          <option value="已开票">已开票（已开具 / 已索取）</option>
+        </select>
+        <div class="form-hint">对公走账应开具或索取发票；未开票将自动进入「待办事项」提醒跟进。</div>
+      </div>
       <div class="form-group"><label>流水号 / 凭证编号</label><input type="text" id="riRefNo" placeholder="选填"></div>
       <div class="form-group"><label>收款凭证图片</label>
         <div class="ri-file-wrap"><button type="button" class="btn-outline ri-file-btn" onclick="$('riFileInput').click()">选择文件</button><span class="ri-file-name" id="riFileName">未选择任何文件</span><input type="file" id="riFileInput" accept="image/*" style="display:none" onchange="onRiFileChange(this)"></div>
@@ -3728,6 +3736,14 @@ a{color:#003a8c;text-decoration:none}
       <div class="form-group" id="raTaxGroup"><label>税率（对公）</label>
         <select id="raTaxRate"></select>
         <div class="form-hint">对公金额按含税价登记，不含税价 = 含税价 ÷ (1+税率) 自动倒推。对私忽略。</div>
+      </div>
+      <div class="form-group" id="raInvoiceGroup" style="display:none">
+        <label class="form-label">开票状态 *</label>
+        <select id="raInvoiceStatus">
+          <option value="未开票">未开票（需跟进开/取票）</option>
+          <option value="已开票">已开票（已开具 / 已索取）</option>
+        </select>
+        <div class="form-hint">对公走账应开具或索取发票；未开票将自动进入「待办事项」提醒跟进。</div>
       </div>
       <div class="form-group"><label>流水号 / 凭证编号</label><input type="text" id="raRefNo" placeholder="选填"></div>
       <div class="form-group"><label>收款凭证图片</label>
@@ -12546,10 +12562,11 @@ function openRecordIncomeModal(pid,iid){
   $('riFileInput').value='';
   showModal('recordIncomeModal');
 }
-/* 对公才显示税率字段（含税价模型） */
+/* 对公才显示税率+开票状态字段（含税价模型） */
 function toggleRiTax(){
   const isCorp=$('riAccountType').value==='对公';
   const g=$('riTaxGroup'); if(g)g.style.display=isCorp?'':'none';
+  const ig=$('riInvoiceGroup'); if(ig)ig.style.display=isCorp?'':'none';
 }
 function onRiFileChange(input){
   if(input.files&&input.files[0]){
@@ -12586,8 +12603,13 @@ function saveRecordIncome(){
   inc.accountType=$('riAccountType').value;
   /* 含税价模型：对公记录以含税额登记，税率存于节点，receipts 派生不含税/税 */
   if(inc.accountType==='对公') inc.taxRate=parseFloat($('riTaxRate').value)||DEFAULT_TAX_RATE; else inc.taxRate='';
-  /* 对公走账：自动建/更新一张草稿销项发票挂到发票管理「未开票」版块，与待办「对公未开票」提醒同源联动 */
-  if(inc.accountType==='对公'){ ensureIncomeInvoice(inc.id, p, incReceivedAmt(inc), inc.name); }
+  /* 对公走账：根据开票状态决定是否自动建草稿发票
+     未开票 → 自动建/更新草稿销项发票（挂到「未开票」版块 + 待办提醒）
+     已开票 → 不自动建票（用户已自行开具或索取，手动在发票管理维护即可） */
+  if(inc.accountType==='对公'){
+    const invSt=$('riInvoiceStatus')?$('riInvoiceStatus').value:'未开票';
+    if(invSt==='未开票'){ ensureIncomeInvoice(inc.id, p, incReceivedAmt(inc), inc.name); }
+  }
   /* 同步更新 received 标记（兼容旧代码读取） */
   const newTotal=incReceivedAmt(inc);
   inc.received=(newTotal>=target-0.005);
@@ -12657,10 +12679,11 @@ function openRecordAdjModal(aid){
   $('raFileInput').value='';
   showModal('recordAdjModal');
 }
-/* 对公才显示税率字段（含税价模型） */
+/* 对公才显示税率+开票状态字段（含税价模型） */
 function toggleRaTax(){
   const isCorp=$('raAccountType').value==='对公';
   const g=$('raTaxGroup'); if(g)g.style.display=isCorp?'':'none';
+  const ig=$('raInvoiceGroup'); if(ig)ig.style.display=isCorp?'':'none';
 }
 function onRaFileChange(input){
   if(input.files&&input.files[0]){$('raFileName').textContent=input.files[0].name;}else{$('raFileName').textContent='未选择任何文件';}
@@ -12692,8 +12715,11 @@ function saveRecordAdj(){
   a.accountType=$('raAccountType').value;
   /* 含税价模型：对公记录以含税额登记，税率存于节点，receipts 派生不含税/税 */
   if(a.accountType==='对公') a.taxRate=parseFloat($('raTaxRate').value)||DEFAULT_TAX_RATE; else a.taxRate='';
-  /* 对公走账：自动建/更新一张草稿销项发票挂到发票管理「未开票」版块（与收款计划同源） */
-  if(a.accountType==='对公'){ ensureIncomeInvoice(a.id, p, adjReceivedAbs(a), a.name); }
+  /* 对公走账：根据开票状态决定是否自动建草稿发票 */
+  if(a.accountType==='对公'){
+    const invSt=$('raInvoiceStatus')?$('raInvoiceStatus').value:'未开票';
+    if(invSt==='未开票'){ ensureIncomeInvoice(a.id, p, adjReceivedAbs(a), a.name); }
+  }
   /* 同步更新 received 标记 */
   a.received=adjReceivedAbs(a)>=(target-0.005);
   const fi=$('raFileInput');
