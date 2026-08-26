@@ -4777,6 +4777,14 @@ function runMigrations(app){
    - 仅清理 projectId 非空但已不存在于 projects 的条目；projectId 为空（全部项目视图下创建）的合法记录保留。 */
 function cleanupOrphanedRecords(app){
   if(!Array.isArray(app.projects))return;
+  /* 项目数为零时，清空全部发票和合同（无项目可归属） */
+  if(app.projects.length===0){
+    let changed=false;
+    if(Array.isArray(app.invoices)&&app.invoices.length>0){app.invoices=[];changed=true;}
+    if(Array.isArray(app.contracts)&&app.contracts.length>0){app.contracts=[];changed=true;}
+    if(changed){try{localStorage.setItem(APP_KEY,JSON.stringify(app));}catch(e){}}
+    return;
+  }
   const validIds=new Set(app.projects.map(p=>p.id));
   let changed=false;
   if(Array.isArray(app.invoices)){
@@ -12536,9 +12544,13 @@ function deleteInvoice(id){
 /* ── 财务汇总税务面板（只读派生，不碰 money 口径）── */
 function computeTaxSummary(projectId){
   const invs=App.invoices||[];
+  /* 构建有效项目 ID 集合，用于全局汇总时排除孤儿发票（projectId 指向已删除项目或为空但非手动录入的） */
+  const validIds=new Set((App.projects||[]).map(p=>p.id));
   let out=0,inp=0;
   invs.forEach(v=>{
     if(projectId && v.projectId!==projectId) return;
+    /* 全局汇总模式：排除 projectId 非空但指向不存在项目的孤儿；projectId 为空的手动发票仍计入 */
+    if(!projectId && v.projectId && !validIds.has(v.projectId)) return;
     const t=parseFloat(v.tax)||0;
     if(v.direction==='销项')out+=t; else if(v.direction==='进项')inp+=t;
   });
