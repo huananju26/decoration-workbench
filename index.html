@@ -10338,7 +10338,7 @@ function renderAdjList(p){
           <span class="pp-receipt-method">· ${escHtml(r.method||'—')}</span>
           <span class="pp-receipt-payer">· ${escHtml(payerText)}</span>
           <span class="pp-receipt-date">${r.date||''}</span>
-          ${taxBreakdownHtml(Object.assign({},r,{accountType:r.accountType||a.accountType||defaultAccountType(a,p)}),a,'pp-receipt-tax')}
+          ${taxBreakdownHtml(Object.assign({},r,{accountType:r.accountType||a.accountType||defaultAccountTypeForProject(p)}),a,'pp-receipt-tax')}
         </div>
         <button class="pp-receipt-del" onclick="deleteAdjReceipt('${a.id}','${r.id}')">删除记录</button>
       </div>`;
@@ -10357,7 +10357,7 @@ function renderAdjList(p){
         <span class="pp-info-item"><b>未收</b> ${signedUnpaid}</span>
         <span class="pp-info-item">${a.createdAt||''}</span>
       </div>
-      ${taxBreakdownHtml(Object.assign({},a,{accountType:a.accountType||defaultAccountType(a,p)}),null,'pp-node-tax')}
+      ${taxBreakdownHtml(Object.assign({},a,{accountType:a.accountType||defaultAccountTypeForProject(p)}),null,'pp-node-tax')}
       <div class="pp-bar-wrap"><div class="pp-bar ${st}" style="width:${barPct}%"></div></div>
       ${receipts?`<div class="pp-receipts">${receipts}</div>`:''}
     </div>`;
@@ -10441,7 +10441,7 @@ function renderPayPlanNode(i,idx,p,contractTotal){
         <span class="pp-receipt-method">· ${escHtml(r.method||'—')}</span>
         <span class="pp-receipt-payer">· ${escHtml(payerText)}</span>
         <span class="pp-receipt-date">${r.date||''}</span>
-        ${taxBreakdownHtml(Object.assign({},r,{accountType:r.accountType||i.accountType||defaultAccountType(i,p)}),i,'pp-receipt-tax')}
+        ${taxBreakdownHtml(Object.assign({},r,{accountType:r.accountType||i.accountType||defaultAccountTypeForProject(p)}),i,'pp-receipt-tax')}
       </div>
       <button class="pp-receipt-del" onclick="deleteIncomeReceipt('${p.id}','${i.id}','${r.id}')">删除记录</button>
     </div>`;
@@ -10459,7 +10459,7 @@ function renderPayPlanNode(i,idx,p,contractTotal){
       <span class="pp-info-item"><b>未收</b> ¥${fmt(unpaid)}</span>
       <span class="pp-info-item">${i.date||''}</span>
     </div>
-    ${taxBreakdownHtml(Object.assign({},i,{accountType:i.accountType||defaultAccountType(i,p)}),null,'pp-node-tax')}
+    ${taxBreakdownHtml(Object.assign({},i,{accountType:i.accountType||defaultAccountTypeForProject(p)}),null,'pp-node-tax')}
     <div class="pp-bar-wrap"><div class="pp-bar ${st}" style="width:${barPct}%"></div></div>
     ${receiptHtml?`<div class="pp-receipts">${receiptHtml}</div>`:''}
   </div>`;
@@ -14084,21 +14084,21 @@ function renderFinanceRecords(){
       title=escHtml(r.payer||'未填写')+' · ¥'+fmt(r.amount);
       const nodePct=r.node.amount?Math.round((r.amount/r.node.amount)*1000)/10:0;
       subtitle=(r.name?'节点：'+escHtml(r.name)+'（本节点 '+nodePct+'%）':'')+(r.note?' · '+escHtml(r.note):'')+(r.refNo?' · 流水号 '+escHtml(r.refNo):'');
-      var taxHtml=taxBreakdownHtml(Object.assign({},r.receipt,{accountType:(r.receipt&&r.receipt.accountType)||r.node.accountType||defaultAccountType(r.node,p)}),r.node,'fin-rec-tax');
+      var taxHtml=taxBreakdownHtml(Object.assign({},r.receipt,{accountType:(r.receipt&&r.receipt.accountType)||r.node.accountType||defaultAccountTypeForProject(p)}),r.node,'fin-rec-tax');
     }else if(r.kind==='manual'){
       ci=catInfo(r.cat);
       actions=`<button class="fin-rec-action-btn" onclick="editFinance('income','${r.node.id}')">✏</button><button class="fin-rec-action-btn del" onclick="delFinance('income','${r.node.id}')">✕</button>`;
       status=`<span class="fin-rec-status ${r.received?'paid':'pending'}">${r.received?'已收':'待收'}</span>`;
       title=escHtml(r.payer||'未填写')+' · ¥'+fmt(r.amount);
       subtitle=(r.cat?r.cat:'')+(r.name?' · '+escHtml(r.name):'')+(r.note?' · '+escHtml(r.note):'');
-      var taxHtml=taxBreakdownHtml(Object.assign({},r.node,{accountType:r.node.accountType||defaultAccountType(r.node,p)}),null,'fin-rec-tax');
+      var taxHtml=taxBreakdownHtml(Object.assign({},r.node,{accountType:r.node.accountType||defaultAccountTypeForProject(p)}),null,'fin-rec-tax');
     }else{
       ci={color:'#003a8c',short:r.node.type==='增加'?'增':'减'};
       actions=`<button class="fin-rec-action-btn" onclick="openAdjustmentModal('${r.node.id}')">✏</button><button class="fin-rec-action-btn del" onclick="deleteAdjustment('${r.node.id}')">✕</button>`;
       status=`<span class="fin-rec-status ${r.received?'paid':'pending'}">${r.statusLabel||(r.received?'已收':'待收')}</span>`;
       title=escHtml(r.payer||'客户')+' · ¥'+fmt(r.amount);
       subtitle='增减项'+(r.name?' · '+escHtml(r.name):'')+(r.note?' · '+escHtml(r.note):'');
-      var taxHtml=taxBreakdownHtml(Object.assign({},r.node,{accountType:r.node.accountType||defaultAccountType(r.node,p)}),null,'fin-rec-tax');
+      var taxHtml=taxBreakdownHtml(Object.assign({},r.node,{accountType:r.node.accountType||defaultAccountTypeForProject(p)}),null,'fin-rec-tax');
     }
     return`<div class="fin-record-item">
       <div class="fin-rec-cat-icon" style="background:${ci.color}">${ci.short}</div>
