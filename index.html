@@ -4940,12 +4940,35 @@ const BASE_PARENT_GROUPS=[
     {id:'sg_wa_1',name:'维保日期'}
   ]}
 ];
-/* 房屋类型 → 阶段选配：include 为需要的母节点 id 列表；'*' 或省略 = 全部 18 阶段。
-   overrides 可针对某阶段微调 days（可选）。 */
+/* 工装专属母节点库（独立于家装 BASE，仅 commercial 合并使用）。
+   家装(new/old) 用 include:'*' 取 BASE_PARENT_GROUPS，不会误带工装阶段；
+   工装在 buildFlatSteps 中把本库与 BASE 合并后按 include 数组选配并排序。 */
+const COMMERCIAL_PARENT_GROUPS=[
+  {id:'cm_permit',name:'前期报批',days:'7',children:[
+    {id:'cm_pmt_1',name:'消防设计报备'},{id:'cm_pmt_2',name:'营业执照办理'},{id:'cm_pmt_3',name:'卫生许可办理'},{id:'cm_pmt_4',name:'营业施工备案'},{id:'cm_pmt_5',name:'物业房东交底'}
+  ]},
+  {id:'cm_fire',name:'消防改造',days:'14',children:[
+    {id:'cm_fire_1',name:'消防图纸设计'},{id:'cm_fire_2',name:'消防审图通过'},{id:'cm_fire_3',name:'消防管道敷设'},{id:'cm_fire_4',name:'烟感喷淋安装'},{id:'cm_fire_5',name:'应急疏散照明'},{id:'cm_fire_6',name:'消防验收备案'}
+  ]},
+  {id:'cm_vent',name:'排烟通风',days:'10',children:[
+    {id:'cm_vent_1',name:'排烟系统定位'},{id:'cm_vent_2',name:'风管制作安装'},{id:'cm_vent_3',name:'风机安装'},{id:'cm_vent_4',name:'净化设备安装'},{id:'cm_vent_5',name:'调试验收'}
+  ]},
+  {id:'cm_signage',name:'招牌门头',days:'12',children:[
+    {id:'cm_sgn_1',name:'招牌设计审批'},{id:'cm_sgn_2',name:'门头结构制作'},{id:'cm_sgn_3',name:'招牌安装'},{id:'cm_sgn_4',name:'发光字LOGO'},{id:'cm_sgn_5',name:'城管报备'}
+  ]},
+  {id:'cm_facade',name:'公区外立面',days:'10',children:[
+    {id:'cm_fcd_1',name:'外立面测量'},{id:'cm_fcd_2',name:'幕墙铝板安装'},{id:'cm_fcd_3',name:'公区地面'},{id:'cm_fcd_4',name:'吊顶造型'},{id:'cm_fcd_5',name:'灯光亮化'}
+  ]},
+  {id:'cm_cctv',name:'监控弱电',days:'7',children:[
+    {id:'cm_cctv_1',name:'监控点位定位'},{id:'cm_cctv_2',name:'摄像头安装'},{id:'cm_cctv_3',name:'门禁系统'},{id:'cm_cctv_4',name:'网络综合布线'},{id:'cm_cctv_5',name:'广播背景音乐'}
+  ]}
+];
+/* 房屋类型 → 阶段选配：include 为需要的母节点 id 列表；'*' 或省略 = 全部家装基准阶段。
+   overrides 可针对某阶段微调 days（可选）。commercial 的 include 为有序数组（含工装专属阶段）。 */
 const PARENT_GROUPS={
   new:{include:'*'},
   old:{include:'*'},
-  commercial:{include:'*'},
+  commercial:{include:['cm_permit','mg_prep','mg_demo','mg_wall','mg_water','mg_equip_loc','cm_fire','mg_equip_inst','mg_window','mg_wood','mg_masonry','mg_paint_pre','cm_vent','cm_signage','mg_paint_post','cm_facade','cm_cctv','mg_main_inst','mg_soft','mg_clean','mg_accept','mg_rectify','mg_warranty']},
   renovated:{include:['mg_prep','mg_water','mg_equip_loc','mg_equip_inst','mg_wood','mg_masonry','mg_paint_pre','mg_custom','mg_paint_post','mg_main_inst','mg_clean','mg_soft','mg_accept','mg_rectify','mg_warranty']},
   local:{include:['mg_prep','mg_water','mg_equip_inst','mg_masonry','mg_paint_pre','mg_paint_post','mg_main_inst','mg_clean','mg_accept','mg_rectify','mg_warranty']},
   elderly:{include:['mg_prep','mg_demo','mg_water','mg_equip_loc','mg_equip_inst','mg_masonry','mg_paint_pre','mg_paint_post','mg_main_inst','mg_clean','mg_soft','mg_accept','mg_rectify','mg_warranty']}
@@ -4980,7 +5003,39 @@ const NODE_TEMPLATES={
   '乳胶漆':{desc:'底漆+面漆滚涂，无色差、无流挂。',acceptance:[{item:'无色差',req:'自然光检查'}],articles:[],photosRequired:3},
   '隐蔽验收':{desc:'水电/防水等隐蔽工程验收签字。',acceptance:[{item:'验收签字',req:'业主确认'}],articles:['隐蔽验收单'],photosRequired:4},
   '竣工验收':{desc:'全屋竣工验收，交付业主。',acceptance:[{item:'竣工验收单',req:'双方签字'}],articles:['竣工验收单'],photosRequired:5},
-  '整改内容':{desc:'记录验收发现的问题项及整改要求。',acceptance:[],articles:[],photosRequired:3}
+  '整改内容':{desc:'记录验收发现的问题项及整改要求。',acceptance:[],articles:[],photosRequired:3},
+  /* ── 工装专属子节点套用库（仅 commercial 命中） ── */
+  '消防设计报备':{desc:'委托有资质单位出具消防设计图，报住建/消防审查或备案。',acceptance:[{item:'设计审查通过',req:'取得审查意见/备案凭证'}],articles:['消防设计图','审查意见'],photosRequired:3},
+  '营业执照办理':{desc:'工商注册、经营范围核定，取得营业执照。',acceptance:[{item:'执照取得',req:'公示悬挂'}],articles:['营业执照'],photosRequired:2},
+  '卫生许可办理':{desc:'餐饮/美容等需办理公共场所卫生许可证。',acceptance:[{item:'卫生许可取得',req:'有效期内'}],articles:['卫生许可证'],photosRequired:2},
+  '营业施工备案':{desc:'向物业/街道/城管办理施工与营业备案手续。',acceptance:[{item:'备案齐全',req:'取得施工许可'}],articles:['施工备案表'],photosRequired:2},
+  '物业房东交底':{desc:'与物业/房东确认施工范围、营业时段、垃圾清运点。',acceptance:[{item:'交底签字',req:'双方确认范围'}],articles:['交底记录'],photosRequired:3},
+  '消防图纸设计':{desc:'按规范绘制消防平面图、系统图。',acceptance:[{item:'图纸合规',req:'符合防火规范'}],articles:['消防图纸'],photosRequired:3},
+  '消防审图通过':{desc:'消防图纸经审查机构审核通过。',acceptance:[{item:'审图合格',req:'出具审核报告'}],articles:['审核报告'],photosRequired:2},
+  '消防管道敷设':{desc:'消防水管、消火栓管按图敷设，焊接/沟槽连接。',acceptance:[{item:'管路打压',req:'试验压力达标'}],articles:[],photosRequired:4},
+  '烟感喷淋安装':{desc:'烟感探测器、喷淋头按规范布点安装。',acceptance:[{item:'布点合规',req:'间距符合规范'}],articles:[],photosRequired:4},
+  '应急疏散照明':{desc:'应急照明、疏散指示安装调试。',acceptance:[{item:'功能测试',req:'断电自动点亮'}],articles:[],photosRequired:3},
+  '消防验收备案':{desc:'工程完工后申报消防验收/备案，取得凭证。',acceptance:[{item:'验收通过',req:'取得验收凭证'}],articles:['消防验收凭证'],photosRequired:3},
+  '排烟系统定位':{desc:'厨房/车间排烟罩、管道走向定位。',acceptance:[{item:'定位确认',req:'与灶具匹配'}],articles:['定位图'],photosRequired:3},
+  '风管制作安装':{desc:'镀锌钢板风管制作、吊装连接。',acceptance:[{item:'密封良好',req:'无漏风'}],articles:[],photosRequired:3},
+  '风机安装':{desc:'排烟风机、补风机安装固定，减震处理。',acceptance:[{item:'运行平稳',req:'无异响振动'}],articles:[],photosRequired:3},
+  '净化设备安装':{desc:'餐饮油烟净化器安装，达标排放。',acceptance:[{item:'净化达标',req:'排放合格'}],articles:[],photosRequired:3},
+  '调试验收':{desc:'排烟通风系统联动调试，风量风压验收。',acceptance:[{item:'调试合格',req:'风量达标'}],articles:['调试记录'],photosRequired:3},
+  '招牌设计审批':{desc:'招牌设计方案报城管/物业审批。',acceptance:[{item:'审批通过',req:'取得设置许可'}],articles:['招牌效果图','审批单'],photosRequired:3},
+  '门头结构制作':{desc:'门头钢结构/铝塑板龙骨制作，防锈处理。',acceptance:[{item:'结构牢固',req:'无安全隐患'}],articles:[],photosRequired:3},
+  '招牌安装':{desc:'招牌面板、底板安装固定。',acceptance:[{item:'安装牢固',req:'抗风达标'}],articles:[],photosRequired:3},
+  '发光字LOGO':{desc:'发光字、LOGO 安装接线，夜间亮化测试。',acceptance:[{item:'通电正常',req:'无暗区'}],articles:[],photosRequired:3},
+  '城管报备':{desc:'户外广告设施向城管部门报备。',acceptance:[{item:'报备完成',req:'手续齐全'}],articles:['报备回执'],photosRequired:2},
+  '外立面测量':{desc:'外立面尺寸复尺，幕墙分格排版。',acceptance:[{item:'测量准确',req:'复尺无误'}],articles:['测量图'],photosRequired:3},
+  '幕墙铝板安装':{desc:'幕墙、铝板、石材干挂安装。',acceptance:[{item:'平整垂直',req:'2m靠尺≤3mm'}],articles:[],photosRequired:4},
+  '公区地面':{desc:'大堂/走廊公区地砖、环氧地坪施工。',acceptance:[{item:'无空鼓',req:'空鼓锤检查'}],articles:[],photosRequired:3},
+  '吊顶造型':{desc:'公区石膏板/铝扣板吊顶造型。',acceptance:[{item:'造型准确',req:'与图纸一致'}],articles:[],photosRequired:3},
+  '灯光亮化':{desc:'外立面/公区灯光亮化安装调试。',acceptance:[{item:'亮化正常',req:'无死灯'}],articles:[],photosRequired:3},
+  '监控点位定位':{desc:'摄像头、监控中心点位布局定位。',acceptance:[{item:'点位确认',req:'无盲区'}],articles:['点位图'],photosRequired:3},
+  '摄像头安装':{desc:'半球/枪机安装固定，角度调试。',acceptance:[{item:'画面清晰',req:'覆盖区域'}],articles:[],photosRequired:3},
+  '门禁系统':{desc:'门禁、考勤、人脸识别安装调试。',acceptance:[{item:'功能正常',req:'刷卡/人脸通过'}],articles:[],photosRequired:3},
+  '网络综合布线':{desc:'水平/垂直弱电布线，机柜端接。',acceptance:[{item:'链路测试',req:'通断合格'}],articles:['布线图'],photosRequired:3},
+  '广播背景音乐':{desc:'公共广播、背景音乐系统安装调试。',acceptance:[{item:'播音正常',req:'分区可控'}],articles:[],photosRequired:3}
 };
 
 /* 母节点专属必检项模板（PARENT_ACCEPTANCE_TEMPLATES）：key = 母节点 id（与 BASE_PARENT_GROUPS.id 对应）。
@@ -5099,6 +5154,50 @@ const PARENT_ACCEPTANCE_TEMPLATES={
     {label:'维保日期登记',text:'质保起算日、各项目质保期明确'},
     {label:'维保清单移交',text:'书面维保清单、售后联系方式移交'},
     {label:'回访计划确认',text:'质保期内回访时间节点约定'}
+  ],
+  /* ── 工装专属阶段必检项（仅 commercial） ── */
+  'cm_permit':[
+    {label:'消防设计报备',text:'消防设计图报审/备案取得凭证'},
+    {label:'营业执照取得',text:'工商注册完成、执照公示'},
+    {label:'卫生许可取得',text:'公共场所卫生许可证在有效期内'},
+    {label:'营业施工备案',text:'物业/街道/城管施工备案手续齐全'},
+    {label:'物业房东交底',text:'施工范围、营业时段、清运点双方确认'}
+  ],
+  'cm_fire':[
+    {label:'消防图纸合规',text:'消防平面图/系统图符合防火规范'},
+    {label:'审图通过',text:'审查机构出具合格意见'},
+    {label:'管道打压合格',text:'消防水管试验压力达标、无渗漏'},
+    {label:'烟感喷淋布点',text:'探测器/喷淋头间距符合规范'},
+    {label:'应急照明测试',text:'断电后应急照明自动点亮'},
+    {label:'消防验收备案',text:'取得消防验收/备案凭证'}
+  ],
+  'cm_vent':[
+    {label:'排烟定位匹配',text:'排烟罩与灶具匹配、走向确认'},
+    {label:'风管密封',text:'风管连接严密、无漏风'},
+    {label:'风机运行',text:'排烟/补风机运行平稳、无异响'},
+    {label:'净化达标',text:'油烟净化排放符合环保要求'},
+    {label:'联动调试',text:'排烟通风系统风量风压验收合格'}
+  ],
+  'cm_signage':[
+    {label:'招牌审批通过',text:'设计方案经城管/物业审批'},
+    {label:'门头结构牢固',text:'钢结构/龙骨防锈、抗风达标'},
+    {label:'招牌安装牢固',text:'面板底板固定可靠'},
+    {label:'发光字正常',text:'LOGO通电无暗区、夜间亮化一致'},
+    {label:'城管报备完成',text:'户外广告设施报备手续齐全'}
+  ],
+  'cm_facade':[
+    {label:'外立面测量准确',text:'复尺无误、幕墙分格排版正确'},
+    {label:'幕墙安装平整',text:'铝板/石材干挂垂直度≤3mm'},
+    {label:'公区地面质量',text:'地砖/环氧地坪无空鼓、平整'},
+    {label:'吊顶造型准确',text:'公区吊顶与图纸一致'},
+    {label:'灯光亮化正常',text:'外立面/公区亮化无死灯'}
+  ],
+  'cm_cctv':[
+    {label:'监控无盲区',text:'摄像头点位覆盖全部关键区域'},
+    {label:'画面清晰',text:'摄像机角度调试、画质达标'},
+    {label:'门禁正常',text:'门禁/人脸/考勤功能通过'},
+    {label:'布线链路测试',text:'综合布通达端接、通断合格'},
+    {label:'广播可控',text:'公共广播分区播音正常'}
   ]
 };
 /* 默认标准必检项模板（深拷贝自初始值，永不修改，作为 fallback）
@@ -5110,9 +5209,11 @@ const DEFAULT_PARENT_ACCEPTANCE_TEMPLATES=JSON.parse(JSON.stringify(PARENT_ACCEP
    所有节点均为独立可索引卡片（保持旧逻辑兼容） */
 function buildFlatSteps(houseType){
   const cfg=PARENT_GROUPS[houseType]||PARENT_GROUPS.new;
-  let groups=BASE_PARENT_GROUPS;
+  const base=(houseType==='commercial')?BASE_PARENT_GROUPS.concat(COMMERCIAL_PARENT_GROUPS):BASE_PARENT_GROUPS;
   const inc=cfg.include;
-  if(Array.isArray(inc)) groups=BASE_PARENT_GROUPS.filter(g=>inc.includes(g.id));
+  let groups;
+  if(inc==='*'||inc==null) groups=base;
+  else groups=inc.map(id=>base.find(g=>g.id===id)).filter(Boolean);
   const overrides=cfg.overrides||{};
   const out=[];
   groups.forEach(g=>{
