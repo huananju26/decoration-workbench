@@ -4800,6 +4800,20 @@ function cleanupOrphanedRecords(app){
   if(changed){
     try{ localStorage.setItem(APP_KEY, JSON.stringify(app)); }catch(e){}
   }
+  /* 修复脏数据：contract/invoice 类型待办项 done=true 但关联合同/发票已删除 → 自动回退 done=false */
+  const conIds=new Set((app.contracts||[]).map(c=>c.id));
+  const invIds=new Set((app.invoices||[]).map(v=>v.id));
+  app.projects.forEach(p=>{
+    if(!Array.isArray(p.actionQueue))return;
+    p.actionQueue.forEach(q=>{
+      if(!q.done)return;
+      if(q._kind==='contract'&&q._conId&&!conIds.has(q._conId)){ q.done=false; delete q._completedAt; changed=true; }
+      if(q._kind==='invoice'&&q._finId&&!invIds.has(q._finId)){ q.done=false; delete q._completedAt; changed=true; }
+    });
+  });
+  if(changed){
+    try{ localStorage.setItem(APP_KEY, JSON.stringify(app)); }catch(e){}
+  }
 }
 
 function load(){
