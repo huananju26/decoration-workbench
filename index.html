@@ -7650,10 +7650,10 @@ function renderActionQueueAll(projects){
       : (kind==='contract'
       ? `openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')`
       : `openAqStatusPop(this,'${item.id}','${kind}','${item._pid}','${curStatus}')`);
-    return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''} ${isToday?'today':''}">${checkHtml}
+    return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''} ${isToday?'today':''}"${item.done?' style="pointer-events:none" title="已完成，仅查看"':''}>${checkHtml}
       <div class="aq-info"><div class="aq-title ${isOver?'overdue':''}">${item.title||item.name}${isOver?' <span style="color:#ff4d4f;font-size:11px">'+(isStep?'已逾期':'逾期')+'</span>':''}</div>
       <div class="aq-meta">${datePrefix}${item._proj||''}${dateSuffix} ${item.stage?'· '+getStageName(item.stage):''}</div>${noteHtml}</div>
-      <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-kind-inv':''} ${item._kind==='contract'?'aq-kind-con':''}" title="点击去补签合同" onclick="event.stopPropagation();${labelOnclick}">${kindLabel}<span class="aq-kind-caret">▾</span></span></li>`;
+      <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''}"${item.done?' title="已完成，仅查看"':' title="点击去补签合同" onclick="event.stopPropagation();'+labelOnclick}'">${kindLabel}${item.done?'':'<span class="aq-kind-caret">▾</span>'}</span></li>`;
   }).join('');
 
   /* 分页器（原位翻页，不跳转整页） */
