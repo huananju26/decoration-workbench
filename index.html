@@ -2910,9 +2910,9 @@ a{color:#003a8c;text-decoration:none}
       <div id="invLinkedIncomeWrap" class="form-group"><label class="form-label">关联收款（销项）</label><select id="invLinkedIncome"></select></div>
       <div id="invLinkedExpenseWrap" class="form-group" style="display:none"><label class="form-label">关联付款（进项）</label><select id="invLinkedExpense"></select></div>
       <div class="form-row-3" style="grid-template-columns:2fr 0.6fr 1.4fr">
-        <div class="form-group"><label class="form-label">不含税金额 (¥) <b style="color:#ff4d4f">*</b></label><input type="number" id="invAmountNoTax" oninput="calcInvAmounts()" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">含税价 (¥) <b style="color:#ff4d4f">*</b></label><input type="number" id="invAmountTotal" oninput="calcInvAmounts()" placeholder="0"></div>
         <div class="form-group"><label class="form-label">税率</label><select id="invTaxRate" onchange="calcInvAmounts()"></select></div>
-        <div class="form-group"><label class="form-label">税额 / 价税合计</label><div style="display:flex;gap:6px"><input type="text" id="invTax" readonly placeholder="税额" style="flex:1"><input type="text" id="invTotal" readonly placeholder="价税合计" style="flex:1"></div></div>
+        <div class="form-group"><label class="form-label">不含税合计 / 税额</label><div style="display:flex;gap:6px"><input type="text" id="invNoTax" readonly placeholder="不含税" style="flex:1"><input type="text" id="invTax" readonly placeholder="税额" style="flex:1"></div></div>
       </div>
       <div class="form-row-3">
         <div class="form-group"><label class="form-label">开票方</label><input type="text" id="invIssuer" placeholder="销项=本公司"></div>
@@ -12308,10 +12308,10 @@ function renderInvoices(){
         <div class="archive-item-rows">
           <div class="archive-row"><span class="archive-row-label">归属项目</span><span class="archive-row-val">${escHtml(projNameById(v.projectId))}</span></div>
           ${con?`<div class="archive-row"><span class="archive-row-label">关联合同</span><span class="archive-row-val">${escHtml(con.title)}</span></div>`:''}
-          <div class="archive-row"><span class="archive-row-label">不含税金额</span><span class="archive-row-val">¥${fmt(v.amountNoTax)}</span></div>
+          <div class="archive-row"><span class="archive-row-label">含税价</span><span class="archive-row-val"><b>¥${fmt(v.amountTotal)}</b></span></div>
           <div class="archive-row"><span class="archive-row-label">税率</span><span class="archive-row-val">${v.taxRate}%</span></div>
+          <div class="archive-row"><span class="archive-row-label">不含税金额</span><span class="archive-row-val">¥${fmt(v.amountNoTax)}</span></div>
           <div class="archive-row"><span class="archive-row-label">税额</span><span class="archive-row-val">¥${fmt(v.tax)}</span></div>
-          <div class="archive-row"><span class="archive-row-label">价税合计</span><span class="archive-row-val"><b>¥${fmt(v.amountTotal)}</b></span></div>
           ${v.issuer?`<div class="archive-row"><span class="archive-row-label">开票方</span><span class="archive-row-val">${escHtml(v.issuer)}</span></div>`:''}
           ${v.deductStatus&&v.direction==='进项'?`<div class="archive-row"><span class="archive-row-label">抵扣</span><span class="archive-row-val">${escHtml(v.deductStatus)}</span></div>`:''}
           ${v.note?`<div class="archive-row"><span class="archive-row-label">备注</span><span class="archive-row-val">${escHtml(v.note)}</span></div>`:''}
@@ -12328,7 +12328,7 @@ function renderInvoices(){
     `<div class="module-head">
        <div class="module-head-main">
          <div class="module-head-title">发票管理</div>
-         <div class="module-head-desc">管理销项票（开给客户）与进项票（供应商开具），税额按「不含税金额 × 税率」自动计算，并汇总应缴增值税。</div>
+         <div class="module-head-desc">管理销项票（开给客户）与进项票（供应商开具），按「含税价 ÷ (1+税率)」自动倒推不含税金额与税额，并汇总应缴增值税。</div>
        </div>
        <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
      </div>
@@ -12376,12 +12376,12 @@ function onInvDirectionChange(){
   if(expWrap)expWrap.style.display=d==='进项'?'':'none';
 }
 function calcInvAmounts(){
-  const no=parseFloat($('invAmountNoTax').value)||0;
+  const total=parseFloat($('invAmountTotal').value)||0;
   const rate=parseFloat($('invTaxRate').value)||0;
-  const tax=invoiceTax(no,rate);
-  const total=invoiceTotal(no,tax);
+  const noTax=taxInclToExcl(total,rate);
+  const tax=taxInclTax(total,rate);
+  if($('invNoTax'))$('invNoTax').value=noTax.toFixed(2);
   if($('invTax'))$('invTax').value=tax.toFixed(2);
-  if($('invTotal'))$('invTotal').value=total.toFixed(2);
 }
 function onInvContractChange(){
   const cid=$('invLinkedContract')?$('invLinkedContract').value:'';
@@ -12407,7 +12407,7 @@ function openAddInvoice(prefill){
   fillSelect($('invType'),INVOICE_TYPES);fillSelect($('invStatus'),INVOICE_STATUS);fillSelect($('invVerify'),VERIFY_STATUS);fillSelect($('invDeduct'),DEDUCT_STATUS);
   $('invTaxRate').innerHTML=TAX_RATES.map(r=>`<option value="${r}">${r}%</option>`).join('');
   $('invLinkedContract').value='';$('invLinkedIncome').value='';$('invLinkedExpense').value='';
-  $('invAmountNoTax').value='';$('invTaxRate').value=DEFAULT_TAX_RATE;calcInvAmounts();
+  $('invAmountTotal').value='';$('invTaxRate').value=DEFAULT_TAX_RATE;calcInvAmounts();
   $('invIssuer').value='';$('invPayee').value='';$('invPayer').value='';
   $('invDate').value=todayISO();
   $('invStatus').value=prefill?'已开':'草稿';$('invDeduct').value='待抵扣';$('invVerify').value='未查验';$('invNote').value='';
@@ -12419,24 +12419,24 @@ function openAddInvoice(prefill){
     refreshInvContractOptions();refreshInvFlowOptions();
     if(direction==='销项')$('invLinkedIncome').value=prefill.financeId;else $('invLinkedExpense').value=prefill.financeId;
     const rec=findFinRec(prefill.projectId,prefill.financeId);
-    if(rec){ $('invAmountNoTax').value=rec.amount||'';calcInvAmounts(); $('invNote').value='关联：'+(rec.name||''); if(rec.date)$('invDate').value=rec.date; }
+    if(rec){ $('invAmountTotal').value=rec.amount||'';calcInvAmounts(); $('invNote').value='关联：'+(rec.name||''); if(rec.date)$('invDate').value=rec.date; }
     _pendingFinInvoiceLink={financeId:prefill.financeId,projectId:prefill.projectId,type:prefill.type};
   }
   showModal('invoiceModal');
 }
 function saveInvoice(){
   const direction=$('invDirection').value;
-  const no=parseFloat($('invAmountNoTax').value)||0;
-  if(!no){alert('请填写不含税金额');$('invAmountNoTax').focus();return;}
+  const total=parseFloat($('invAmountTotal').value)||0;
+  if(!total){alert('请填写含税价');$('invAmountTotal').focus();return;}
   const rate=parseFloat($('invTaxRate').value)||0;
-  const tax=invoiceTax(no,rate);
-  const total=invoiceTotal(no,tax);
+  const noTax=taxInclToExcl(total,rate);
+  const tax=taxInclTax(total,rate);
   const data={
     direction:direction,type:$('invType').value,projectId:$('invProject').value||'',
     linkedContractId:$('invLinkedContract').value||'',
     linkedIncomeId:direction==='销项'?($('invLinkedIncome').value||''):'',
     linkedExpenseId:direction==='进项'?($('invLinkedExpense').value||''):'',
-    amountNoTax:no,taxRate:rate,tax:tax,amountTotal:total,
+    amountNoTax:noTax,taxRate:rate,tax:tax,amountTotal:total,
     issuer:$('invIssuer').value.trim(),payer:$('invPayer').value.trim(),payee:$('invPayee').value.trim(),
     issueDate:$('invDate').value,status:$('invStatus').value,
     deductStatus:direction==='进项'?$('invDeduct').value:'不抵扣',
@@ -12471,7 +12471,7 @@ function editInvoice(id){
   $('invLinkedContract').value=v.linkedContractId||'';
   $('invLinkedIncome').value=(v.direction==='销项')?(v.linkedIncomeId||''):'';
   $('invLinkedExpense').value=(v.direction==='进项')?(v.linkedExpenseId||''):'';
-  $('invAmountNoTax').value=v.amountNoTax||'';
+  $('invAmountTotal').value=v.amountTotal||'';
   $('invTaxRate').value=v.taxRate||DEFAULT_TAX_RATE;calcInvAmounts();
   $('invIssuer').value=v.issuer||'';$('invPayee').value=v.payee||'';$('invPayer').value=v.payer||'';
   $('invDate').value=v.issueDate||'';
