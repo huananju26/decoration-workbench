@@ -322,6 +322,9 @@ a{color:#003a8c;text-decoration:none}
 .pp-receipt-date{font-size:11.5px;color:#999;white-space:nowrap;line-height:18px}
 .pp-receipt-del{font-size:11px;color:#ff4d4f;border:1px solid #ffa39e;background:#fff;padding:0 10px;border-radius:4px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;height:26px;display:inline-flex;align-items:center;box-sizing:border-box}
 .pp-receipt-del:hover{background:#fff2f0;border-color:#ff4d4f}
+.pp-receipt-tax{font-size:10.5px;color:#8a94a6;white-space:nowrap;line-height:16px;margin-left:2px}
+.pp-node-tax{display:block;font-size:11px;color:#2f54eb;font-weight:500;margin:-2px 0 6px}
+.pp-node-tax::before,.pp-receipt-tax::before{content:''}
 /* 登记到账按钮 */
 .pp-reg-btn{font-size:12px;padding:5px 14px;border-radius:6px;background:#003a8c;color:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;border:none;height:auto;min-height:auto;min-width:auto}
 .pp-reg-btn:hover{background:#0958d9}
@@ -1090,6 +1093,7 @@ a{color:#003a8c;text-decoration:none}
 /* 第二行：灰色小字 */
 .fin-rec-row2{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .fin-rec-note{font-size:11.5px;color:#999;line-height:1.3}
+.fin-rec-tax{font-size:10.5px;color:#2f54eb;font-weight:500;white-space:nowrap}
 /* 操作区：18px 圆角方块编辑/删除按钮（第一行右侧） */
 .fin-rec-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;margin-left:auto}
 .fin-rec-action-btn{width:22px;height:22px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:#999;transition:color .15s;flex-shrink:0;padding:0;line-height:1}
@@ -3676,11 +3680,15 @@ a{color:#003a8c;text-decoration:none}
         </select>
       </div>
       <div class="form-group"><label>账户性质 *</label>
-        <select id="riAccountType">
+        <select id="riAccountType" onchange="toggleRiTax()">
           <option value="对私">对私（业主个人卡 / 微信支付宝）</option>
           <option value="对公">对公（对公户 / 可开票主体）</option>
         </select>
         <div class="form-hint">资金真实走账性质；进度款来自企业业主对公户请选「对公」，否则统一归对私会影响对账与税费。</div>
+      </div>
+      <div class="form-group" id="riTaxGroup"><label>税率（对公）</label>
+        <select id="riTaxRate"></select>
+        <div class="form-hint">对公金额按含税价登记，不含税价 = 含税价 ÷ (1+税率) 自动倒推。对私忽略。</div>
       </div>
       <div class="form-group"><label>流水号 / 凭证编号</label><input type="text" id="riRefNo" placeholder="选填"></div>
       <div class="form-group"><label>收款凭证图片</label>
@@ -3711,11 +3719,15 @@ a{color:#003a8c;text-decoration:none}
         </select>
       </div>
       <div class="form-group"><label>账户性质 *</label>
-        <select id="raAccountType">
+        <select id="raAccountType" onchange="toggleRaTax()">
           <option value="对私">对私（业主个人卡 / 微信支付宝）</option>
           <option value="对公">对公（对公户 / 可开票主体）</option>
         </select>
         <div class="form-hint">资金真实走账性质；来自企业业主对公户请选「对公」，否则统一归对私会影响对账与税费。</div>
+      </div>
+      <div class="form-group" id="raTaxGroup"><label>税率（对公）</label>
+        <select id="raTaxRate"></select>
+        <div class="form-hint">对公金额按含税价登记，不含税价 = 含税价 ÷ (1+税率) 自动倒推。对私忽略。</div>
       </div>
       <div class="form-group"><label>流水号 / 凭证编号</label><input type="text" id="raRefNo" placeholder="选填"></div>
       <div class="form-group"><label>收款凭证图片</label>
@@ -3740,7 +3752,9 @@ a{color:#003a8c;text-decoration:none}
           <option value="减少">减少</option>
         </select>
       </div>
-      <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">金额（元）<span class="req">*</span></label><input type="number" id="adjAmount" min="0" step="0.01" placeholder="请输入金额" style="font-size:13px;padding:8px 12px"></div>
+      <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">金额（元，含税价）<span class="req">*</span></label><input type="number" id="adjAmount" min="0" step="0.01" placeholder="请输入金额" style="font-size:13px;padding:8px 12px"></div>
+      <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">税率（对公走账时适用）</label><select id="adjTaxRate" style="font-size:13px;padding:8px 12px"></select>
+        <div class="form-hint" style="font-size:11px;color:#8a94a6">对公金额按含税价登记，不含税价 = 含税价 ÷ (1+税率) 自动倒推。对私忽略。</div></div>
       <div class="form-group adj-cb-row" style="margin-bottom:12px"><label class="adj-checkbox-wrap" style="font-size:12px"><input type="checkbox" id="adjClientConfirmed"> <span>客户已确认此增减项</span></label></div>
       <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">工期影响（天）</label><input type="number" id="adjDaysImpact" min="0" value="0" style="font-size:13px;padding:8px 12px"></div>
       <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">客户确认说明</label><textarea id="adjClientNote" rows="2" placeholder="确认方式、确认日期或其他依据" style="font-size:13px;padding:8px 12px"></textarea></div>
@@ -3797,13 +3811,18 @@ a{color:#003a8c;text-decoration:none}
         <div class="form-hint" id="fContractHint">对公付给上游供应商应对应一份采购合同；可关联已有合同，或新建一份草稿并回到此处选择。未关联且项目无采购合同时，保存后将自动建一张草稿采购合同进入「合同管理」。</div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">金额 *</label><input type="number" id="fAmount" placeholder="0.00"></div>
+        <div class="form-group"><label class="form-label">金额（含税价）*</label><input type="number" id="fAmount" placeholder="0.00"></div>
         <div class="form-group"><label class="form-label" id="fStatusLabel">状态</label>
           <select id="fStatus">
             <option value="received">已收/已付</option>
             <option value="pending">待收/待付</option>
           </select>
         </div>
+      </div>
+      <div class="form-group" id="fTaxGroup" style="display:none">
+        <label class="form-label">税率（对公）</label>
+        <select id="fTaxRate" onchange="toggleFinInvoice()"></select>
+        <div class="form-hint">对公金额按含税价登记，不含税价 = 含税价 ÷ (1+税率) 自动倒推，并据此生成发票金额。</div>
       </div>
       <div class="form-row" id="fIncomeRow">
         <div class="form-group"><label class="form-label">收款分类</label><select id="fIncomeCat">
@@ -4541,7 +4560,7 @@ function upgradeLegacyAcceptance(){
    - 所有迁移必须幂等（重复运行结果一致），绝不直接销毁用户数据
    - 加载时校验结构，损坏则从最近备份恢复，避免渲染乱码
    ════════════════════════════════════════════════════════════════ */
-const DATA_VERSION = 5;
+const DATA_VERSION = 6;
 const MIGRATION_BACKUP_PREFIX = 'xzgz_app_v2_bak_';
 const MIGRATION_BACKUP_KEEP = 3;
 
@@ -4674,7 +4693,46 @@ function migrateV4ToV5(app){
   /* 同步更新记一笔中 linkedContractId 所指的合同类型已变（无需改 id，type 已在合同对象上） */
   if(n>0)console.info('[migration v4→v5] '+n+' 张「购销」合同已统一转为「采购」');
 }
-const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2, migrateV2ToV3, migrateV3ToV4, migrateV4ToV5 ];
+/* v5→v6：含税价模型翻转。对公记录 amount 统一定义为含税价(价税合计)，补税率字段，
+   并将其关联的「草稿」发票按含税价倒推不含税/税额重算；已开具发票保留原值不动。 */
+function migrateV5ToV6(app){
+  let nRec=0, nInv=0;
+  const recomputeDraft=(v,total,rate)=>{
+    if(!v)return;
+    const noTax=taxInclToExcl(total,rate);
+    const tax=taxInclTax(total,rate);
+    v.amountNoTax=noTax; v.tax=tax; v.amountTotal=Math.round(total*100)/100; v.taxRate=rate;
+    nInv++;
+  };
+  (app.projects||[]).forEach(p=>{
+    (p.income||[]).forEach(inc=>{
+      if(inc.accountType!=='对公')return;
+      if(!inc.taxRate)inc.taxRate=DEFAULT_TAX_RATE;
+      const rate=inc.taxRate||DEFAULT_TAX_RATE;
+      const total=incReceivedAmt(inc);
+      (app.invoices||[]).forEach(v=>{ if(v.linkedIncomeId===inc.id && (!v.status||v.status==='草稿')) recomputeDraft(v,total,rate); });
+      nRec++;
+    });
+    (p.expense||[]).forEach(rec=>{
+      if(rec.accountType!=='对公')return;
+      if(!rec.taxRate)rec.taxRate=DEFAULT_TAX_RATE;
+      const rate=rec.taxRate||DEFAULT_TAX_RATE;
+      const total=rec.amount||0;
+      (app.invoices||[]).forEach(v=>{ if(v.linkedExpenseId===rec.id && (!v.status||v.status==='草稿')) recomputeDraft(v,total,rate); });
+      nRec++;
+    });
+    (p.adjustments||[]).forEach(a=>{
+      if(a.accountType!=='对公')return;
+      if(!a.taxRate)a.taxRate=DEFAULT_TAX_RATE;
+      const rate=a.taxRate||DEFAULT_TAX_RATE;
+      const total=adjReceivedAbs(a);
+      (app.invoices||[]).forEach(v=>{ if(v.linkedIncomeId===a.id && (!v.status||v.status==='草稿')) recomputeDraft(v,total,rate); });
+      nRec++;
+    });
+  });
+  if(nRec>0||nInv>0)console.info('[migration v5→v6] 含税价模型：'+nRec+' 条对公记录补税率，'+nInv+' 张草稿发票重算(含税价倒推)');
+}
+const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2, migrateV2ToV3, migrateV3ToV4, migrateV4ToV5, migrateV5ToV6 ];
 
 /* 顺序执行迁移，直到数据版本达到当前版本；每步前自动备份 */
 function runMigrations(app){
@@ -10214,7 +10272,7 @@ function renderAdjList(p){
       ?`<span class="pp-status done">${stLabel}</span>${clientTag}${adjActions}`
       :`<span class="pp-status ${st}">${stLabel}</span>${clientTag}<button class="pp-reg-btn" onclick="openRecordAdjModal('${a.id}')">登记到账</button>${adjActions}`;
     const ownerNow=(p.profile&&p.profile.owner)||'未填写';
-    const receipts=(a.receipts||[]).map(r=>{
+      const receipts=(a.receipts||[]).map(r=>{
       const payerText=r.autoOwner?ownerNow:(r.payer||'未填写');
       return `
       <div class="pp-receipt-item">
@@ -10223,6 +10281,7 @@ function renderAdjList(p){
           <span class="pp-receipt-method">· ${escHtml(r.method||'—')}</span>
           <span class="pp-receipt-payer">· ${escHtml(payerText)}</span>
           <span class="pp-receipt-date">${r.date||''}</span>
+          ${taxBreakdownHtml(r,a,'pp-receipt-tax')}
         </div>
         <button class="pp-receipt-del" onclick="deleteAdjReceipt('${a.id}','${r.id}')">删除记录</button>
       </div>`;
@@ -10241,6 +10300,7 @@ function renderAdjList(p){
         <span class="pp-info-item"><b>未收</b> ${signedUnpaid}</span>
         <span class="pp-info-item">${a.createdAt||''}</span>
       </div>
+      ${taxBreakdownHtml(a,null,'pp-node-tax')}
       <div class="pp-bar-wrap"><div class="pp-bar ${st}" style="width:${barPct}%"></div></div>
       ${receipts?`<div class="pp-receipts">${receipts}</div>`:''}
     </div>`;
@@ -10324,6 +10384,7 @@ function renderPayPlanNode(i,idx,p,contractTotal){
         <span class="pp-receipt-method">· ${escHtml(r.method||'—')}</span>
         <span class="pp-receipt-payer">· ${escHtml(payerText)}</span>
         <span class="pp-receipt-date">${r.date||''}</span>
+        ${taxBreakdownHtml(r,i,'pp-receipt-tax')}
       </div>
       <button class="pp-receipt-del" onclick="deleteIncomeReceipt('${p.id}','${i.id}','${r.id}')">删除记录</button>
     </div>`;
@@ -10341,6 +10402,7 @@ function renderPayPlanNode(i,idx,p,contractTotal){
       <span class="pp-info-item"><b>未收</b> ¥${fmt(unpaid)}</span>
       <span class="pp-info-item">${i.date||''}</span>
     </div>
+    ${taxBreakdownHtml(i,null,'pp-node-tax')}
     <div class="pp-bar-wrap"><div class="pp-bar ${st}" style="width:${barPct}%"></div></div>
     ${receiptHtml?`<div class="pp-receipts">${receiptHtml}</div>`:''}
   </div>`;
@@ -11880,6 +11942,48 @@ function openInvoiceForFlow(pid,finId,type){
 function stepsOfProject(pid){const p=App.projects.find(x=>x.id===pid);return (p&&p.processSteps)||[];}
 function invoiceTax(no,rate){const n=parseFloat(no)||0,r=parseFloat(rate)||0;return Math.round(n*r/100*100)/100;}
 function invoiceTotal(no,tax){return Math.round(((parseFloat(no)||0)+(parseFloat(tax)||0))*100)/100;}
+/* ═══ 含税价模型（2026-08-26 起：对公金额一律按含税价(价税合计)登记） ═══
+   规则：对公记录 amount = 含税价；不含税价 = 含税价 ÷ (1+税率) 倒推；税额 = 含税价 − 不含税价。
+   对私记录无税，amount 既是不含税也是含税，税额为 0。 */
+/* 含税价 → 不含税价（倒推，四舍五入到分） */
+function taxInclToExcl(total, rate){
+  const t=parseFloat(total)||0, r=parseFloat(rate)||0;
+  if(r<=0) return Math.round(t*100)/100;
+  return Math.round(t/(1+r/100)*100)/100;
+}
+/* 含税价 → 税额 */
+function taxInclTax(total, rate){
+  const t=parseFloat(total)||0, r=parseFloat(rate)||0;
+  if(r<=0) return 0;
+  return Math.round((t - taxInclToExcl(t,r))*100)/100;
+}
+/* 取记录的适用税率：对公优先用记录自身 taxRate，其次父节点(收款/增减项) taxRate，再兜底默认税率；对私返回 0 */
+function recTaxRate(rec, parentNode){
+  if(!rec || rec.accountType!=='对公') return 0;
+  if(rec.taxRate) return parseFloat(rec.taxRate)||DEFAULT_TAX_RATE;
+  if(parentNode && parentNode.taxRate) return parseFloat(parentNode.taxRate)||DEFAULT_TAX_RATE;
+  return DEFAULT_TAX_RATE;
+}
+/* 取一条收支记录的含税/不含税/税额结构化信息（用于列表与汇总展示） */
+function recTaxInfo(rec, parentNode){
+  const total=parseFloat(rec.amount)||0;
+  if(rec.accountType!=='对公') return {corp:false, rate:0, total:total, noTax:total, tax:0};
+  const rate=recTaxRate(rec,parentNode);
+  const noTax=taxInclToExcl(total,rate);
+  return {corp:true, rate:rate, total:total, noTax:noTax, tax:Math.round((total-noTax)*100)/100};
+}
+/* 可选税率档位（与发票模块共用全局 TAX_RATES，不再重复声明） */
+function taxRateOptionsHtml(sel){
+  const s=String(sel==null?DEFAULT_TAX_RATE:sel);
+  return TAX_RATES.map(r=>`<option value="${r}" ${String(r)===s?'selected':''}>${r}%</option>`).join('');
+}
+/* 对公记录的小字「含税/不含税/税」拆解（仅对公显示，对私返回空） */
+function taxBreakdownHtml(rec, parentNode, cls){
+  const t=recTaxInfo(rec,parentNode);
+  if(!t.corp) return '';
+  const c=cls||'pp-tax-break';
+  return `<span class="${c}">含税 ¥${fmt(t.total)} · 不含税 ¥${fmt(t.noTax)} · 税 ¥${fmt(t.tax)}（${t.rate}%）</span>`;
+}
 function stepNameById(pid,sid){
   const p=App.projects.find(x=>x.id===pid);if(!p)return '';
   const all=[];(p.processSteps||[]).forEach(s=>{all.push(s);(s.children||[]).forEach(ch=>all.push(ch));});
@@ -12434,11 +12538,18 @@ function openRecordIncomeModal(pid,iid){
   const lastMethod=(inc.receipts&&inc.receipts.length)?inc.receipts[inc.receipts.length-1].method:'';
   $('riPayMethod').value=lastMethod||'银行转账';
   $('riAccountType').value=(inc.accountType||defaultAccountTypeForProject(p));
+  $('riTaxRate').innerHTML=taxRateOptionsHtml(inc.taxRate||DEFAULT_TAX_RATE);
+  toggleRiTax();
   $('riRefNo').value='';
   $('riNote').value='';
   $('riFileName').textContent='未选择任何文件';
   $('riFileInput').value='';
   showModal('recordIncomeModal');
+}
+/* 对公才显示税率字段（含税价模型） */
+function toggleRiTax(){
+  const isCorp=$('riAccountType').value==='对公';
+  const g=$('riTaxGroup'); if(g)g.style.display=isCorp?'':'none';
 }
 function onRiFileChange(input){
   if(input.files&&input.files[0]){
@@ -12473,6 +12584,8 @@ function saveRecordIncome(){
   inc.receipts.push(rec);
   /* 账户性质：登记到账时显式选择，决定该笔收款归入对公/对私资金流（影响财务汇总与税费） */
   inc.accountType=$('riAccountType').value;
+  /* 含税价模型：对公记录以含税额登记，税率存于节点，receipts 派生不含税/税 */
+  if(inc.accountType==='对公') inc.taxRate=parseFloat($('riTaxRate').value)||DEFAULT_TAX_RATE; else inc.taxRate='';
   /* 对公走账：自动建/更新一张草稿销项发票挂到发票管理「未开票」版块，与待办「对公未开票」提醒同源联动 */
   if(inc.accountType==='对公'){ ensureIncomeInvoice(inc.id, p, incReceivedAmt(inc), inc.name); }
   /* 同步更新 received 标记（兼容旧代码读取） */
@@ -12536,11 +12649,18 @@ function openRecordAdjModal(aid){
   const lastMethod=(a.receipts&&a.receipts.length)?a.receipts[a.receipts.length-1].method:'';
   $('raPayMethod').value=lastMethod||'银行转账';
   $('raAccountType').value=(a.accountType||defaultAccountTypeForProject(p));
+  $('raTaxRate').innerHTML=taxRateOptionsHtml(a.taxRate||DEFAULT_TAX_RATE);
+  toggleRaTax();
   $('raRefNo').value='';
   $('raNote').value='';
   $('raFileName').textContent='未选择任何文件';
   $('raFileInput').value='';
   showModal('recordAdjModal');
+}
+/* 对公才显示税率字段（含税价模型） */
+function toggleRaTax(){
+  const isCorp=$('raAccountType').value==='对公';
+  const g=$('raTaxGroup'); if(g)g.style.display=isCorp?'':'none';
 }
 function onRaFileChange(input){
   if(input.files&&input.files[0]){$('raFileName').textContent=input.files[0].name;}else{$('raFileName').textContent='未选择任何文件';}
@@ -12570,6 +12690,8 @@ function saveRecordAdj(){
   a.receipts.push(rec);
   /* 账户性质：登记到账时显式选择，决定该笔收款归入对公/对私资金流（影响财务汇总与税费） */
   a.accountType=$('raAccountType').value;
+  /* 含税价模型：对公记录以含税额登记，税率存于节点，receipts 派生不含税/税 */
+  if(a.accountType==='对公') a.taxRate=parseFloat($('raTaxRate').value)||DEFAULT_TAX_RATE; else a.taxRate='';
   /* 对公走账：自动建/更新一张草稿销项发票挂到发票管理「未开票」版块（与收款计划同源） */
   if(a.accountType==='对公'){ ensureIncomeInvoice(a.id, p, adjReceivedAbs(a), a.name); }
   /* 同步更新 received 标记 */
@@ -12620,10 +12742,10 @@ function openAdjustmentModal(editId){
   _adjEditId=editId||null;
   if(editId){
     const a=(p.adjustments||[]).find(x=>x.id===editId);
-    if(a){$('adjName').value=a.name||'';$('adjType').value=a.type||'增加';$('adjAmount').value=a.amount||'';$('adjClientConfirmed').checked=!!a.clientConfirmed;$('adjDaysImpact').value=a.daysImpact||0;$('adjClientNote').value=a.clientConfirmNote||'';$('adjChangeNote').value=a.changeNote||'';$('adjProofName').textContent=a.proofFile?a.proofFile.name:'未选择任何文件';}
+    if(a){$('adjName').value=a.name||'';$('adjType').value=a.type||'增加';$('adjAmount').value=a.amount||'';$('adjClientConfirmed').checked=!!a.clientConfirmed;$('adjDaysImpact').value=a.daysImpact||0;$('adjClientNote').value=a.clientConfirmNote||'';$('adjChangeNote').value=a.changeNote||'';$('adjProofName').textContent=a.proofFile?a.proofFile.name:'未选择任何文件';$('adjTaxRate').innerHTML=taxRateOptionsHtml(a.taxRate||DEFAULT_TAX_RATE);}
     $('adjustmentModal').querySelector('.modal-title').textContent='编辑合同增减项';
   }else{
-    $('adjName').value='';$('adjType').value='增加';$('adjAmount').value='';$('adjClientConfirmed').checked=false;$('adjDaysImpact').value=0;$('adjClientNote').value='';$('adjChangeNote').value='';$('adjProofName').textContent='未选择任何文件';$('adjProofInput').value='';
+    $('adjName').value='';$('adjType').value='增加';$('adjAmount').value='';$('adjClientConfirmed').checked=false;$('adjDaysImpact').value=0;$('adjClientNote').value='';$('adjChangeNote').value='';$('adjProofName').textContent='未选择任何文件';$('adjProofInput').value='';$('adjTaxRate').innerHTML=taxRateOptionsHtml(DEFAULT_TAX_RATE);
     $('adjustmentModal').querySelector('.modal-title').textContent='新增合同增减项';
   }
   showModal('adjustmentModal');
@@ -12652,6 +12774,7 @@ function saveAdjustment(){
     changeNote:$('adjChangeNote').value.trim(),
     receipts:[],
     received:false,
+    taxRate:parseFloat($('adjTaxRate').value)||DEFAULT_TAX_RATE,
     createdAt:localISODate(new Date())
   };
   /* 文件处理 */
@@ -13883,24 +14006,27 @@ function renderFinanceRecords(){
       title=escHtml(r.payer||'未填写')+' · ¥'+fmt(r.amount);
       const nodePct=r.node.amount?Math.round((r.amount/r.node.amount)*1000)/10:0;
       subtitle=(r.name?'节点：'+escHtml(r.name)+'（本节点 '+nodePct+'%）':'')+(r.note?' · '+escHtml(r.note):'')+(r.refNo?' · 流水号 '+escHtml(r.refNo):'');
+      var taxHtml=taxBreakdownHtml(r.receipt,r.node,'fin-rec-tax');
     }else if(r.kind==='manual'){
       ci=catInfo(r.cat);
       actions=`<button class="fin-rec-action-btn" onclick="editFinance('income','${r.node.id}')">✏</button><button class="fin-rec-action-btn del" onclick="delFinance('income','${r.node.id}')">✕</button>`;
       status=`<span class="fin-rec-status ${r.received?'paid':'pending'}">${r.received?'已收':'待收'}</span>`;
       title=escHtml(r.payer||'未填写')+' · ¥'+fmt(r.amount);
       subtitle=(r.cat?r.cat:'')+(r.name?' · '+escHtml(r.name):'')+(r.note?' · '+escHtml(r.note):'');
+      var taxHtml=taxBreakdownHtml(r.node,null,'fin-rec-tax');
     }else{
       ci={color:'#003a8c',short:r.node.type==='增加'?'增':'减'};
       actions=`<button class="fin-rec-action-btn" onclick="openAdjustmentModal('${r.node.id}')">✏</button><button class="fin-rec-action-btn del" onclick="deleteAdjustment('${r.node.id}')">✕</button>`;
       status=`<span class="fin-rec-status ${r.received?'paid':'pending'}">${r.statusLabel||(r.received?'已收':'待收')}</span>`;
       title=escHtml(r.payer||'客户')+' · ¥'+fmt(r.amount);
       subtitle='增减项'+(r.name?' · '+escHtml(r.name):'')+(r.note?' · '+escHtml(r.note):'');
+      var taxHtml=taxBreakdownHtml(r.node,null,'fin-rec-tax');
     }
     return`<div class="fin-record-item">
       <div class="fin-rec-cat-icon" style="background:${ci.color}">${ci.short}</div>
       <div class="fin-rec-main">
         <div class="fin-rec-row1"><span class="fin-rec-title">${title}</span>${status}${r.date?'<span style="font-size:12px;color:#999;white-space:nowrap">'+r.date+'</span>':''}<div class="fin-rec-actions">${actions}</div></div>
-        <div class="fin-rec-row2"><span class="fin-rec-note">${subtitle}</span></div>
+        <div class="fin-rec-row2"><span class="fin-rec-note">${subtitle}</span>${taxHtml||''}</div>
       </div></div>`;
   }).join(''):'<div style="text-align:center;padding:40px;color:#bbb;font-size:14px">暂无收款记录</div>';
 
@@ -14220,6 +14346,7 @@ function editFinance(type,id){
   else{$('fCat').value=(EXPENSE_CAT_RENAME[found.cat]||found.cat)||'材料采购';$('fPayee').value=found.payee||'';}
   $('fDate').value=found.date||todayISO();$('fNote').value=found.note||'';
   $('fAccountType').value=found.accountType||defaultAccountType(found,foundP);
+  $('fTaxRate').innerHTML=taxRateOptionsHtml(found.taxRate||DEFAULT_TAX_RATE);
   /* 开票状态与关联发票回显 */
   currentFinRecId=found.id;currentFinInvoiceId='';_pendingFinInvoiceLink=null;
   const _linked=findLinkedInvoice(found.id,type);
@@ -14262,6 +14389,7 @@ function openFinanceModal(){
   /* 账户性质默认继承项目（企业→对公，个人→对私），可逐笔改 */
   const _defP=App.projects.find(x=>x.id===$('fProject').value);
   $('fAccountType').value=defaultAccountTypeForProject(_defP);
+  $('fTaxRate').innerHTML=taxRateOptionsHtml(DEFAULT_TAX_RATE);
   toggleFinInvoice();
   showModal('financeModal');
 }
@@ -14276,6 +14404,7 @@ function refreshFinCorpExtras(){
   const isCorp=$('fAccountType').value==='对公';
   const isExp=$('fType').value==='expense';
   $('fInvoiceGroup').style.display=isCorp?'block':'none';
+  if($('fTaxGroup'))$('fTaxGroup').style.display=isCorp?'block':'none';
   if($('fContractGroup'))$('fContractGroup').style.display=(isCorp&&isExp)?'block':'none';
   if(!isCorp){
     if($('fInvoiceLinkRow'))$('fInvoiceLinkRow').style.display='none';
@@ -14947,7 +15076,8 @@ function saveFinance(){
   }
   const recId=currentFinRecId||uid();
   const at=$('fAccountType').value;
-  const rec={id:recId,name:name,amount:amount,date:$('fDate').value,note:$('fNote').value,_source:'manual',accountType:at};
+  const rec={id:recId,name:name,amount:amount,date:$('fDate').value,note:$('fNote').value,_source:'manual',accountType:at,
+    taxRate: at==='对公' ? (parseFloat($('fTaxRate').value)||DEFAULT_TAX_RATE) : ''};
   /* 开票状态与发票关联（仅对公走账有意义） */
   if(at==='对公'){
     const invSt=$('fInvoiceStatus').value;
@@ -15000,14 +15130,14 @@ function saveFinance(){
    status 缺省 '草稿'（未开票路径）；已开票路径传 '已开'。 */
 function finAutoCreateInvoice(rec,type,target,status){
   const direction=type==='income'?'销项':'进项';
-  const rate=DEFAULT_TAX_RATE;
-  const no=rec.amount||0;
-  const tax=invoiceTax(no,rate);
-  const total=invoiceTotal(no,tax);
+  const rate=rec.taxRate||DEFAULT_TAX_RATE;          /* 含税价模型：记录 amount = 含税价，按税率倒推不含税 */
+  const total=parseFloat(rec.amount)||0;
+  const noTax=taxInclToExcl(total,rate);
+  const tax=taxInclTax(total,rate);
   const inv={
     id:'inv_'+uid(), direction, type:INVOICE_TYPES[0], projectId:target.id,
     linkedContractId:'', linkedIncomeId:type==='income'?rec.id:'', linkedExpenseId:type==='expense'?rec.id:'',
-    amountNoTax:no, taxRate:rate, tax:tax, amountTotal:total,
+    amountNoTax:noTax, taxRate:rate, tax:tax, amountTotal:total,
     issuer:'', payer:type==='income'?(rec.payer||''):'', payee:type==='expense'?(rec.payee||''):'',
     issueDate:rec.date||todayISO(), status:status||'草稿', deductStatus:direction==='进项'?'待抵扣':'不抵扣', verifyStatus:'未查验',
     note:'由「记一笔」自动关联创建：'+(rec.name||'')
@@ -15024,24 +15154,25 @@ function finAutoCreateInvoice(rec,type,target,status){
 function ensureIncomeInvoice(recId,p,receivedAmt,label){
   if(!App.invoices)App.invoices=[];
   if(!recId)return;
+  /* 税率取该收款记录自身 taxRate（含税价模型：amount=含税价，按税率倒推不含税） */
+  const rate=(()=>{ const inc=(App.projects||[]).reduce((f,pr)=>f||(pr.income||[]).find(x=>x.id===recId),null); return (inc&&inc.taxRate)||DEFAULT_TAX_RATE; })();
+  const total=parseFloat(receivedAmt)||0;
+  const noTax=taxInclToExcl(total,rate);
+  const tax=taxInclTax(total,rate);
   const existing=App.invoices.find(v=>v.linkedIncomeId===recId && (v.status==='草稿'||!v.status));
   if(existing){
     /* 已存在草稿发票：更新金额累计 + 补 payer，不重复建票 */
-    const cum=receivedAmt||0;
-    existing.amountNoTax=cum;
-    existing.tax=invoiceTax(cum, existing.taxRate||DEFAULT_TAX_RATE);
-    existing.amountTotal=invoiceTotal(cum, existing.tax);
+    existing.amountNoTax=noTax;
+    existing.tax=tax;
+    existing.amountTotal=total;
+    existing.taxRate=rate;
     existing.payer=existing.payer||((p&&p.profile&&p.profile.owner)||'');
     return;
   }
-  const no=receivedAmt||0;
-  const rate=DEFAULT_TAX_RATE;
-  const tax=invoiceTax(no,rate);
-  const total=invoiceTotal(no,tax);
   App.invoices.push({
     id:'inv_'+uid(), direction:'销项', type:INVOICE_TYPES[0], projectId:(p&&p.id)||'',
     linkedContractId:'', linkedIncomeId:recId, linkedExpenseId:'',
-    amountNoTax:no, taxRate:rate, tax:tax, amountTotal:total,
+    amountNoTax:noTax, taxRate:rate, tax:tax, amountTotal:total,
     issuer:'', payer:(p&&p.profile&&p.profile.owner)||'', payee:'',
     issueDate:todayISO(), status:'草稿', deductStatus:'不抵扣', verifyStatus:'未查验',
     note:'由收款计划登记到账自动关联创建：'+(label||'')
