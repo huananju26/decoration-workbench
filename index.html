@@ -7599,6 +7599,11 @@ function renderActionQueueAll(projects){
     });
     /* 缺合同提醒（待办）：仍缺的合同，与合同管理「缺合同」版块同源 */
     missingContractsList().filter(m=>m._pid===p.id).forEach(m=>items.push(m));
+    /* 草稿合同 → 待办「待签约」提醒（草稿态既不缺合同也不已签约，否则完全隐形，用户感觉"变没了"） */
+    (App.contracts||[]).filter(c=>c.projectId===p.id && c.status==='草稿').forEach(c=>{
+      const tg=contractTargetKind(c);
+      items.push({ id:'con_draft_'+c.id, title:(c.title||c.type||'合同')+' · 待签约', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:c.type, _targetKind:tg.kind, _targetId:tg.id, _conId:c.id, projectName:pn, conType:c.type, targetKind:tg.kind, targetId:tg.id, targetName:c.title, label:c.type+'合同', note:'合同已建草稿，待签约生效' });
+    });
     /* 已签约合同 → 已完成（提醒闭环，之前会凭空消失） */
     (App.contracts||[]).filter(c=>c.projectId===p.id && MAIN_CONTRACT_OK.includes(c.status)).forEach(c=>{
       const tg=contractTargetKind(c);
@@ -7656,25 +7661,25 @@ function renderActionQueueAll(projects){
     const checkHtml=isStep?`<div class="aq-check aq-check-step" onclick="event.stopPropagation();switchToProject('${item._pid}');switchPage('process');">⚠</div>`
       :(kind==='adjust'?`<div class="aq-check" title="点击登记到账" onclick="event.stopPropagation();openRecordAdjModal('${item.id}');switchToProject('${item._pid}');">¥</div>`
       :(kind==='invoice'?`<div class="aq-check aq-check-inv" title="点击去开票（关联发票后提醒自动消失）" onclick="event.stopPropagation();openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')">🧾</div>`
-      :(kind==='contract'?`<div class="aq-check aq-check-con" title="点击去补签合同（关联后提醒自动消失）" onclick="event.stopPropagation();openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')">📑</div>`
+      :(kind==='contract'?`<div class="aq-check aq-check-con" title="${item._conId?'点击编辑合同':'点击去补签合同（关联后提醒自动消失）'}" onclick="event.stopPropagation();${item._conId?`editContract('${item._conId}')`:`openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')`}">📑</div>`
       :`<div class="aq-check ${item.done?'checked':''}" onclick="toggleItem('${item.id}','${kind}','${item._pid}')">${item.done?'✓':''}</div>`)));
     /* 当前状态：pending / overdue / done —— 用于原位编辑高亮 */
     const curStatus=item.done?'done':(isOver?'overdue':'pending');
-    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?(item.done?'已开票':'未开票'):(kind==='step'?(item.done?'节点完成':'节点逾期'):(kind==='contract'?(item.done?'合同已签':'缺合同'):(item.done?'已完成':'待办')))));
+    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?(item.done?'已开票':'未开票'):(kind==='step'?(item.done?'节点完成':'节点逾期'):(kind==='contract'?(item.done?'合同已签':(item._conId?'待签约':'缺合同')):(item.done?'已完成':'待办')))));
     /* 未开票/缺合同提醒项点击右侧标签也跳转，而非打开状态编辑 */
     const labelOnclick = kind==='invoice'
       ? `openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')`
       : (kind==='contract'
-      ? `openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')`
+      ? (item._conId?`editContract('${item._conId}')`:`openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')`)
       : `openAqStatusPop(this,'${item.id}','${kind}','${item._pid}','${curStatus}')`);
     /* 已完成项：整行只读（pointer-events:none）。未完成且为合同类（缺合同提醒）：整行可点击直接去补签，消除"点整行没反应"的误区 */
     const liExtra = item.done
       ? ' style="pointer-events:none" title="已完成，仅查看"'
-      : (item._kind==='contract' ? ` onclick="event.stopPropagation();openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')"` : '');
+      : (item._kind==='contract' ? ` onclick="event.stopPropagation();${item._conId?`editContract('${item._conId}')`:`openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')`}"` : '');
     return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''} ${isToday?'today':''}"${liExtra}>${checkHtml}
       <div class="aq-info"><div class="aq-title ${isOver?'overdue':''}">${item.title||item.name}${isOver?' <span style="color:#ff4d4f;font-size:11px">'+(isStep?'已逾期':'逾期')+'</span>':''}</div>
       <div class="aq-meta">${datePrefix}${item._proj||''}${dateSuffix} ${item.stage?'· '+getStageName(item.stage):''}</div>${noteHtml}</div>
-      <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''}"${item.done?' title="已完成，仅查看"':' title="点击去补签合同" onclick="event.stopPropagation();'+labelOnclick}'">${kindLabel}${item.done?'':'<span class="aq-kind-caret">▾</span>'}</span></li>`;
+      <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''}"${item.done?' title="已完成，仅查看"':' title="点击去补签合同" onclick="event.stopPropagation();'+labelOnclick}">${kindLabel}${item.done?'':'<span class="aq-kind-caret">▾</span>'}</span></li>`;
   }).join('');
 
   /* 分页器（原位翻页，不跳转整页） */
