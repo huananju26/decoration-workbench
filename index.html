@@ -12069,17 +12069,36 @@ function findLinkedInvoice(recId,type){
    草稿与已开(已收票/已认证)一并移除——发票是源记录的派生物，源删除则发票自然随之删除，
    保证「销项/进项」版块与记录删除实时联动。手动创建、未关联源记录的发票不受影响。
    反向发票只能经此通道移除，用户不可在发票管理手动删除（见 deleteInvoice 守卫）。 */
-function cascadeDeleteLinkedInvoice(recId, type){
+function cascadeDeleteLinkedInvoice(recId, type, projectId){
   if(!App.invoices||!recId)return;
   const key = type==='income' ? 'linkedIncomeId' : 'linkedExpenseId';
+  const removedIds = App.invoices.filter(v=> v[key]===recId ).map(v=>v.id);
   App.invoices = App.invoices.filter(v=> v[key]!==recId ); // 移除与该源互链的全部发票（草稿+已开）
+  /* 重置关联 invoice 类型待办项的 done 状态 */
+  if(projectId){ const proj=projectById(projectId);
+    if(proj&&(proj.actionQueue||[]).length){
+      proj.actionQueue.forEach(q=>{
+        if(q._kind==='invoice'&&q.done&&removedIds.includes(q._finId)){ q.done=false; delete q._completedAt; }
+      });
+    }
+  }
 }
 /* 删除收/付款源记录后，级联移除自动创建的关联合同（仅限 linkedExpenseId/linkedIncomeId 反向指向源记录的草稿合同）。
    用户手动选择关联的合同不受影响（其 linkedExpenseId/linkedIncomeId 为空）。 */
-function cascadeDeleteLinkedContract(recId, type){
+function cascadeDeleteLinkedContract(recId, type, projectId){
   if(!App.contracts||!recId)return;
   const key = type==='income' ? 'linkedIncomeId' : 'linkedExpenseId';
+  /* 先收集将被删除的合同 ID 列表，用于后续重置待办项 */
+  const removedIds = App.contracts.filter(c=> c[key]===recId ).map(c=>c.id);
   App.contracts = App.contracts.filter(c=> c[key]!==recId );
+  /* 重置关联待办项的 done 状态（与 deleteContract 保持一致） */
+  if(projectId){ const proj=projectById(projectId);
+    if(proj&&(proj.actionQueue||[]).length){
+      proj.actionQueue.forEach(q=>{
+        if(q._kind==='contract'&&q.done&&removedIds.includes(q._conId)){ q.done=false; delete q._completedAt; }
+      });
+    }
+  }
 }
 /* 源记录仍有到账时，把关联的草稿发票金额刷新为最新累计（不新建，避免重复）。 */
 function refreshLinkedInvoiceAmount(recId, type, amt, p){
@@ -12382,6 +12401,16 @@ function deleteContract(id){
   if(c.linkedPurchaseId){const pur=findPurchaseById(c.projectId,c.linkedPurchaseId);if(pur&&pur.linkedContractId===id)pur.linkedContractId='';}
   App.contracts=App.contracts.filter(x=>x.id!==id);
   (App.invoices||[]).forEach(v=>{if(v.linkedContractId===id)v.linkedContractId='';});
+  /* 重置关联待办项：合同删除后，contract 类型待办的 done 必须回退为 false，否则渲染层 pointer-events:none 会锁死该条 */
+  const proj=projectById(c.projectId);
+  if(proj&&(proj.actionQueue||[]).length){
+    proj.actionQueue.forEach(q=>{
+      if(q._kind==='contract'&&q.done&&(
+        q._conId===id||(c.linkedStepId&&q._targetId===c.linkedStepId&&q._targetKind==='step')||
+        (c.linkedPurchaseId&&q._targetId===c.linkedPurchaseId&&q._targetKind==='purchase')
+      )){ q.done=false; delete q._completedAt; }
+    });
+  }
   persist();renderContracts();
 }
 /* 合同扫描件：缩略图渲染（编辑态） */
@@ -12646,6 +12675,13 @@ function deleteInvoice(id){
   }
   if(!confirm('确定删除这张发票吗？'))return;
   App.invoices=App.invoices.filter(x=>x.id!==id);
+  /* 重置关联待办项：发票删除后，invoice 类型待办的 done 必须回退为 false */
+  const proj=projectById(v.projectId);
+  if(proj&&(proj.actionQueue||[]).length){
+    proj.actionQueue.forEach(q=>{
+      if(q._kind==='invoice'&&q.done&&q._finId===id){ q.done=false; delete q._completedAt; }
+    });
+  }
   persist();renderInvoices();if(typeof renderFinance==='function')renderFinance();
 }
 
@@ -15397,8 +15433,8 @@ function refreshContactDatalists(proj){
 function delFinance(type,id){
   const p=cur();if(!p)return;
   if(!confirm('确认删除这条记录？'))return;
-  if(type==='income'){ p.income=p.income.filter(i=>i.id!==id); cascadeDeleteLinkedInvoice(id,'income'); cascadeDeleteLinkedContract(id,'income'); }
-  else { p.expense=p.expense.filter(e=>e.id!==id); cascadeDeleteLinkedInvoice(id,'expense'); cascadeDeleteLinkedContract(id,'expense'); }
+  if(type==='income'){ p.income=p.income.filter(i=>i.id!==id); cascadeDeleteLinkedInvoice(id,'income',p.id); cascadeDeleteLinkedContract(id,'income',p.id); }
+  else { p.expense=p.expense.filter(e=>e.id!==id); cascadeDeleteLinkedInvoice(id,'expense',p.id); cascadeDeleteLinkedContract(id,'expense',p.id); }
   persist();renderFinance();renderHome();renderContracts&&renderContracts();
 }
 
