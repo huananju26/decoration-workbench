@@ -7330,6 +7330,7 @@ function renderActionQueueAll(projects){
     [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
       arr.forEach(rec=>{
         if(defaultAccountType(rec,p)!=='对公') return;
+        if(tt==='income' && incReceivedAmt(rec)<=0) return; /* 对公收款已删空到账，无需再提醒开票（待办同步清理） */
         if(rec.invoiceStatus==='已开票') return; /* 显式标记已开票 */
         const linked=findLinkedInvoice(rec.id,tt);
         if(linked && INV_ISSUED_STATUS.includes(linked.status)) return; /* 关联发票已开，不再提醒 */
@@ -11809,6 +11810,30 @@ function findLinkedInvoice(recId,type){
   if(!recId)return null;
   return (App.invoices||[]).find(v=> type==='income' ? v.linkedIncomeId===recId : v.linkedExpenseId===recId);
 }
+/* 删除收/付款源记录后，级联移除其自动派生的草稿发票（销项 linkedIncomeId / 进项 linkedExpenseId）。
+   仅删「自动生成且仍为草稿(未开)」的票；已开/已认证的票保留（真实税务痕迹，且删源后待办已不再提醒）。
+   反向发票只能经此通道移除，用户不可在发票管理手动删除（见 deleteInvoice 守卫）。 */
+function cascadeDeleteLinkedInvoice(recId, type){
+  if(!App.invoices||!recId)return;
+  const key = type==='income' ? 'linkedIncomeId' : 'linkedExpenseId';
+  App.invoices = App.invoices.filter(v=>{
+    if(v[key]!==recId) return true;                 // 不是这条源的票，保留
+    if(v.status && v.status!=='草稿') return true;  // 已开/已认证等已处置 → 保留
+    return false;                                   // 自动生成的草稿票 → 级联删除
+  });
+}
+/* 源记录仍有到账时，把关联的草稿发票金额刷新为最新累计（不新建，避免重复）。 */
+function refreshLinkedInvoiceAmount(recId, type, amt, p){
+  if(!App.invoices||!recId)return;
+  const key = type==='income' ? 'linkedIncomeId' : 'linkedExpenseId';
+  const inv = App.invoices.find(v=>v[key]===recId && (v.status==='草稿'||!v.status));
+  if(!inv)return;
+  const no=amt||0;
+  inv.amountNoTax=no;
+  inv.tax=invoiceTax(no, inv.taxRate||DEFAULT_TAX_RATE);
+  inv.amountTotal=invoiceTotal(no, inv.tax);
+  inv.payer=inv.payer||((p&&p.profile&&p.profile.owner)||'');
+}
 /* 找某项目下某条收/付款流水记录对象（用于从待办跳转开票时预填金额/名称） */
 function findFinRec(pid,recId){
   const p=App.projects.find(x=>x.id===pid);if(!p||!recId)return null;
@@ -12115,15 +12140,19 @@ function renderInvoices(){
       const badgeCls=v.direction==='销项'?'blue':'';
       const unissued=(v.status==='草稿')||!v.status;
       const stTxt=INVOICE_STATUS.includes(v.status)?v.status:'草稿';
+      const isAuto=!!(v.linkedIncomeId||v.linkedExpenseId); /* 由收/付款自动生成的反向发票 */
       return `<div class="archive-item ${unissued?'inv-unissued':''}">
         <div class="archive-item-head">
           <div class="archive-item-name">${escHtml(v.type||'发票')} · ${escHtml(v.direction||'')}</div>
           <span class="archive-tag ${badgeCls}">${escHtml(v.direction||'')}</span>
+          ${isAuto?`<span class="archive-tag" style="color:#003a8c;border-color:#91caff;background:#e6f4ff" title="由收/付款记录自动生成，仅可管理不可手动删除">自动</span>`:''}
           <span class="archive-tag ${unissued?'badge-red':''}">${escHtml(stTxt)}</span>
           <div class="archive-item-ops">
             ${unissued?`<button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#cf1322;border-color:#ffa39e;background:#fff1f0" onclick="markInvoiceIssued('${v.id}')">标记已开</button>`:''}
             <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editInvoice('${v.id}')">编辑</button>
-            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deleteInvoice('${v.id}')">删除</button>
+            ${isAuto
+              ? `<span class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#999;border-color:#eee;background:#fafafa;cursor:not-allowed" title="该发票由收/付款记录自动生成，需在源头（收款计划/装修记账）删除对应记录时自动同步移除">仅管理</span>`
+              : `<button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deleteInvoice('${v.id}')">删除</button>`}
           </div>
         </div>
         <div class="archive-item-rows">
@@ -12301,6 +12330,12 @@ function editInvoice(id){
 }
 function deleteInvoice(id){
   const v=invoiceById(id);if(!v)return;
+  /* 反向发票（由收/付款自动生成）仅可管理，不可在发票管理手动删除；
+     只能在源头记录被删除时经 cascadeDeleteLinkedInvoice 自动同步移除 */
+  if(v.linkedIncomeId||v.linkedExpenseId){
+    alert('该发票由收/付款记录自动生成（反向发票），不能在发票管理中直接删除。\n如需移除，请到「项目管理 → 收款计划」或「装修记账」删除对应的对公收/付款记录，发票会同步自动移除。');
+    return;
+  }
   if(!confirm('确定删除这张发票吗？'))return;
   App.invoices=App.invoices.filter(x=>x.id!==id);
   persist();renderInvoices();if(typeof renderFinance==='function')renderFinance();
@@ -12439,6 +12474,9 @@ function deleteIncomeReceipt(pid,iid,rid){
   inc.received=false;
   /* 同步更新 received 标记（按剩余 receipts 重新计算） */
   inc.received=incReceivedAmt(inc)>=(inc.amount||0)-0.005;
+  /* 级联：删空节点→同步移除其自动草稿销项发票（待办+发票管理同步清理）；仍有到账→刷新发票累计金额 */
+  if((inc.receipts||[]).length===0){ cascadeDeleteLinkedInvoice(inc.id,'income'); }
+  else { refreshLinkedInvoiceAmount(inc.id,'income',incReceivedAmt(inc),p); }
   persist();
   renderProcessFinance();
   renderFinance();
@@ -12532,6 +12570,9 @@ function deleteAdjReceipt(aid,rid){
   const target=Math.abs(a.amount||0);
   a.received=adjReceivedAbs(a)>=(target-0.005);
   p.adjustment=(p.adjustments||[]).filter(x=>x.status==='已确认'&&x.clientConfirmed).reduce((s,x)=>x.type==='增加'?s+x.amount:s-x.amount,0);
+  /* 级联：删空节点→同步移除其自动草稿销项发票；仍有到账→刷新发票累计金额 */
+  if((a.receipts||[]).length===0){ cascadeDeleteLinkedInvoice(a.id,'income'); }
+  else { refreshLinkedInvoiceAmount(a.id,'income',adjReceivedAbs(a),p); }
   persist();
   renderProcessFinance();
   renderFinance();
@@ -15004,8 +15045,8 @@ function refreshContactDatalists(proj){
 function delFinance(type,id){
   const p=cur();if(!p)return;
   if(!confirm('确认删除这条记录？'))return;
-  if(type==='income')p.income=p.income.filter(i=>i.id!==id);
-  else p.expense=p.expense.filter(e=>e.id!==id);
+  if(type==='income'){ p.income=p.income.filter(i=>i.id!==id); cascadeDeleteLinkedInvoice(id,'income'); }
+  else { p.expense=p.expense.filter(e=>e.id!==id); cascadeDeleteLinkedInvoice(id,'expense'); }
   persist();renderFinance();renderHome();
 }
 
