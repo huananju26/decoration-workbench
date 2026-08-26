@@ -12388,6 +12388,7 @@ function renderInvoices(){
        <div class="proj-stat-item"><div class="proj-stat-label">销项税额</div><div class="proj-stat-val" style="color:#003a8c">¥${fmt(tax.output)}</div></div>
        <div class="proj-stat-item"><div class="proj-stat-label">进项税额</div><div class="proj-stat-val">¥${fmt(tax.input)}</div></div>
        <div class="proj-stat-item"><div class="proj-stat-label">应缴增值税</div><div class="proj-stat-val" style="color:#fa8c16">¥${fmt(tax.vat)}</div></div>
+       <div class="proj-stat-item"><div class="proj-stat-label">合计应缴</div><div class="proj-stat-val" style="color:#ff4d4f;font-weight:700">¥${fmt(tax.total)}</div></div>
      </div>
      <div class="archive-filter-bar"><span class="archive-count">${_invTab} · 共 ${arr.length} 张（${escHtml(projName)}）</span></div>
      <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
@@ -12556,7 +12557,8 @@ function computeTaxSummary(projectId){
   });
   const vat=Math.round((out-inp)*100)/100;
   const add=Math.round(Math.max(0,vat)*0.12*100)/100;
-  return {output:out,input:inp,vat:vat,add:add};
+  const total=Math.round((vat+add)*100)/100;
+  return {output:out,input:inp,vat:vat,add:add,total:total};
 }
 function renderTaxPanel(){
   const el=$('finTaxCard');if(!el)return;
@@ -12567,6 +12569,7 @@ function renderTaxPanel(){
       <div class="fin-dash-sm"><div class="fin-dash-sm-val">¥${fmt(t.input)}</div><div class="fin-dash-sm-label">进项税额</div></div>
       <div class="fin-dash-sm"><div class="fin-dash-sm-val ${t.vat>=0?'blue':'red'}">¥${fmt(t.vat)}</div><div class="fin-dash-sm-label">应缴增值税</div></div>
       <div class="fin-dash-sm"><div class="fin-dash-sm-val">¥${fmt(t.add)}</div><div class="fin-dash-sm-label">附加税(×12%)</div></div>
+      <div class="fin-dash-sm" style="border:2px solid #ff4d4f;border-radius:10px"><div class="fin-dash-sm-val red">¥${fmt(t.total)}</div><div class="fin-dash-sm-label">合计应缴=增值税+附加税</div></div>
     </div>
     <div class="fin-dash-note">应缴增值税 = 销项税额 − 进项税额；附加税 = 应缴增值税 × 12%（城建7%+教育3%+地方2%），仅对正数计征。本面板不影响「账面毛利」等既有口径。</div>`;
 }
