@@ -12314,7 +12314,12 @@ function openAddContract(prefill){
   fillSelect($('conType'),CONTRACT_TYPES);fillSelect($('conStatus'),CONTRACT_STATUS);
   if(prefill&&prefill.type)$('conType').value=prefill.type;
   $('conParty').value='';$('conSupplier').value='';
-  $('conAmount').value='';$('conSignDate').value=todayISO();
+  /* 合同金额默认取当前项目的项目总金额 */
+  const selPid=$('conProject').value;
+  const proj=App.projects.find(p=>p.id===selPid);
+  const defAmt=proj&&proj.totalAmount?proj.totalAmount:0;
+  $('conAmount').value=(prefill&&prefill.amount)?prefill.amount:(defAmt||'');
+  $('conSignDate').value=todayISO();
   $('conStatus').value='草稿';$('conNote').value='';
   if(prefill&&prefill.targetKind==='step'&&prefill.targetId)$('conStep').value=prefill.targetId;
   /* 标题建议，减少手动输入 */
