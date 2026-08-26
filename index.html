@@ -11845,17 +11845,14 @@ function findLinkedInvoice(recId,type){
   if(!recId)return null;
   return (App.invoices||[]).find(v=> type==='income' ? v.linkedIncomeId===recId : v.linkedExpenseId===recId);
 }
-/* 删除收/付款源记录后，级联移除其自动派生的草稿发票（销项 linkedIncomeId / 进项 linkedExpenseId）。
-   仅删「自动生成且仍为草稿(未开)」的票；已开/已认证的票保留（真实税务痕迹，且删源后待办已不再提醒）。
+/* 删除收/付款源记录后，级联移除其自动派生的全部发票（销项 linkedIncomeId / 进项 linkedExpenseId）。
+   草稿与已开(已收票/已认证)一并移除——发票是源记录的派生物，源删除则发票自然随之删除，
+   保证「销项/进项」版块与记录删除实时联动。手动创建、未关联源记录的发票不受影响。
    反向发票只能经此通道移除，用户不可在发票管理手动删除（见 deleteInvoice 守卫）。 */
 function cascadeDeleteLinkedInvoice(recId, type){
   if(!App.invoices||!recId)return;
   const key = type==='income' ? 'linkedIncomeId' : 'linkedExpenseId';
-  App.invoices = App.invoices.filter(v=>{
-    if(v[key]!==recId) return true;                 // 不是这条源的票，保留
-    if(v.status && v.status!=='草稿') return true;  // 已开/已认证等已处置 → 保留
-    return false;                                   // 自动生成的草稿票 → 级联删除
-  });
+  App.invoices = App.invoices.filter(v=> v[key]!==recId ); // 移除与该源互链的全部发票（草稿+已开）
 }
 /* 源记录仍有到账时，把关联的草稿发票金额刷新为最新累计（不新建，避免重复）。 */
 function refreshLinkedInvoiceAmount(recId, type, amt, p){
@@ -12162,8 +12159,8 @@ function renderInvoices(){
   let base=list.slice();
   if(fProj)base=base.filter(v=>v.projectId===fProj);
   let arr=base.slice();
-  if(_invTab==='销项（客户）')arr=arr.filter(v=>v.direction==='销项');
-  else if(_invTab==='进项（供应商）')arr=arr.filter(v=>v.direction==='进项');
+  if(_invTab==='销项（客户）')arr=arr.filter(v=>v.direction==='销项'&&INV_ISSUED_STATUS.includes(v.status));
+  else if(_invTab==='进项（供应商）')arr=arr.filter(v=>v.direction==='进项'&&INV_ISSUED_STATUS.includes(v.status));
   else if(_invTab==='未开票')arr=arr.filter(v=>v.direction==='销项'&&((v.status==='草稿')||!v.status));
   else if(_invTab==='未收票')arr=arr.filter(v=>v.direction==='进项'&&((v.status==='草稿')||!v.status));
   let cards='';
