@@ -4772,6 +4772,28 @@ function runMigrations(app){
   }
 }
 
+/* 孤儿记录清理：删除项目时若当时版本未级联清理发票/合同（v<6 的旧数据或本次修复前的历史操作），
+   会残留 projectId 指向已删除项目的发票/合同。加载时清理掉，避免税务汇总等派生面板显示已删项目的数据。
+   - 仅清理 projectId 非空但已不存在于 projects 的条目；projectId 为空（全部项目视图下创建）的合法记录保留。 */
+function cleanupOrphanedRecords(app){
+  if(!Array.isArray(app.projects))return;
+  const validIds=new Set(app.projects.map(p=>p.id));
+  let changed=false;
+  if(Array.isArray(app.invoices)){
+    const before=app.invoices.length;
+    app.invoices=app.invoices.filter(v=>!v.projectId || validIds.has(v.projectId));
+    if(app.invoices.length!==before)changed=true;
+  }
+  if(Array.isArray(app.contracts)){
+    const before=app.contracts.length;
+    app.contracts=app.contracts.filter(c=>!c.projectId || validIds.has(c.projectId));
+    if(app.contracts.length!==before)changed=true;
+  }
+  if(changed){
+    try{ localStorage.setItem(APP_KEY, JSON.stringify(app)); }catch(e){}
+  }
+}
+
 function load(){
   // 候选存储键：当前键 + 历史上可能用过的旧键名（防止早期版本命名不同导致"数据丢失"）
   const CANDIDATE_KEYS=[APP_KEY,'xzgz_app_v1','xzgz_app','xzgz_renovation','renovation_app','xzjz_app'];
@@ -4805,6 +4827,7 @@ function load(){
   }
   /* 数据版本化 + 顺序迁移管道：迁移前自动备份、幂等安全、结构兜底、损坏可恢复 */
   runMigrations(App);
+  cleanupOrphanedRecords(App);
   if(!validateApp(App)){
     const _rec=tryRecoverFromBackup();
     if(_rec){ App=_rec; runMigrations(App); }
