@@ -3789,12 +3789,12 @@ a{color:#003a8c;text-decoration:none}
         </div>
       </div>
       <div class="form-group" id="fContractGroup" style="display:none">
-        <label class="form-label">关联购销合同</label>
+        <label class="form-label">关联采购合同</label>
         <div class="form-row">
           <select id="fContractSelect" style="flex:1"></select>
           <button type="button" class="btn-outline" onclick="finOpenContractForLink()">＋ 新建合同</button>
         </div>
-        <div class="form-hint" id="fContractHint">对公付给上游供应商应对应一份购销 / 采购合同；可关联已有合同，或新建一份草稿并回到此处选择。未关联且项目无购销合同时，保存后将自动建一张草稿购销合同进入「合同管理」。</div>
+        <div class="form-hint" id="fContractHint">对公付给上游供应商应对应一份采购合同；可关联已有合同，或新建一份草稿并回到此处选择。未关联且项目无采购合同时，保存后将自动建一张草稿采购合同进入「合同管理」。</div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">金额 *</label><input type="number" id="fAmount" placeholder="0.00"></div>
@@ -4541,7 +4541,7 @@ function upgradeLegacyAcceptance(){
    - 所有迁移必须幂等（重复运行结果一致），绝不直接销毁用户数据
    - 加载时校验结构，损坏则从最近备份恢复，避免渲染乱码
    ════════════════════════════════════════════════════════════════ */
-const DATA_VERSION = 4;
+const DATA_VERSION = 5;
 const MIGRATION_BACKUP_PREFIX = 'xzgz_app_v2_bak_';
 const MIGRATION_BACKUP_KEEP = 3;
 
@@ -4664,7 +4664,17 @@ function migrateV3ToV4(app){
     });
   });
 }
-const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2, migrateV2ToV3, migrateV3ToV4 ];
+/* v4→v5：合同类型「购销」统一并入「采购」（合同管理 tab 重构：删未开、购销→采购） */
+function migrateV4ToV5(app){
+  if(!app.contracts)return;
+  let n=0;
+  app.contracts.forEach(c=>{
+    if(c.type==='购销'){ c.type='采购'; n++; }
+  });
+  /* 同步更新记一笔中 linkedContractId 所指的合同类型已变（无需改 id，type 已在合同对象上） */
+  if(n>0)console.info('[migration v4→v5] '+n+' 张「购销」合同已统一转为「采购」');
+}
+const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2, migrateV2ToV3, migrateV3ToV4, migrateV4ToV5 ];
 
 /* 顺序执行迁移，直到数据版本达到当前版本；每步前自动备份 */
 function runMigrations(app){
@@ -11742,7 +11752,7 @@ function deleteSupplier(id){
    - 与项目管理 / 人材档案供应商 / 流程节点 / 收支流水 对接联通
    - 发票税额自动算；财务汇总税务面板只读派生
    ════════════════════════════════════════════════════════════════ */
-const CONTRACT_TYPES=['施工','采购','设计','其他','购销'];
+const CONTRACT_TYPES=['施工','采购','设计','其他'];
 const CONTRACT_STATUS=['草稿','已签','执行中','已完成','已终止'];
 const INVOICE_DIRECTIONS=['销项','进项'];
 const INVOICE_TYPES=['数电专票','数电普票','电子发票','专票','普票'];
@@ -11759,10 +11769,10 @@ let currentFinRecId='';      /* 当前记一笔记录的 id（新建时预生成
 let currentFinInvoiceId='';  /* 当前已关联发票 id */
 let _pendingFinInvoiceLink=null; /* 从记一笔/待办新建发票时的回写上下文 {financeId,projectId,type} */
 /* ═══ 缺合同 → 待办 联动 ═══ */
-const MAIN_CONTRACT_TYPES=['施工','购销'];   /* 项目主合同（与客户签约）类型 */
+const MAIN_CONTRACT_TYPES=['施工','采购'];   /* 项目主合同（与客户签约）类型 */
 const MAIN_CONTRACT_OK=['已签','执行中','已完成']; /* 主合同"已具备"状态 */
 let _pendingConLink=null; /* 从待办/节点/采购新建合同时的回写上下文 {targetKind,targetId,pid,conType} */
-/* 项目是否已有具备效力的主合同（施工/购销，且已签/执行中/已完成） */
+/* 项目是否已有具备效力的主合同（施工/采购） */
 function mainContractForProject(pid){
   // 存在即视为「已建立主合同」（用于「缺合同」判定：建了草稿即离开缺合同版块，转「未开」版块待签约）
   return (App.contracts||[]).find(c=>c.projectId===pid && MAIN_CONTRACT_TYPES.includes(c.type));
@@ -11787,15 +11797,15 @@ function contractForStep(pid,stepId){
 function findStepById(pid,sid){const p=App.projects.find(x=>x.id===pid);if(!p)return null;return (p.processSteps||[]).find(s=>s.id===sid)||null;}
 function findPurchaseById(pid,puid){const p=App.projects.find(x=>x.id===pid);if(!p)return null;return (p.purchases||[]).find(x=>x.id===puid)||null;}
 function purchaseNameById(pid,puid){const x=findPurchaseById(pid,puid);return x?(x.name||''):'';}
-/* 共享：列出所有「缺合同」项（项目主合同 / 采购合同 / 施工合同 / 对公付款缺购销合同）。
+/* 共享：列出所有「缺合同」项（项目主合同 / 采购合同 / 施工合同 / 对公付款缺采购合同）。
    待办事项与合同管理「缺合同」版块共用，保证两处口径一致。 */
 function missingContractsList(){
   const out=[];
   (App.projects||[]).forEach(p=>{
     const pn=projDisplayName(p);
-    /* 1) 项目主合同（施工/购销）缺失 */
+    /* 1) 项目主合同（施工/采购）缺失 */
     if(!mainContractForProject(p.id)){
-      out.push({ id:'con_main_'+p.id, title:pn+' · 主合同（购销/施工）', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'购销', _targetKind:'project', _targetId:p.id, projectName:pn, conType:'购销', targetKind:'project', targetId:p.id, targetName:pn, label:'主合同（购销/施工）', note:'项目尚未签订主合同，需跟进签约' });
+      out.push({ id:'con_main_'+p.id, title:pn+' · 主合同（施工/采购）', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'采购', _targetKind:'project', _targetId:p.id, projectName:pn, conType:'采购', targetKind:'project', targetId:p.id, targetName:pn, label:'主合同（施工/采购）', note:'项目尚未签订主合同，需跟进签约' });
     }
     /* 2) 采购项缺采购合同（关联了合同即视为已建，离开缺合同版块） */
     (p.purchases||[]).forEach(pur=>{
@@ -11810,13 +11820,13 @@ function missingContractsList(){
       if(c)return;
       out.push({ id:'con_step_'+s.id, title:(s.name||'节点')+' · 施工合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'施工', _targetKind:'step', _targetId:s.id, projectName:pn, conType:'施工', targetKind:'step', targetId:s.id, targetName:s.name, label:'施工合同', note:'需签施工合同，尚未关联' });
     });
-    /* 4) 对公付款缺购销合同（已关联或项目已有购销/采购合同则视为覆盖） */
+    /* 4) 对公付款缺采购合同（已关联或项目已有采购合同则视为覆盖） */
     (p.expense||[]).forEach(e=>{
       if(defaultAccountType(e,p)!=='对公')return;
       if(e.linkedContractId)return;
-      const hasGX=(App.contracts||[]).some(c=>c.projectId===p.id && ['购销','采购'].includes(c.type));
+      const hasGX=(App.contracts||[]).some(c=>c.projectId===p.id && c.type==='采购');
       if(hasGX)return;
-      out.push({ id:'con_exp_'+e.id, title:(e.name||'对公付款')+' · 购销合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'购销', _targetKind:'expense', _targetId:e.id, projectName:pn, conType:'购销', targetKind:'expense', targetId:e.id, targetName:e.name, label:'购销合同', note:'对公付款给上游供应商，需有购销合同覆盖' });
+      out.push({ id:'con_exp_'+e.id, title:(e.name||'对公付款')+' · 采购合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'采购', _targetKind:'expense', _targetId:e.id, projectName:pn, conType:'采购', targetKind:'expense', targetId:e.id, targetName:e.name, label:'采购合同', note:'对公付款给上游供应商，需有采购合同覆盖' });
     });
   });
   return out;
@@ -11886,12 +11896,11 @@ function renderContracts(){
   let filterProj=App.currentProjectId||'';
   let base=list.slice();
   if(filterProj)base=base.filter(c=>c.projectId===filterProj);
-  const unissuedConCount=base.filter(c=>(c.status==='草稿')||!c.status).length;
   /* 缺合同清单（与待办同源）：按当前项目过滤 */
   const missingAll=missingContractsList();
   const missing=(filterProj?missingAll.filter(m=>m._pid===filterProj):missingAll);
   const missingConCount=missing.length;
-  const conTabs=['全部','未开','缺合同'].concat(CONTRACT_TYPES);
+  const conTabs=['全部','设计','施工','采购','其他','缺合同'];
   const projName=filterProj?projNameById(filterProj):'全部项目';
 
   /* ── 缺合同版块：列出各项目/对象缺失的合同，带「去补签」入口 ── */
@@ -11924,7 +11933,7 @@ function renderContracts(){
          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
        </div>
        <div class="proj-tab-bar" id="conTabBar">
-         ${conTabs.map(t=>{const dot=(t==='未开'&&unissuedConCount>0)?`<span class="tab-badge">${unissuedConCount}</span>`:(t==='缺合同'&&missingConCount>0?`<span class="tab-badge">${missingConCount}</span>`:'');return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
+         ${conTabs.map(t=>{const dot=(t==='缺合同'&&missingConCount>0)?`<span class="tab-badge">${missingConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
        </div>
        <div class="proj-stats-row" id="conStatsRow">
          <div class="proj-stat-item"><div class="proj-stat-label">缺失合同</div><div class="proj-stat-val">${missingConCount}</div></div>
@@ -11937,10 +11946,9 @@ function renderContracts(){
     return;
   }
 
-  /* ── 其余版块：合同卡片渲染（全部 / 未开 / 按类型） ── */
+  /* ── 其余版块：合同卡片渲染（全部 / 按类型） ── */
   let arr=base.slice();
-  if(_conTab==='未开')arr=arr.filter(c=>(c.status==='草稿')||!c.status);
-  else if(_conTab!=='全部')arr=arr.filter(c=>c.type===_conTab);
+  if(_conTab!=='全部')arr=arr.filter(c=>c.type===_conTab);
   let cards='';
   if(arr.length>0){
     cards=arr.map(c=>{
@@ -11988,7 +11996,7 @@ function renderContracts(){
        <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
      </div>
      <div class="proj-tab-bar" id="conTabBar">
-       ${conTabs.map(t=>{const dot=(t==='未开'&&unissuedConCount>0)?`<span class="tab-badge">${unissuedConCount}</span>`:(t==='缺合同'&&missingConCount>0?`<span class="tab-badge">${missingConCount}</span>`:'');return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
+       ${conTabs.map(t=>{const dot=(t==='缺合同'&&missingConCount>0)?`<span class="tab-badge">${missingConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
      </div>
      <div class="proj-stats-row" id="conStatsRow">
        <div class="proj-stat-item"><div class="proj-stat-label">合同份数</div><div class="proj-stat-val">${base.length}</div></div>
@@ -12005,7 +12013,7 @@ function switchContractTab(t){_conTab=t;renderContracts();}
 /* 一键把未签合同标记为已签（从「未开」版块移出） */
 function markContractSigned(id){
   const c=contractById(id);if(!c)return;
-  if(!confirm('标记该合同为「已签」？\n（将从「未开」版块移出）'))return;
+  if(!confirm('标记该合同为「已签」？'))return;
   c.status='已签';
   persist();renderContracts();
 }
@@ -12048,7 +12056,7 @@ function openAddContract(prefill){
     const nm=prefill.targetName||'';
     if(prefill.type==='采购'&&nm)$('conTitle').value=nm+' 采购合同';
     else if(prefill.type==='施工'&&nm)$('conTitle').value=nm+' 施工分包合同';
-    else if(prefill.type==='购销')$('conTitle').value='装修主合同（购销）';
+    else if(prefill.type==='采购')$('conTitle').value='装修主合同（采购）';
   }
   showModal('contractModal');
 }
@@ -14262,8 +14270,8 @@ function openFinanceModal(){
 function toggleFinInvoice(){
   refreshFinCorpExtras();
 }
-/* 对公扩展区（发票 + 购销合同）显隐与填充：账户性质=对公时显示发票；
-   对公且类型为付款时额外显示「关联购销合同」并填充项目下购销/采购合同下拉。 */
+/* 对公扩展区（发票 + 采购合同）显隐与填充：账户性质=对公时显示发票；
+   对公且类型为付款时额外显示「关联采购合同」并填充项目下采购合同下拉。 */
 function refreshFinCorpExtras(){
   if(!$('fInvoiceGroup'))return;
   const isCorp=$('fAccountType').value==='对公';
@@ -14280,15 +14288,15 @@ function refreshFinCorpExtras(){
   if(st==='已开票') populateFinInvoiceSelect();
   if(isCorp&&isExp) populateFinContractSelect();
 }
-/* 列出当前项目下、与付款匹配的购销/采购合同供关联 */
+/* 列出当前项目下、与付款匹配的采购合同供关联 */
 function populateFinContractSelect(){
   if(!$('fContractSelect'))return;
   const pid=$('fProject').value||'';
-  const cands=(App.contracts||[]).filter(c=>['购销','采购'].includes(c.type) && (c.projectId||'')===pid);
+  const cands=(App.contracts||[]).filter(c=>c.type==='采购' && (c.projectId||'')===pid);
   $('fContractSelect').innerHTML='<option value="">（不关联 / 待补签）</option>'+
     cands.map(c=>`<option value="${c.id}">${escHtml(c.title||'')} · ${escHtml(c.status||'草稿')}</option>`).join('');
 }
-/* 从记一笔弹窗「新建合同」：立即新建一张草稿购销合同并关联选中（记一笔尚未保存，
+/* 从记一笔弹窗「新建合同」：立即新建一张草稿采购合同并关联选中（记一笔尚未保存，
    无法可靠跨弹窗回链，故采用同步新建方式，保存后在「合同管理」可见）。 */
 function finOpenContractForLink(){
   const pid=$('fProject').value||'';
@@ -14296,8 +14304,8 @@ function finOpenContractForLink(){
   const p=App.projects.find(x=>x.id===pid);
   const party=( $('fType').value==='expense' ? ($('fPayee').value||'') : ($('fPayer').value||'') );
   const c={
-    id:'con_'+uid(), type:'购销', projectId:pid,
-    title:(p?projDisplayName(p):'项目')+' 上游采购购销合同（草稿）',
+    id:'con_'+uid(), type:'采购', projectId:pid,
+    title:(p?projDisplayName(p):'项目')+' 上游采购合同（草稿）',
     party:party||'', supplierId:'', linkedStepId:'', linkedPurchaseId:'', linkedExpenseId:'',
     amount:parseFloat($('fAmount').value)||0, signDate:todayISO(), status:'草稿',
     note:'由「记一笔」对公付款手动新建（待补签）'
@@ -14308,12 +14316,12 @@ function finOpenContractForLink(){
   if($('fContractSelect'))$('fContractSelect').value=c.id;
   renderContracts&&renderContracts();
 }
-/* 由「记一笔」对公付款自动创建购销合同草稿并关联（满足对公付款自动进入合同管理）。
-   仅当项目尚无任何购销/采购合同时创建，避免重复；返回合同对象。 */
+/* 由「记一笔」对公付款自动创建采购合同草稿并关联（满足对公付款自动进入合同管理）。
+   仅当项目尚无任何采购合同时创建，避免重复；返回合同对象。 */
 function finAutoCreateContract(rec,target){
   const c={
-    id:'con_'+uid(), type:'购销', projectId:target.id,
-    title:(projDisplayName(target))+' 上游采购购销合同（草稿）',
+    id:'con_'+uid(), type:'采购', projectId:target.id,
+    title:(projDisplayName(target))+' 上游采购合同（草稿）',
     party:(rec.payee||''), supplierId:'', linkedStepId:'', linkedPurchaseId:'', linkedExpenseId:rec.id,
     amount:rec.amount||0, signDate:todayISO(), status:'草稿', note:'由「记一笔」对公付款自动关联创建：'+(rec.name||'')
   };
@@ -14971,11 +14979,11 @@ function saveFinance(){
       const inv=invoiceById(invId);
       if(inv && (inv.status==='草稿'||!inv.status)){ if(type==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; }
     }
-    /* 购销合同关联（仅对公付款有意义）：用户选中则关联；未选且项目尚无购销/采购合同时自动建草稿购销合同进入合同管理 */
+    /* 采购合同关联（仅对公付款有意义）：用户选中则关联；未选且项目尚无采购合同时自动建草稿采购合同进入合同管理 */
     if(type==='expense'){
       let conId=$('fContractSelect')?$('fContractSelect').value:'';
       if(!conId){
-        const hasGX=(App.contracts||[]).some(c=>c.projectId===target.id && ['购销','采购'].includes(c.type));
+        const hasGX=(App.contracts||[]).some(c=>c.projectId===target.id && c.type==='采购');
         if(!hasGX){ const c=finAutoCreateContract(rec,target); conId=c.id; }
       }
       rec.linkedContractId=conId;
