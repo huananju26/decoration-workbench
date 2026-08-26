@@ -7301,13 +7301,17 @@ function renderActionQueueAll(projects){
     [...(p.tasks||[]),...(p.purchases||[])].forEach(t=>{
       items.push({...t,_kind:(t.status?'purchase':'task'),_proj:pn,_pid:p.id});
     });
-    /* 收支增减项（未收齐的进入待办；收齐后自动移出） */
+    /* 收支增减项（收齐后自动移入「已完成」；未收齐进待办，避免凭空消失） */
     (p.adjustments||[]).forEach(a=>{
       const st=adjStatus(a);
-      if(st==='done')return; /* 已收齐不进待办 */
       const target=Math.abs(a.amount||0);
       const got=adjReceivedAbs(a);
       const unpaid=Math.max(0,target-got);
+      if(st==='done'){
+        items.push({ id:a.id, title:a.name||'', done:true, due:'', _kind:'adjust', _proj:pn, _pid:p.id,
+          note:`${a.type==='增加'?'增加':'减少'} ¥${fmt(target)} · 已收齐`, adjType:a.type });
+        return;
+      }
       items.push({
         id:a.id, title:a.name||'', done:false,
         due:'', _kind:'adjust', _proj:pn, _pid:p.id,
@@ -7326,23 +7330,37 @@ function renderActionQueueAll(projects){
         });
       }
     });
-    /* 对公未开票提醒：每笔对公收/付款若无「已开」发票，进入待办跟进（草稿发票仍算未开） */
+    /* 已完成施工节点：节点已标记完成 → 进入「已完成」版块（之前会凭空消失） */
+    (p.processSteps||[]).forEach(s=>{
+      if(p.checked && p.checked[s.id]){
+        items.push({
+          id:s.id, title:s.name||'', done:true,
+          due:s.completedAt||'', _kind:'step', _proj:pn, _pid:p.id, _completedAt:s.completedAt||todayISO(),
+          note:'节点已完成'
+        });
+      }
+    });
+    /* 对公未开票提醒：未开票进待办；已开票（显式标记或关联发票已开）进「已完成」，不再凭空消失 */
     [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
       arr.forEach(rec=>{
         if(defaultAccountType(rec,p)!=='对公') return;
         if(tt==='income' && incReceivedAmt(rec)<=0) return; /* 对公收款已删空到账，无需再提醒开票（待办同步清理） */
-        if(rec.invoiceStatus==='已开票') return; /* 显式标记已开票 */
         const linked=findLinkedInvoice(rec.id,tt);
-        if(linked && INV_ISSUED_STATUS.includes(linked.status)) return; /* 关联发票已开，不再提醒 */
+        const resolved = rec.invoiceStatus==='已开票' || (linked && INV_ISSUED_STATUS.includes(linked.status));
         items.push({
-          id:'fin_'+rec.id, title:(rec.name||'对公'+(tt==='income'?'收款':'付款')), done:false,
+          id:'fin_'+rec.id, title:(rec.name||'对公'+(tt==='income'?'收款':'付款')), done:resolved,
           due:'', _kind:'invoice', _proj:pn, _pid:p.id, _finType:tt, _finId:rec.id,
-          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(rec.amount||0)+' 未开票，需跟进开/取票'
+          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(rec.amount||0)+(resolved?' 已开票，提醒闭环':' 未开票，需跟进开/取票')
         });
       });
     });
-    /* 缺合同提醒：复用 missingContractsList（项目主合同 / 采购合同 / 施工合同 / 对公付款缺购销合同），与合同管理「缺合同」版块同源 */
+    /* 缺合同提醒（待办）：仍缺的合同，与合同管理「缺合同」版块同源 */
     missingContractsList().filter(m=>m._pid===p.id).forEach(m=>items.push(m));
+    /* 已签约合同 → 已完成（提醒闭环，之前会凭空消失） */
+    (App.contracts||[]).filter(c=>c.projectId===p.id && MAIN_CONTRACT_OK.includes(c.status)).forEach(c=>{
+      const tg=contractTargetKind(c);
+      items.push({ id:'con_done_'+c.id, title:(c.title||c.type||'合同')+' · 已签约', done:true, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:c.type, _targetKind:tg.kind, _targetId:tg.id, projectName:pn, conType:c.type, targetKind:tg.kind, targetId:tg.id, targetName:c.title, label:c.type+'合同', note:'合同已签约，提醒闭环' });
+    });
   });
   items.sort((a,b)=>{
     /* 未完成排前面，已完成排后面（!!统一处理 purchase 无 done 字段的情况） */
@@ -7399,7 +7417,7 @@ function renderActionQueueAll(projects){
       :`<div class="aq-check ${item.done?'checked':''}" onclick="toggleItem('${item.id}','${kind}','${item._pid}')">${item.done?'✓':''}</div>`)));
     /* 当前状态：pending / overdue / done —— 用于原位编辑高亮 */
     const curStatus=item.done?'done':(isOver?'overdue':'pending');
-    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?'未开票':(isStep?'节点逾期':(kind==='contract'?'缺合同':(item.done?'已完成':'待办')))));
+    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?(item.done?'已开票':'未开票'):(kind==='step'?(item.done?'节点完成':'节点逾期'):(kind==='contract'?(item.done?'合同已签':'缺合同'):(item.done?'已完成':'待办')))));
     /* 未开票/缺合同提醒项点击右侧标签也跳转，而非打开状态编辑 */
     const labelOnclick = kind==='invoice'
       ? `openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')`
@@ -11748,6 +11766,13 @@ let _pendingConLink=null; /* 从待办/节点/采购新建合同时的回写上�
 function mainContractForProject(pid){
   // 存在即视为「已建立主合同」（用于「缺合同」判定：建了草稿即离开缺合同版块，转「未开」版块待签约）
   return (App.contracts||[]).find(c=>c.projectId===pid && MAIN_CONTRACT_TYPES.includes(c.type));
+}
+/* 从合同对象反推其提醒目标（用于「已完成」版块展示闭环的缺合同提醒） */
+function contractTargetKind(c){
+  if(c.linkedPurchaseId) return {kind:'purchase', id:c.linkedPurchaseId};
+  if(c.linkedStepId) return {kind:'step', id:c.linkedStepId};
+  if(c.linkedExpenseId) return {kind:'expense', id:c.linkedExpenseId};
+  return {kind:'project', id:c.projectId};
 }
 /* 某采购项是否已关联采购合同 */
 function contractForPurchase(pid,purId){
