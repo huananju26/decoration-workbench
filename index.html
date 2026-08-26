@@ -3824,7 +3824,7 @@ a{color:#003a8c;text-decoration:none}
           <select id="fContractSelect" style="flex:1"></select>
           <button type="button" class="btn-outline" onclick="finOpenContractForLink()">＋ 新建合同</button>
         </div>
-        <div class="form-hint" id="fContractHint">对公付给上游供应商应对应一份采购合同；可关联已有合同，或新建一份草稿并回到此处选择。未关联且项目无采购合同时，保存后将自动建一张草稿采购合同进入「合同管理」。</div>
+        <div class="form-hint" id="fContractHint">对公付给上游供应商应对应一份采购合同；可关联已有合同，或新建一份草稿并回到此处选择。未关联时保存后将自动为该笔付款创建一张独立草稿采购合同进入「合同管理」。</div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">金额（含税价）*</label><input type="number" id="fAmount" placeholder="0.00"></div>
@@ -15193,8 +15193,9 @@ function saveFinance(){
     if(type==='expense'){
       let conId=$('fContractSelect')?$('fContractSelect').value:'';
       if(!conId){
-        const hasGX=(App.contracts||[]).some(c=>c.projectId===target.id && c.type==='采购');
-        if(!hasGX){ const c=finAutoCreateContract(rec,target); conId=c.id; }
+        /* 每笔对公付款默认创建独立采购合同（不同供应商/不同事项不应共用同一份合同）；
+           用户手动选择了已有合同时才复用（fContractSelect 有值时走上面分支） */
+        const c=finAutoCreateContract(rec,target); conId=c.id;
       }
       rec.linkedContractId=conId;
     }
