@@ -12406,6 +12406,8 @@ function saveRecordIncome(){
   inc.receipts.push(rec);
   /* 账户性质：登记到账时显式选择，决定该笔收款归入对公/对私资金流（影响财务汇总与税费） */
   inc.accountType=$('riAccountType').value;
+  /* 对公走账：自动建/更新一张草稿销项发票挂到发票管理「未开」版块，与待办「对公未开票」提醒同源联动 */
+  if(inc.accountType==='对公'){ ensureIncomeInvoice(inc.id, p, incReceivedAmt(inc), inc.name); }
   /* 同步更新 received 标记（兼容旧代码读取） */
   const newTotal=incReceivedAmt(inc);
   inc.received=(newTotal>=target-0.005);
@@ -12498,6 +12500,8 @@ function saveRecordAdj(){
   a.receipts.push(rec);
   /* 账户性质：登记到账时显式选择，决定该笔收款归入对公/对私资金流（影响财务汇总与税费） */
   a.accountType=$('raAccountType').value;
+  /* 对公走账：自动建/更新一张草稿销项发票挂到发票管理「未开」版块（与收款计划同源） */
+  if(a.accountType==='对公'){ ensureIncomeInvoice(a.id, p, adjReceivedAbs(a), a.name); }
   /* 同步更新 received 标记 */
   a.received=adjReceivedAbs(a)>=(target-0.005);
   const fi=$('raFileInput');
@@ -14937,6 +14941,38 @@ function finAutoCreateInvoice(rec,type,target,status){
   };
   App.invoices.push(inv);
   return inv;
+}
+/* 收款计划 / 增减项 登记到账（对公）时，确保发票管理「未开」版块有一张草稿销项发票与之联动，
+   与「记一笔」对公未开票自动进发票管理的行为对齐；按 linkedIncomeId 去重，避免重复建票。
+   - recId：顶层收款记录 id（inc.id / a.id）
+   - p：所属项目（取 projectId、业主作为开票 payer）
+   - receivedAmt：已到账累计金额（作为发票金额，随后续分次到账更新）
+   - label：发票备注用名称 */
+function ensureIncomeInvoice(recId,p,receivedAmt,label){
+  if(!App.invoices)App.invoices=[];
+  if(!recId)return;
+  const existing=App.invoices.find(v=>v.linkedIncomeId===recId && (v.status==='草稿'||!v.status));
+  if(existing){
+    /* 已存在草稿发票：更新金额累计 + 补 payer，不重复建票 */
+    const cum=receivedAmt||0;
+    existing.amountNoTax=cum;
+    existing.tax=invoiceTax(cum, existing.taxRate||DEFAULT_TAX_RATE);
+    existing.amountTotal=invoiceTotal(cum, existing.tax);
+    existing.payer=existing.payer||((p&&p.profile&&p.profile.owner)||'');
+    return;
+  }
+  const no=receivedAmt||0;
+  const rate=DEFAULT_TAX_RATE;
+  const tax=invoiceTax(no,rate);
+  const total=invoiceTotal(no,tax);
+  App.invoices.push({
+    id:'inv_'+uid(), direction:'销项', type:INVOICE_TYPES[0], projectId:(p&&p.id)||'',
+    linkedContractId:'', linkedIncomeId:recId, linkedExpenseId:'',
+    amountNoTax:no, taxRate:rate, tax:tax, amountTotal:total,
+    issuer:'', payer:(p&&p.profile&&p.profile.owner)||'', payee:'',
+    issueDate:todayISO(), status:'草稿', deductStatus:'不抵扣', verifyStatus:'未查验',
+    note:'由收款计划登记到账自动关联创建：'+(label||'')
+  });
 }
 /* 收付款人历史记录（localStorage） */
 const CONTACT_KEY='xzgz_contacts';
