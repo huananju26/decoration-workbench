@@ -7431,10 +7431,16 @@ function renderActionQueueAll(projects){
         if(tt==='income' && incReceivedAmt(rec)<=0) return; /* 对公收款已删空到账，无需再提醒开票（待办同步清理） */
         const linked=findLinkedInvoice(rec.id,tt);
         const resolved = rec.invoiceStatus==='已开票' || (linked && INV_ISSUED_STATUS.includes(linked.status));
+        const planAmt=rec.amount||0;
+        /* 收款：累计实际到账；支出：按 paid 布尔判断 */
+        const actualAmt = tt==='income' ? incReceivedAmt(rec) : (rec.paid ? planAmt : 0);
+        const amtNote = tt==='income'
+          ? (actualAmt>=planAmt ? '' : ` · 已收 ¥${fmt(actualAmt)}`)
+          : (rec.paid ? ' · 已付' : ' · 待付');
         items.push({
           id:'fin_'+rec.id, title:(rec.name||'对公'+(tt==='income'?'收款':'付款')), done:resolved,
           due:'', _kind:'invoice', _proj:pn, _pid:p.id, _finType:tt, _finId:rec.id,
-          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(rec.amount||0)+(resolved?' 已开票，提醒闭环':' 未开票，需跟进开/取票')
+          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(planAmt)+amtNote+(resolved?' 已开票，提醒闭环':' 未开票，需跟进开/取票')
         });
       });
     });
@@ -11898,13 +11904,13 @@ function missingContractsList(){
       if(c)return;
       out.push({ id:'con_step_'+s.id, title:(s.name||'节点')+' · 施工合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'施工', _targetKind:'step', _targetId:s.id, projectName:pn, conType:'施工', targetKind:'step', targetId:s.id, targetName:s.name, label:'施工合同', note:'需签施工合同，尚未关联' });
     });
-    /* 4) 对公付款缺采购合同（已关联或项目已有采购合同则视为覆盖） */
+    /* 4) 对公付款缺采购合同（已关联或项目已有已签采购合同则视为覆盖；草稿合同仍需跟进签约） */
     (p.expense||[]).forEach(e=>{
       if(defaultAccountType(e,p)!=='对公')return;
       if(e.linkedContractId)return;
-      const hasGX=(App.contracts||[]).some(c=>c.projectId===p.id && c.type==='采购');
-      if(hasGX)return;
-      out.push({ id:'con_exp_'+e.id, title:(e.name||'对公付款')+' · 采购合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'采购', _targetKind:'expense', _targetId:e.id, projectName:pn, conType:'采购', targetKind:'expense', targetId:e.id, targetName:e.name, label:'采购合同', note:'对公付款给上游供应商，需有采购合同覆盖' });
+      const hasSignedGX=(App.contracts||[]).some(c=>c.projectId===p.id && c.type==='采购' && MAIN_CONTRACT_OK.includes(c.status));
+      if(hasSignedGX)return;
+      out.push({ id:'con_exp_'+e.id, title:(e.name||'对公付款')+' · 采购合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'采购', _targetKind:'expense', _targetId:e.id, projectName:pn, conType:'采购', targetKind:'expense', targetId:e.id, targetName:e.name, label:'采购合同', note:'对公付款给上游供应商，需有已签采购合同覆盖' });
     });
   });
   return out;
@@ -11931,6 +11937,13 @@ function cascadeDeleteLinkedInvoice(recId, type){
   if(!App.invoices||!recId)return;
   const key = type==='income' ? 'linkedIncomeId' : 'linkedExpenseId';
   App.invoices = App.invoices.filter(v=> v[key]!==recId ); // 移除与该源互链的全部发票（草稿+已开）
+}
+/* 删除收/付款源记录后，级联移除自动创建的关联合同（仅限 linkedExpenseId/linkedIncomeId 反向指向源记录的草稿合同）。
+   用户手动选择关联的合同不受影响（其 linkedExpenseId/linkedIncomeId 为空）。 */
+function cascadeDeleteLinkedContract(recId, type){
+  if(!App.contracts||!recId)return;
+  const key = type==='income' ? 'linkedIncomeId' : 'linkedExpenseId';
+  App.contracts = App.contracts.filter(c=> c[key]!==recId );
 }
 /* 源记录仍有到账时，把关联的草稿发票金额刷新为最新累计（不新建，避免重复）。 */
 function refreshLinkedInvoiceAmount(recId, type, amt, p){
@@ -15234,9 +15247,9 @@ function refreshContactDatalists(proj){
 function delFinance(type,id){
   const p=cur();if(!p)return;
   if(!confirm('确认删除这条记录？'))return;
-  if(type==='income'){ p.income=p.income.filter(i=>i.id!==id); cascadeDeleteLinkedInvoice(id,'income'); }
-  else { p.expense=p.expense.filter(e=>e.id!==id); cascadeDeleteLinkedInvoice(id,'expense'); }
-  persist();renderFinance();renderHome();
+  if(type==='income'){ p.income=p.income.filter(i=>i.id!==id); cascadeDeleteLinkedInvoice(id,'income'); cascadeDeleteLinkedContract(id,'income'); }
+  else { p.expense=p.expense.filter(e=>e.id!==id); cascadeDeleteLinkedInvoice(id,'expense'); cascadeDeleteLinkedContract(id,'expense'); }
+  persist();renderFinance();renderHome();renderContracts&&renderContracts();
 }
 
 // ============================================================
