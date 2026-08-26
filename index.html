@@ -7527,7 +7527,7 @@ function openProjectDetail(pid){
 }
 
 /* ── Action Queue：全项目全部待办（含状态筛选+逾期节点） ── */
-let aqFilter='pending'; /* pending=待办 | done=已完成 | all=全部（默认显示待办） */
+let aqFilter='all'; /* pending=待办 | done=已完成 | all=全部（默认"全部"，让已完成项以只读形式留在列表，对齐"完成后只可查看不可修改"需求） */
 let aqPage=0;       /* ACTION QUEUE 分页（每页 20 条，原位翻页） */
 const AQ_PAGE_SIZE=20;
 function renderActionQueueAll(projects){
