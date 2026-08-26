@@ -4807,7 +4807,10 @@ function cleanupOrphanedRecords(app){
     if(!Array.isArray(p.actionQueue))return;
     p.actionQueue.forEach(q=>{
       if(!q.done)return;
-      if(q._kind==='contract'&&q._conId&&!conIds.has(q._conId)){ q.done=false; delete q._completedAt; changed=true; }
+      if(q._kind==='contract'){
+        const qConId=(q.id&&String(q.id).indexOf('con_done_')===0)?String(q.id).slice(9):(q._conId||'');
+        if(qConId&&!conIds.has(qConId)){ q.done=false; delete q._completedAt; changed=true; }
+      }
       if(q._kind==='invoice'&&q._finId&&!invIds.has(q._finId)){ q.done=false; delete q._completedAt; changed=true; }
     });
   });
@@ -12089,7 +12092,7 @@ function cascadeDeleteLinkedInvoice(recId, type, projectId){
   const removedIds = App.invoices.filter(v=> v[key]===recId ).map(v=>v.id);
   App.invoices = App.invoices.filter(v=> v[key]!==recId ); // 移除与该源互链的全部发票（草稿+已开）
   /* 重置关联 invoice 类型待办项的 done 状态 */
-  if(projectId){ const proj=projectById(projectId);
+  if(projectId){ const proj=App.projects.find(p=>p.id===projectId);
     if(proj&&(proj.actionQueue||[]).length){
       proj.actionQueue.forEach(q=>{
         if(q._kind==='invoice'&&q.done&&removedIds.includes(q._finId)){ q.done=false; delete q._completedAt; }
@@ -12106,10 +12109,11 @@ function cascadeDeleteLinkedContract(recId, type, projectId){
   const removedIds = App.contracts.filter(c=> c[key]===recId ).map(c=>c.id);
   App.contracts = App.contracts.filter(c=> c[key]!==recId );
   /* 重置关联待办项的 done 状态（与 deleteContract 保持一致） */
-  if(projectId){ const proj=projectById(projectId);
+  if(projectId){ const proj=App.projects.find(p=>p.id===projectId);
     if(proj&&(proj.actionQueue||[]).length){
       proj.actionQueue.forEach(q=>{
-        if(q._kind==='contract'&&q.done&&removedIds.includes(q._conId)){ q.done=false; delete q._completedAt; }
+        const qConId=(q.id&&String(q.id).indexOf('con_done_')===0)?String(q.id).slice(9):(q._conId||'');
+        if(q._kind==='contract'&&q.done&&removedIds.includes(qConId)){ q.done=false; delete q._completedAt; }
       });
     }
   }
@@ -12416,11 +12420,13 @@ function deleteContract(id){
   App.contracts=App.contracts.filter(x=>x.id!==id);
   (App.invoices||[]).forEach(v=>{if(v.linkedContractId===id)v.linkedContractId='';});
   /* 重置关联待办项：合同删除后，contract 类型待办的 done 必须回退为 false，否则渲染层 pointer-events:none 会锁死该条 */
-  const proj=projectById(c.projectId);
+  const proj=App.projects.find(p=>p.id===c.projectId);
   if(proj&&(proj.actionQueue||[]).length){
     proj.actionQueue.forEach(q=>{
+      /* 关联 ID 在 id 字段（'con_done_'+合同ID），也可能在 _conId 或 targetId */
+      const qConId=(q.id&&String(q.id).indexOf('con_done_')===0)?String(q.id).slice(9):(q._conId||'');
       if(q._kind==='contract'&&q.done&&(
-        q._conId===id||(c.linkedStepId&&q._targetId===c.linkedStepId&&q._targetKind==='step')||
+        qConId===id||(c.linkedStepId&&q._targetId===c.linkedStepId&&q._targetKind==='step')||
         (c.linkedPurchaseId&&q._targetId===c.linkedPurchaseId&&q._targetKind==='purchase')
       )){ q.done=false; delete q._completedAt; }
     });
@@ -12690,7 +12696,7 @@ function deleteInvoice(id){
   if(!confirm('确定删除这张发票吗？'))return;
   App.invoices=App.invoices.filter(x=>x.id!==id);
   /* 重置关联待办项：发票删除后，invoice 类型待办的 done 必须回退为 false */
-  const proj=projectById(v.projectId);
+  const proj=App.projects.find(p=>p.id===v.projectId);
   if(proj&&(proj.actionQueue||[]).length){
     proj.actionQueue.forEach(q=>{
       if(q._kind==='invoice'&&q.done&&q._finId===id){ q.done=false; delete q._completedAt; }
