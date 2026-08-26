@@ -12388,6 +12388,7 @@ function renderInvoices(){
        <div class="proj-stat-item"><div class="proj-stat-label">销项税额</div><div class="proj-stat-val" style="color:#003a8c">¥${fmt(tax.output)}</div></div>
        <div class="proj-stat-item"><div class="proj-stat-label">进项税额</div><div class="proj-stat-val">¥${fmt(tax.input)}</div></div>
        <div class="proj-stat-item"><div class="proj-stat-label">应缴增值税</div><div class="proj-stat-val" style="color:#fa8c16">¥${fmt(tax.vat)}</div></div>
+       <div class="proj-stat-item"><div class="proj-stat-label">应缴附加税(×12%)</div><div class="proj-stat-val">¥${fmt(tax.add)}</div></div>
        <div class="proj-stat-item"><div class="proj-stat-label">合计应缴</div><div class="proj-stat-val" style="color:#ff4d4f;font-weight:700">¥${fmt(tax.total)}</div></div>
      </div>
      <div class="archive-filter-bar"><span class="archive-count">${_invTab} · 共 ${arr.length} 张（${escHtml(projName)}）</span></div>
