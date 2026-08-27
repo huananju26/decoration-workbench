@@ -6641,7 +6641,7 @@ function switchPage(page){
   $('page-'+page).classList.add('active');
   document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
   document.querySelectorAll('.mtab').forEach(t=>t.classList.toggle('active',t.dataset.page===page));
-  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',contracts:'合同管理',invoices:'发票管理',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识',archive:'人材档案',standard:'施工工艺标准参考'};
+  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',contracts:'合同管理',invoices:'发票管理',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识',archive:'人材档案',standard:'施工标准'};
   const btnMap={home:'新增待办',process:'新建项目',purchase:'新增待购物品',finance:'记一笔',ledger:'',contracts:'新增合同',invoices:'新增发票',compare:'导出比价',tools:'',quote:'',diary:'写日记',knowledge:'返回总览',archive:'新增人员',standard:''};
   $('bc-page').textContent=bcMap[page]||'';
   const tp=$('topPrimaryBtn');
