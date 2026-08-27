@@ -17545,9 +17545,8 @@ function switchStdCat(cat) {
   var si = document.querySelector('#page-standard .std-search input');
   if (si) si.value = '';
   renderStd();
-  // 回到顶部
-  var w = document.querySelector('#page-standard .std-wrap');
-  if (w) w.scrollIntoView();
+  // 回到顶部（.main 才是真实滚动容器）
+  var _m = document.querySelector('.main'); if (_m) _m.scrollTop = 0;
 }
 
 function switchStdSub(id) {
@@ -17555,11 +17554,13 @@ function switchStdSub(id) {
   var si = document.querySelector('#page-standard .std-search input');
   if (si) si.value = '';
   renderStd();
+  var _m = document.querySelector('.main'); if (_m) _m.scrollTop = 0;
 }
 
 function searchStd(q) {
   HJSTD.q = (q || '').trim();
   renderStd();
+  var _m = document.querySelector('.main'); if (_m) _m.scrollTop = 0;
 }
 
 /* ── 工艺标准 ── */
