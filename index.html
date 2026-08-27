@@ -5767,7 +5767,7 @@ function renderPlanTable(){
       <option value="inprogress" ${n.status==='inprogress'?'selected':''}>进行中</option>
       <option value="done" ${n.status==='done'?'selected':''}>已完成</option>
     </select></td>
-    <td class="plan-date-range">${n.planStart?fmtDate(n.planStart)+' — '+fmtDate(n.planEnd):'—'}${n.manual?' <span style="font-size:10px;color:#1677ff;border:1px solid #91caff;border-radius:3px;padding:0 3px;margin-left:4px;white-space:nowrap">手排</span><span class="plan-reset-btn" onclick="resetSingleNode('+i+')" title="恢复初始时间">↺</span>':''}</td>
+    <td class="plan-date-range">${n.planStart?(function(){const s=fmtDate(n.planStart),e=fmtDate(n.planEnd),d=Math.round((new Date(n.planEnd)-new Date(n.planStart))/86400000)+1;return s+' — '+e+' 共'+d+'天'})():'—'}${n.manual?' <span style="font-size:10px;color:#1677ff;border:1px solid #91caff;border-radius:3px;padding:0 3px;margin-left:4px;white-space:nowrap">手排</span><span class="plan-reset-btn" onclick="resetSingleNode('+i+')" title="恢复初始时间">↺</span>':''}</td>
     <td style="text-align:center">
       <span class="plan-op-btn" onclick="moveWizPlanNode(${i},-1)" title="上移"${i===0?' style="opacity:.3;pointer-events:none"':''}>↑</span>
       <span class="plan-op-btn" onclick="moveWizPlanNode(${i},1)" title="下移"${i===wizPlanNodes.length-1?' style="opacity:.3;pointer-events:none"':''}>↓</span>
@@ -5942,7 +5942,8 @@ function renderPlanGantt(){
     const leftPct=pct(n.planStart),wPct=Math.max(pct(n.planEnd)-leftPct,0.5);
     const barRight=leftPct+wPct;
     const ov=overlapSet.has(n.id||('n'+i))?' overlap':'';
-    const dateLabel=`${fmtDateMd(n.planStart)} — ${fmtDateMd(n.planEnd)}`;
+    const _nd=Math.round((new Date(n.planEnd)-new Date(n.planStart))/86400000)+1;
+    const dateLabel=`${fmtDateMd(n.planStart)} — ${fmtDateMd(n.planEnd)} 共${_nd}天`;
     /* 条形靠右(>72%)时标签放左侧，否则放右侧 */
     const labelOnLeft=barRight>72;
     const _lc=ov?'#d48806':({done:'#003a8c',inprogress:'#003a8c',pending:'#888888',overdue:'#ff4d4f'})[st]||'#888888';
@@ -6095,8 +6096,8 @@ function ganttUpdateBarLabel(bar){
   const w=parseFloat(bar.style.width)||0;
   const s=_isoFromPct(left,range.startISO,range.totalDays);
   const e=_isoFromPct(left+w,range.startISO,range.totalDays);
-  bar.textContent=`${fmtDateMd(s)}~${fmtDateMd(e)}`;
-  bar.title=`${fmtDateMd(s)}~${fmtDateMd(e)}`;
+  bar.textContent=`${fmtDateMd(s)}~${fmtDateMd(e)} 共${Math.round((new Date(e)-new Date(s))/86400000)+1}天`;
+  bar.title=`${fmtDateMd(s)}~${fmtDateMd(e)} 共${Math.round((new Date(e)-new Date(s))/86400000)+1}天`;
 }
 
 /** 调整单个节点的工期天数：仅影响该节点自身的 planEnd（保留其 planStart），
