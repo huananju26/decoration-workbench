@@ -2471,9 +2471,9 @@ a{color:#003a8c;text-decoration:none}
           </div>
           <div class="aq-body" id="aqBody">
             <div class="aq-filter-tabs" id="aqFilterTabs" style="display:none">
-              <span class="aq-ftab" data-f="pending" onclick="setAqFilter('pending')">待办</span>
+              <span class="aq-ftab active" data-f="pending" onclick="setAqFilter('pending')">待办</span>
               <span class="aq-ftab" data-f="done" onclick="setAqFilter('done')">已完成</span>
-              <span class="aq-ftab active" data-f="all" onclick="setAqFilter('all')">全部</span>
+              <span class="aq-ftab" data-f="all" onclick="setAqFilter('all')">全部</span>
             </div>
             <div class="aq-empty" id="aqEmpty">
               <div class="aq-empty-title">暂无待办事项</div>
@@ -7406,6 +7406,7 @@ function renderHome(){
   renderProjectPulseAll(projects);
 
   // ── Action Queue（全项目今日待办） ──
+  aqFilter='pending';aqPage=0; /* 打开今日总览：待办事项默认落在"待办"选项卡 */
   renderActionQueueAll(projects);
 }
 
@@ -7541,7 +7542,7 @@ function openProjectDetail(pid){
 }
 
 /* ── Action Queue：全项目全部待办（含状态筛选+逾期节点） ── */
-let aqFilter='all'; /* pending=待办 | done=已完成 | all=全部（默认"全部"，让已完成项以只读形式留在列表，对齐"完成后只可查看不可修改"需求） */
+let aqFilter='pending'; /* pending=待办 | done=已完成 | all=全部（今日总览待办默认停在"待办"选项卡，聚焦待处理；已完成项在"已完成"标签可查看） */
 let aqPage=0;       /* ACTION QUEUE 分页（每页 20 条，原位翻页） */
 const AQ_PAGE_SIZE=20;
 function renderActionQueueAll(projects){
