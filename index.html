@@ -1010,8 +1010,12 @@ a{color:#003a8c;text-decoration:none}
 /* 项目收支（清爽白底卡片 → 双行仪表盘） */
 .fin-proj-card{background:#fff;border:1px solid #f0f0f0;border-radius:14px;padding:20px 22px;margin-bottom:16px;color:#1a1a1a;box-shadow:0 1px 4px rgba(0,0,0,.03)}
 .fin-proj-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.fin-proj-title{font-size:17px;font-weight:700;color:#1a1a1a}
+.fin-proj-title{font-size:17px;font-weight:700;color:#1a1a1c}
 .fin-proj-subtitle{font-size:12px;color:#999;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 项目汇总看板折叠/展开 */
+.fin-collapse-btn{background:none;border:1px solid #d9d9d9;border-radius:6px;cursor:pointer;font-size:14px;color:#666;padding:2px 8px;line-height:1.4;transition:all .2s;flex-shrink:0;margin-left:8px}
+.fin-collapse-btn:hover{border-color:#1677ff;color:#1677ff;background:#e6f4ff}
+.fin-collapsed .fin-dash-row1,.fin-collapsed .fin-dash-row2,.fin-collapsed .fin-dash-note,.fin-collapsed .fin-acct-title,.fin-collapsed .fin-acct-split,.fin-collapsed .fin-tax-card-inner{display:none!important}
 
 /* ── 仪表盘顶行（5列大数字）── */
 .fin-dash-row1{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
@@ -12749,8 +12753,10 @@ function computeTaxSummary(projectId){
 }
 function renderTaxPanel(){
   const el=$('finTaxCard');if(!el)return;
+  const collapsed = localStorage.getItem('xzgz_fin_summary_collapsed') === 'true';
   const t=computeTaxSummary('');
   el.innerHTML=`<div class="fin-proj-header"><div class="fin-proj-title">税务汇总（只读派生）</div><div class="fin-sum-count">进项 / 销项 → 应缴增值税</div></div>
+    <div class="fin-tax-card-inner">
     <div class="fin-dash-row2">
       <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(t.output)}</div><div class="fin-dash-sm-label">销项税额</div></div>
       <div class="fin-dash-sm"><div class="fin-dash-sm-val">¥${fmt(t.input)}</div><div class="fin-dash-sm-label">进项税额</div></div>
@@ -12758,7 +12764,23 @@ function renderTaxPanel(){
       <div class="fin-dash-sm"><div class="fin-dash-sm-val">¥${fmt(t.add)}</div><div class="fin-dash-sm-label">附加税(×12%)</div></div>
       <div class="fin-dash-sm" style="border:2px solid #ff4d4f;border-radius:10px"><div class="fin-dash-sm-val red">¥${fmt(t.total)}</div><div class="fin-dash-sm-label">合计应缴=增值税+附加税</div></div>
     </div>
-    <div class="fin-dash-note">应缴增值税 = 销项税额 − 进项税额；附加税 = 应缴增值税 × 12%（城建7%+教育3%+地方2%），仅对正数计征。本面板不影响「账面毛利」等既有口径。</div>`;
+    <div class="fin-dash-note">应缴增值税 = 销项税额 − 进项税额；附加税 = 应缴增值税 × 12%（城建7%+教育3%+地方2%），仅对正数计征。本面板不影响「账面毛利」等既有口径。</div>
+    </div>`;  /* ← fin-tax-card-inner close */
+  if(collapsed)el.classList.add('fin-collapsed');
+}
+/* 项目汇总看板折叠/展开切换 */
+function toggleFinSummary(){
+  const collapsed = localStorage.getItem('xzgz_fin_summary_collapsed') === 'true';
+  const next = !collapsed;
+  localStorage.setItem('xzgz_fin_summary_collapsed', String(next));
+  /* 通过 CSS class 统一控制：finSummaryCard + finTaxCard */
+  const sc = $('finSummaryCard');
+  if(sc) sc.classList.toggle('fin-collapsed', next);
+  const tc = $('finTaxCard');
+  if(tc) tc.classList.toggle('fin-collapsed', next);
+  /* 按钮图标 */
+  const btn = document.querySelector('.fin-collapse-btn');
+  if(btn) btn.textContent = next ? '▶' : '▼';
 }
 /* 节点详情：反向显示关联合同数（只读） */
 function linkedContractsBadge(p,step){
@@ -14086,8 +14108,10 @@ function renderFinance(){
   const sumPendingPayCount=App.projects.reduce((s,pj)=>s+((pj.expense||[]).filter(e=>e.amount>0&&!e.paid).length),0);
   const sumMarginRate=af.received>0?parseFloat((af.grossProfit/af.received*100).toFixed(1)):0;
   const sumEstGross=af.totalIncome-af.totalCost;
-  $('finSummaryCard').innerHTML=`<div class="fin-proj-header"><div class="fin-proj-title">项目汇总看板</div><div class="fin-sum-count">共 ${App.projects.length} 个项目</div></div>
-    <div class="fin-dash-row1">
+  const collapsed = localStorage.getItem('xzgz_fin_summary_collapsed') === 'true';
+  $('finSummaryCard').innerHTML=`<div class="fin-proj-header"><div style="display:flex;align-items:center"><div class="fin-proj-title">项目汇总看板 ❤️</div><button class="fin-collapse-btn" onclick="toggleFinSummary()" title="折叠/展开">${collapsed?'▶':'▼'}</button></div><div class="fin-sum-count">共 ${App.projects.length} 个项目</div></div>
+    <div class="fin-summary-body">`+
+    `<div class="fin-dash-row1">
       <div class="fin-dash-big"><div class="fin-dash-big-val">¥${fmt(af.totalIncome)}</div><div class="fin-dash-big-label">总项目合同金额</div></div>
       <div class="fin-dash-big"><div class="fin-dash-big-val blue">¥${fmt(af.received)}</div><div class="fin-dash-big-label">总项目累计已收</div></div>
       <div class="fin-dash-big"><div class="fin-dash-big-val" style="color:${af.pendingReceive>0?'#f5222d':'#003a8c'}">¥${fmt(af.pendingReceive)}</div><div class="fin-dash-big-label">总项目剩余应收</div></div>
@@ -14102,7 +14126,10 @@ function renderFinance(){
       <div class="fin-dash-sm"><div class="fin-dash-sm-val ${sumMarginRate>=0?'blue':'red'}">${sumMarginRate}%</div><div class="fin-dash-sm-label">总项目账面毛利率</div></div>
     </div>
     <div class="fin-dash-note">账面毛利 = 累计已收 − 实际已支出，仅反映当前账面情况，不代表项目最终利润。毛利率 = 账面毛利 ÷ 累计已收。</div>`+
+    `</div>`+  /* ← fin-summary-body close */
     `<div class="fin-acct-title">资金性质拆分（按每笔收付款标记，企业项目也可能对私付款）</div>`+acctSplitHTML(accountSplitAll());
+  /* 应用折叠状态 */
+  if(collapsed)$('finSummaryCard').classList.add('fin-collapsed');
 
   // 2. 当前项目标签（显示编号，不显示名称）
   $('finCurrentLabel').textContent='当前项目：'+projDisplayName(p);
