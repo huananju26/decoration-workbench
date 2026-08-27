@@ -2371,7 +2371,7 @@ a{color:#003a8c;text-decoration:none}
     </div>
     <div class="nav-section">
       <div class="nav-section-title">辅助工具</div>
-      <div class="nav-item" data-page="standard" onclick="switchPage('standard')"><span class="nav-icon">📚</span>标准参考</div>
+      <div class="nav-item" data-page="standard" onclick="switchPage('standard')"><span class="nav-icon">📚</span>施工工艺标准参考</div>
       <div class="nav-item" data-page="tools" onclick="switchPage('tools')"><span class="nav-icon">🔧</span>实用工具</div>
       <div class="nav-item" data-page="quote" onclick="switchPage('quote')"><span class="nav-icon">🧾</span>报价系统</div>
       <div class="nav-item" data-page="diary" onclick="switchPage('diary')"><span class="nav-icon">📷</span>装修日记</div>
@@ -2725,7 +2725,7 @@ a{color:#003a8c;text-decoration:none}
       <div class="std-wrap">
         <div class="std-head">
           <div>
-            <div class="std-title">焕安居标准参考</div>
+            <div class="std-title">施工工艺标准参考</div>
             <div class="std-sub">自有工艺 / 验收 / 产品线 / 适老化 / 表单标准 · 文字化、可落地</div>
           </div>
           <div class="std-search">
@@ -6641,7 +6641,7 @@ function switchPage(page){
   $('page-'+page).classList.add('active');
   document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
   document.querySelectorAll('.mtab').forEach(t=>t.classList.toggle('active',t.dataset.page===page));
-  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',contracts:'合同管理',invoices:'发票管理',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识',archive:'人材档案',standard:'标准参考'};
+  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',contracts:'合同管理',invoices:'发票管理',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识',archive:'人材档案',standard:'施工工艺标准参考'};
   const btnMap={home:'新增待办',process:'新建项目',purchase:'新增待购物品',finance:'记一笔',ledger:'',contracts:'新增合同',invoices:'新增发票',compare:'导出比价',tools:'',quote:'',diary:'写日记',knowledge:'返回总览',archive:'新增人员',standard:''};
   $('bc-page').textContent=bcMap[page]||'';
   const tp=$('topPrimaryBtn');
@@ -6665,8 +6665,9 @@ function switchPage(page){
   /* 按页面控制顶部项目选择器显隐：全局聚合页(总览/工具/日记/知识/流水/报价)隐藏，项目专属页(流程/采购/记账/比价/合同/发票)显示 */
   const ps=$('topProjectSwitcher');
   if(ps){const hidePages=['home','tools','diary','knowledge','ledger','quote','standard'];ps.style.display=hidePages.includes(page)?'none':'';}
-  /* 切换页面时始终置顶 */
+  /* 切换页面时始终置顶（含 .main 滚动容器） */
   window.scrollTo(0,0);
+  var _stdMain=document.querySelector('.main'); if(_stdMain)_stdMain.scrollTop=0;
 }
 function toggleSidebar(){$('sidebar').classList.toggle('open')}
 function scrollToSection(id){const el=$(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
@@ -17049,7 +17050,7 @@ else init();
 
 <style id="hjstd-css">
 /* ════════════════════════════════════════════════
-   焕安居标准参考 · 样式（深蓝系，与主程序一致，无图片）
+   施工工艺标准参考 · 样式（深蓝系，与主程序一致，无图片）
    ════════════════════════════════════════════════ */
 #page-standard .std-wrap{max-width:1180px;margin:0 auto;padding:18px 20px 60px}
 #page-standard .std-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
@@ -17101,14 +17102,17 @@ else init();
 #page-standard .std-ul li:before{content:"";position:absolute;left:4px;top:10px;width:6px;height:6px;border-radius:50%;background:#1677ff}
 #page-standard .std-tag{display:inline-block;font-size:11px;background:#e6f4ff;color:#003a8c;border:1px solid #91caff;border-radius:12px;padding:2px 10px;margin:0 6px 6px 0}
 
-/* 表单字段 */
+/* 表单：表格化（与现场验收单一致的填报表格） */
 #page-standard .std-form-block{background:#fff;border:1px solid #f0f0f0;border-radius:12px;padding:16px 18px;margin-bottom:14px}
 #page-standard .std-form-cat{font-size:14px;font-weight:700;color:#003a8c;margin-bottom:12px;padding-bottom:8px;border-bottom:1px dashed #e6f4ff}
-#page-standard .std-form-item{margin-bottom:12px}
-#page-standard .std-form-name{font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:6px;display:flex;align-items:center;gap:6px}
-#page-standard .std-form-name:before{content:"📄";font-size:13px}
-#page-standard .std-fields{display:flex;flex-wrap:wrap;gap:6px}
-#page-standard .std-field{font-size:12px;color:#434343;background:#fafcff;border:1px solid #e6f4ff;border-radius:6px;padding:4px 10px}
+#page-standard .std-form-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px}
+#page-standard .std-form-table{border-collapse:collapse;width:100%;min-width:520px;background:#fff;font-size:13px}
+#page-standard .std-form-table caption{caption-side:top;text-align:left;font-size:14px;font-weight:700;color:#003a8c;padding:8px 12px;background:#e6f4ff;border:1px solid #91caff;border-bottom:none;border-radius:8px 8px 0 0}
+#page-standard .std-form-table th,#page-standard .std-form-table td{border:1px solid #d6e4ff;padding:8px 10px;text-align:left;vertical-align:middle;color:#1a1a1a;line-height:1.5}
+#page-standard .std-form-table thead th{background:#f0f6ff;color:#003a8c;font-weight:600;white-space:nowrap}
+#page-standard .std-form-table .std-th-idx,#page-standard .std-form-table .std-td-idx{width:46px;text-align:center;color:#8c8c8c;background:#fafcff;white-space:nowrap}
+#page-standard .std-form-table .std-td-fill{min-width:96px}
+#page-standard .std-form-table tbody tr:nth-child(even){background:#fafcff}
 
 /* 验收表 */
 #page-standard .std-acc-stage{background:#fff;border:1px solid #f0f0f0;border-radius:12px;padding:14px 18px;margin-bottom:12px}
@@ -17141,7 +17145,7 @@ else init();
 </style>
 <script id="hjstd-data">
 /**
- * 焕安居标准参考 · 数据层（纯文字、无图片、无外部品牌）
+ * 施工工艺标准参考 · 数据层（纯文字、无图片、无外部品牌）
  *
  * 内容来源：在行业通用装修工艺 / 验收 / 表单知识基础上，
  * 按焕安居自身业务（存量房焕新 + 适老化 + 智能嵌入）重排编排。
@@ -17153,7 +17157,7 @@ else init();
 
 var HJ_STD = {
   meta: {
-    name: '焕安居标准参考',
+    name: '施工工艺标准参考',
     version: '1.0',
     updated: '2026-08-27',
     owner: '焕安居',
@@ -17495,7 +17499,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = HJ_STD; 
 </script>
 <script id="hjstd-ui">
 /* ════════════════════════════════════════════════
-   焕安居标准参考 · UI 逻辑（纯文字、无图片）
+   施工工艺标准参考 · UI 逻辑（纯文字、无图片）
    依赖：var HJ_STD（数据层）、主程序 switchPage
    ════════════════════════════════════════════════ */
 
@@ -17676,7 +17680,7 @@ function renderStdAging(content) {
   content.innerHTML = html;
 }
 
-/* ── 常用表单 ── */
+/* ── 常用表单（表格化，与现场验收单一致的填报表格）── */
 function renderStdForm(content) {
   var q = HJSTD.q.toLowerCase();
   var html = '';
@@ -17687,10 +17691,19 @@ function renderStdForm(content) {
     if (q && !forms.length) return;
     html += '<div class="std-form-block"><div class="std-form-cat">' + cat.label + '</div>';
     forms.forEach(function (f) {
-      html += '<div class="std-form-item"><div class="std-form-name">' + f.name + '</div>' +
-        '<div class="std-fields">' + f.fields.map(function (fd) {
-          return '<span class="std-field">' + fd + '</span>';
-        }).join('') + '</div></div>';
+      var th = '<th class="std-th-idx">序号</th>' + f.fields.map(function (fd) {
+        return '<th>' + fd + '</th>';
+      }).join('');
+      var rows = '';
+      for (var r = 1; r <= 3; r++) {
+        var tds = '<td class="std-td-idx">' + r + '</td>' + f.fields.map(function () {
+          return '<td class="std-td-fill">&nbsp;</td>';
+        }).join('');
+        rows += '<tr>' + tds + '</tr>';
+      }
+      html += '<div class="std-form-table-wrap">' +
+        '<table class="std-form-table"><caption class="std-form-cap">' + f.name + '</caption>' +
+        '<thead><tr>' + th + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
     });
     html += '</div>';
   });
