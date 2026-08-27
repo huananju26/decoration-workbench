@@ -5016,7 +5016,48 @@ const COMMERCIAL_PARENT_GROUPS=[
 const PARENT_GROUPS={
   new:{include:'*'},
   old:{include:'*'},
-  commercial:{include:['cm_permit','mg_prep','mg_demo','mg_wall','mg_water','mg_equip_loc','cm_fire','mg_equip_inst','mg_window','mg_wood','mg_masonry','mg_paint_pre','cm_vent','cm_signage','mg_paint_post','cm_facade','cm_cctv','mg_main_inst','mg_soft','mg_clean','mg_accept','mg_rectify','mg_warranty']},
+  commercial:{include:[
+    /* 阶段1：报批 / 前期准备 / 拆除 并行（政府报批与现场准备可同步推进） */
+    'cm_permit','mg_prep','mg_demo',
+    /* 阶段2：结构 + 机电 + 消防 + 排烟 + 门窗 + 木作 + 设备安装 大穿插（水电为关键路径） */
+    'mg_wall','mg_water','mg_equip_loc','cm_fire','cm_vent','mg_equip_inst','mg_window','mg_wood',
+    /* 阶段3：泥瓦 + 前期油漆 + 招牌 + 外立面 + 监控弱电 并行 */
+    'mg_masonry','mg_paint_pre','cm_signage','cm_facade','cm_cctv',
+    /* 阶段4：后期油漆 + 主材安装 并行 */
+    'mg_paint_post','mg_main_inst',
+    /* 阶段5：软装 + 保洁 并行 */
+    'mg_soft','mg_clean',
+    /* 阶段6：竣工验收 + 问题整改 并行 */
+    'mg_accept','mg_rectify',
+    /* 完工维保（无固定工期，仅里程碑） */
+    'mg_warranty'
+  ],
+    /* 工装专属：压缩工期 + 并行阶段（phase 相同即同日开始、按最长工期结束，实现穿插作业）。
+       仅作用于 commercial，不改动 BASE，家装模板保持原样。 */
+    overrides:{
+      'cm_permit':{days:7,phase:1},
+      'mg_prep':{days:5,phase:1},
+      'mg_demo':{days:3,phase:1},
+      'mg_wall':{days:3,phase:2},
+      'mg_water':{days:12,phase:2},
+      'mg_equip_loc':{days:2,phase:2},
+      'cm_fire':{days:9,phase:2},
+      'cm_vent':{days:7,phase:2},
+      'mg_equip_inst':{days:6,phase:2},
+      'mg_window':{days:6,phase:2},
+      'mg_wood':{days:8,phase:2},
+      'mg_masonry':{days:10,phase:3},
+      'mg_paint_pre':{days:8,phase:3},
+      'cm_signage':{days:5,phase:3},
+      'cm_facade':{days:5,phase:3},
+      'cm_cctv':{days:6,phase:3},
+      'mg_paint_post':{days:8,phase:4},
+      'mg_main_inst':{days:7,phase:4},
+      'mg_soft':{days:5,phase:5},
+      'mg_clean':{days:2,phase:5},
+      'mg_accept':{days:2,phase:6},
+      'mg_rectify':{days:4,phase:6}
+    }},
   renovated:{include:['mg_prep','mg_water','mg_wood','mg_masonry','mg_paint_pre','mg_custom','mg_paint_post','mg_main_inst','mg_clean','mg_soft','mg_accept','mg_rectify','mg_warranty']},
   local:{include:['mg_prep','mg_water','mg_equip_inst','mg_window','mg_masonry','mg_paint_pre','mg_paint_post','mg_main_inst','mg_clean','mg_accept','mg_rectify','mg_warranty']},
   elderly:{include:['mg_prep','mg_demo','mg_wall','mg_water','mg_equip_loc','mg_equip_inst','mg_masonry','mg_paint_pre','mg_paint_post','mg_main_inst','mg_clean','mg_soft','mg_accept','mg_rectify','mg_warranty']}
@@ -5268,6 +5309,7 @@ function buildFlatSteps(houseType){
     const ov=overrides[g.id]||{};
     out.push({
       id:g.id, name:ov.name||g.name, days:String(ov.days!=null?ov.days:g.days||''),
+      phase:ov.phase!=null?ov.phase:(g.phase||''),
       desc:'', acceptance:(PARENT_ACCEPTANCE_TEMPLATES[g.id]||[]).map(a=>({...a,status:'pending'})), articles:[],
       isParent:true, parentId:null, photosRequired:3,
       checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
@@ -5331,7 +5373,7 @@ function onPlanTemplateChange(){
 /* 基础全流程的深拷贝：新建项目时作为该项目初始流程 */
 function baseFlowClone(houseType){
   return buildFlatSteps(houseType||'new').map(s=>({
-    id:s.id, name:s.name, days:s.days, desc:s.desc,
+    id:s.id, name:s.name, days:s.days, phase:s.phase||'', desc:s.desc,
     acceptance:(s.acceptance||[]).map(a=>({...a})),
     articles:(s.articles||[]).map(a=>({...a})),
     isParent:!!s.isParent, parentId:s.parentId||null,
@@ -5497,7 +5539,7 @@ function initPlanNodesFromTemplate(){
   if(selectedHouseType && selectedHouseType!=='new') rebuildProcessSteps(selectedHouseType);
   /* 计划表只排母节点（阶段），不排子节点 */
   wizPlanNodes=PROCESS_STEPS.filter(s=>s.isParent).map(s=>({
-    id:s.id,name:s.name,days:s.days,
+    id:s.id,name:s.name,days:s.days,phase:s.phase||'',
     status:'pending',planStart:'',planEnd:'',manual:false,
     desc:s.desc,acceptance:(s.acceptance||[]).map(a=>({...a})),
     articles:(s.articles||[]).map(a=>({...a})),
@@ -5616,7 +5658,35 @@ function fmtDateMd(d){if(!d)return '';const t=new Date(d);return `${String(t.get
 /* 本地时间格式化为 YYYY-MM-DD（避免 toISOString 的 UTC 偏移问题） */
 function localISODate(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${da}`}
 
-/** 根据开工日期顺推计算每个节点的计划起止日期（按工作日排期，跳过周末和法定节假日） */
+/** 从 startIdx 起向后自动紧凑排期（支持并行阶段 / 穿插作业）：
+ *  - 连续且 phase 相同（非空）的自动节点组成「并发块」：同日开始，结束 = 开始 + 块内最长工期 - 1 天；
+ *  - phase 为空或彼此不同则各自独立成块，顺序排期（下一节点从上块结束后次日开始）；
+ *  - 遇到 manual 节点立即停止（保留手动排期 / 空档期）；
+ *  - firstDay 为空表示无法排期（节点日期清空）。
+ *  非工装节点无 phase → 全部退化为顺序排期，与原行为一致。 */
+function scheduleAutoFrom(startIdx, firstDay){
+  let cur = firstDay? new Date(firstDay+'T00:00:00') : null;
+  for(let i=startIdx;i<wizPlanNodes.length;i++){
+    const node=wizPlanNodes[i];
+    if(node.manual===true) break; /* 停在手动节点 */
+    if(!cur){ node.planStart='';node.planEnd='';continue; }
+    /* 无工期节点（如「完工维保」）= 里程碑，不排期、不推进时间轴 */
+    if(!node.days || Math.round(parseDays(node.days))<1){ node.planStart='';node.planEnd='';node.manual=false;continue; }
+    const ph=node.phase||'';
+    /* 收集并发块：后续连续自动节点且 phase 相同且非空 */
+    let j=i;
+    while(j+1<wizPlanNodes.length && wizPlanNodes[j+1].manual!==true && (wizPlanNodes[j+1].phase||'')===ph && ph!==''){ j++; }
+    let maxD=1;
+    for(let k=i;k<=j;k++){ maxD=Math.max(maxD, Math.max(1,Math.round(parseDays(wizPlanNodes[k].days)))); }
+    const bs=new Date(cur);
+    const be=new Date(cur.getTime()+(maxD-1)*86400000);
+    for(let k=i;k<=j;k++){ wizPlanNodes[k].planStart=localISODate(bs); wizPlanNodes[k].planEnd=localISODate(be); wizPlanNodes[k].manual=false; }
+    cur=new Date(be.getTime()+86400000); /* 下一节点次日开始 */
+    i=j;
+  }
+}
+
+/** 根据开工日期顺推计算每个节点的计划起止日期（支持并行阶段穿插作业） */
 function recalcPlanSchedule(){
   const startStr=$('wPlanStartDate').value;
   if(!startStr||wizPlanNodes.length===0){
@@ -5630,27 +5700,11 @@ function recalcPlanSchedule(){
   /* 锚点结束日 = 所有手动节点中最晚的 planEnd；无手动节点则从计划开工日期起顺排 */
   let anchorEnd='';
   wizPlanNodes.forEach(n=>{ if(n.manual===true && n.planEnd && (!anchorEnd||n.planEnd>anchorEnd)) anchorEnd=n.planEnd; });
-  let cur;
   if(lastManualIdx<0){
-    cur=new Date(startStr+'T00:00:00');
+    scheduleAutoFrom(0, startStr);
   }else{
-    cur=anchorEnd?new Date(shiftDate(anchorEnd,1)+'T00:00:00'):new Date(startStr+'T00:00:00');
+    scheduleAutoFrom(lastManualIdx+1, anchorEnd?shiftDate(anchorEnd,1):startStr);
   }
-  wizPlanNodes.forEach((n,idx)=>{
-    /* wizPlanNodes 仅含母节点（阶段），全部参与顺序排期 */
-    /* 手动节点及其上方（分界之上）原样保留，不做自动顺排，从而保留手动设定的空档期/交叉作业 */
-    if(idx<=lastManualIdx) return;
-    if(n.manual===true) return;
-    const d=Math.max(1,Math.round(parseDays(n.days)));
-    const nodeStart=new Date(cur);
-    n.planStart=localISODate(nodeStart);
-    /* 自然日排期：d 个自然日（含周末节假日，不受其影响），planEnd = 开始 + (d-1) 天 */
-    cur=new Date(cur.getTime()+(d-1)*86400000);
-    n.planEnd=localISODate(cur);
-    n.manual=false;
-    /* 下一节点从次日（自然日）开始 */
-    cur=new Date(cur.getTime()+86400000);
-  });
   /* 统计：自然日 = 项目总跨度（首节点开始→末节点完成，纯日历差，不受周末节假日影响）；
      工作日 = 各节点跨度含首尾、扣除周末节假日的合计（仅此处受周末节假日影响） */
   const _schedNodes=wizPlanNodes.filter(n=>n.planStart&&n.planEnd);
@@ -5672,21 +5726,12 @@ function resetSingleNode(i){
   const n=wizPlanNodes[i];if(!n)return;
   if(!confirm('将节点「'+(n.name||'')+'」恢复为初始排期时间？\n（当前手动设置将被清除）'))return;
   n.manual=false;
-  /* 上游锚点：i 之前最近的手动节点的 planEnd，否则计划开工日 */
-  let anchorISO='';
-  for(let k=i-1;k>=0;k--){ if(wizPlanNodes[k].manual===true && wizPlanNodes[k].planEnd){ anchorISO=wizPlanNodes[k].planEnd; break; } }
+  /* 上游锚点：i 之前最近的手动节点的 planEnd（→ +1 天起排），否则计划开工日 */
+  let anchorISO='', fromManual=false;
+  for(let k=i-1;k>=0;k--){ if(wizPlanNodes[k].manual===true && wizPlanNodes[k].planEnd){ anchorISO=wizPlanNodes[k].planEnd; fromManual=true; break; } }
   if(!anchorISO) anchorISO=$('wPlanStartDate')?$('wPlanStartDate').value.trim():'';
-  let cur = anchorISO ? new Date(shiftDate(anchorISO,1)+'T00:00:00') : null;
-  for(let k=i;k<wizPlanNodes.length;k++){
-    const m=wizPlanNodes[k];
-    if(m.manual===true) break; /* 停在下一个手动节点 */
-    if(!cur){ m.planStart='';m.planEnd='';continue; }
-    const d=Math.max(1,Math.round(parseDays(m.days)));
-    m.planStart=localISODate(cur);
-    cur=new Date(cur.getTime()+(d-1)*86400000);
-    m.planEnd=localISODate(cur);
-    cur=new Date(cur.getTime()+86400000);
-  }
+  const firstDay = (fromManual && anchorISO)? shiftDate(anchorISO,1): anchorISO;
+  scheduleAutoFrom(i, firstDay);
   refreshPlanStats();
   renderPlanTable();
 }
