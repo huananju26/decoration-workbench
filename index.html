@@ -5711,8 +5711,7 @@ function recalcPlanSchedule(){
   const _firstStart=_schedNodes.length?_schedNodes[0].planStart:'';
   const _lastEnd=_schedNodes.length?_schedNodes[_schedNodes.length-1].planEnd:'';
   let nd=0,wd=0;
-  if(_firstStart&&_lastEnd) nd=Math.round((new Date(_lastEnd)-new Date(_firstStart))/86400000)+1;
-  wizPlanNodes.forEach(n=>{ if(n.planStart&&n.planEnd) wd+=countWorkdays(n.planStart,n.planEnd); });
+  if(_firstStart&&_lastEnd){ nd=Math.round((new Date(_lastEnd)-new Date(_firstStart))/86400000)+1; wd=countWorkdays(_firstStart,_lastEnd); }
   $('statNodes').textContent=wizPlanNodes.length;
   $('statDays').textContent=nd;
   $('statWorkDays').textContent=wd;
@@ -5977,16 +5976,14 @@ function refreshPlanStats(){
   if(!sn||!sd||!sw||!se)return;
   sn.textContent=wizPlanNodes.length;
   if(!wizPlanNodes.length||!wizPlanNodes[0].planStart){sd.textContent='0';sw.textContent='0';se.textContent='—';return;}
-  let nd=0,wd=0,lastEnd='';
+  let nd=0,wd=0,lastEnd='',firstStart='';
   wizPlanNodes.forEach(n=>{
     if(n.planStart&&n.planEnd){
-      /* 自然日：纯日期差，不含任何跳过逻辑 */
-      nd+=Math.round((new Date(n.planEnd)-new Date(n.planStart))/86400000)+1;
-      /* 工作日：跳过周末和法定节假日 */
-      wd+=countWorkdays(n.planStart,n.planEnd);
+      if(!firstStart) firstStart=n.planStart;
       lastEnd=n.planEnd;
     }
   });
+  if(firstStart&&lastEnd){ nd=Math.round((new Date(lastEnd)-new Date(firstStart))/86400000)+1; wd=countWorkdays(firstStart,lastEnd); }
   sd.textContent=nd;sw.textContent=wd;
   se.textContent=lastEnd?fmtDate(lastEnd):'—';
 }
