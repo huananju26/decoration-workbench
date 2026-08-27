@@ -1514,6 +1514,15 @@ a{color:#003a8c;text-decoration:none}
 .ppay-card-row{display:flex;align-items:flex-end;gap:10px;flex-wrap:nowrap;width:100%;min-width:0;margin-bottom:6px}
 .ppay-card-group{margin-top:8px}
 .ppay-card-group select{padding:6px 8px;border:1px solid #d9d9d9;border-radius:6px;font-size:12px;outline:none;background:#fff}
+/* 收款计划 · 关联施工节点控件 */
+.ppay-card-link{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;padding:6px 8px;background:#f0f2f5;border-radius:8px}
+.ppay-link-label{font-size:12px;color:#666;white-space:nowrap}
+.ppay-link-select{padding:5px 8px;border:1px solid #91caff;border-radius:6px;font-size:12px;outline:none;background:#fff;color:#003a8c}
+.ppay-link-select:focus{border-color:#003a8c}
+.ppay-link-offset{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:#666}
+.ppay-link-offset input{padding:4px 6px;border:1px solid #91caff;border-radius:6px;font-size:12px;outline:none;text-align:center}
+.ppay-link-badge{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.pp-link-badge{color:#003a8c;background:#e6f4ff;border:1px solid #91caff;border-radius:999px;padding:1px 8px;font-size:12px;white-space:nowrap}
 
 /* Mobile */
 .mobile-tab-bar{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e8e8e8;z-index:100;padding:6px 0;padding-bottom:max(6px,env(safe-area-inset-bottom))}
@@ -4487,6 +4496,8 @@ function hideStorageWarning(){
   if(b)b.style.display='none';
 }
 function persist(){
+  /* 任何保存前，先按当前施工计划重算所有关联的收款日期 */
+  try{ syncAllPayLinks(); }catch(e){ console.error('[persist] syncAllPayLinks 失败', e); }
   try{localStorage.setItem(APP_KEY,JSON.stringify(App));__storageBroken=false;hideStorageWarning();}
   catch(e){__storageBroken=true;showStorageWarning();}
   if(CloudSync.configured&&CloudSync.loggedIn){cloudPushSoon();}
@@ -4871,6 +4882,8 @@ function load(){
   /* 数据版本化 + 顺序迁移管道：迁移前自动备份、幂等安全、结构兜底、损坏可恢复 */
   runMigrations(App);
   cleanupOrphanedRecords(App);
+  /* 启动即同步收款计划关联日期（施工节点时间变更后，下次打开自动对齐） */
+  try{ syncAllPayLinks(); }catch(e){ console.error('[load] syncAllPayLinks 失败', e); }
   if(!validateApp(App)){
     const _rec=tryRecoverFromBackup();
     if(_rec){ App=_rec; runMigrations(App); }
@@ -6202,10 +6215,10 @@ function buildProcessStepsFromWizard(){
    Step3: 收款计划（新建向导）
    ════════════════════════════════════════ */
 const DEFAULT_PAY_PLAN_NODES=[
-  {name:'第1笔：本合同签订后 3 日内',pct:35,amount:0,dueDate:'',group:'labor'},
-  {name:'第2笔：水电结束或隐蔽验收后3日内',pct:35,amount:0,dueDate:'',group:'labor'},
-  {name:'第3笔：油漆进场前1日内',pct:25,amount:0,dueDate:'',group:'labor'},
-  {name:'第4笔：工程验收完毕3日内',pct:5,amount:0,dueDate:'',group:'labor'}
+  {name:'第1笔：本合同签订后 3 日内',pct:35,amount:0,dueDate:'',group:'labor',linkKey:'project_start',offsetDays:3},
+  {name:'第2笔：水电结束或隐蔽验收后3日内',pct:35,amount:0,dueDate:'',group:'labor',linkKey:'water_end',offsetDays:3},
+  {name:'第3笔：油漆进场前1日内',pct:25,amount:0,dueDate:'',group:'labor',linkKey:'paint_pre_entry',offsetDays:-1},
+  {name:'第4笔：工程验收完毕3日内',pct:5,amount:0,dueDate:'',group:'labor',linkKey:'warranty_start',offsetDays:3}
 ];
 function initWizPayPlanIfEmpty(total){
   if(wizPayPlanNodes.length===0){
@@ -6273,6 +6286,7 @@ function renderWizardPayPlan(){
   const showGroup=wizPayPlanMode==='split';
 
   $('ppayList').innerHTML=wizPayPlanNodes.map((n,idx)=>{
+    recalcWizPayNodeDueDate(idx); n=wizPayPlanNodes[idx];
     const target=calcWizPayNodeTarget(n);
     const pctVal=(n.pct||0).toFixed(1);
     const isPct=wizPayPlanMode==='pct'||(wizPayPlanMode==='split'&&((n.group==='material'?wizPayPlanSplit.materialMethod:wizPayPlanSplit.laborMethod)==='pct'));
@@ -6295,8 +6309,16 @@ function renderWizardPayPlan(){
           </div>
           <div class="ppay-card-pct">${inputHtml}</div>
           <div class="ppay-card-date">
-            <input type="date" value="${n.dueDate||''}" placeholder="计划日期" onchange="wizPayPlanNodes[${idx}].dueDate=this.value" style="text-align:left">
+            <input type="date" value="${n.dueDate||''}" placeholder="计划日期" ${n.linkKey?'disabled title="已关联施工节点，自动计算"':''} onchange="wizPayPlanNodes[${idx}].dueDate=this.value" style="text-align:left${n.linkKey?';background:#f0f2f5;color:#003a8c;cursor:not-allowed':''}">
           </div>
+        </div>
+        <div class="ppay-card-link">
+          <span class="ppay-link-label">关联节点</span>
+          <select class="ppay-link-select" onchange="setWizPayLink(${idx}, this.value)">
+            ${PAY_LINK_OPTIONS.map(o=>`<option value="${o.key}" ${n.linkKey===o.key?'selected':''}>${escHtml(o.label)}</option>`).join('')}
+          </select>
+          ${n.linkKey?`<span class="ppay-link-offset"><input type="number" value="${n.offsetDays||0}" step="1" min="-60" max="120" onchange="setWizPayOffset(${idx}, this.value)" style="width:54px"> 日</span>`:''}
+          ${n.linkKey?`<span class="ppay-link-badge" title="关联施工节点，随施工计划自动同步">🔗 ${escHtml(payLinkLabel(n))}</span>`:''}
         </div>
         <div class="ppay-card-actions">
           <button onclick="moveWizPayNode(${idx},-1)" title="上移">↑</button>
@@ -6309,7 +6331,7 @@ function renderWizardPayPlan(){
   }).join('');
 }
 function addWizPayNode(){
-  wizPayPlanNodes.push({id:'wpp_'+uid(),name:'新收款节点',pct:0,amount:0,dueDate:'',group:'labor'});
+  wizPayPlanNodes.push({id:'wpp_'+uid(),name:'新收款节点',pct:0,amount:0,dueDate:'',group:'labor',linkKey:'',offsetDays:0});
   renderWizardPayPlan();
 }
 function moveWizPayNode(idx,dir){
@@ -6320,6 +6342,34 @@ function moveWizPayNode(idx,dir){
 function removeWizPayNode(idx){
   if(wizPayPlanNodes.length<=1){alert('至少保留一个收款节点');return;}
   wizPayPlanNodes.splice(idx,1);
+  renderWizardPayPlan();
+}
+/* 向导内：关联节点基准日（从向导草稿 wizPlanNodes + 起始日输入读取） */
+function wizMilestoneBaseDate(linkKey){
+  if(!linkKey)return '';
+  if(linkKey==='project_start') return ($('wPlanStartDate')?$('wPlanStartDate').value:'')||'';
+  if(linkKey==='contract_sign') return ($('conSignDate')?$('conSignDate').value:'')||'';
+  if(linkKey==='water_end') return milestoneDateByList(wizPlanNodes,'mg_water','end');
+  if(linkKey==='paint_pre_entry') return milestoneDateByList(wizPlanNodes,'mg_paint_pre','start');
+  if(linkKey==='accept_complete') return milestoneDateByList(wizPlanNodes,'mg_accept','end');
+  if(linkKey==='warranty_start') return milestoneDateByList(wizPlanNodes,'mg_warranty','start');
+  return '';
+}
+function recalcWizPayNodeDueDate(idx){
+  const n=wizPayPlanNodes[idx]; if(!n)return;
+  if(n.linkKey) n.dueDate=computeLinkedDate(wizMilestoneBaseDate(n.linkKey), n.offsetDays);
+}
+function setWizPayLink(idx, key){
+  const n=wizPayPlanNodes[idx]; if(!n)return;
+  n.linkKey=key||'';
+  if(n.linkKey && (n.offsetDays===undefined||n.offsetDays===null||n.offsetDays==='')) n.offsetDays=0;
+  recalcWizPayNodeDueDate(idx);
+  renderWizardPayPlan();
+}
+function setWizPayOffset(idx, val){
+  const n=wizPayPlanNodes[idx]; if(!n)return;
+  n.offsetDays=parseInt(val||0,10);
+  recalcWizPayNodeDueDate(idx);
   renderWizardPayPlan();
 }
 
@@ -6337,7 +6387,9 @@ function buildIncomeFromWizPayPlan(total){
       received:false,
       receipts:[],
       _source:'plan',
-      _group:n.group||''
+      _group:n.group||'',
+      linkKey:n.linkKey||'',
+      offsetDays:parseInt(n.offsetDays||0,10)
     });
   });
   return income;
@@ -6350,9 +6402,9 @@ function saveEditIncome(existingIncome,total){
     if(amt<=0)return;
     const ex=existingIncome.find(e=>e.id===n.id);
     if(ex){
-      result.push(Object.assign({},ex,{name:n.name,amount:amt,date:n.dueDate||'',_group:n.group||''}));
+      result.push(Object.assign({},ex,{name:n.name,amount:amt,date:n.dueDate||'',_group:n.group||'',linkKey:(n.linkKey!==undefined?n.linkKey:(ex.linkKey||'')),offsetDays:(n.linkKey!==undefined?parseInt(n.offsetDays||0,10):(ex.offsetDays||0))}));
     }else{
-      result.push({id:n.id||uid(),name:n.name,amount:amt,date:n.dueDate||'',received:false,receipts:[],_source:'plan',_group:n.group||''});
+      result.push({id:n.id||uid(),name:n.name,amount:amt,date:n.dueDate||'',received:false,receipts:[],_source:'plan',_group:n.group||'',linkKey:n.linkKey||'',offsetDays:parseInt(n.offsetDays||0,10)});
     }
   });
   /* 保留已收款但已从计划中删除的节点，避免误删已收记录 */
@@ -10604,6 +10656,7 @@ function renderPayPlanNode(i,idx,p,contractTotal){
       <span class="pp-info-item"><b>已到账</b> ¥${fmt(received)}</span>
       <span class="pp-info-item"><b>未收</b> ¥${fmt(unpaid)}</span>
       <span class="pp-info-item">${i.date||''}</span>
+      ${i.linkKey?`<span class="pp-info-item pp-link-badge" title="关联施工节点，随施工计划自动同步">🔗 ${escHtml(payLinkLabel(i))}</span>`:''}
     </div>
     ${taxBreakdownHtml(Object.assign({},i,{accountType:i.accountType||defaultAccountTypeForProject(p)}),null,'pp-node-tax')}
     <div class="pp-bar-wrap"><div class="pp-bar ${st}" style="width:${barPct}%"></div></div>
@@ -13739,16 +13792,16 @@ function openPlanModal(){
   if(inc.length){
     _planNodes=inc.map(i=>{
       const g=i._group==='material'?'material':'labor';
-      return {id:i.id,name:i.name||'',pct:0,amount:i.amount||0,dueDate:i.date||'',cat:'',group:g,_source:i._source||'plan',_receipts:(i.receipts||[]).slice(),_received:incReceivedAmt(i)>=(i.amount||0)-0.005};
+      return {id:i.id,name:i.name||'',pct:0,amount:i.amount||0,dueDate:i.date||'',cat:'',group:g,_source:i._source||'plan',_receipts:(i.receipts||[]).slice(),_received:incReceivedAmt(i)>=(i.amount||0)-0.005,linkKey:i.linkKey||'',offsetDays:parseInt(i.offsetDays||0,10)};
     });
     /* 反算百分比 */
     _planNodes.forEach(n=>{if(total>0)n.pct=Math.round(n.amount/total*100*10)/10;});
   }else{
     _planNodes=[
-      {name:'第1笔：本合同签订后 3 日内',pct:35,amount:0,dueDate:'',cat:'',group:'labor',_source:'plan',_receipts:[]},
-      {name:'第2笔：水电结束或隐蔽验收后3日内',pct:35,amount:0,dueDate:'',cat:'',group:'labor',_source:'plan',_receipts:[]},
-      {name:'第3笔：油漆进场前1日内',pct:25,amount:0,dueDate:'',cat:'',group:'labor',_source:'plan',_receipts:[]},
-      {name:'第4笔：工程验收完毕3日内',pct:5,amount:0,dueDate:'',cat:'',group:'labor',_source:'plan',_receipts:[]}
+      {name:'第1笔：本合同签订后 3 日内',pct:35,amount:0,dueDate:'',cat:'',group:'labor',_source:'plan',_receipts:[],linkKey:'project_start',offsetDays:3},
+      {name:'第2笔：水电结束或隐蔽验收后3日内',pct:35,amount:0,dueDate:'',cat:'',group:'labor',_source:'plan',_receipts:[],linkKey:'water_end',offsetDays:3},
+      {name:'第3笔：油漆进场前1日内',pct:25,amount:0,dueDate:'',cat:'',group:'labor',_source:'plan',_receipts:[],linkKey:'paint_pre_entry',offsetDays:-1},
+      {name:'第4笔：工程验收完毕3日内',pct:5,amount:0,dueDate:'',cat:'',group:'labor',_source:'plan',_receipts:[],linkKey:'warranty_start',offsetDays:3}
     ];
   }
   /* 恢复 split 金额：按分组汇总反推 */
@@ -13773,6 +13826,8 @@ function switchPlanMode(mode){
 
 function recalcAndRender(){
   const p=cur();if(!p)return;
+  /* 关联节点：按已保存施工计划刷新关联日期 */
+  _planNodes.forEach((n,idx)=>recalcPlanNodeDueDate(idx));
   const total=parseFloat(p.totalAmount)||0;
   const received=(p.income||[]).reduce((s,i)=>s+incReceivedAmt(i),0);
   const {totalTarget,ok,subtitle}=calcPayPlanSummary(total,received);
@@ -13954,7 +14009,7 @@ function renderPlanCard(idx,n,target,dueAmt,mode,isPctInput,received){
         </div>
         <div class="ppay-card-pct">${inputHtml}</div>
         <div class="ppay-card-date">
-          <input type="date" value="${n.dueDate||''}" placeholder="计划日期" onchange="_planNodes[${idx}].dueDate=this.value" style="text-align:left">
+          <input type="date" value="${n.dueDate||''}" placeholder="计划日期" ${n.linkKey?'disabled title="已关联施工节点，自动计算"':''} onchange="_planNodes[${idx}].dueDate=this.value" style="text-align:left${n.linkKey?';background:#f0f2f5;color:#003a8c;cursor:not-allowed':''}">
         </div>
       </div>
       <div class="ppay-card-actions">
@@ -13963,17 +14018,46 @@ function renderPlanCard(idx,n,target,dueAmt,mode,isPctInput,received){
         <button class="danger" onclick="removePlanNode(${idx})" title="删除">✕</button>
       </div>
     </div>
+    <div class="ppay-card-link">
+      <span class="ppay-link-label">关联节点</span>
+      <select class="ppay-link-select" onchange="setPayLink(${idx}, this.value)">
+        ${PAY_LINK_OPTIONS.map(o=>`<option value="${o.key}" ${n.linkKey===o.key?'selected':''}>${escHtml(o.label)}</option>`).join('')}
+      </select>
+      ${n.linkKey?`<span class="ppay-link-offset"><input type="number" value="${n.offsetDays||0}" step="1" min="-60" max="120" onchange="setPayOffset(${idx}, this.value)" style="width:54px"> 日</span>`:''}
+      ${n.linkKey?`<span class="ppay-link-badge" title="关联施工节点，随施工计划自动同步">🔗 ${escHtml(payLinkLabel(n))}</span>`:''}
+    </div>
     ${groupHtml}
   </div>`;
 }
 
 /* ── 通用操作 ── */
 function addPlanNode(){
-  _planNodes.push({name:'新收款节点',pct:0,amount:0,dueDate:'',cat:'',group:_planMode==='split'?'labor':'',_source:'plan',_receipts:[]});
+  _planNodes.push({name:'新收款节点',pct:0,amount:0,dueDate:'',cat:'',group:_planMode==='split'?'labor':'',_source:'plan',_receipts:[],linkKey:'',offsetDays:0});
   recalcAndRender();
 }
 function removePlanNode(idx){if(_planNodes.length<=1){alert('至少保留一个收款节点');return;}_planNodes.splice(idx,1);recalcAndRender();}
 function movePayNode(idx,dir){const ni=idx+dir;if(ni<0||ni>=_planNodes.length)return;const tmp=_planNodes[idx];_planNodes[idx]=_planNodes[ni];_planNodes[ni]=tmp;recalcAndRender();}
+/* 关联节点：编辑态根据已保存施工计划重算关联节点的 dueDate */
+function recalcPlanNodeDueDate(idx){
+  const n=_planNodes[idx]; if(!n)return;
+  if(n.linkKey){
+    const p=cur(); if(!p)return;
+    n.dueDate=computeLinkedDate(milestoneBaseDate(p,n.linkKey), n.offsetDays);
+  }
+}
+function setPayLink(idx, key){
+  const n=_planNodes[idx]; if(!n)return;
+  n.linkKey=key||'';
+  if(n.linkKey && (n.offsetDays===undefined||n.offsetDays===null||n.offsetDays==='')) n.offsetDays=0;
+  recalcPlanNodeDueDate(idx);
+  recalcAndRender();
+}
+function setPayOffset(idx, val){
+  const n=_planNodes[idx]; if(!n)return;
+  n.offsetDays=parseInt(val||0,10);
+  recalcPlanNodeDueDate(idx);
+  recalcAndRender();
+}
 
 function savePlanModal(){
   const p=cur();if(!p){closeModal('planModal');return;}
@@ -13988,7 +14072,7 @@ function savePlanModal(){
       if(amt>0){
         const receipts=(n._receipts||[]).slice();
         const got=receipts.reduce((s,r)=>s+(r.amount||0),0);
-        newIncome.push({id,name:n.name,amount:amt,date:n.dueDate,received:got>=amt-0.005,receipts,_source:'plan',_group:n.group||''});
+        newIncome.push({id,name:n.name,amount:amt,date:n.dueDate,received:got>=amt-0.005,receipts,_source:'plan',_group:n.group||'',linkKey:n.linkKey||'',offsetDays:parseInt(n.offsetDays||0,10)});
       }
     });
   }else if(_planMode==='custom'){
@@ -13997,7 +14081,7 @@ function savePlanModal(){
         const id=n.id||(uid());
         const receipts=(n._receipts||[]).slice();
         const got=receipts.reduce((s,r)=>s+(r.amount||0),0);
-        newIncome.push({id,name:n.name,amount:n.amount,date:n.dueDate,received:got>=n.amount-0.005,receipts,_source:'plan',_group:n.group||''});
+        newIncome.push({id,name:n.name,amount:n.amount,date:n.dueDate,received:got>=n.amount-0.005,receipts,_source:'plan',_group:n.group||'',linkKey:n.linkKey||'',offsetDays:parseInt(n.offsetDays||0,10)});
       }
     });
   }else{
@@ -14014,7 +14098,7 @@ function savePlanModal(){
         const id=n.id||(uid());
         const receipts=(n._receipts||[]).slice();
         const got=receipts.reduce((s,r)=>s+(r.amount||0),0);
-        newIncome.push({id,name:n.name,amount:amt,date:n.dueDate,received:got>=amt-0.005,receipts,_source:'plan',_group:n.group||''});
+        newIncome.push({id,name:n.name,amount:amt,date:n.dueDate,received:got>=amt-0.005,receipts,_source:'plan',_group:n.group||'',linkKey:n.linkKey||'',offsetDays:parseInt(n.offsetDays||0,10)});
       }
     });
   }
@@ -15818,6 +15902,98 @@ function mondayOf(y,m,d){
 function addDays(y,m,d,n){
   const dt=new Date(y,m,d);dt.setDate(dt.getDate()+n);
   return {y:dt.getFullYear(),m:dt.getMonth(),d:dt.getDate()};
+}
+/* ════════════════════════════════════════════════════════════════
+   收款计划 · 关联施工节点（自动同步日期）
+   每笔收款可关联一个里程碑基准日(linkKey)+偏移天数(offsetDays)；
+   施工计划(母节点)时间一旦变更，对应收款日期自动重算/同步。
+   ════════════════════════════════════════════════════════════════ */
+const PAY_LINK_OPTIONS=[
+  {key:'',label:'不关联（手动填写）'},
+  {key:'project_start',label:'新建项目时间',hint:'计划开工日期'},
+  {key:'contract_sign',label:'合同签约日',hint:'合同签约日期'},
+  {key:'water_end',label:'水电施工结束',hint:'水电施工阶段计划结束'},
+  {key:'paint_pre_entry',label:'前期油漆进场',hint:'前期油漆阶段计划开始'},
+  {key:'accept_complete',label:'工程验收完毕',hint:'竣工验收阶段计划结束'},
+  {key:'warranty_start',label:'完工维保开始',hint:'完工维保阶段计划开始'}
+];
+function findStepInList(list, id){ return (list||[]).find(s=>s.id===id)||null; }
+function milestoneDateByList(list, id, which){
+  const s=findStepInList(list,id); if(!s)return '';
+  return which==='end'?(s.planEndDate||''):(s.planStartDate||'');
+}
+/* 取里程碑母节点的计划日期（ISO） */
+function milestoneDate(p, milestoneId, which){
+  if(!p)return '';
+  const step=findStepById(p.id, milestoneId);
+  if(!step)return '';
+  return which==='end'?(step.planEndDate||''):(step.planStartDate||'');
+}
+/* 关联基准日：按 linkKey 返回 ISO（找不到返回 ''） */
+function milestoneBaseDate(p, linkKey){
+  if(!linkKey||!p)return '';
+  if(linkKey==='project_start') return (p.profile&&p.profile.startDate)||'';
+  if(linkKey==='contract_sign'){
+    const cs=(App.contracts||[]).filter(c=>c.projectId===p.id&&c.signDate).sort((a,b)=>a.signDate<b.signDate?-1:1);
+    return (cs.length?cs[0].signDate:(p.profile&&p.profile.startDate))||'';
+  }
+  if(linkKey==='water_end') return milestoneDate(p,'mg_water','end');
+  if(linkKey==='paint_pre_entry') return milestoneDate(p,'mg_paint_pre','start');
+  if(linkKey==='accept_complete') return milestoneDate(p,'mg_accept','end');
+  if(linkKey==='warranty_start') return milestoneDate(p,'mg_warranty','start');
+  return '';
+}
+/* 自然日偏移：base ISO + n 天（n 可负）；base 空返回 '' */
+function computeLinkedDate(baseISO, offsetDays){
+  if(!baseISO)return '';
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(baseISO).trim());
+  if(!m)return '';
+  const r=addDays(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10), parseInt(offsetDays||0,10));
+  return r.y+'-'+String(r.m+1).padStart(2,'0')+'-'+String(r.d).padStart(2,'0');
+}
+/* 按节点名称自动识别关联规则（历史/默认节点一次性迁移用） */
+function autoPayLinkFromName(name){
+  if(!name)return null;
+  if(/签订/.test(name)) return {linkKey:'project_start', offsetDays:3};
+  if(/(水电结束|隐蔽验收)/.test(name)) return {linkKey:'water_end', offsetDays:3};
+  if(/油漆进场/.test(name)) return {linkKey:'paint_pre_entry', offsetDays:-1};
+  if(/验收完毕/.test(name)) return {linkKey:'warranty_start', offsetDays:3};
+  return null;
+}
+/* 关联人类可读标签，如「水电施工结束 +3 日」 */
+function payLinkLabel(inc){
+  if(!inc||!inc.linkKey)return '';
+  const opt=PAY_LINK_OPTIONS.find(o=>o.key===inc.linkKey);
+  if(!opt)return '';
+  const off=parseInt(inc.offsetDays||0,10);
+  const offTxt=off>0?('+'+off+' 日'):(off<0?(off+' 日'):'当日');
+  return opt.label+' '+offTxt;
+}
+/* 单项目：遍历 income，重算带 linkKey 的节点 date；legacy 节点按名称自动挂接一次 */
+function syncProjectPayLinks(p){
+  if(!p||!p.income||!p.income.length)return false;
+  let changed=false;
+  p.income.forEach(inc=>{
+    if(inc.linkKey){
+      const nd=computeLinkedDate(milestoneBaseDate(p,inc.linkKey), inc.offsetDays);
+      if(nd!==inc.date){ inc.date=nd; changed=true; }
+    }else if(inc.linkKey===undefined){
+      const auto=autoPayLinkFromName(inc.name);
+      if(auto){ inc.linkKey=auto.linkKey; inc.offsetDays=auto.offsetDays; }
+      else { inc.linkKey=''; inc.offsetDays=0; }
+      const nd=computeLinkedDate(milestoneBaseDate(p, inc.linkKey), inc.offsetDays);
+      if(nd!==inc.date){ inc.date=nd; }
+      changed=true;
+    }
+  });
+  return changed;
+}
+/* 全部项目同步；返回是否有变更 */
+function syncAllPayLinks(){
+  if(!App||!App.projects)return false;
+  let changed=false;
+  App.projects.forEach(p=>{ if(syncProjectPayLinks(p))changed=true; });
+  return changed;
 }
 function cmpMon(a,b){ /* 比较两周周一先后：返回 -1/0/1 */
   if(a.y!==b.y)return a.y<b.y?-1:1;
