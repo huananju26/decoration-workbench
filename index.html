@@ -2638,7 +2638,7 @@ a{color:#003a8c;text-decoration:none}
           <div class="card-subtitle">按照阶段性预算要求采购物品，勾选后自建同步到购物清单。</div>
         </div>
         <button class="btn-primary" onclick="openPurchaseModal()">+ 新增待购物品</button>
-        <button class="btn-outline std-link" onclick="openPurchaseStd()">📚 标准参考</button>
+        <button class="btn-outline std-link" onclick="openPurchaseStd()">📚 标准</button>
       </div>
       <div class="tip-banner">💡 使用方法：浏览各阶段物品参考，勾选「需要采购」的项，主页面会同步显示待购状态。</div>
       <div class="purchase-stats">
@@ -2886,7 +2886,7 @@ a{color:#003a8c;text-decoration:none}
 <!-- 合同管理 弹窗 -->
 <div class="modal-overlay" id="contractModal">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title" id="contractModalTitle">新增合同</div><button class="btn-outline std-link" style="margin-left:14px;font-size:12px;padding:4px 12px;border-radius:16px" onclick="openContractStd()">📚 标准参考</button><div class="modal-close" onclick="closeModal('contractModal')">✕</div></div>
+    <div class="modal-header"><div class="modal-title" id="contractModalTitle">新增合同</div><button class="btn-outline std-link" style="margin-left:14px;font-size:12px;padding:4px 12px;border-radius:16px" onclick="openContractStd()">📚 标准</button><div class="modal-close" onclick="closeModal('contractModal')">✕</div></div>
     <div class="modal-body">
       <div class="form-group"><label class="form-label">合同名称 <b style="color:#ff4d4f">*</b></label><input type="text" id="conTitle" placeholder="如：水电施工合同 / 主材采购合同"></div>
       <div class="form-row-2">
@@ -6633,7 +6633,7 @@ function showNoProject(page){
 function hideNoProject(){const el=$('noProjectOverlay');if(el)el.style.display='none';}
 let currentPage='home';
 function switchPage(page){
-  if(page==='standard'){renderStd();return;}
+  if(page==='standard'){renderStd();}
   currentPage=page;
   /* 用 sessionStorage 记录当前页：刷新（不关标签页）可恢复当前页；关闭标签页后清空，重开回到今日总览 */
   try{sessionStorage.setItem('xzgz_current_page',page);}catch(e){}
@@ -9359,7 +9359,7 @@ function renderProcess(){
         <!-- 右栏：四个等宽扁平按钮 -->
         <div class="step-right-col">
           <div class="step-action-row">
-            <span class="step-action-item std-link" onclick="event.stopPropagation();openStepStd(${i})">📚 标准参考</span>
+            <span class="step-action-item std-link" onclick="event.stopPropagation();openStepStd(${i})">📚 标准</span>
             <span class="step-action-item" onclick="event.stopPropagation();openStepPhotoModal(${i})">📷 现场照片<span class="step-action-num" style="color:${phNumColor}">${phGot}/${phReq}</span></span>
             <span class="step-action-item" onclick="event.stopPropagation();locateStepFix(${i})" style="cursor:pointer">⚠️ 未闭环整改<span class="step-action-num" style="color:${fixNumColor}">${fixNumStr}</span></span>
             <span class="step-action-item" onclick="event.stopPropagation()">✅ 验收通过<span class="step-action-num" style="color:${acceptNumColor}">${acceptNumStr}</span></span>
