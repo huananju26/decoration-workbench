@@ -1515,9 +1515,9 @@ a{color:#003a8c;text-decoration:none}
 .ppay-card-group{margin-top:8px}
 .ppay-card-group select{padding:6px 8px;border:1px solid #d9d9d9;border-radius:6px;font-size:12px;outline:none;background:#fff}
 /* 收款计划 · 关联施工节点控件 */
-.ppay-card-link{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;padding:6px 8px;background:#f0f2f5;border-radius:8px}
+.ppay-card-link{display:inline-flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-top:4px;padding:6px 8px;background:#f0f2f5;border-radius:8px}
 .ppay-link-label{font-size:12px;color:#666;white-space:nowrap}
-.ppay-link-select{padding:5px 8px;border:1px solid #91caff;border-radius:6px;font-size:12px;outline:none;background:#fff;color:#003a8c}
+.ppay-link-select{padding:5px 8px;border:1px solid #91caff;border-radius:6px;font-size:12px;outline:none;background:#fff;color:#003a8c;width:160px;flex-shrink:0}
 .ppay-link-select:focus{border-color:#003a8c}
 .ppay-link-offset{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:#666}
 .ppay-link-offset input{padding:4px 6px;border:1px solid #91caff;border-radius:6px;font-size:12px;outline:none;text-align:center}
@@ -6318,7 +6318,6 @@ function renderWizardPayPlan(){
             ${PAY_LINK_OPTIONS.map(o=>`<option value="${o.key}" ${n.linkKey===o.key?'selected':''}>${escHtml(o.label)}</option>`).join('')}
           </select>
           ${n.linkKey?`<span class="ppay-link-offset"><input type="number" value="${n.offsetDays||0}" step="1" min="-60" max="120" onchange="setWizPayOffset(${idx}, this.value)" style="width:54px"> 日</span>`:''}
-          ${n.linkKey?`<span class="ppay-link-badge" title="关联施工节点，随施工计划自动同步">🔗 ${escHtml(payLinkLabel(n))}</span>`:''}
         </div>
         <div class="ppay-card-actions">
           <button onclick="moveWizPayNode(${idx},-1)" title="上移">↑</button>
@@ -14024,7 +14023,6 @@ function renderPlanCard(idx,n,target,dueAmt,mode,isPctInput,received){
         ${PAY_LINK_OPTIONS.map(o=>`<option value="${o.key}" ${n.linkKey===o.key?'selected':''}>${escHtml(o.label)}</option>`).join('')}
       </select>
       ${n.linkKey?`<span class="ppay-link-offset"><input type="number" value="${n.offsetDays||0}" step="1" min="-60" max="120" onchange="setPayOffset(${idx}, this.value)" style="width:54px"> 日</span>`:''}
-      ${n.linkKey?`<span class="ppay-link-badge" title="关联施工节点，随施工计划自动同步">🔗 ${escHtml(payLinkLabel(n))}</span>`:''}
     </div>
     ${groupHtml}
   </div>`;
