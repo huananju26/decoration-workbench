@@ -5754,16 +5754,15 @@ function renderPlanTable(){
       <span class="plan-op-btn danger" onclick="deletePlanNode(${i})" title="删除">×</span>
     </td>
   </tr>`).join('');
-  /* 渲染后同步刷新顶部统计（自然日=首→末节点跨度，工作日=扣除周末节假日） */
+  /* 渲染后同步刷新顶部统计（自然日=首→末节点跨度，工作日=扣除周末节假日的跨度内天数） */
   let _nd=0,_wd=0,_firstStart='',_lastEnd='';
   wizPlanNodes.forEach(n=>{
     if(n.planStart&&n.planEnd){
       if(!_firstStart)_firstStart=n.planStart;
       _lastEnd=n.planEnd;
-      _wd+=countWorkdays(n.planStart,n.planEnd);
     }
   });
-  if(_firstStart&&_lastEnd)_nd=Math.round((new Date(_lastEnd)-new Date(_firstStart))/86400000)+1;
+  if(_firstStart&&_lastEnd){ _nd=Math.round((new Date(_lastEnd)-new Date(_firstStart))/86400000)+1; _wd=countWorkdays(_firstStart,_lastEnd); }
   const _sn=$('statNodes'),_sd=$('statDays'),_sw=$('statWorkDays'),_se=$('statEnd');
   if(_sn)_sn.textContent=wizPlanNodes.length;
   if(_sd)_sd.textContent=_nd;if(_sw)_sw.textContent=_wd;
