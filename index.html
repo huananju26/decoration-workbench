@@ -8921,8 +8921,8 @@ function sbManageAcceptTemplates(){
 function renderAcceptTplModal(){
   const body=$('acceptTplBody');if(!body)return;
   const data=window._acceptTplEdit||{};
-  const groups=BASE_PARENT_GROUPS;
-  let html='<div style="font-size:12px;color:#888;margin-bottom:14px">以下为 18 个管理母节点的专属必检项模板。新建项目时自动套用。修改后点「保存模板」生效。</div>';
+  const groups=BASE_PARENT_GROUPS.concat(COMMERCIAL_PARENT_GROUPS);
+  let html='<div style="font-size:12px;color:#888;margin-bottom:14px">以下为全量 '+groups.length+' 个母节点的专属必检项模板（含工装专属阶段）。新建项目时自动套用。修改后点「保存模板」生效。</div>';
   groups.forEach((g,gi)=>{
     const items=(data[g.id])||[];
     html+=`<div style="background:#fff;border:0.5px solid #e8e8e8;border-radius:8px;margin-bottom:10px;overflow:hidden">
@@ -8956,7 +8956,7 @@ function toggleAcceptTplGroup(gi){
 /* 编辑某项字段 */
 function onAcceptTplItemChange(gi,ii,field,val){
   const data=window._acceptTplEdit;if(!data)return;
-  const groups=BASE_PARENT_GROUPS;if(!groups[gi])return;
+  const groups=BASE_PARENT_GROUPS.concat(COMMERCIAL_PARENT_GROUPS);if(!groups[gi])return;
   const gid=groups[gi].id;
   if(!data[gid]||!data[gid][ii])return;
   data[gid][ii][field]=val;
@@ -8964,7 +8964,7 @@ function onAcceptTplItemChange(gi,ii,field,val){
 /* 某节点下新增一项 */
 function addAcceptTplItem(gi){
   const data=window._acceptTplEdit;if(!data)return;
-  const groups=BASE_PARENT_GROUPS;if(!groups[gi])return;
+  const groups=BASE_PARENT_GROUPS.concat(COMMERCIAL_PARENT_GROUPS);if(!groups[gi])return;
   const gid=groups[gi].id;
   if(!data[gid])data[gid]=[];
   data[gid].push({label:'',text:''});
@@ -8978,7 +8978,7 @@ function addAcceptTplItem(gi){
 /* 删除某项 */
 function delAcceptTplItem(gi,ii){
   const data=window._acceptTplEdit;if(!data)return;
-  const groups=BASE_PARENT_GROUPS;if(!groups[gi])return;
+  const groups=BASE_PARENT_GROUPS.concat(COMMERCIAL_PARENT_GROUPS);if(!groups[gi])return;
   const gid=groups[gi].id;
   if(!data[gid])return;
   const item=data[gid][ii];if(!item)return;
