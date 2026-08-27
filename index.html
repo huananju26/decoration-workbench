@@ -14517,7 +14517,7 @@ function renderLedger(){
   const manualBal=window.__ledgerManualBalance;
   const displayBal=(manualBal!==null&&manualBal!==undefined)?manualBal:af.grossProfit;
   $('ledgerSummaryBar').innerHTML=
-    '<div class="ledger-sum-item"><span class="ledger-sum-label">本年度总收入</span><span class="ledger-sum-val income">¥'+fmt(af.totalIncome)+'</span></div>'+
+    '<div class="ledger-sum-item"><span class="ledger-sum-label">本年度项目总额</span><span class="ledger-sum-val income">¥'+fmt(af.totalIncome)+'</span></div>'+
     '<div class="ledger-sum-item"><span class="ledger-sum-label">支出总计</span><span class="ledger-sum-val expense">¥'+fmt(af.totalCost)+'</span></div>'+
     '<div class="ledger-sum-item ledger-sum-highlight"><span class="ledger-sum-label">年度余额</span><span class="ledger-sum-val profit" id="ledgerBalanceDisplay" style="cursor:pointer;text-decoration:underline" title="点击手动编辑余额" onclick="editLedgerBalance('+displayBal+')">¥'+fmt(displayBal)+' ✏️</span></div>'+
     '<div class="ledger-sum-item"><span class="ledger-sum-label">已收款</span><span class="ledger-sum-val income">¥'+fmt(af.received)+'</span></div>'+
