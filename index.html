@@ -5032,31 +5032,35 @@ const PARENT_GROUPS={
     /* 完工维保（无固定工期，仅里程碑） */
     'mg_warranty'
   ],
-    /* 工装专属：压缩工期 + 并行阶段（phase 相同即同日开始、按最长工期结束，实现穿插作业）。
-       仅作用于 commercial，不改动 BASE，家装模板保持原样。 */
+    /* 工装专属：压缩工期 + 真实工序偏移（offset = 相对开工日的起始日，单位自然日）。
+       不再用整阶段并行（phase），改为「关键路径为主、个别工种局部错峰穿插」的真实排法：
+       - 各节点起始日彼此错开（非同日开始），形成顺流甘特；
+       - 消防/排烟/设备/门窗 等在水电进行中段插入重叠，木作/油漆前 在泥瓦尾段重叠，
+         招牌/外立面 在油漆前尾段重叠，监控 在油漆后重叠，软装 在主材尾段重叠；
+       - 仅作用于 commercial，不改动 BASE，家装模板保持原样（无 offset → 顺序排期）。 */
     overrides:{
-      'cm_permit':{days:7,phase:1},
-      'mg_prep':{days:5,phase:1},
-      'mg_demo':{days:3,phase:1},
-      'mg_wall':{days:3,phase:2},
-      'mg_water':{days:12,phase:2},
-      'mg_equip_loc':{days:2,phase:2},
-      'cm_fire':{days:9,phase:2},
-      'cm_vent':{days:7,phase:2},
-      'mg_equip_inst':{days:6,phase:2},
-      'mg_window':{days:6,phase:2},
-      'mg_wood':{days:8,phase:2},
-      'mg_masonry':{days:10,phase:3},
-      'mg_paint_pre':{days:8,phase:3},
-      'cm_signage':{days:5,phase:3},
-      'cm_facade':{days:5,phase:3},
-      'cm_cctv':{days:6,phase:3},
-      'mg_paint_post':{days:8,phase:4},
-      'mg_main_inst':{days:7,phase:4},
-      'mg_soft':{days:5,phase:5},
-      'mg_clean':{days:2,phase:5},
-      'mg_accept':{days:2,phase:6},
-      'mg_rectify':{days:4,phase:6}
+      'cm_permit':{days:7,offset:0},
+      'mg_prep':{days:5,offset:4},
+      'mg_demo':{days:3,offset:9},
+      'mg_wall':{days:3,offset:12},
+      'mg_water':{days:10,offset:15},
+      'mg_equip_loc':{days:2,offset:15},
+      'cm_fire':{days:9,offset:18},
+      'cm_vent':{days:7,offset:20},
+      'mg_equip_inst':{days:6,offset:22},
+      'mg_window':{days:6,offset:16},
+      'mg_wood':{days:7,offset:28},
+      'mg_masonry':{days:8,offset:25},
+      'mg_paint_pre':{days:6,offset:33},
+      'cm_signage':{days:5,offset:35},
+      'cm_facade':{days:5,offset:36},
+      'cm_cctv':{days:6,offset:41},
+      'mg_paint_post':{days:6,offset:39},
+      'mg_main_inst':{days:5,offset:43},
+      'mg_soft':{days:3,offset:45},
+      'mg_clean':{days:1,offset:48},
+      'mg_accept':{days:1,offset:49},
+      'mg_rectify':{days:3,offset:50}
     }},
   renovated:{include:['mg_prep','mg_water','mg_wood','mg_masonry','mg_paint_pre','mg_custom','mg_paint_post','mg_main_inst','mg_clean','mg_soft','mg_accept','mg_rectify','mg_warranty']},
   local:{include:['mg_prep','mg_water','mg_equip_inst','mg_window','mg_masonry','mg_paint_pre','mg_paint_post','mg_main_inst','mg_clean','mg_accept','mg_rectify','mg_warranty']},
@@ -5310,6 +5314,7 @@ function buildFlatSteps(houseType){
     out.push({
       id:g.id, name:ov.name||g.name, days:String(ov.days!=null?ov.days:g.days||''),
       phase:ov.phase!=null?ov.phase:(g.phase||''),
+      offset:ov.offset!=null?ov.offset:(g.offset!=null?g.offset:''),
       desc:'', acceptance:(PARENT_ACCEPTANCE_TEMPLATES[g.id]||[]).map(a=>({...a,status:'pending'})), articles:[],
       isParent:true, parentId:null, photosRequired:3,
       checked:false, planStartDate:'', planEndDate:'', actualStartDate:'', actualEndDate:''
@@ -5373,7 +5378,7 @@ function onPlanTemplateChange(){
 /* 基础全流程的深拷贝：新建项目时作为该项目初始流程 */
 function baseFlowClone(houseType){
   return buildFlatSteps(houseType||'new').map(s=>({
-    id:s.id, name:s.name, days:s.days, phase:s.phase||'', desc:s.desc,
+    id:s.id, name:s.name, days:s.days, phase:s.phase||'', offset:s.offset||'', desc:s.desc,
     acceptance:(s.acceptance||[]).map(a=>({...a})),
     articles:(s.articles||[]).map(a=>({...a})),
     isParent:!!s.isParent, parentId:s.parentId||null,
@@ -5539,7 +5544,7 @@ function initPlanNodesFromTemplate(){
   if(selectedHouseType && selectedHouseType!=='new') rebuildProcessSteps(selectedHouseType);
   /* 计划表只排母节点（阶段），不排子节点 */
   wizPlanNodes=PROCESS_STEPS.filter(s=>s.isParent).map(s=>({
-    id:s.id,name:s.name,days:s.days,phase:s.phase||'',
+    id:s.id,name:s.name,days:s.days,phase:s.phase||'',offset:s.offset||'',
     status:'pending',planStart:'',planEnd:'',manual:false,
     desc:s.desc,acceptance:(s.acceptance||[]).map(a=>({...a})),
     articles:(s.articles||[]).map(a=>({...a})),
@@ -5658,13 +5663,17 @@ function fmtDateMd(d){if(!d)return '';const t=new Date(d);return `${String(t.get
 /* 本地时间格式化为 YYYY-MM-DD（避免 toISOString 的 UTC 偏移问题） */
 function localISODate(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${da}`}
 
-/** 从 startIdx 起向后自动紧凑排期（支持并行阶段 / 穿插作业）：
- *  - 连续且 phase 相同（非空）的自动节点组成「并发块」：同日开始，结束 = 开始 + 块内最长工期 - 1 天；
- *  - phase 为空或彼此不同则各自独立成块，顺序排期（下一节点从上块结束后次日开始）；
+/** 从 startIdx 起向后自动排期，支持三种模式（优先级：offset > phase并发块 > 顺序）：
+ *  1) offset（工装真实工序）：节点带 offset（相对开工日的起始自然日）→ 绝对定位 planStart=开工日+offset，
+ *     不推进后续时间轴（各节点起始彼此错开，形成顺流+局部穿插的甘特）；
+ *  2) phase 并发块：连续且 phase 相同（非空）的自动节点组成并发块，同日开始、按块内最长工期结束；
+ *  3) 顺序排期：phase 为空或彼此不同，下一节点从上块结束后次日开始；
+ *  - 无工期节点（如「完工维保」）= 里程碑，不排期、不推进时间轴；
  *  - 遇到 manual 节点立即停止（保留手动排期 / 空档期）；
  *  - firstDay 为空表示无法排期（节点日期清空）。
- *  非工装节点无 phase → 全部退化为顺序排期，与原行为一致。 */
+ *  非工装节点无 offset/phase → 全部退化为顺序排期，与原行为一致。 */
 function scheduleAutoFrom(startIdx, firstDay){
+  const projStart = ($('wPlanStartDate')&&$('wPlanStartDate').value.trim()) ? $('wPlanStartDate').value.trim() : firstDay;
   let cur = firstDay? new Date(firstDay+'T00:00:00') : null;
   for(let i=startIdx;i<wizPlanNodes.length;i++){
     const node=wizPlanNodes[i];
@@ -5672,16 +5681,27 @@ function scheduleAutoFrom(startIdx, firstDay){
     if(!cur){ node.planStart='';node.planEnd='';continue; }
     /* 无工期节点（如「完工维保」）= 里程碑，不排期、不推进时间轴 */
     if(!node.days || Math.round(parseDays(node.days))<1){ node.planStart='';node.planEnd='';node.manual=false;continue; }
+    const d=Math.max(1,Math.round(parseDays(node.days)));
+    /* 模式1：offset 绝对偏移定位（工装真实工序） */
+    if(node.offset!=='' && node.offset!=null && !isNaN(parseInt(node.offset))){
+      const base=new Date(projStart+'T00:00:00');
+      const off=parseInt(node.offset)||0;
+      const bs=new Date(base.getTime()+off*86400000);
+      node.planStart=localISODate(bs);
+      node.planEnd=localISODate(new Date(bs.getTime()+(d-1)*86400000));
+      node.manual=false;
+      continue; /* 不推进 cur，并发关系由 offset 自行表达 */
+    }
+    /* 模式2/3：phase 并发块 或 顺序排期 */
     const ph=node.phase||'';
-    /* 收集并发块：后续连续自动节点且 phase 相同且非空 */
     let j=i;
     while(j+1<wizPlanNodes.length && wizPlanNodes[j+1].manual!==true && (wizPlanNodes[j+1].phase||'')===ph && ph!==''){ j++; }
-    let maxD=1;
+    let maxD=d;
     for(let k=i;k<=j;k++){ maxD=Math.max(maxD, Math.max(1,Math.round(parseDays(wizPlanNodes[k].days)))); }
     const bs=new Date(cur);
     const be=new Date(cur.getTime()+(maxD-1)*86400000);
     for(let k=i;k<=j;k++){ wizPlanNodes[k].planStart=localISODate(bs); wizPlanNodes[k].planEnd=localISODate(be); wizPlanNodes[k].manual=false; }
-    cur=new Date(be.getTime()+86400000); /* 下一节点次日开始 */
+    cur=new Date(be.getTime()+86400000);
     i=j;
   }
 }
