@@ -4957,18 +4957,22 @@ function cleanupOrphanedRecords(app){
   }
   const validIds=new Set(app.projects.map(p=>p.id));
   let changed=false;
+  /* ── 核心修复：空 projectId（''/null/undefined）在有项目存在时视为孤儿数据，不再保留 ──
+     旧逻辑 `!v.projectId || validIds.has(v.projectId)` 会因 !''===true 而永久保留空关联记录，
+     导致「归属项目=—」的合同/发票永远出现在"全部项目"视图中无法清除。 */
   if(Array.isArray(app.invoices)){
     const before=app.invoices.length;
-    app.invoices=app.invoices.filter(v=>!v.projectId || validIds.has(v.projectId));
+    app.invoices=app.invoices.filter(v=>v.projectId && validIds.has(v.projectId));
     if(app.invoices.length!==before)changed=true;
   }
   if(Array.isArray(app.contracts)){
     const before=app.contracts.length;
-    app.contracts=app.contracts.filter(c=>!c.projectId || validIds.has(c.projectId));
+    app.contracts=app.contracts.filter(c=>c.projectId && validIds.has(c.projectId));
     if(app.contracts.length!==before)changed=true;
   }
   if(changed){
     try{ localStorage.setItem(APP_KEY, JSON.stringify(app)); }catch(e){}
+    console.log('[cleanupOrphanedRecords] 已清理无归属项目的孤儿合同/发票');
   }
   /* 修复脏数据：contract/invoice 类型待办项 done=true 但关联合同/发票已删除 → 自动回退 done=false */
   const conIds=new Set((app.contracts||[]).map(c=>c.id));
@@ -4987,6 +4991,17 @@ function cleanupOrphanedRecords(app){
   if(changed){
     try{ localStorage.setItem(APP_KEY, JSON.stringify(app)); }catch(e){}
   }
+  /* ── 清理过期迁移备份：只保留最近 3 份，自动清除更早的备份 ── */
+  try{
+    const bakKeys=Object.keys(localStorage).filter(k=>k.indexOf(MIGRATION_BACKUP_PREFIX)===0).sort().reverse();
+    if(bakKeys.length>3){bakKeys.slice(3).forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});}
+  }catch(e){}
+  /* ── 清理已迁移的旧版键（数据已迁入 APP_KEY，旧键不再需要） ── */
+  try{
+    ['xzgz_app_v1','xzgz_app','xzgz_renovation','renovation_app','xzjz_app'].forEach(k=>{
+      try{if(localStorage.getItem(k)!==null)localStorage.removeItem(k);}catch(e){}
+    });
+  }catch(e){}
 }
 
 function load(){
