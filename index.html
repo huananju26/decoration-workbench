@@ -7794,6 +7794,8 @@ function refreshNavBadges(){
     homeCount+=p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).length;
     /* process: 整改待处理（siteRecord tag=整改, rectifyStatus=待处理|进行中） */
     processCount+=(p.siteRecords||[]).filter(r=>r.tag==='整改'&&(r.rectifyStatus==='待处理'||r.rectifyStatus==='进行中')).length;
+    /* process: 收款逾期 */
+    processCount+=p.income.filter(i=>incStatus(i)==='overdue').length;
   });
   /* 合同管理：草稿 + 缺合同 */
   const conCount=(App.contracts||[]).filter(c=>c.status==='草稿').length + missingContractsList().length;
