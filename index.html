@@ -13096,7 +13096,7 @@ function getNonInvoicedRecords(fProj){
   return out;
 }
 
-/* ── 发票管理：列表 + CRUD + 税额自动算（三态 Tab：全部 / 待开 / 已开 / 无） ── */
+/* ── 发票管理：列表 + CRUD + 税额自动算（五态 Tab + 全部 + 无票） ── */
 function renderInvoices(){
   const el=$('invoicesPanel');if(!el)return;
   const list=App.invoices||[];
@@ -13104,8 +13104,10 @@ function renderInvoices(){
   let base=list.slice();
   if(fProj)base=base.filter(v=>v.projectId===fProj);
   let arr=base.slice();
-  if(_invTab==='待开')arr=arr.filter(v=>(v.status==='草稿')||!v.status); /* 待跟进开具/收票的草稿发票 */
-  else if(_invTab==='已开')arr=arr.filter(v=>INV_ISSUED_STATUS.includes(v.status)); /* 已开/已收票/已认证/已抵扣 */
+  if(_invTab==='待开')arr=arr.filter(v=>(v.direction==='销项')&&((v.status==='草稿')||!v.status)); /* 销项：待开给客户 */
+  else if(_invTab==='已开')arr=arr.filter(v=>(v.direction==='销项')&&(v.status==='已开')); /* 销项：已开具 */
+  else if(_invTab==='待收')arr=arr.filter(v=>(v.direction==='进项')&&((v.status==='草稿')||!v.status)); /* 进项：待向供应商取票 */
+  else if(_invTab==='已收')arr=arr.filter(v=>(v.direction==='进项')&&['已收票','已认证','已抵扣'].includes(v.status)); /* 进项：已收票/认证/抵扣 */
   else if(_invTab==='无票')arr=[]; /* 「无票（不开票）」版块展示的是收付款记录，不是发票实体 */
   let cards='';
   if(arr.length>0){
@@ -13164,9 +13166,12 @@ function renderInvoices(){
     </div>`;
   }).join('');
   const tax=computeTaxSummary(fProj);
-  const pendingCount=base.filter(v=>(v.status==='草稿')||!v.status).length; /* 待开发票数（草稿） */
-  const noInvCount=noInvList.length; /* 标记为「无（不开票）」的收付款记录数 */
-  const invTabs=['全部','待开','已开','无票'];
+  const pendingKaiCount=base.filter(v=>(v.direction==='销项')&&((v.status==='草稿')||!v.status)).length; /* 销项待开 */
+  const doneKaiCount=base.filter(v=>(v.direction==='销项')&&(v.status==='已开')).length; /* 销项已开 */
+  const pendingShouCount=base.filter(v=>(v.direction==='进项')&&((v.status==='草稿')||!v.status)).length; /* 进项待收 */
+  const doneShouCount=base.filter(v=>(v.direction==='进项')&&['已收票','已认证','已抵扣'].includes(v.status)).length; /* 进项已收 */
+  const noInvCount=noInvList.length; /* 标记为「无票（不开票）」的收付款记录数 */
+  const invTabs=['全部','待开','已开','待收','已收','无票'];
   const projName=fProj?projNameById(fProj):'全部项目';
   el.innerHTML=
     `<div class="module-head">
@@ -13177,7 +13182,7 @@ function renderInvoices(){
        <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
      </div>
      <div class="proj-tab-bar" id="invTabBar">
-       ${invTabs.map(t=>{let dot='';if(t==='待开'&&pendingCount>0)dot=`<span class="tab-badge">${pendingCount}</span>`;if(t==='无票'&&noInvCount>0)dot=`<span class="tab-badge">${noInvCount}</span>`;return `<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}${dot}</button>`;}).join('')}
+       ${invTabs.map(t=>{let dot='';if(t==='待开'&&pendingKaiCount>0)dot=`<span class="tab-badge">${pendingKaiCount}</span>`;if(t==='已开'&&doneKaiCount>0)dot=`<span class="tab-badge">${doneKaiCount}</span>`;if(t==='待收'&&pendingShouCount>0)dot=`<span class="tab-badge">${pendingShouCount}</span>`;if(t==='已收'&&doneShouCount>0)dot=`<span class="tab-badge">${doneShouCount}</span>`;if(t==='无票'&&noInvCount>0)dot=`<span class="tab-badge">${noInvCount}</span>`;return `<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}${dot}</button>`;}).join('')}
      </div>
      <div class="proj-stats-row" id="invStatsRow">
        <div class="proj-stat-item"><div class="proj-stat-label">发票张数</div><div class="proj-stat-val">${base.length}</div></div>
