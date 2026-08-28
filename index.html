@@ -12910,16 +12910,14 @@ function renderContracts(){
   const el=$('contractsPanel');if(!el)return;
   const list=App.contracts||[];
   /* ── 筛选栏状态（从 DOM 读取，支持跨渲染保持） ── */
-  const _cft=$('conFilterType'),_cfs=$('conFilterStatus'),_cq=$('conSearchInput');
-  const conFType=_cft?_cft.value:'';
+  const _cfs=$('conFilterStatus'),_cq=$('conSearchInput');
   const conFStatus=_cfs?_cfs.value:'';
   const conFSearch=_cq?(_cq.value||'').trim().toLowerCase():'';
   /* 项目筛选：null=跟随当前项目，''=全部项目，其他=指定项目（与收支流水「全部项目」下拉同款） */
   const filterProj=(_conProjSel===null)?(App.currentProjectId||''):_conProjSel;
   let base=list.slice();
   if(filterProj)base=base.filter(c=>c.projectId===filterProj);
-  /* 筛选栏过滤 */
-  if(conFType)base=base.filter(c=>c.type===conFType);
+  /* 筛选栏过滤（类型切换由下方选项卡负责，此处不重复过滤） */
   if(conFStatus)base=base.filter(c=>{const s=(c.status==='草稿'||!c.status)?'草稿':c.status;return s===conFStatus;});
   if(conFSearch)base=base.filter(c=>(c.title||'').toLowerCase().includes(conFSearch)||(c.supplier||'').toLowerCase().includes(conFSearch)||(c.party||'').toLowerCase().includes(conFSearch));
   /* 缺合同清单（与待办同源）：按当前项目过滤 */
@@ -12958,7 +12956,9 @@ function renderContracts(){
          </div>
          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
        </div>
-       <div class="proj-tab-bar" id="c      </div>
+       <div class="proj-tab-bar" id="conTabBar">
+         ${conTabs.map(t=>{const dot=(t==='缺合同'&&missingConCount>0)?`<span class="tab-badge">${missingConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
+       </div>
       <div class="proj-stats-row" id="conStatsRow">
         <div class="proj-stat-item"><div class="proj-stat-label">缺失合同</div><div class="proj-stat-val">${missingConCount}</div></div>
          <div class="proj-stat-item"><div class="proj-stat-label">涉及项目</div><div class="proj-stat-val">${new Set(missing.map(m=>m._pid)).size}</div></div>
@@ -13019,13 +13019,15 @@ function renderContracts(){
        </div>
        <div class="ledger-filter-bar" id="conFilterBar">
          <select id="conFilterProj" onchange="switchConProjFilter(this.value)"><option value="" ${filterProj?'':'selected'}>全部项目</option>${projFilterBarOptions(filterProj)}</select>
-         <select id="conFilterType" onchange="renderContracts()"><option value="">全部类型</option><option value="设计">设计</option><option value="施工">施工</option><option value="采购">采购</option><option value="其他">其他</option></select>
          <select id="conFilterStatus" onchange="renderContracts()"><option value="">全部状态</option><option value="草稿">草稿</option><option value="已签">已签</option><option value="执行中">执行中</option><option value="已完成">已完成</option></select>
          <input type="text" id="conSearchInput" autocomplete="off" placeholder="搜索合同名/对方..." oninput="renderContracts()">
        </div>
        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
        </div>
+     </div>
+     <div class="proj-tab-bar" id="conTabBar">
+       ${conTabs.map(t=>{const dot=(t==='缺合同'&&missingConCount>0)?`<span class="tab-badge">${missingConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
      </div>
      <div class="proj-stats-row" id="conStatsRow">
        <div class="proj-stat-item"><div class="proj-stat-label">合同份数</div><div class="proj-stat-val">${base.length}</div></div>
