@@ -13249,6 +13249,10 @@ function getNonInvoicedRecords(fProj){
       if(type==='付款' && rec.paid===false) return;
       if(type==='增减项' && rec.received===false && (!rec.receipts || !rec.receipts.length)) return;
       const dir = type==='付款' ? 'expense' : 'income';
+      /* 仅对公进「无票」版块：对私转账不涉及发票，不在此列。
+         注：getInvoiceStatus 对「对公且未设置状态」兜底为待开/待收，
+         故此处只会命中「对公 + 显式标记为无票（合法免开）」的记录。 */
+      if(defaultAccountType(rec,p)!=='对公') return;
       if(getInvoiceStatus(rec,p,dir)==='无票') out.push({rec:rec,proj:p,type:type,projName:projNameById(p.id)});
     };
     (p.income||[]).forEach(r=>push(r,'收款'));
@@ -13352,7 +13356,7 @@ function renderInvoices(){
     `<div class="module-head">
        <div class="module-head-main">
          <div class="module-head-title">发票管理</div>
-         <div class="module-head-desc">按五态（待开 / 已开 / 待收 / 已收 / 无票）管理发票：待开=销项草稿待开给客户、已开=销项已开具、待收=进项草稿待向供应商取票、已收=进项已收票/已认证/已抵扣、无票=合法免开的收付款记录（只读备查）。按「含税价 ÷ (1+税率)」自动倒推不含税金额与税额，并汇总应缴增值税。</div>
+         <div class="module-head-desc">按五态（待开 / 已开 / 待收 / 已收 / 无票）管理发票：待开=销项草稿待开给客户、已开=销项已开具、待收=进项草稿待向供应商取票、已收=进项已收票/已认证/已抵扣、无票=对公转账中合法免开的对公记录（只读备查；对私转账不涉及发票，不在此列）。按「含税价 ÷ (1+税率)」自动倒推不含税金额与税额，并汇总应缴增值税。</div>
        </div>
        <div class="ledger-filter-bar" id="invFilterBar">
          <select id="invFilterProj" onchange="switchInvProjFilter(this.value)"><option value="" ${fProj?'':'selected'}>全部项目</option>${projFilterBarOptions(fProj)}</select>
@@ -13378,7 +13382,7 @@ function renderInvoices(){
      <div class="archive-filter-bar"><span class="archive-count">${_invTab} · 共 ${_invTab==='无票'?noInvList.length:arr.length} ${_invTab==='无票'?'条':'张'}（${escHtml(projName)}）</span></div>
      <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
        ${_invTab==='无票'
-         ? (noInvCards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">当前项目没有标记为「无票（不开票）」的收付款记录。</div>')
+         ? (noInvCards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">当前没有「对公且合法免开」的收付款记录。注：对私转账不涉及发票，不计入无票；对公未开票的记录请在「待开 / 待收」查看。</div>')
          : (cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有发票，点击右上角「新增发票」开始登记。</div>')}
      </div>`;
 }
