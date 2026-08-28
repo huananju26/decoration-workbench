@@ -13251,7 +13251,7 @@ function renderInvoices(){
     }).join('');
   }
   /* 「无（不开票）」版块：只读展示标记为「无」的收付款记录（合法免票备查） */
-  const noInvList=(_invTab==='无票')?getNonInvoicedRecords(fProj):[];
+  const noInvList=getNonInvoicedRecords(fProj); /* 始终计算（不依赖 _invTab），确保各 Tab 徽章计数准确 */
   const noInvCards=noInvList.map(o=>{
     const r=o.rec; const at=defaultAccountType(r,o.proj);
     const party=escHtml(r.payer||r.payee||r.name||'—');
