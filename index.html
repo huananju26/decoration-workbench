@@ -2837,9 +2837,11 @@ a{color:#003a8c;text-decoration:none}
         </select>
         <select id="ledgerFilterInvoice" onchange="renderLedger()">
           <option value="">全部开票</option>
-          <option value="无">无</option>
-          <option value="已开">已开</option>
-          <option value="待开">待开</option>
+          <option value="无票">无票</option>
+          <option value="已开">已开（销项）</option>
+          <option value="待开">待开（销项）</option>
+          <option value="已收">已收（进项）</option>
+          <option value="待收">待收（进项）</option>
         </select>
         <select id="ledgerFilterStatus" onchange="renderLedger()">
           <option value="">全部已结算</option>
@@ -3822,11 +3824,11 @@ a{color:#003a8c;text-decoration:none}
       <div class="form-group" id="riInvoiceGroup" style="display:none">
         <label class="form-label">开票状态 *</label>
         <select id="riInvoiceStatus">
-          <option value="无">无（不开票）</option>
-          <option value="待开">待开（需跟进开/取票）</option>
-          <option value="已开">已开（已开具 / 已索取）</option>
+          <option value="无票">无票（免开 / 对私）</option>
+          <option value="待开">待开（需开给客户）</option>
+          <option value="已开">已开（已开给客户）</option>
         </select>
-        <div class="form-hint">对公走账应开具或索取发票；选「待开」将自动进入「待办事项」提醒跟进，并联动发票管理。</div>
+        <div class="form-hint">收款类（销项）：对公走账应开给客户发票；选「待开」将自动进入「待办事项」提醒跟进，并联动发票管理。</div>
       </div>
       <div class="form-group"><label>流水号 / 凭证编号</label><input type="text" id="riRefNo" placeholder="选填"></div>
       <div class="form-group"><label>收款凭证图片</label>
@@ -3870,11 +3872,11 @@ a{color:#003a8c;text-decoration:none}
       <div class="form-group" id="raInvoiceGroup" style="display:none">
         <label class="form-label">开票状态 *</label>
         <select id="raInvoiceStatus">
-          <option value="无">无（不开票）</option>
-          <option value="待开">待开（需跟进开/取票）</option>
-          <option value="已开">已开（已开具 / 已索取）</option>
+          <option value="无票">无票（免开 / 对私）</option>
+          <option value="待开">待开（需开给客户）</option>
+          <option value="已开">已开（已开给客户）</option>
         </select>
-        <div class="form-hint">对公走账应开具或索取发票；选「待开」将自动进入「待办事项」提醒跟进，并联动发票管理。</div>
+        <div class="form-hint">增减项（销项）：对公走账应开给客户发票；选「待开」将自动进入「待办事项」提醒跟进，并联动发票管理。</div>
       </div>
       <div class="form-group"><label>流水号 / 凭证编号</label><input type="text" id="raRefNo" placeholder="选填"></div>
       <div class="form-group"><label>收款凭证图片</label>
@@ -3937,11 +3939,11 @@ a{color:#003a8c;text-decoration:none}
       <div class="form-group" id="fInvoiceGroup" style="display:none">
         <label class="form-label">开票状态 *</label>
         <select id="fInvoiceStatus" onchange="toggleFinInvoice()">
-          <option value="无">无（不开票）</option>
-          <option value="待开">待开（需跟进开/取票）</option>
-          <option value="已开">已开（已开具 / 已索取）</option>
+          <option value="无票">无票（免开 / 对私）</option>
+          <option value="待开">待开（需开给客户）</option>
+          <option value="已开">已开（已开给客户）</option>
         </select>
-        <div class="form-hint">对公走账应开具或索取发票；选「待开」将自动进入「待办事项」提醒跟进，并联动发票管理。</div>
+        <div class="form-hint">对公走账应开具或索取发票：收款（销项）选待开/已开，付款（进项）选待收/已收；选待开/待收将自动进入「待办事项」提醒跟进，并联动发票管理。</div>
         <div id="fInvoiceLinkRow" style="display:none;margin-top:8px">
           <div class="form-row">
             <select id="fInvoiceSelect" style="flex:1"></select>
@@ -4707,7 +4709,7 @@ function upgradeLegacyAcceptance(){
    - 所有迁移必须幂等（重复运行结果一致），绝不直接销毁用户数据
    - 加载时校验结构，损坏则从最近备份恢复，避免渲染乱码
    ════════════════════════════════════════════════════════════════ */
-const DATA_VERSION = 7;
+const DATA_VERSION = 8;
 const MIGRATION_BACKUP_PREFIX = 'xzgz_app_v2_bak_';
 const MIGRATION_BACKUP_KEEP = 3;
 
@@ -4896,7 +4898,27 @@ function migrateV6ToV7(app){
     (p.adjustments||[]).forEach(norm);
   });
 }
-const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2, migrateV2ToV3, migrateV3ToV4, migrateV4ToV5, migrateV5ToV6, migrateV6ToV7 ];
+/* v7→v8：开票状态语义升级，3 态(无/已开/待开) → 5 态(无票/待开/已开/待收/已收)。
+   方向语义：income/adj（收款·销项）→ 待开/已开；expense（付款·进项）→ 待收/已收。
+   旧值映射：已开→（income）已开 /（expense）已收；待开→（income）待开 /（expense）待收；无→无票；
+   未设置项按账户性质+方向兜底（对公+expense→待收，对公+income→待开，非对公→无票）。 */
+function migrateV7ToV8(app){
+  (app.projects||[]).forEach(p=>{
+    const norm=(rec, dir)=>{
+      if(!rec||typeof rec!=='object')return;
+      /* 仅跳过已含方向语义的新值（已收/待收）；旧三态 已开/待开/无 仍须按方向重映射 */
+      if(rec.invoiceStatus==='待收'||rec.invoiceStatus==='已收')return;
+      if(rec.invoiceStatus==='已开'){ rec.invoiceStatus = (dir==='expense')?'已收':'已开'; }
+      else if(rec.invoiceStatus==='待开'){ rec.invoiceStatus = (dir==='expense')?'待收':'待开'; }
+      else if(rec.invoiceStatus==='无'){ rec.invoiceStatus='无票'; }
+      else { rec.invoiceStatus = (defaultAccountType(rec,p)==='对公') ? (dir==='expense'?'待收':'待开') : '无票'; }
+    };
+    (p.income||[]).forEach(r=>norm(r,'income'));
+    (p.expense||[]).forEach(r=>norm(r,'expense'));
+    (p.adjustments||[]).forEach(r=>norm(r,'income')); /* 增减项=收款·销项 */
+  });
+}
+const MIGRATIONS = [ migrateV0ToV1, migrateV1ToV2, migrateV2ToV3, migrateV3ToV4, migrateV4ToV5, migrateV5ToV6, migrateV6ToV7, migrateV7ToV8 ];
 
 /* 顺序执行迁移，直到数据版本达到当前版本；每步前自动备份 */
 function runMigrations(app){
@@ -7631,10 +7653,10 @@ function renderHome(){
         if(defaultAccountType(rec,p)!=='对公') return;
         if(tt==='income'&&incReceivedAmt(rec)<=0) return;
         const linked=findLinkedInvoice(rec.id,tt);
-        const invSt=getInvoiceStatus(rec,p);
+        const invSt=getInvoiceStatus(rec,p,tt);
         const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
-        const resolved=invSt==='已开'||invSt==='无'||linkedIssued;
-        if(invSt==='待开'&&!resolved) allHandleItems.push({id:'fin_'+rec.id,title:(rec.name||'对公'+(tt==='income'?'收款':'付款')),_kind:'invoice',_proj:pn,_pid:p.id,due:''});
+        const resolved=invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
+        if((invSt==='待开'||invSt==='待收')&&!resolved) allHandleItems.push({id:'fin_'+rec.id,title:(rec.name||'对公'+(tt==='income'?'收款':'付款')),_kind:'invoice',_proj:pn,_pid:p.id,due:''});
       });
     });
     /* 6. 缺合同 + 草稿合同 */
@@ -7666,10 +7688,10 @@ function renderHome(){
         if(defaultAccountType(rec,p)!=='对公') return;
         if(tt==='income' && incReceivedAmt(rec)<=0) return;
         const linked=findLinkedInvoice(rec.id,tt);
-        const invSt=getInvoiceStatus(rec,p);
+        const invSt=getInvoiceStatus(rec,p,tt);
         const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
-        const resolved=invSt==='已开'||invSt==='无'||linkedIssued;
-        if(invSt==='待开'&&!resolved) pendingInvoiceTotal++;
+        const resolved=invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
+        if((invSt==='待开'||invSt==='待收')&&!resolved) pendingInvoiceTotal++;
       });
     });
   });
@@ -7895,9 +7917,9 @@ function renderActionQueueAll(projects){
         if(defaultAccountType(rec,p)!=='对公') return;
         if(tt==='income' && incReceivedAmt(rec)<=0) return; /* 对公收款已删空到账，无需再提醒开票（待办同步清理） */
         const linked=findLinkedInvoice(rec.id,tt);
-        const invSt=getInvoiceStatus(rec,p);
+        const invSt=getInvoiceStatus(rec,p,tt);
         const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
-        const resolved=invSt==='已开'||invSt==='无'||linkedIssued;
+        const resolved=invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
         const planAmt=rec.amount||0;
         /* 收款：累计实际到账；支出：按 paid 布尔判断 */
         const actualAmt = tt==='income' ? incReceivedAmt(rec) : (rec.paid ? planAmt : 0);
@@ -7907,7 +7929,7 @@ function renderActionQueueAll(projects){
         items.push({
           id:'fin_'+rec.id, title:(rec.name||'对公'+(tt==='income'?'收款':'付款')), done:resolved,
           due:'', _kind:'invoice', _proj:pn, _pid:p.id, _finType:tt, _finId:rec.id,
-          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(planAmt)+amtNote+(resolved?' 已开/免开，提醒闭环':' 待开，需跟进开/取票')
+          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(planAmt)+amtNote+(resolved?' 已开/已收/免开，提醒闭环':' 待开/待收，需跟进开/取票')
         });
       });
     });
@@ -12620,25 +12642,50 @@ function findLinkedInvoice(recId,type){
   if(!recId)return null;
   return (App.invoices||[]).find(v=> type==='income' ? v.linkedIncomeId===recId : v.linkedExpenseId===recId);
 }
-/* 开票状态三态归一：无 / 已开 / 待开。
-   - 显式设置过三态值则直接用；兼容旧数据（未开票/已开票）在此不处理，迁移已转换，此处仅兜底未设置项。
-   - 未设置时按账户性质推断：对公默认「待开」（应开票），对私默认「无」。 */
-function getInvoiceStatus(rec, proj){
-  if(!rec||typeof rec!=='object') return '无';
-  if(rec.invoiceStatus==='已开'||rec.invoiceStatus==='待开'||rec.invoiceStatus==='无') return rec.invoiceStatus;
-  try{ const at=defaultAccountType(rec,proj); return at==='对公'?'待开':'无'; }catch(e){ return '无'; }
+/* 开票状态五态归一：无票 / 待开 / 已开 / 待收 / 已收。
+   - 方向语义：income/adj（收款·销项）→ 待开/已开（开给客户）；expense（付款·进项）→ 待收/已收（向供应商取票）。
+   - 显式设置过五态值则直接用（方向无关，因为状态本身已含方向语义）；兼容旧数据在 migrateV7ToV8 已转换。
+   - 未设置时按账户性质 + 方向兜底：对公+income→待开、对公+expense→待收、非对公→无票。
+   - dir 可选：'income'（默认，销项）或 'expense'（进项），仅用于兜底推断。 */
+function getInvoiceStatus(rec, proj, dir){
+  if(!rec||typeof rec!=='object') return '无票';
+  const FIVE=['无票','待开','已开','待收','已收'];
+  if(FIVE.includes(rec.invoiceStatus)) return rec.invoiceStatus;
+  const d = dir==='expense' ? 'expense' : 'income';
+  try{
+    const at=defaultAccountType(rec,proj);
+    if(at==='对公') return d==='expense'?'待收':'待开';
+    return '无票';
+  }catch(e){ return '无票'; }
 }
-/* 收支流水「是否开票」单元格：内联下拉，三态可直改并联动全局节点 */
+/* 五态下拉选项（按方向）：收款类=无票/待开/已开，付款类=无票/待收/已收 */
+const INV_STATUS_OPTIONS_IN=['无票','待开','已开'];
+const INV_STATUS_OPTIONS_EX=['无票','待收','已收'];
+function invStatusOptionLabel(v){
+  return ({'无票':'无票（免开/对私）','待开':'待开（需开给客户）','已开':'已开（已开给客户）','待收':'待收（需向供应商取票）','已收':'已收（已收供应商票）'})[v]||v;
+}
+/* 按方向填充开票状态下拉（fInvoiceStatus 在记一笔弹窗随收款/付款切换选项） */
+function fillInvoiceStatusSelect(type, selId){
+  const sel=$(selId); if(!sel)return;
+  const opts = (type==='expense')?INV_STATUS_OPTIONS_EX:INV_STATUS_OPTIONS_IN;
+  const cur=sel.value;
+  sel.innerHTML=opts.map(v=>'<option value="'+v+'">'+invStatusOptionLabel(v)+'</option>').join('');
+  if(opts.includes(cur)) sel.value=cur;
+}
+/* 收支流水「是否开票」单元格：内联下拉，五态可直改并联动全局节点 */
 function ledgerInvoiceCell(r){
-  const cur=getInvoiceStatus(r.rec,r.proj);
-  const color = cur==='已开'?'#003a8c' : cur==='待开'?'#d46b08' : '#8a94a6';
-  const bg    = cur==='已开'?'#e6f4ff' : cur==='待开'?'#fff7e6' : '#f5f6f8';
-  const bd    = cur==='已开'?'#91caff' : cur==='待开'?'#ffd591' : '#e3e6eb';
-  const opts=['无','已开','待开'].map(v=>'<option value="'+v+'"'+(v===cur?' selected':'')+'>'+v+'</option>').join('');
+  const cur=getInvoiceStatus(r.rec,r.proj,r.type);
+  const isPending = cur==='待开'||cur==='待收';
+  const isDone = cur==='已开'||cur==='已收';
+  const color = isDone?'#003a8c' : isPending?'#d46b08' : '#8a94a6';
+  const bg    = isDone?'#e6f4ff' : isPending?'#fff7e6' : '#f5f6f8';
+  const bd    = isDone?'#91caff' : isPending?'#ffd591' : '#e3e6eb';
+  const opts=(r.type==='expense'?INV_STATUS_OPTIONS_EX:INV_STATUS_OPTIONS_IN).map(v=>'<option value="'+v+'"'+(v===cur?' selected':'')+'>'+v+'</option>').join('');
   return '<td class="ld-inv" style="white-space:nowrap"><select class="inv-status-pill" style="color:'+color+';background:'+bg+';border:1px solid '+bd+'" onchange="setLedgerInvoiceStatus(\''+r.proj.id+'\',\''+r.type+'\',\''+r.rec.id+'\',this.value)">'+opts+'</select></td>';
 }
 /* 在流水表格直接修改「是否开票」：写回记录 + 同步关联发票（单一真相源）+ 联动全局节点重渲染。
-   newVal ∈ {无,已开,待开}；type ∈ {income,adj,expense}，增减项按 income 链接发票。 */
+   newVal ∈ {无票,待开,已开,待收,已收}；type ∈ {income,adj,expense}，增减项按 income 链接发票。
+   方向语义：已开/待开=销项（开给客户），已收/待收=进项（向供应商取票）。 */
 function setLedgerInvoiceStatus(projId, type, recId, newVal){
   const p=App.projects.find(x=>x.id===projId); if(!p)return;
   const arr = type==='income'?p.income : type==='expense'?p.expense : p.adjustments;
@@ -12646,15 +12693,16 @@ function setLedgerInvoiceStatus(projId, type, recId, newVal){
   const linkType = (type==='expense')?'expense':'income';
   rec.invoiceStatus=newVal;
   if(!App.invoices)App.invoices=[];
-  if(newVal==='已开'){
+  if(newVal==='已开'||newVal==='已收'){
+    const tgtStatus = (newVal==='已开')?'已开':'已收票';
     let inv=findLinkedInvoice(recId, linkType);
-    if(!inv){ inv=finAutoCreateInvoice(rec, linkType, p, '已开'); }
-    else { inv.status='已开'; if(linkType==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; }
-  }else if(newVal==='待开'){
+    if(!inv){ inv=finAutoCreateInvoice(rec, linkType, p, tgtStatus); }
+    else { inv.status=tgtStatus; if(linkType==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; }
+  }else if(newVal==='待开'||newVal==='待收'){
     let inv=findLinkedInvoice(recId, linkType);
     if(!inv){ inv=finAutoCreateInvoice(rec, linkType, p, '草稿'); }
     /* 已存在已开发票则保留其状态（不强行降级），仅保证有一条可挂的草稿 */
-  }else{ /* 无：解除/清理关联发票 */
+  }else{ /* 无票：解除/清理关联发票 */
     (App.invoices||[]).slice().forEach(v=>{
       const isLinked=(linkType==='income'&&v.linkedIncomeId===recId)||(linkType==='expense'&&v.linkedExpenseId===recId);
       if(isLinked){
@@ -13062,14 +13110,15 @@ function closeContractScanPreview(){
 }
 
 /* 收集标记为「无（不开票）」的收付款记录，供发票管理「无」版块做只读审计清单。
-   仅取 invoiceStatus==='无' 的记录（对私/免开主体），与流水表三态口径完全一致。 */
+   仅取 invoiceStatus==='无票' 的记录（对私/免开主体），与流水表五态口径完全一致。 */
 function getNonInvoicedRecords(fProj){
   const out=[];
   const projs=(App.projects||[]).filter(p=>!fProj||p.id===fProj);
   projs.forEach(p=>{
     const push=(rec,type)=>{
       if(!rec||typeof rec!=='object')return;
-      if(getInvoiceStatus(rec,p)==='无') out.push({rec:rec,proj:p,type:type,projName:projNameById(p.id)});
+      const dir = type==='付款' ? 'expense' : 'income';
+      if(getInvoiceStatus(rec,p,dir)==='无票') out.push({rec:rec,proj:p,type:type,projName:projNameById(p.id)});
     };
     (p.income||[]).forEach(r=>push(r,'收款'));
     (p.expense||[]).forEach(r=>push(r,'付款'));
@@ -13088,7 +13137,7 @@ function renderInvoices(){
   let arr=base.slice();
   if(_invTab==='待开')arr=arr.filter(v=>(v.status==='草稿')||!v.status); /* 待跟进开具/收票的草稿发票 */
   else if(_invTab==='已开')arr=arr.filter(v=>INV_ISSUED_STATUS.includes(v.status)); /* 已开/已收票/已认证/已抵扣 */
-  else if(_invTab==='无')arr=[]; /* 「无（不开票）」版块展示的是收付款记录，不是发票实体 */
+  else if(_invTab==='无票')arr=[]; /* 「无票（不开票）」版块展示的是收付款记录，不是发票实体 */
   let cards='';
   if(arr.length>0){
     cards=arr.map(v=>{
@@ -13126,7 +13175,7 @@ function renderInvoices(){
     }).join('');
   }
   /* 「无（不开票）」版块：只读展示标记为「无」的收付款记录（合法免票备查） */
-  const noInvList=(_invTab==='无')?getNonInvoicedRecords(fProj):[];
+  const noInvList=(_invTab==='无票')?getNonInvoicedRecords(fProj):[];
   const noInvCards=noInvList.map(o=>{
     const r=o.rec; const at=defaultAccountType(r,o.proj);
     const party=escHtml(r.payer||r.payee||r.name||'—');
@@ -13148,18 +13197,18 @@ function renderInvoices(){
   const tax=computeTaxSummary(fProj);
   const pendingCount=base.filter(v=>(v.status==='草稿')||!v.status).length; /* 待开发票数（草稿） */
   const noInvCount=noInvList.length; /* 标记为「无（不开票）」的收付款记录数 */
-  const invTabs=['全部','待开','已开','无'];
+  const invTabs=['全部','待开','已开','无票'];
   const projName=fProj?projNameById(fProj):'全部项目';
   el.innerHTML=
     `<div class="module-head">
        <div class="module-head-main">
          <div class="module-head-title">发票管理</div>
-         <div class="module-head-desc">按三态（待开 / 已开 / 无）管理发票：待开=草稿待开具、已开=已开/已收票/已认证/已抵扣、无=合法免票的收付款记录（只读备查）。按「含税价 ÷ (1+税率)」自动倒推不含税金额与税额，并汇总应缴增值税。</div>
+         <div class="module-head-desc">按五态（待开 / 已收 / 已开 / 无票）管理发票：待开=销项草稿待开给客户、待收=进项草稿待向供应商取票、已开/已收=已开/已收票/已认证/已抵扣、无票=合法免开的收付款记录（只读备查）。按「含税价 ÷ (1+税率)」自动倒推不含税金额与税额，并汇总应缴增值税。</div>
        </div>
        <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
      </div>
      <div class="proj-tab-bar" id="invTabBar">
-       ${invTabs.map(t=>{let dot='';if(t==='待开'&&pendingCount>0)dot=`<span class="tab-badge">${pendingCount}</span>`;if(t==='无'&&noInvCount>0)dot=`<span class="tab-badge">${noInvCount}</span>`;return `<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}${dot}</button>`;}).join('')}
+       ${invTabs.map(t=>{let dot='';if(t==='待开'&&pendingCount>0)dot=`<span class="tab-badge">${pendingCount}</span>`;if(t==='无票'&&noInvCount>0)dot=`<span class="tab-badge">${noInvCount}</span>`;return `<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}${dot}</button>`;}).join('')}
      </div>
      <div class="proj-stats-row" id="invStatsRow">
        <div class="proj-stat-item"><div class="proj-stat-label">发票张数</div><div class="proj-stat-val">${base.length}</div></div>
@@ -13169,21 +13218,35 @@ function renderInvoices(){
        <div class="proj-stat-item"><div class="proj-stat-label">应缴附加税(×12%)</div><div class="proj-stat-val">¥${fmt(tax.add)}</div></div>
        <div class="proj-stat-item"><div class="proj-stat-label">合计应缴</div><div class="proj-stat-val" style="color:#ff4d4f;font-weight:700">¥${fmt(tax.total)}</div></div>
      </div>
-     <div class="archive-filter-bar"><span class="archive-count">${_invTab} · 共 ${_invTab==='无'?noInvList.length:arr.length} ${_invTab==='无'?'条':'张'}（${escHtml(projName)}）</span></div>
+     <div class="archive-filter-bar"><span class="archive-count">${_invTab} · 共 ${_invTab==='无票'?noInvList.length:arr.length} ${_invTab==='无票'?'条':'张'}（${escHtml(projName)}）</span></div>
      <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
-       ${_invTab==='无'
-         ? (noInvCards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">当前项目没有标记为「无（不开票）」的收付款记录。</div>')
+       ${_invTab==='无票'
+         ? (noInvCards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">当前项目没有标记为「无票（不开票）」的收付款记录。</div>')
          : (cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有发票，点击右上角「新增发票」开始登记。</div>')}
      </div>`;
 }
 function switchInvoiceTab(t){_invTab=t;renderInvoices();}
-/* 一键把待开发票标记为已开：销项→已开（从「待开」版块移出），进项→已收票（从「待开」版块移出） */
+/* 将发票实际状态同步回其关联收/付款记录的开票状态（单一真相源：以实际发票状态为准），
+   保证流水表「开票状态」列与筛选与发票管理一致、可精确过滤。 */
+function syncRecInvoiceStatus(v){
+  if(!v)return;
+  const newRecSt = v.direction==='进项' ? '已收' : '已开';
+  const linkedId = v.direction==='进项' ? v.linkedExpenseId : v.linkedIncomeId;
+  if(!linkedId)return;
+  for(const p of (App.projects||[])){
+    const r=(p.income||[]).find(x=>x.id===linkedId)||(p.adjustments||[]).find(x=>x.id===linkedId)||(p.expense||[]).find(x=>x.id===linkedId);
+    if(r){ r.invoiceStatus=newRecSt; return; }
+  }
+}
+/* 一键把待开发票标记为已开：销项→已开（从「待开」版块移出），进项→已收票（从「待开」版块移出）；
+   同步回写关联收/付款记录的开票状态，保证流水筛选精确。 */
 function markInvoiceIssued(id){
   const v=invoiceById(id);if(!v)return;
   const msg=v.direction==='进项'?'标记该发票为「已收票」？\\n（将从「待开」版块移出）':'标记该发票为「已开」？\\n（将从「待开」版块移出）';
   if(!confirm(msg))return;
   v.status=(v.direction==='进项')?'已收票':'已开';
-  persist();renderInvoices();
+  syncRecInvoiceStatus(v);
+  persist();renderInvoices();renderLedger();renderHome();
 }
 let _editingInvoiceId=null;
 function refreshInvContractOptions(){
@@ -13417,7 +13480,7 @@ function openRecordIncomeModal(pid,iid){
   $('riAccountType').value=(inc.accountType||defaultAccountTypeForProject(p));
   $('riTaxRate').innerHTML=taxRateOptionsHtml(inc.taxRate||DEFAULT_TAX_RATE);
   toggleRiTax();
-  $('riInvoiceStatus').value=getInvoiceStatus(inc,p);
+  $('riInvoiceStatus').value=getInvoiceStatus(inc,p,'income');
   $('riRefNo').value='';
   $('riNote').value='';
   $('riFileName').textContent='未选择任何文件';
@@ -13465,12 +13528,12 @@ function saveRecordIncome(){
   inc.accountType=$('riAccountType').value;
   /* 含税价模型：对公记录以含税额登记，税率存于节点，receipts 派生不含税/税 */
   if(inc.accountType==='对公') inc.taxRate=parseFloat($('riTaxRate').value)||DEFAULT_TAX_RATE; else inc.taxRate='';
-  /* 对公走账：根据开票状态三态决定是否自动建草稿发票（无 / 已开 / 待开） */
-  inc.invoiceStatus = inc.accountType==='对公' ? ($('riInvoiceStatus')?$('riInvoiceStatus').value:'待开') : '无';
+  /* 对公走账：根据开票状态五态决定是否自动建草稿发票（无票 / 已开 / 待开） */
+  inc.invoiceStatus = inc.accountType==='对公' ? ($('riInvoiceStatus')?$('riInvoiceStatus').value:'待开') : '无票';
   if(inc.accountType==='对公'){
     const invSt=inc.invoiceStatus;
     if(invSt==='待开'){ ensureIncomeInvoice(inc.id, p, incReceivedAmt(inc), inc.name); }
-    else if(invSt==='无'){ cascadeDeleteLinkedInvoice(inc.id,'income'); }
+    else if(invSt==='无票'){ cascadeDeleteLinkedInvoice(inc.id,'income'); }
     /* 已开：发票已在发票管理维护，不自动建草稿 */
   }
   /* 同步更新 received 标记（兼容旧代码读取） */
@@ -13536,7 +13599,7 @@ function openRecordAdjModal(aid){
   $('raAccountType').value=(a.accountType||defaultAccountTypeForProject(p));
   $('raTaxRate').innerHTML=taxRateOptionsHtml(a.taxRate||DEFAULT_TAX_RATE);
   toggleRaTax();
-  $('raInvoiceStatus').value=getInvoiceStatus(a,p);
+  $('raInvoiceStatus').value=getInvoiceStatus(a,p,'income');
   $('raRefNo').value='';
   $('raNote').value='';
   $('raFileName').textContent='未选择任何文件';
@@ -13579,12 +13642,12 @@ function saveRecordAdj(){
   a.accountType=$('raAccountType').value;
   /* 含税价模型：对公记录以含税额登记，税率存于节点，receipts 派生不含税/税 */
   if(a.accountType==='对公') a.taxRate=parseFloat($('raTaxRate').value)||DEFAULT_TAX_RATE; else a.taxRate='';
-  /* 对公走账：根据开票状态三态决定是否自动建草稿发票（无 / 已开 / 待开） */
-  a.invoiceStatus = a.accountType==='对公' ? ($('raInvoiceStatus')?$('raInvoiceStatus').value:'待开') : '无';
+  /* 对公走账：根据开票状态五态决定是否自动建草稿发票（无票 / 已开 / 待开） */
+  a.invoiceStatus = a.accountType==='对公' ? ($('raInvoiceStatus')?$('raInvoiceStatus').value:'待开') : '无票';
   if(a.accountType==='对公'){
     const invSt=a.invoiceStatus;
     if(invSt==='待开'){ ensureIncomeInvoice(a.id, p, adjReceivedAbs(a), a.name); }
-    else if(invSt==='无'){ cascadeDeleteLinkedInvoice(a.id,'income'); }
+    else if(invSt==='无票'){ cascadeDeleteLinkedInvoice(a.id,'income'); }
     /* 已开：发票已在发票管理维护，不自动建草稿 */
   }
   /* 同步更新 received 标记 */
@@ -15167,9 +15230,9 @@ function renderLedger(){
     const requiredAt=atMap[fType];
     rows=rows.filter(r=>allowedTypes.includes(r.type)&&(r.accountType||'对私')===requiredAt);
   }
-  /* 开票状态筛选：无 / 已开 / 待开（按记录归一后的状态过滤） */
+  /* 开票状态筛选：无票 / 已开 / 待开 / 已收 / 待收（按记录归一后的五态精确过滤） */
   if(fInv){
-    rows=rows.filter(r=> getInvoiceStatus(r.rec, r.proj)===fInv );
+    rows=rows.filter(r=> getInvoiceStatus(r.rec, r.proj, r.type)===fInv );
   }
 
   // 排序
@@ -15321,7 +15384,7 @@ function editFinance(type,id){
   /* 开票状态与关联发票回显 */
   currentFinRecId=found.id;currentFinInvoiceId='';_pendingFinInvoiceLink=null;
   const _linked=findLinkedInvoice(found.id,type);
-  $('fInvoiceStatus').value=_linked?'已开':'待开';
+  $('fInvoiceStatus').value=getInvoiceStatus(found, foundP, type);
   if(_linked)currentFinInvoiceId=_linked.id;
   toggleFinInvoice();
   /* 所属阶段必须在所有同步 DOM 操作完成后设值（setTimeout 0 确保 openFinanceModal 的 populateStageSelect 不覆盖） */
@@ -15353,7 +15416,7 @@ function openFinanceModal(){
   else if(App.projects.length)$('fProject').value=App.projects[0].id;
   $('fType').value='expense';$('fDetail').value='';$('fAmount').value='';
   $('fStatus').value='received';$('fCat').value='材料采购';$('fStage').value='';$('fIncomeCat').value='预付款';$('fPayer').value='';$('fPayee').value='';$('fDate').value=todayISO();$('fNote').value='';
-  $('fInvoiceStatus').value='待开';
+  $('fInvoiceStatus').value='待收'; /* fType 默认 expense（进项），故默认值取「待收」；toggleFinType 会按方向填充选项 */
   toggleFinType('expense');
   populateStageSelect('fStage');
   refreshContactDatalists(App.projects.find(x=>x.id===$('fProject').value));
@@ -15386,8 +15449,8 @@ function refreshFinCorpExtras(){
     return;
   }
   const st=$('fInvoiceStatus').value;
-  if($('fInvoiceLinkRow'))$('fInvoiceLinkRow').style.display=(st==='已开')?'block':'none';
-  if(st==='已开') populateFinInvoiceSelect();
+  if($('fInvoiceLinkRow'))$('fInvoiceLinkRow').style.display=(st==='已开'||st==='已收')?'block':'none';
+  if(st==='已开'||st==='已收') populateFinInvoiceSelect();
   if(isCorp&&isExp) populateFinContractSelect();
 }
 /* 列出当前项目下、与付款匹配的采购合同供关联 */
@@ -15454,6 +15517,7 @@ function toggleFinType(t){
   $('fPayeeRow').style.display=isIncome?'none':'block';
   $('fDetailLabel').textContent=isIncome?'收款明细 *':'付款明细 *';
   $('fDetail').placeholder=isIncome?'如：一期工程款 / 瓷砖采购':'如：瓷砖采购 / 水电改造';
+  fillInvoiceStatusSelect(t,'fInvoiceStatus'); /* 收款=无票/待开/已开；付款=无票/待收/已收 */
   refreshFinCorpExtras();
 }
 
@@ -16051,22 +16115,24 @@ function saveFinance(){
   const at=$('fAccountType').value;
   const rec={id:recId,name:name,amount:amount,date:$('fDate').value,note:$('fNote').value,_source:'manual',accountType:at,
     taxRate: at==='对公' ? (parseFloat($('fTaxRate').value)||DEFAULT_TAX_RATE) : ''};
-  /* 开票状态三态（无 / 已开 / 待开）：仅对公走账有意义；对私统一为「无」 */
+  /* 开票状态五态（无票 / 待开 / 已开 / 待收 / 已收）：仅对公走账有意义；对私统一为「无票」。
+     方向语义：收款(income)=销项→待开/已开（开给客户）；付款(expense)=进项→待收/已收（向供应商取票）。 */
   if(at==='对公'){
-    const invSt=$('fInvoiceStatus').value;   // 无 | 已开 | 待开
+    const invSt=$('fInvoiceStatus').value;   // 五态：无票 | 待开 | 已开 | 待收 | 已收
     rec.invoiceStatus=invSt;
-    if(invSt==='已开'){
+    if(invSt==='已开'||invSt==='已收'){
+      const tgtStatus=(invSt==='已开')?'已开':'已收票';
       let invId=$('fInvoiceSelect').value||'';
       if(!invId){
-        /* 自动关联：未选已有发票时，自动创建一张「已开」发票并双向关联 */
-        const inv=finAutoCreateInvoice(rec,type,target,'已开');
+        /* 自动关联：未选已有发票时，自动创建一张「已开/已收票」发票并双向关联 */
+        const inv=finAutoCreateInvoice(rec,type,target,tgtStatus);
         invId=inv.id;
       }
       rec.invoiceId=invId;
       const inv=invoiceById(invId);
-      if(inv){ if(type==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; if(inv.status==='草稿'||!inv.status) inv.status='已开'; }
-    }else if(invSt==='待开'){
-      /* 待开：确保一张「草稿」发票挂到发票管理「待开」版块并双向关联；
+      if(inv){ if(type==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; if(inv.status==='草稿'||!inv.status) inv.status=tgtStatus; }
+    }else if(invSt==='待开'||invSt==='待收'){
+      /* 待开/待收：确保一张「草稿」发票挂到发票管理「待开」版块并双向关联；
          若此前已关联过发票（含已开），先解除旧关联再建草稿，避免脏数据。 */
       let invId=$('fInvoiceSelect').value||'';
       if(!invId){
@@ -16081,7 +16147,7 @@ function saveFinance(){
       const inv=invoiceById(invId);
       if(inv && (inv.status==='草稿'||!inv.status)){ if(type==='income') inv.linkedIncomeId=recId; else inv.linkedExpenseId=recId; }
     }else{
-      /* 无：不开票，解除该笔流水侧的所有发票关联，草稿发票不再挂到本笔流水 */
+      /* 无票：不开票，解除该笔流水侧的所有发票关联，草稿发票不再挂到本笔流水 */
       rec.invoiceId='';
       (App.invoices||[]).forEach(v=>{ if(type==='income'){if(v.linkedIncomeId===recId)v.linkedIncomeId='';}else{if(v.linkedExpenseId===recId)v.linkedExpenseId='';} });
     }
@@ -16096,7 +16162,7 @@ function saveFinance(){
       rec.linkedContractId=conId;
     }
   }else{
-    rec.invoiceStatus='无';rec.invoiceId='';rec.linkedContractId='';
+    rec.invoiceStatus='无票';rec.invoiceId='';rec.linkedContractId='';
     /* 切回对私：解除该笔流水侧的所有发票关联，草稿发票不再挂到本笔流水 */
     (App.invoices||[]).forEach(v=>{ if(type==='income'){if(v.linkedIncomeId===recId)v.linkedIncomeId='';}else{if(v.linkedExpenseId===recId)v.linkedExpenseId='';} });
   }
