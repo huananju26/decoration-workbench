@@ -12553,7 +12553,7 @@ function markContractSigned(id){
   const c=contractById(id);if(!c)return;
   if(!confirm('标记该合同为「已签」？'))return;
   c.status='已签';
-  persist();renderContracts();
+  persist();renderContracts();renderHome();
 }
 function contractSupName(c){
   if(c.supplierId){const s=(App.archive.suppliers||[]).find(x=>x.id===c.supplierId);if(s)return s.contact?((s.shortName||s.name)+' '+s.contact):(s.shortName||s.name);}
@@ -12625,7 +12625,7 @@ function saveContract(){
     else if(link.targetKind==='expense'){ data.linkedExpenseId=link.targetId; const rec=findFinRec(link.pid,link.targetId); if(rec)rec.linkedContractId=savedId; }
     _pendingConLink=null;
   }
-  persist();closeModal('contractModal');renderContracts();
+  persist();closeModal('contractModal');renderContracts();renderHome();
 }
 function editContract(id){
   const c=contractById(id);if(!c){alert('未找到该合同');return;}
@@ -12666,7 +12666,7 @@ function deleteContract(id){
       )){ q.done=false; delete q._completedAt; }
     });
   }
-  persist();renderContracts();renderActionQueueAll(App.projects);
+  persist();renderContracts();renderHome();
 }
 /* 合同扫描件：缩略图渲染（编辑态） */
 function renderContractScanThumbs(){
@@ -12894,7 +12894,7 @@ function saveInvoice(){
     if($('fInvoiceStatus')){ $('fInvoiceStatus').value='已开票'; toggleFinInvoice(); if($('fInvoiceSelect'))$('fInvoiceSelect').value=_savedInvId; }
     _pendingFinInvoiceLink=null;
   }
-  persist();closeModal('invoiceModal');renderInvoices();if(typeof renderFinance==='function')renderFinance();
+  persist();closeModal('invoiceModal');renderInvoices();if(typeof renderFinance==='function')renderFinance();renderHome();
 }
 function editInvoice(id){
   const v=invoiceById(id);if(!v){alert('未找到该发票');return;}
