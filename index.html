@@ -12896,26 +12896,29 @@ function stepNameById(pid,sid){
 }
 
 /* ── 合同管理：列表 + CRUD ── */
-/* 从合同列表提取年度选项（用于筛选栏） */
-function conYearOptions(){
-  const years=new Set();
-  (App.contracts||[]).forEach(c=>{if(c.signDate)years.add(String(c.signDate).slice(0,4));});
-  return [...years].sort().reverse().map(y=>`<option value="${y}">${y}年</option>`).join('');
+/* 合同管理·项目筛选：null=跟随当前项目，''=全部项目，其他=指定项目 id */
+let _conProjSel=null;
+/* 发票管理·项目筛选：null=跟随当前项目，''=全部项目，其他=指定项目 id */
+let _invProjSel=null;
+/* 生成「全部项目」下拉选项（与收支流水一致：首项「全部项目」+ 各项目），selVal 为当前选中值 */
+function projFilterBarOptions(selVal){
+  return (App.projects||[]).map(p=>`<option value="${p.id}" ${p.id===selVal?'selected':''}>${escHtml(projDisplayName(p))}</option>`).join('');
 }
+function switchConProjFilter(v){_conProjSel=(v||'');renderContracts();}
+function switchInvProjFilter(v){_invProjSel=(v||'');renderInvoices();}
 function renderContracts(){
   const el=$('contractsPanel');if(!el)return;
   const list=App.contracts||[];
-  const filterProj=App.currentProjectId||''; /* 按当前选中项目过滤 */
   /* ── 筛选栏状态（从 DOM 读取，支持跨渲染保持） ── */
-  const _cfy=$('conFilterYear'),_cft=$('conFilterType'),_cfs=$('conFilterStatus'),_cq=$('conSearchInput');
-  const conFYear=_cfy?_cfy.value:'';
+  const _cft=$('conFilterType'),_cfs=$('conFilterStatus'),_cq=$('conSearchInput');
   const conFType=_cft?_cft.value:'';
   const conFStatus=_cfs?_cfs.value:'';
   const conFSearch=_cq?(_cq.value||'').trim().toLowerCase():'';
+  /* 项目筛选：null=跟随当前项目，''=全部项目，其他=指定项目（与收支流水「全部项目」下拉同款） */
+  const filterProj=(_conProjSel===null)?(App.currentProjectId||''):_conProjSel;
   let base=list.slice();
   if(filterProj)base=base.filter(c=>c.projectId===filterProj);
   /* 筛选栏过滤 */
-  if(conFYear)base=base.filter(c=>{if(!c.signDate)return false;return String(c.signDate).startsWith(conFYear);});
   if(conFType)base=base.filter(c=>c.type===conFType);
   if(conFStatus)base=base.filter(c=>{const s=(c.status==='草稿'||!c.status)?'草稿':c.status;return s===conFStatus;});
   if(conFSearch)base=base.filter(c=>(c.title||'').toLowerCase().includes(conFSearch)||(c.supplier||'').toLowerCase().includes(conFSearch)||(c.party||'').toLowerCase().includes(conFSearch));
@@ -13015,7 +13018,7 @@ function renderContracts(){
          <div class="module-head-desc">登记施工 / 采购 / 设计 / 其他合同，关联项目节点与供应商，并在发票管理开具体发票。</div>
        </div>
        <div class="ledger-filter-bar" id="conFilterBar">
-         <select id="conFilterYear" onchange="renderContracts()"><option value="">全部年度</option>${conYearOptions()}</select>
+         <select id="conFilterProj" onchange="switchConProjFilter(this.value)"><option value="" ${filterProj?'':'selected'}>全部项目</option>${projFilterBarOptions(filterProj)}</select>
          <select id="conFilterType" onchange="renderContracts()"><option value="">全部类型</option><option value="设计">设计</option><option value="施工">施工</option><option value="采购">采购</option><option value="其他">其他</option></select>
          <select id="conFilterStatus" onchange="renderContracts()"><option value="">全部状态</option><option value="草稿">草稿</option><option value="已签">已签</option><option value="执行中">执行中</option><option value="已完成">已完成</option></select>
          <input type="text" id="conSearchInput" autocomplete="off" placeholder="搜索合同名/对方..." oninput="renderContracts()">
@@ -13220,26 +13223,19 @@ function getNonInvoicedRecords(fProj){
 }
 
 /* ── 发票管理：列表 + CRUD + 税额自动算（五态 Tab + 全部 + 无票） ── */
-/* 从发票列表提取年度选项（用于筛选栏） */
-function invYearOptions(){
-  const years=new Set();
-  (App.invoices||[]).forEach(v=>{if(v.issueDate)years.add(String(v.issueDate).slice(0,4));});
-  return [...years].sort().reverse().map(y=>`<option value="${y}">${y}年</option>`).join('');
-}
 function renderInvoices(){
   const el=$('invoicesPanel');if(!el)return;
   const list=App.invoices||[];
-  const fProj=App.currentProjectId||''; /* 按当前选中项目过滤 */
   /* ── 筛选栏状态（从 DOM 读取，支持跨渲染保持） ── */
-  const _ify=$('invFilterYear'),_ifd=$('invFilterDir'),_ifs=$('invFilterStatus'),_iq=$('invSearchInput');
-  const invFYear=_ify?_ify.value:'';
+  const _ifd=$('invFilterDir'),_ifs=$('invFilterStatus'),_iq=$('invSearchInput');
   const invFDir=_ifd?_ifd.value:'';
   const invFStatus=_ifs?_ifs.value:'';
   const invFSearch=_iq?(_iq.value||'').trim().toLowerCase():'';
+  /* 项目筛选：null=跟随当前项目，''=全部项目，其他=指定项目（与收支流水「全部项目」下拉同款） */
+  const fProj=(_invProjSel===null)?(App.currentProjectId||''):_invProjSel;
   let base=list.slice();
   if(fProj)base=base.filter(v=>v.projectId===fProj);
   /* 筛选栏过滤（在 Tab 过滤之前先做基础筛选） */
-  if(invFYear)base=base.filter(v=>{if(!v.issueDate)return false;return String(v.issueDate).startsWith(invFYear);});
   if(invFDir)base=base.filter(v=>v.direction===invFDir);
   if(invFStatus){
     if(invFStatus==='草稿')base=base.filter(v=>(v.status==='草稿')||!v.status);
@@ -13323,7 +13319,7 @@ function renderInvoices(){
          <div class="module-head-desc">按五态（待开 / 已开 / 待收 / 已收 / 无票）管理发票：待开=销项草稿待开给客户、已开=销项已开具、待收=进项草稿待向供应商取票、已收=进项已收票/已认证/已抵扣、无票=合法免开的收付款记录（只读备查）。按「含税价 ÷ (1+税率)」自动倒推不含税金额与税额，并汇总应缴增值税。</div>
        </div>
        <div class="ledger-filter-bar" id="invFilterBar">
-         <select id="invFilterYear" onchange="renderInvoices()"><option value="">全部年度</option>${invYearOptions()}</select>
+         <select id="invFilterProj" onchange="switchInvProjFilter(this.value)"><option value="" ${fProj?'':'selected'}>全部项目</option>${projFilterBarOptions(fProj)}</select>
          <select id="invFilterDir" onchange="renderInvoices()"><option value="">全部方向</option><option value="销项">销项</option><option value="进项">进项</option></select>
          <select id="invFilterStatus" onchange="renderInvoices()"><option value="">全部状态</option><option value="草稿">草稿</option><option value="已开">已开</option><option value="已收票">已收票</option><option value="已认证">已认证</option><option value="已抵扣">已抵扣</option></select>
          <input type="text" id="invSearchInput" autocomplete="off" placeholder="搜索发票名/开票方..." oninput="renderInvoices()">
