@@ -7782,6 +7782,7 @@ function renderHome(){
       arr.forEach(rec=>{
         if(defaultAccountType(rec,p)!=='对公') return;
         if(tt==='income'&&incReceivedAmt(rec)<=0) return;
+        if(tt==='expense'&&!rec.paid) return; /* 付款同理：钱未付则厂家不会开票，与建票口径一致，不产生取票提醒（避免「有提醒却无票」） */
         const linked=findLinkedInvoice(rec.id,tt);
         const invSt=getInvoiceStatus(rec,p,tt);
         const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
@@ -7817,6 +7818,7 @@ function renderHome(){
       arr.forEach(rec=>{
         if(defaultAccountType(rec,p)!=='对公') return;
         if(tt==='income' && incReceivedAmt(rec)<=0) return;
+        if(tt==='expense' && !rec.paid) return; /* 付款同理：钱未付则厂家不会开票，与建票口径一致，不产生取票提醒（避免「有提醒却无票」） */
         const linked=findLinkedInvoice(rec.id,tt);
         const invSt=getInvoiceStatus(rec,p,tt);
         const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
@@ -7890,6 +7892,7 @@ function refreshNavBadges(){
       arr.forEach(rec=>{
         if(defaultAccountType(rec,p)!=='对公') return;
         if(tt==='income'&&incReceivedAmt(rec)<=0) return;
+        if(tt==='expense'&&!rec.paid) return; /* 付款同理：钱未付则厂家不会开票，与建票口径一致，不产生取票提醒（避免「有提醒却无票」） */
         const linked=findLinkedInvoice(rec.id,tt);
         const invSt=getInvoiceStatus(rec,p,tt);
         const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
@@ -7918,6 +7921,7 @@ function refreshNavBadges(){
       arr.forEach(rec=>{
         if(defaultAccountType(rec,p)!=='对公') return;
         if(tt==='income'&&incReceivedAmt(rec)<=0) return;
+        if(tt==='expense'&&!rec.paid) return; /* 付款同理：钱未付则厂家不会开票，与建票口径一致，不产生取票提醒（避免「有提醒却无票」） */
         const linked=findLinkedInvoice(rec.id,tt);
         const invSt=getInvoiceStatus(rec,p,tt);
         const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
@@ -8140,6 +8144,7 @@ function renderActionQueueAll(projects){
       arr.forEach(rec=>{
         if(defaultAccountType(rec,p)!=='对公') return;
         if(tt==='income' && incReceivedAmt(rec)<=0) return; /* 对公收款已删空到账，无需再提醒开票（待办同步清理） */
+        if(tt==='expense' && !rec.paid) return; /* 付款同理：钱未付则厂家不会开票，与建票口径一致，不产生取票提醒（避免「有提醒却无票」） */
         const linked=findLinkedInvoice(rec.id,tt);
         const invSt=getInvoiceStatus(rec,p,tt);
         const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
@@ -8150,10 +8155,16 @@ function renderActionQueueAll(projects){
         const amtNote = tt==='income'
           ? (actualAmt>=planAmt ? '' : ` · 已收 ¥${fmt(actualAmt)}`)
           : (rec.paid ? ' · 已付' : ' · 待付');
+        /* 待办文案按方向区分，并直接指明票在发票管理的哪个 Tab ——
+           原文案「待开/待收，需跟进开/取票」方向含糊，用户常去「待开」Tab 找付款（进项）的票而找不到。
+           收款=销项→票在「待开」；付款=进项→票在「待收」。 */
+        const invStatusNote = tt==='income'
+          ? (resolved ? ' 已开票/免开，提醒闭环' : ' 待开票给客户 → 见发票管理「待开」')
+          : (resolved ? ' 已收票/免票，提醒闭环' : ' 待向厂家取票 → 见发票管理「待收」');
         items.push({
           id:'fin_'+rec.id, title:(rec.name||'对公'+(tt==='income'?'收款':'付款')), done:resolved,
           due:'', _kind:'invoice', _proj:pn, _pid:p.id, _finType:tt, _finId:rec.id,
-          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(planAmt)+amtNote+(resolved?' 已开/已收/免开，提醒闭环':' 待开/待收，需跟进开/取票')
+          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(planAmt)+amtNote+invStatusNote
         });
       });
     });
