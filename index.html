@@ -8255,10 +8255,12 @@ function renderActionQueueAll(projects){
     }
     /* 当前状态：pending / overdue / done —— 用于原位编辑高亮 */
     const curStatus=item.done?'done':(isOver?'overdue':'pending');
-    /* 发票类待办的标签需区分方向：收款(销项)=待开/已开；付款(进项)=待收/已收（此前一律显示「待开」，付款侧语义错误） */
+    /* 发票类待办的标签需区分方向，且文案要"见字知意"（原「待开/待收」太简，看不出是票的事，也不知该开还是该收）：
+       收款(销项)=待开票/已开票（票开给客户）；付款(进项)=待收票/已收票（票向供应商取回）。
+       注意：仅改展示文案，发票管理里的状态值仍是「待开/待收/已开/已收/无票」，不动数据。 */
     const invKindLabel=(item._finType==='expense')
-      ? (item.done?'已收':'待收')
-      : (item.done?'已开':'待开');
+      ? (item.done?'已收票':'待收票')
+      : (item.done?'已开票':'待开票');
     const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?invKindLabel:(kind==='step'?(item.done?'节点完成':'节点逾期'):(kind==='contract'?(item.done?'合同已签':(item._conId?'待签约':'缺合同')):(kind==='income_ov'?'收款逾期':(kind==='expense_ov'?'付款逾期':(kind==='purchase_ov'?'材料超期':(item.done?'已完成':'待办'))))))));
     /* 未开票/缺合同提醒项点击右侧标签也跳转，而非打开状态编辑 */
     const labelOnclick = kind==='invoice'
@@ -8266,6 +8268,10 @@ function renderActionQueueAll(projects){
       : (kind==='contract'
       ? (item._conId?`editContract('${item._conId}')`:`openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')`)
       : `openAqStatusPop(this,'${item.id}','${kind}','${item._pid}','${curStatus}')`);
+    /* 标签悬浮提示按类型给（原写法所有类型一律显示「点击去补签合同」，点发票标签却提示补签合同，自相矛盾） */
+    const labelTitle = kind==='invoice'
+      ? (item._finType==='expense'?'点击去登记收票':'点击去开票')
+      : (kind==='contract'?(item._conId?'点击编辑合同':'点击去补签合同'):'点击改状态');
     /* 已完成项：整行只读（pointer-events:none）。未完成且为合同类（缺合同提醒）：整行可点击直接去补签，消除"点整行没反应"的误区 */
     const liExtra = item.done
       ? ' style="pointer-events:none" title="已完成，仅查看"'
@@ -8273,7 +8279,7 @@ function renderActionQueueAll(projects){
     return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''} ${isToday?'today':''}"${liExtra}>${checkHtml}
       <div class="aq-info"><div class="aq-title ${isOver?'overdue':''}">${item.title||item.name}${isOver?' <span style="color:#ff4d4f;font-size:11px">'+(isStep?'已逾期':'逾期')+'</span>':''}</div>
       <div class="aq-meta">${datePrefix}${item._proj||''}${dateSuffix} ${item.stage?'· '+getStageName(item.stage):''}</div>${noteHtml}</div>
-      <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''}"${item.done?' title="已完成，仅查看"':' title="点击去补签合同" onclick="event.stopPropagation();'+labelOnclick}">${kindLabel}${item.done?'':'<span class="aq-kind-caret">▾</span>'}</span></li>`;
+      <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''}"${item.done?' title="已完成，仅查看"':' title="'+escAttr(labelTitle)+'" onclick="event.stopPropagation();'+labelOnclick}">${kindLabel}${item.done?'':'<span class="aq-kind-caret">▾</span>'}</span></li>`;
   }).join('');
 
   /* 分页器（原位翻页，不跳转整页） */
