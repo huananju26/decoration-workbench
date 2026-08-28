@@ -7506,9 +7506,42 @@ function renderHome(){
   // ── Hero（全项目聚合） ──
   $('breadcrumbProject').textContent='全部需要概览';
 
-  // 跨项目汇总今日待处理（任务+采购+收款逾期+付款逾期+材料超期）
+  // 跨项目汇总待处理（与 renderActionQueueAll 的 aqFilter='pending' 口径完全一致）
   let allHandleItems=[];
-  projects.forEach(p=>{ handleItems(p).forEach(i=>allHandleItems.push({...i,_proj:projDisplayName(p)})); });
+  projects.forEach(p=>{
+    const pn=projDisplayName(p);
+    /* 1. 全部未完成任务 */
+    (p.tasks||[]).filter(t=>!t.done).forEach(t=>allHandleItems.push({...t,_kind:'task',_proj:pn,_pid:p.id}));
+    /* 2. 全部未完成采购 */
+    (p.purchases||[]).filter(x=>x.status!=='已到货').forEach(x=>allHandleItems.push({...x,_kind:'purchase',_proj:pn,_pid:p.id}));
+    /* 3. 未完成增减项 */
+    (p.adjustments||[]).forEach(a=>{
+      if(adjStatus(a)==='done') return;
+      allHandleItems.push({id:a.id,title:a.name||'',_kind:'adjust',_proj:pn,_pid:p.id,due:''});
+    });
+    /* 4. 逾期节点 */
+    (p.processSteps||[]).forEach(s=>{
+      const pe=s.planEndDate||'';
+      if(pe&&pe<todayISO()&&!(p.checked&&p.checked[s.id])) allHandleItems.push({id:s.id,title:s.name||'',_kind:'step',_proj:pn,_pid:p.id,due:pe});
+    });
+    /* 5. 对公未开票 */
+    [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
+      arr.forEach(rec=>{
+        if(defaultAccountType(rec,p)!=='对公') return;
+        if(tt==='income'&&incReceivedAmt(rec)<=0) return;
+        const linked=findLinkedInvoice(rec.id,tt);
+        const resolved=rec.invoiceStatus==='已开票'||(linked&&INV_ISSUED_STATUS.includes(linked.status));
+        if(!resolved) allHandleItems.push({id:'fin_'+rec.id,title:(rec.name||'对公'+(tt==='income'?'收款':'付款')),_kind:'invoice',_proj:pn,_pid:p.id,due:''});
+      });
+    });
+    /* 6. 缺合同 + 草稿合同 */
+    missingContractsList().filter(m=>m._pid===p.id).forEach(m=>allHandleItems.push(m));
+    (App.contracts||[]).filter(c=>c.projectId===p.id&&c.status==='草稿').forEach(c=>allHandleItems.push({id:c.id,title:(c.title||c.type||'合同')+' · 待签约',_kind:'contract',_proj:pn,_pid:p.id,due:''}));
+    /* 7. 收款/付款/材料/节点逾期（独立告警项） */
+    p.income.filter(i=>incStatus(i)==='overdue').forEach(i=>allHandleItems.push({label:'收款逾期：'+(i.title||i.name||'未命名'),due:i.date||todayISO(),_proj:pn,_type:'income'}));
+    p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).forEach(e=>allHandleItems.push({label:'付款逾期：'+(e.title||e.name||'未命名'),due:e.date,_proj:pn,_type:'expense'}));
+    p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>allHandleItems.push({label:'材料超期：'+(x.name||'未命名'),due:x.dueDate,_proj:pn,_type:'purchase_ov'}));
+  });
 
   // 统计摘要行（跨项目，提前计算供 headline 判断告警）
   let noStageTotal=0, overIncomeTotal=0, overExpenseTotal=0, overPurchaseTotal=0, overStepTotal=0;
@@ -7533,14 +7566,6 @@ function renderHome(){
         if(!resolved) pendingInvoiceTotal++;
       });
     });
-  });
-
-  /* 补充：收款逾期 / 付款逾期 / 材料超期 也纳入"需要处理" */
-  projects.forEach(p=>{
-    p.income.filter(i=>incStatus(i)==='overdue').forEach(i=>allHandleItems.push({label:'收款逾期：'+(i.title||i.name||'未命名'),due:i.date||todayISO(),_proj:projDisplayName(p),_type:'income'}));
-    p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).forEach(e=>allHandleItems.push({label:'付款逾期：'+(e.title||e.name||'未命名'),due:e.date,_proj:projDisplayName(p),_type:'expense'}));
-    p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>allHandleItems.push({label:'材料超期：'+(x.name||'未命名'),due:x.dueDate,_proj:projDisplayName(p),_type:'purchase_ov'}));
-    (p.processSteps||[]).filter(s=>{const pe=s.planEndDate||'';return pe&&pe<todayISO()&&!(p.checked&&p.checked[s.id]);}).forEach(s=>allHandleItems.push({label:'节点逾期：'+(s.name||'未命名'),due:s.planEndDate||todayISO(),_proj:projDisplayName(p),_type:'step'}));
   });
   const overdueAll=allHandleItems.filter(i=>isOverdue(i));
   const hasAlerts=overIncomeTotal>0||overExpenseTotal>0||overPurchaseTotal>0||overStepTotal>0||noStageTotal>0||pendingContractTotal>0||pendingInvoiceTotal>0;
