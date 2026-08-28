@@ -7545,13 +7545,14 @@ function renderHome(){
 
   // 统计摘要行（跨项目，提前计算供 headline 判断告警）
   let noStageTotal=0, overIncomeTotal=0, overExpenseTotal=0, overPurchaseTotal=0, overStepTotal=0;
-  let pendingContractTotal=0, pendingInvoiceTotal=0;
+  let pendingContractTotal=0, pendingInvoiceTotal=0, pendingPurchaseTotal=0;
   projects.forEach(p=>{
     noStageTotal+=p.tasks.filter(t=>!t.stage).length;
     overIncomeTotal+=p.income.filter(i=>incStatus(i)==='overdue').length;
     overExpenseTotal+=p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).length;
     overPurchaseTotal+=p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).length;
     overStepTotal+=(p.processSteps||[]).filter(s=>{const pe=s.planEndDate||'';return pe&&pe<todayISO()&&!(p.checked&&p.checked[s.id]);}).length;
+    pendingPurchaseTotal+=p.purchases.filter(x=>x.status!=='已到货').length;
   });
   /* 待签合同：草稿合同 + 缺合同（missingContractsList） */
   pendingContractTotal=(App.contracts||[]).filter(c=>c.status==='草稿').length + missingContractsList().length;
@@ -7572,13 +7573,14 @@ function renderHome(){
   const hlNum=allHandleItems.length;
   $('heroHeadline').innerHTML='今天有 <strong style="color:'+(hasAlerts?'#ff4d4f':'#003a8c')+'">'+hlNum+'</strong> 项需要处理。';
 
-  // 摘要行渲染（顺序：项目进行中 → 待签合同 → 待收发票 → 逾期）
+  // 摘要行渲染（顺序：项目进行中 → 待签合同 → 待收发票 → 逾期 → 采购）
   const overdueTotal=overIncomeTotal+overExpenseTotal+overPurchaseTotal+overStepTotal;
   $('heroSummary').innerHTML=
     (projects.length?projects.length+' 个项目进行中 · ':'')+
     (pendingContractTotal?'<span class="today-stat-link" onclick="switchPage(\'contracts\')" title="查看待签/缺合同">'+pendingContractTotal+' 待签合同</span> · ':'')+
     (pendingInvoiceTotal?'<span class="today-stat-link" onclick="switchPage(\'invoices\')" title="去发票管理收票">'+pendingInvoiceTotal+' 待收发票</span> · ':'')+
-    (overdueTotal?'<span class="today-stat-link" onclick="scrollToAqPending()" title="查看所有逾期事项">'+overdueTotal+' 逾期</span>':'');
+    (overdueTotal?'<span class="today-stat-link" onclick="scrollToAqPending()" title="查看所有逾期事项">'+overdueTotal+' 逾期</span> · ':'')+
+    (pendingPurchaseTotal?'<span class="today-stat-link" onclick="switchPage(\'purchase\')" title="查看采购清单">'+pendingPurchaseTotal+' 采购</span>':'');
 
   // ── 右侧今日面板（跨项目） ──
   const allFin=allProjectsFinance();
