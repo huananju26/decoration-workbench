@@ -3225,7 +3225,7 @@ a{color:#003a8c;text-decoration:none}
           <div class="form-group"><label class="form-label">关联施工节点</label><select id="mpStepId"><option value="">暂不关联</option></select></div>
           <div class="form-group"><label class="form-label">所属费用总项</label><select id="mpCostCat"><option value="">不归入，费用用总项</option><option value="材料费">材料费</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="设计费">设计费</option><option value="管理费">管理费</option><option value="其他">其他</option></select></div>
           <div class="form-group"><label class="form-label">调配负责人</label><select id="mpBuyer"><option value="">暂不指定</option></select></div>
-          <div class="form-group"><label class="form-label">厂家名称 <b style="color:#ff4d4f">*</b></label><input id="mpVendor" type="text" placeholder="例如：某某全屋定制工厂" list="mpVendorList" autocomplete="off" oninput="onPickSupplier(this,'mpVendorPhone')"><datalist id="mpVendorList"></datalist></div>
+          <div class="form-group"><label class="form-label">厂家名称 <b style="color:#ff4d4f">*</b></label><div style="display:flex;gap:8px;align-items:center"><select id="mpVendor" style="flex:1" onchange="onPickArchiveSupplier('mpVendor','mpVendorPhone')"><option value="">请选择供应商档案</option></select><button type="button" class="btn-outline" style="white-space:nowrap" onclick="jumpToArchiveAdd('supplier')">＋ 去人材档案新增</button></div></div>
           <div class="form-group"><label class="form-label">厂家电话</label><input id="mpVendorPhone" type="tel" placeholder=""></div>
           <div class="form-group"><label class="form-label">数量</label><input id="mpQty" type="number" value="1" min="0"></div>
           <div class="form-group"><label class="form-label">单位</label><input id="mpUnit" type="text" value="项"></div>
@@ -3359,7 +3359,7 @@ a{color:#003a8c;text-decoration:none}
       <div class="form-group"><label class="form-label">费用类别 <b style="color:#ff4d4f">*</b></label><select id="enCategory"><option value="材料费">材料费</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="设计费">设计费</option><option value="管理费">管理费</option><option value="其他">其他</option></select></div>
       <div class="form-group"><label class="form-label">预计支出金额（元）<b style="color:#ff4d4f">*</b></label><input id="enAmount" type="number" placeholder="" min="0"></div>
       <div class="form-group"><label class="form-label">预计支出日期 <b style="color:#ff4d4f">*</b></label><input id="enDate" type="date"></div>
-      <div class="form-group"><label class="form-label">供应商 / 收款方</label><input id="enPayee" type="text" placeholder="" list="enPayeeList" autocomplete="off"><datalist id="enPayeeList"></datalist></div>
+      <div class="form-group"><label class="form-label">供应商 / 收款方</label><div style="display:flex;gap:8px;align-items:center"><select id="enPayee" style="flex:1"><option value="">请选择（人材档案）</option></select><button type="button" class="btn-outline" style="white-space:nowrap" onclick="jumpToArchiveAdd('supplier')">＋ 新增</button></div></div>
       <div class="form-group"><label class="form-label">费用说明</label><textarea id="enNote" rows="3" style="resize:vertical"></textarea></div>
     </div>
     <div class="form-actions" style="flex-shrink:0;padding:14px 20px;border-top:1px solid #f0f0f0">
@@ -3889,7 +3889,7 @@ a{color:#003a8c;text-decoration:none}
         <div class="form-group"><label class="form-label">收款分类</label><select id="fIncomeCat">
           <option value="预付款">预付款</option><option value="进度款">进度款</option><option value="尾款">尾款</option><option value="增项款">增项款</option><option value="其他">其他</option>
         </select></div>
-        <div class="form-group"><label class="form-label">付款人</label><input type="text" id="fPayer" placeholder="如：业主 / 甲方" list="payerHistoryList"></div>
+        <div class="form-group"><label class="form-label">付款人</label><div style="display:flex;gap:8px;align-items:center"><select id="fPayer" style="flex:1"><option value="">请选择（人材档案）</option></select><button type="button" class="btn-outline" style="white-space:nowrap" onclick="jumpToArchiveAdd('personnel')">＋ 新增</button></div></div>
       </div>
       <div class="form-row" id="fExpenseRow">
         <div class="form-group"><label class="form-label">分类</label>        <select id="fCat">
@@ -3897,16 +3897,13 @@ a{color:#003a8c;text-decoration:none}
         </select></div>
         <div class="form-group"><label class="form-label">所属阶段</label><select id="fStage"><option value="">无</option></select></div>
       </div>
-      <div class="form-group" id="fPayeeRow"><label class="form-label">收款人</label><input type="text" id="fPayee" placeholder="如：施工队 / 商家" list="payeeHistoryList"></div>
+      <div class="form-group" id="fPayeeRow"><label class="form-label">收款人</label><div style="display:flex;gap:8px;align-items:center"><select id="fPayee" style="flex:1"><option value="">请选择（人材档案）</option></select><button type="button" class="btn-outline" style="white-space:nowrap" onclick="jumpToArchiveAdd('supplier')">＋ 新增</button></div></div>
       <div class="form-group"><label class="form-label" id="fDetailLabel">收款明细 *</label><input type="text" id="fDetail" placeholder="如：一期工程款 / 瓷砖采购"></div>
       <div class="form-group"><label class="form-label">日期</label><input type="date" id="fDate"></div>
       <div class="form-group"><label class="form-label">备注</label><input type="text" id="fNote"></div>
     </div>
     <div class="form-actions"><button class="btn-outline" onclick="closeModal('financeModal')">取消</button><button class="btn-primary" onclick="saveFinance()">保存</button></div>
   </div>
-  <!-- 收付款人历史联想 -->
-  <datalist id="payeeHistoryList"></datalist>
-  <datalist id="payerHistoryList"></datalist>
 </div>
 
 <div class="modal-overlay" id="toolModal">
@@ -12122,12 +12119,58 @@ function onPickSupplier(inputEl, phoneFieldId){
   }
 }
 
+/* ── 人材档案下拉（收款人/付款人/供应商/负责人 仅可从档案选择）── */
+/* 供应商档案展示标签：带联系人时「简称/全称 + 联系人」 */
+function arcSupLabel(s){ return s && s.contact ? `${s.shortName||s.name} ${s.contact}` : (s.shortName||s.name); }
+/* 把「人材档案」来源填入下拉（收款人/付款人/供应商/负责人）
+   opts:{suppliers,personnel,placeholder} 选项值统一用档案展示名 */
+function fillArchiveSelect(sel, opts){
+  if(!sel)return;
+  opts=opts||{};
+  const arc=App.archive||{personnel:[],suppliers:[]};
+  let html=`<option value="">${escHtml(opts.placeholder||'请选择')}</option>`;
+  if(opts.suppliers)(arc.suppliers||[]).forEach(s=>{ const v=arcSupLabel(s); html+=`<option value="${escHtml(v)}">${escHtml(v)}</option>`; });
+  if(opts.personnel)(arc.personnel||[]).forEach(m=>{ if(m&&m.name)html+=`<option value="${escHtml(m.name)}">${escHtml(m.name)}</option>`; });
+  sel.innerHTML=html;
+}
+/* 选中供应商后自动反查并填入电话（仅当电话为空，避免覆盖手动输入） */
+function onPickArchiveSupplier(selId, phoneFieldId){
+  const sel=$(selId); if(!sel)return;
+  const val=sel.value; if(!val)return;
+  const s=(App.archive.suppliers||[]).find(x=>arcSupLabel(x)===val);
+  if(s&&s.phone){ const ph=$(phoneFieldId); if(ph&&!ph.value)ph.value=s.phone; }
+}
+/* 兼容旧数据：若某字段当前值不在档案下拉选项中，临时补一个 option 以免编辑时丢失原值 */
+function ensureSelectKeepsValue(sel, val){
+  if(!sel||!val)return;
+  if(Array.from(sel.options).some(o=>o.value===val))return;
+  const opt=document.createElement('option'); opt.value=val; opt.textContent=val+'（档案外·建议补录）';
+  if(sel.firstChild&&sel.firstChild.nextSibling) sel.insertBefore(opt, sel.firstChild.nextSibling);
+  else sel.appendChild(opt);
+  sel.value=val;
+}
+/* 打开人材档案新增（供应商或施工人员）；保存后由 rerenderArchiveAll 自动刷新当前打开表单的下拉 */
+function jumpToArchiveAdd(type){
+  if(type==='supplier')openAddSupplier(); else openAddPersonnel();
+}
+/* 人材档案变更后，刷新所有已打开表单中的人材下拉（保留当前选择） */
+function refreshOpenFormArchiveSelects(){
+  const prev={};
+  ['mpVendor','enPayee','fPayee','fPayer'].forEach(id=>{const el=$(id); if(el)prev[id]=el.value;});
+  if($('mpVendor'))fillArchiveSelect($('mpVendor'),{suppliers:true,placeholder:'请选择供应商档案'});
+  if($('enPayee'))fillArchiveSelect($('enPayee'),{suppliers:true,personnel:true,placeholder:'请选择（人材档案）'});
+  if($('fPayee'))fillArchiveSelect($('fPayee'),{suppliers:true,personnel:true,placeholder:'请选择（人材档案）'});
+  if($('fPayer'))fillArchiveSelect($('fPayer'),{suppliers:true,personnel:true,placeholder:'请选择（人材档案）'});
+  ['mpVendor','enPayee','fPayee','fPayer'].forEach(id=>{ const el=$(id); if(el&&prev[id]&&Array.from(el.options).some(o=>o.value===prev[id]))el.value=prev[id]; });
+}
+
 /* ── 人材档案 增删改（账号级全局数据源 App.archive）── */
 function rerenderArchiveAll(){
   /* 重新渲染人材档案：项目内 Tab 面板（若可见）+ 全局页面，并刷新收付款人联想 */
   if($('processArchivePanel')&&$('processArchivePanel').style.display!=='none')renderArchive('processArchivePanel');
   if($('archivePanel'))renderArchive('archivePanel');
   refreshContactDatalists();
+  refreshOpenFormArchiveSelects();
 }
 let _editingPersonnelId=null;
 function openAddPersonnel(){
@@ -13554,9 +13597,8 @@ function openAddMaterialPlan(){
   (p.members||[]).forEach(m=>{if(m&&m.name)buyerNames.add(m.name);});
   (App.archive.personnel||[]).forEach(m=>{if(m&&m.name)buyerNames.add(m.name);});
   buyerSel.innerHTML='<option value="">暂不指定</option>'+Array.from(buyerNames).map(n=>`<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
-  /* 填充厂家名称联想列表（从供应商档案调取，可直接复用历史厂家） */
-  const vdl=$('mpVendorList');
-  if(vdl)vdl.innerHTML=(App.archive.suppliers||[]).map(s=>`<option value="${escHtml(s.contact?`${s.shortName||s.name} ${s.contact}`:s.shortName||s.name)}">`).join('');
+  /* 填充厂家名称下拉（仅从供应商档案调取，禁止随手新建写回档案） */
+  fillArchiveSelect($('mpVendor'),{suppliers:true,placeholder:'请选择供应商档案'});
   /* 填充材料名称联想列表（从已有采购+系统推荐材料） */
   const dl=$('mpNameList');
   const existingNames=(p.purchases||[]).map(x=>x.name);
@@ -13716,9 +13758,7 @@ function saveMaterialPlanBatch(){
   }
   /* 同步采购付款状态到项目支出账单 */
   syncPurchaseToExpense(p, data);
-  /* 自动归档：厂家 → 供应商档案；调配负责人 → 施工人员档案（首次填写自动录入） */
-  autoArchiveSupplier(p, data.vendor, data.vendorPhone, '', '');
-  autoArchivePersonnel(p, data.buyer, '', '');
+  /* 注：厂家/负责人仅可从人材档案选择，不再自动写回档案（避免随手填写污染档案） */
   persist();
   closeModal('addMaterialPlanModal');
   renderProcessPurchase();renderPurchase();renderHome();renderFinance();
@@ -13754,6 +13794,7 @@ function editPurchaseItem(id){
   $('mpStepId').value=item.stageId||'';
   $('mpBuyer').value=item.buyer||'';
   $('mpVendor').value=item.vendor||'';
+  ensureSelectKeepsValue($('mpVendor'), item.vendor);
   $('mpVendorPhone').value=item.vendorPhone||'';
   $('mpAmount').value=String(item.budget||0);
   $('mpPaidAmount').value=String(item.paidAmount||0);
@@ -14884,8 +14925,8 @@ function editFinance(type,id){
   /* 填充原始数据 */
   $('fDetail').value=found.name;$('fAmount').value=found.amount;
   $('fStatus').value=type==='income'?(found.received?'received':'pending'):(found.paid?'received':'pending');
-  if(type==='income'){$('fIncomeCat').value=found.cat||'预付款';$('fPayer').value=found.payer||'';}
-  else{$('fCat').value=(EXPENSE_CAT_RENAME[found.cat]||found.cat)||'材料采购';$('fPayee').value=found.payee||'';}
+  if(type==='income'){$('fIncomeCat').value=found.cat||'预付款';$('fPayer').value=found.payer||'';ensureSelectKeepsValue($('fPayer'),found.payer);}
+  else{$('fCat').value=(EXPENSE_CAT_RENAME[found.cat]||found.cat)||'材料采购';$('fPayee').value=found.payee||'';ensureSelectKeepsValue($('fPayee'),found.payee);}
   $('fDate').value=found.date||todayISO();$('fNote').value=found.note||'';
   $('fAccountType').value=found.accountType||defaultAccountType(found,foundP);
   $('fTaxRate').innerHTML=taxRateOptionsHtml(found.taxRate||DEFAULT_TAX_RATE);
@@ -14928,6 +14969,9 @@ function openFinanceModal(){
   toggleFinType('expense');
   populateStageSelect('fStage');
   refreshContactDatalists(App.projects.find(x=>x.id===$('fProject').value));
+  /* 收款人/付款人下拉：仅从人材档案（供应商+施工人员）选择 */
+  fillArchiveSelect($('fPayee'),{suppliers:true,personnel:true,placeholder:'请选择（人材档案）'});
+  fillArchiveSelect($('fPayer'),{suppliers:true,personnel:true,placeholder:'请选择（人材档案）'});
   /* 账户性质默认继承项目（企业→对公，个人→对私），可逐笔改 */
   const _defP=App.projects.find(x=>x.id===$('fProject').value);
   $('fAccountType').value=defaultAccountTypeForProject(_defP);
@@ -15033,9 +15077,8 @@ function openExpenseNodeModal(editId){
   const steps=STAGES||[];
   const sel=$('enStepId');
   sel.innerHTML='<option value="">暂不关联节点</option>'+steps.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
-  /* 供应商/收款方联想：从人材档案（供应商 + 施工人员）直接调取 */
-  const enPayeeList=$('enPayeeList');
-  if(enPayeeList)enPayeeList.innerHTML=(App.archive.suppliers||[]).map(s=>`<option value="${escHtml(s.contact?`${s.shortName||s.name} ${s.contact}`:s.shortName||s.name)}">`).join('')+(App.archive.personnel||[]).map(m=>`<option value="${escHtml(m.name)}">`).join('');
+  /* 供应商/收款方下拉：仅从人材档案（供应商 + 施工人员）选择 */
+  fillArchiveSelect($('enPayee'),{suppliers:true,personnel:true,placeholder:'请选择（人材档案）'});
   if(editId){
     const node=(p.expenseNodes||[]).find(n=>n.id===editId);
     if(!node)return;
@@ -15046,6 +15089,7 @@ function openExpenseNodeModal(editId){
     $('enAmount').value=node.amount||'';
     $('enDate').value=node.date||'';
     $('enPayee').value=node.payee||'';
+    ensureSelectKeepsValue($('enPayee'), node.payee);
     $('enNote').value=node.note||'';
   } else {
     _editingExpenseNodeId=null;
@@ -15070,8 +15114,7 @@ function saveExpenseNode(){
   } else {
     p.expenseNodes.push(data);
   }
-  /* 收款方首次填写时自动录入供应商档案 */
-  autoArchiveSupplier(p,data.payee,'','','');
+  /* 注：收款方仅可从人材档案选择，不再自动写回档案 */
   persist();closeModal('expenseNodeModal');_editingExpenseNodeId=null;
   renderFinance();renderHome();
 }
@@ -15665,8 +15708,8 @@ function saveFinance(){
     /* 切回对私：解除该笔流水侧的所有发票关联，草稿发票不再挂到本笔流水 */
     (App.invoices||[]).forEach(v=>{ if(type==='income'){if(v.linkedIncomeId===recId)v.linkedIncomeId='';}else{if(v.linkedExpenseId===recId)v.linkedExpenseId='';} });
   }
-  if(type==='income'){rec.received=status;rec.cat=$('fIncomeCat').value;rec.payer=$('fPayer').value;target.income.push(rec);saveContactHistory('payer',rec.payer);}
-  else{rec.paid=status;rec.cat=$('fCat').value;rec.stage=$('fStage').value;rec.payee=$('fPayee').value;target.expense.push(rec);saveContactHistory('payee',rec.payee);autoArchiveSupplier(target,rec.payee,'','','');}
+  if(type==='income'){rec.received=status;rec.cat=$('fIncomeCat').value;rec.payer=$('fPayer').value;target.income.push(rec);}
+  else{rec.paid=status;rec.cat=$('fCat').value;rec.stage=$('fStage').value;rec.payee=$('fPayee').value;target.expense.push(rec);}
   persist();closeModal('financeModal');editingFinance=null;renderFinance();renderLedger&&renderLedger();renderHome();renderContracts&&renderContracts();
 }
 /* 由「记一笔」自动创建发票并关联（满足对公开票自动进入发票管理）。
