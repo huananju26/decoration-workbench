@@ -12937,6 +12937,8 @@ function renderContracts(){
      <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
        ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有合同，点击右上角「新增合同」开始登记。</div>'}
      </div>`;
+  /* 保险：确保下拉值与筛选变量同步（防止缓存/时序导致不一致） */
+  const cpf=$('conProjFilter');if(cpf)cpf.value=_conFilterProj||'';
 }
 function switchContractTab(t){_conTab=t;renderContracts();}
 function switchContractProj(v){_conFilterProj=v;renderContracts();}
@@ -13228,6 +13230,8 @@ function renderInvoices(){
          ? (noInvCards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">当前项目没有标记为「无票（不开票）」的收付款记录。</div>')
          : (cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有发票，点击右上角「新增发票」开始登记。</div>')}
      </div>`;
+  /* 保险：确保下拉值与筛选变量同步 */
+  const ipf=$('invProjFilter');if(ipf)ipf.value=_invFilterProj||'';
 }
 function switchInvoiceTab(t){_invTab=t;renderInvoices();}
 function switchInvoiceProj(v){_invFilterProj=v;renderInvoices();}
