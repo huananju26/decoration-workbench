@@ -39,6 +39,7 @@ a{color:#003a8c;text-decoration:none}
 .nav-item:hover{background:#e6f4ff;color:#003a8c}
 .nav-item.active{background:#e6f4ff;color:#003a8c;font-weight:600}
 .nav-item .nav-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.nav-badge{display:inline-block;min-width:17px;margin-left:auto;padding:0 6px;font-size:11px;font-weight:700;line-height:17px;text-align:center;color:#fff;background:#ff4d4f;border-radius:9px;flex-shrink:0}
 .sidebar-footer{padding:16px;border-top:1px solid #f0f0f0}
 .sidebar-tip{font-size:12px;color:#faad14;background:#fffbe6;border-radius:8px;padding:10px 12px;line-height:1.5}
 .sidebar-link{display:flex;align-items:center;gap:8px;padding:8px 14px;color:#888;font-size:13px;cursor:pointer;border-radius:8px;margin-top:4px}
@@ -2372,12 +2373,12 @@ a{color:#003a8c;text-decoration:none}
   <nav class="sidebar-nav">
     <div class="nav-section">
       <div class="nav-section-title">项目</div>
-      <div class="nav-item active" data-page="home" onclick="switchPage('home')"><span class="nav-icon">🏠</span>今日总览</div>
-      <div class="nav-item" data-page="process" onclick="switchPage('process')"><span class="nav-icon">📋</span>项目管理</div>
+      <div class="nav-item active" data-page="home" onclick="switchPage('home')"><span class="nav-icon">🏠</span>今日总览<span class="nav-badge" id="navBadge-home"></span></div>
+      <div class="nav-item" data-page="process" onclick="switchPage('process')"><span class="nav-icon">📋</span>项目管理<span class="nav-badge" id="navBadge-process"></span></div>
       <div class="nav-item" data-page="finance" onclick="switchPage('finance')"><span class="nav-icon">💰</span>装修记账</div>
       <div class="nav-item" data-page="ledger" onclick="switchPage('ledger')"><span class="nav-icon">📒</span>收支流水</div>
-      <div class="nav-item" data-page="contracts" onclick="switchPage('contracts')"><span class="nav-icon">📑</span>合同管理</div>
-      <div class="nav-item" data-page="invoices" onclick="switchPage('invoices')"><span class="nav-icon">🧾</span>发票管理</div>
+      <div class="nav-item" data-page="contracts" onclick="switchPage('contracts')"><span class="nav-icon">📑</span>合同管理<span class="nav-badge" id="navBadge-contracts"></span></div>
+      <div class="nav-item" data-page="invoices" onclick="switchPage('invoices')"><span class="nav-icon">🧾</span>发票管理<span class="nav-badge" id="navBadge-invoices"></span></div>
       <div class="nav-item" data-page="archive" onclick="switchPage('archive')"><span class="nav-icon">👷</span>人材档案</div>
       <div class="nav-item" data-page="purchase" onclick="switchPage('purchase')"><span class="nav-icon">🛒</span>采购清单</div>
       <div class="nav-item" data-page="compare" onclick="switchPage('compare')"><span class="nav-icon">⚖️</span>比价选品</div>
@@ -6747,6 +6748,7 @@ function refreshProjectUI(){
   // 无论有无项目，工作台始终可进入（无项目时由空状态提示引导创建/选择）
   $('welcomeScreen').style.display='none';
   $('pagesWrapper').style.display='block';
+  refreshNavBadges();
 }
 
 // ============================================================
@@ -6807,6 +6809,8 @@ function switchPage(page){
   /* 切换页面时始终置顶（含 .main 滚动容器） */
   window.scrollTo(0,0);
   var _stdMain=document.querySelector('.main'); if(_stdMain)_stdMain.scrollTop=0;
+  /* 刷新侧边栏待处理数量徽章 */
+  refreshNavBadges();
 }
 function toggleSidebar(){$('sidebar').classList.toggle('open')}
 function scrollToSection(id){const el=$(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
@@ -7743,6 +7747,80 @@ function renderHome(){
   // ── Action Queue（全项目今日待办） ──
   aqFilter='pending';aqPage=0; /* 打开今日总览：待办事项默认落在"待办"选项卡 */
   renderActionQueueAll(projects);
+}
+
+/* ── 侧边栏导航待处理数量徽章（4 个版块） ──
+   今日总览 = 全部待处理项（跨项目 action queue）
+   项目管理 = 逾期任务 + 逾期节点 + 整改待处理
+   合同管理 = 草稿合同 + 缺合同
+   发票管理 = 待开(销项) + 待收(进项)
+*/
+function refreshNavBadges(){
+  const projects=App.projects||[];
+  /* 今日总览：全部未完成任务/采购/增减项/逾期节点/待开发票/缺合同/草稿合同/逾期收支材料 */
+  let homeCount=0;
+  let processCount=0;  /* 项目管理：逾期任务+节点+整改 */
+  projects.forEach(p=>{
+    /* home: 未完成任务 */
+    homeCount+=(p.tasks||[]).filter(t=>!t.done).length;
+    /* home + process: 逾期任务 */
+    const odTasks=(p.tasks||[]).filter(t=>t.due&&t.due<todayISO()&&!t.done).length;
+    homeCount+=odTasks; processCount+=odTasks;
+    /* home: 未完成采购 */
+    homeCount+=(p.purchases||[]).filter(x=>x.status!=='已到货').length;
+    /* home: 未完成增减项 */
+    homeCount+=(p.adjustments||[]).filter(a=>adjStatus(a)!=='done').length;
+    /* home + process: 逾期节点 */
+    const odSteps=(p.processSteps||[]).filter(s=>{const pe=s.planEndDate||'';return pe&&pe<todayISO()&&!(p.checked&&p.checked[s.id]);}).length;
+    homeCount+=odSteps; processCount+=odSteps;
+    /* home: 对公待开/待收发票 */
+    [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
+      arr.forEach(rec=>{
+        if(defaultAccountType(rec,p)!=='对公') return;
+        if(tt==='income'&&incReceivedAmt(rec)<=0) return;
+        const linked=findLinkedInvoice(rec.id,tt);
+        const invSt=getInvoiceStatus(rec,p,tt);
+        const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
+        const resolved=invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
+        if((invSt==='待开'||invSt==='待收')&&!resolved) homeCount++;
+      });
+    });
+    /* home: 缺合同 + 草稿合同 */
+    homeCount+=missingContractsList().filter(m=>m._pid===p.id).length;
+    homeCount+=(App.contracts||[]).filter(c=>c.projectId===p.id&&c.status==='草稿').length;
+    /* home: 逾期收支材料 */
+    homeCount+=p.income.filter(i=>incStatus(i)==='overdue').length;
+    homeCount+=p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).length;
+    homeCount+=p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).length;
+    /* process: 整改待处理（siteRecord tag=整改, rectifyStatus=待处理|进行中） */
+    processCount+=(p.siteRecords||[]).filter(r=>r.tag==='整改'&&(r.rectifyStatus==='待处理'||r.rectifyStatus==='进行中')).length;
+  });
+  /* 合同管理：草稿 + 缺合同 */
+  const conCount=(App.contracts||[]).filter(c=>c.status==='草稿').length + missingContractsList().length;
+  /* 发票管理：待开 + 待收 */
+  let invCount=0;
+  projects.forEach(p=>{
+    [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
+      arr.forEach(rec=>{
+        if(defaultAccountType(rec,p)!=='对公') return;
+        if(tt==='income'&&incReceivedAmt(rec)<=0) return;
+        const linked=findLinkedInvoice(rec.id,tt);
+        const invSt=getInvoiceStatus(rec,p,tt);
+        const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
+        const resolved=invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
+        if((invSt==='待开'||invSt==='待收')&&!resolved) invCount++;
+      });
+    });
+  });
+  /* 写入 DOM（数量为 0 时隐藏） */
+  setNavBadge('navBadge-home',homeCount);
+  setNavBadge('navBadge-process',processCount);
+  setNavBadge('navBadge-contracts',conCount);
+  setNavBadge('navBadge-invoices',invCount);
+}
+function setNavBadge(id,count){
+  const el=$(id);if(!el)return;
+  if(count>0){el.textContent=count>99?'99+':count;el.style.display='';}else{el.style.display='none';}
 }
 
 /* ── 指标卡：跨项目 8 张 ── */
