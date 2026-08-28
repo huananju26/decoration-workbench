@@ -12819,7 +12819,7 @@ function stepNameById(pid,sid){
 function renderContracts(){
   const el=$('contractsPanel');if(!el)return;
   const list=App.contracts||[];
-  const filterProj=''; /* 固定全量（已移除项目筛选下拉） */
+  const filterProj=App.currentProjectId||''; /* 按当前选中项目过滤 */
   let base=list.slice();
   if(filterProj)base=base.filter(c=>c.projectId===filterProj);
   /* 缺合同清单（与待办同源）：按当前项目过滤 */
@@ -13125,7 +13125,7 @@ function getNonInvoicedRecords(fProj){
 function renderInvoices(){
   const el=$('invoicesPanel');if(!el)return;
   const list=App.invoices||[];
-  const fProj=''; /* 固定全量（已移除项目筛选下拉） */
+  const fProj=App.currentProjectId||''; /* 按当前选中项目过滤 */
   let base=list.slice();
   if(fProj)base=base.filter(v=>v.projectId===fProj);
   let arr=base.slice();
