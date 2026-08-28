@@ -7772,6 +7772,20 @@ function renderActionQueueAll(projects){
       const tg=contractTargetKind(c);
       items.push({ id:'con_done_'+c.id, title:(c.title||c.type||'合同')+' · 已签约', done:true, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:c.type, _targetKind:tg.kind, _targetId:tg.id, projectName:pn, conType:c.type, targetKind:tg.kind, targetId:tg.id, targetName:c.title, label:c.type+'合同', note:'合同已签约，提醒闭环' });
     });
+    /* 收款逾期：已逾期未收齐的收款项 */
+    (p.income||[]).filter(i=>incStatus(i)==='overdue').forEach(i=>{
+      const amt=i.amount||0;
+      const got=incReceivedAmt(i);
+      items.push({ id:'inc_ov_'+i.id, title:'收款逾期：'+(i.name||i.title||'未命名'), done:false, due:i.date||todayISO(), _kind:'income_ov', _proj:pn, _pid:p.id, note:'¥'+fmt(amt)+' · 已收 ¥'+fmt(got)+' · 待收 ¥'+fmt(Math.max(0,amt-got)) });
+    });
+    /* 付款逾期：未付且已过期的付款项 */
+    (p.expense||[]).filter(e=>!e.paid&&e.date&&e.date<todayISO()).forEach(e=>{
+      items.push({ id:'exp_ov_'+e.id, title:'付款逾期：'+(e.name||e.title||'未命名'), done:false, due:e.date, _kind:'expense_ov', _proj:pn, _pid:p.id, note:'¥'+fmt(e.amount||0)+' · 未支付 · 已过期' });
+    });
+    /* 材料超期：未到货且已过交期的采购项 */
+    (p.purchases||[]).filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>{
+      items.push({ id:'pur_ov_'+x.id, title:'材料超期：'+(x.name||'未命名'), done:false, due:x.dueDate, _kind:'purchase_ov', _proj:pn, _pid:p.id, note:x.status||'待购'+' · 预算 ¥'+fmt(x.budget||0)+' · 已过期' });
+    });
   });
   items.sort((a,b)=>{
     /* 未完成排前面，已完成排后面（!!统一处理 purchase 无 done 字段的情况） */
@@ -7826,9 +7840,14 @@ function renderActionQueueAll(projects){
       :(kind==='invoice'?`<div class="aq-check aq-check-inv" title="点击去开票（关联发票后提醒自动消失）" onclick="event.stopPropagation();openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')">🧾</div>`
       :(kind==='contract'?`<div class="aq-check aq-check-con" title="${item._conId?'点击编辑合同':'点击去补签合同（关联后提醒自动消失）'}" onclick="event.stopPropagation();${item._conId?`editContract('${item._conId}')`:`openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')`}">📑</div>`
       :`<div class="aq-check ${item.done?'checked':''}" onclick="toggleItem('${item.id}','${kind}','${item._pid}')">${item.done?'✓':''}</div>`)));
+    /* 逾期收支/材料超期：覆盖图标为💰并跳转对应页面 */
+    if(kind==='income_ov'||kind==='expense_ov'||kind==='purchase_ov'){
+      const checkEl=listEl.lastChild&&listEl.lastChild.querySelector('.aq-check');
+      if(checkEl){checkEl.style.cssText='color:#ff4d4f;background:#fff2f0;border-color:#ffccc7';checkEl.textContent='💰';checkEl.title='逾期项，点击跳转处理';checkEl.setAttribute('onclick',`event.stopPropagation();switchToProject('${item._pid}');${(kind==='income_ov'||kind==='expense_ov')?"switchPage('finance')":"switchPage('purchase')"}`);}
+    }
     /* 当前状态：pending / overdue / done —— 用于原位编辑高亮 */
     const curStatus=item.done?'done':(isOver?'overdue':'pending');
-    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?(item.done?'已开票':'未开票'):(kind==='step'?(item.done?'节点完成':'节点逾期'):(kind==='contract'?(item.done?'合同已签':(item._conId?'待签约':'缺合同')):(item.done?'已完成':'待办')))));
+    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?(item.done?'已开票':'未开票'):(kind==='step'?(item.done?'节点完成':'节点逾期'):(kind==='contract'?(item.done?'合同已签':(item._conId?'待签约':'缺合同')):(kind==='income_ov'?'收款逾期':(kind==='expense_ov'?'付款逾期':(kind==='purchase_ov'?'材料超期':(item.done?'已完成':'待办'))))))));
     /* 未开票/缺合同提醒项点击右侧标签也跳转，而非打开状态编辑 */
     const labelOnclick = kind==='invoice'
       ? `openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')`
