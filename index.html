@@ -12113,7 +12113,7 @@ function renderArchive(targetId){
   if(suppliers.length>0){
     supplierCards=suppliers.map(x=>{
       const nm=x.shortName||x.name||'—';
-      const title=nm+(x.category?`（${escHtml(x.category)}）`:'');
+      const title=nm+(x.category?` <span class="archive-pill">${escHtml(x.category)}</span>`:'');
       return `
       <div class="archive-item">
         <div class="archive-item-head">
