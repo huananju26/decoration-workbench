@@ -12917,8 +12917,10 @@ function renderContracts(){
   const filterProj=(_conProjSel===null)?(App.currentProjectId||''):_conProjSel;
   let base=list.slice();
   if(filterProj)base=base.filter(c=>c.projectId===filterProj);
+  /* 主 Tab（全部/设计/施工/采购/其他）只展示已生效合同：草稿一律归入「缺合同」Tab，标记已签后才在此显示 */
+  base=base.filter(c=>!(c.status==='草稿'||!c.status));
   /* 筛选栏过滤（类型切换由下方选项卡负责，此处不重复过滤） */
-  if(conFStatus)base=base.filter(c=>{const s=(c.status==='草稿'||!c.status)?'草稿':c.status;return s===conFStatus;});
+  if(conFStatus)base=base.filter(c=>c.status===conFStatus);
   if(conFSearch)base=base.filter(c=>(c.title||'').toLowerCase().includes(conFSearch)||(c.supplier||'').toLowerCase().includes(conFSearch)||(c.party||'').toLowerCase().includes(conFSearch));
   /* 缺合同清单（与待办同源）：按当前项目过滤 */
   const missingAll=missingContractsList();
@@ -12982,8 +12984,7 @@ function renderContracts(){
          </div>
          <div class="ledger-filter-bar" id="conFilterBar">
            <select id="conFilterProj" onchange="switchConProjFilter(this.value)"><option value="" ${filterProj?'':'selected'}>全部项目</option>${projFilterBarOptions(filterProj)}</select>
-           <select id="conFilterStatus" onchange="renderContracts()"><option value="">全部状态</option><option value="草稿">草稿</option><option value="已签">已签</option><option value="执行中">执行中</option><option value="已完成">已完成</option></select>
-           <input type="text" id="conSearchInput" autocomplete="off" placeholder="搜索合同名/对方..." oninput="renderContracts()">
+           <input type="text" id="conSearchInput" autocomplete="off" placeholder="搜索待跟进项..." oninput="renderContracts()">
          </div>
          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
        </div>
@@ -13052,7 +13053,7 @@ function renderContracts(){
        </div>
        <div class="ledger-filter-bar" id="conFilterBar">
          <select id="conFilterProj" onchange="switchConProjFilter(this.value)"><option value="" ${filterProj?'':'selected'}>全部项目</option>${projFilterBarOptions(filterProj)}</select>
-         <select id="conFilterStatus" onchange="renderContracts()"><option value="">全部状态</option><option value="草稿">草稿</option><option value="已签">已签</option><option value="执行中">执行中</option><option value="已完成">已完成</option></select>
+         <select id="conFilterStatus" onchange="renderContracts()"><option value="">全部状态</option><option value="已签">已签</option><option value="执行中">执行中</option><option value="已完成">已完成</option><option value="已终止">已终止</option></select>
          <input type="text" id="conSearchInput" autocomplete="off" placeholder="搜索合同名/对方..." oninput="renderContracts()">
        </div>
        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -13070,7 +13071,7 @@ function renderContracts(){
      </div>
      <div class="archive-filter-bar"><span class="archive-count">${_conTab==='全部'?'全部类型':_conTab} · 共 ${arr.length} 份（${escHtml(projName)}）</span></div>
      <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
-       ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有合同，点击右上角「新增合同」开始登记。</div>'}
+       ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有已生效合同。新建的合同默认为「草稿」，请到「缺合同」Tab 标记已签后，才会在此显示。</div>'}
      </div>`;
 }
 function switchContractTab(t){_conTab=t;renderContracts();}
