@@ -1266,6 +1266,23 @@ a{color:#003a8c;text-decoration:none}
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center;padding:40px}
 .modal-overlay.show{display:flex}
 
+/* ══ 人材档案卡片选择器 ═══ */
+.archive-card-picker{display:none;margin-top:6px;padding:10px;background:#f8fafc;border:1px solid #e8ecf0;border-radius:10px;max-height:200px;overflow-y:auto}
+.archive-card-picker.show{display:block}
+.archive-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.archive-card{background:#fff;border:2px solid #e2e8f0;border-radius:9px;padding:10px 12px;cursor:pointer;transition:all .15s ease;display:flex;align-items:center;gap:9px;user-select:none}
+.archive-card:hover{border-color:#91caff;box-shadow:0 2px 8px rgba(22,119,255,.1)}
+.archive-card.selected{border-color:#1677ff;background:#e6f4ff;box-shadow:0 2px 10px rgba(22,119,255,.15)}
+.archive-card-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#1677ff,#69b1ff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+.archive-card-info{flex:1;min-width:0}
+.archive-card-name{font-size:13px;font-weight:600;color:#1a1a2e;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.archive-card-sub{font-size:11px;color:#888;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.archive-picker-toggle{font-size:12px;color:#1677ff;cursor:pointer;padding:2px 0;border:none;background:none;text-decoration:none;display:inline-flex;align-items:center;gap:3px}
+.archive-picker-toggle:hover{text-decoration:underline}
+.archive-selected-chip{display:inline-flex;align-items:center;gap:5px;background:#e6f4ff;border:1px solid #91caff;border-radius:6px;padding:3px 10px;font-size:13px;color:#003a8c;margin-top:4px;max-width:100%;box-sizing:border-box}
+.archive-selected-chip .chip-remove{cursor:pointer;color:#999;font-size:14px;line-height:1;margin-left:2px}
+.archive-selected-chip .chip-remove:hover{color:#ff4d4f}
+
 /* ══ 登录页（全屏，退出后跳转） ══ */
 .login-page{position:fixed;top:0;left:0;right:0;bottom:0;z-index:500;display:none;align-items:center;justify-content:center;padding:20px;background:linear-gradient(160deg,#e6f4ff 0%,#f0f2f5 55%,#fff 100%)}
 .login-page.show{display:flex}
@@ -3224,8 +3241,8 @@ a{color:#003a8c;text-decoration:none}
           <div class="form-group"><label class="form-label">材料名称 <b style="color:#ff4d4f">*</b></label><input id="mpName" type="text" placeholder="例如：客厅地砖" list="mpNameList" autocomplete="off"><datalist id="mpNameList"></datalist></div>
           <div class="form-group"><label class="form-label">关联施工节点</label><select id="mpStepId"><option value="">暂不关联</option></select></div>
           <div class="form-group"><label class="form-label">所属费用总项</label><select id="mpCostCat"><option value="">不归入，费用用总项</option><option value="材料费">材料费</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="设计费">设计费</option><option value="管理费">管理费</option><option value="其他">其他</option></select></div>
-          <div class="form-group"><label class="form-label">调配负责人</label><select id="mpBuyer"><option value="">暂不指定</option></select></div>
-          <div class="form-group"><label class="form-label">厂家名称 <b style="color:#ff4d4f">*</b></label><div style="display:flex;gap:8px;align-items:center"><select id="mpVendor" style="flex:1" onchange="onPickArchiveSupplier('mpVendor','mpVendorPhone')"><option value="">请选择供应商档案</option></select><button type="button" class="btn-outline" style="white-space:nowrap" onclick="jumpToArchiveAdd('supplier')">＋ 去人材档案新增</button></div></div>
+          <div class="form-group"><label class="form-label">调配负责人（施工人员）</label><div style="display:flex;gap:8px;align-items:center"><select id="mpBuyer" style="flex:1" onchange="onArchiveSelectChange('mpBuyer','buyerCardPicker','personnel')"><option value="">请选择施工人员档案</option></select><button type="button" class="btn-outline" style="white-space:nowrap" onclick="jumpToArchiveAdd('personnel')">＋ 去人材档案新增</button></div><a class="archive-picker-toggle" onclick="toggleArchiveCardPicker('buyerCardPicker','personnel')">📋 卡片选择</a><div id="buyerCardPicker" class="archive-card-picker"><div class="archive-card-grid" id="buyerCardGrid"></div></div><div id="mpBuyerSelectedChip" class="archive-selected-chip" style="display:none"></div></div>
+          <div class="form-group"><label class="form-label">厂家名称 <b style="color:#ff4d4f">*</b></label><div style="display:flex;gap:8px;align-items:center"><select id="mpVendor" style="flex:1" onchange="onPickArchiveSupplier('mpVendor','mpVendorPhone');onArchiveSelectChange('mpVendor','vendorCardPicker','supplier')"><option value="">请选择供应商档案</option></select><button type="button" class="btn-outline" style="white-space:nowrap" onclick="jumpToArchiveAdd('supplier')">＋ 去人材档案新增</button></div><a class="archive-picker-toggle" onclick="toggleArchiveCardPicker('vendorCardPicker','supplier')">📋 卡片选择</a><div id="vendorCardPicker" class="archive-card-picker"><div class="archive-card-grid" id="vendorCardGrid"></div></div><div id="mpVendorSelectedChip" class="archive-selected-chip" style="display:none"></div></div>
           <div class="form-group"><label class="form-label">厂家电话</label><input id="mpVendorPhone" type="tel" placeholder=""></div>
           <div class="form-group"><label class="form-label">数量</label><input id="mpQty" type="number" value="1" min="0"></div>
           <div class="form-group"><label class="form-label">单位</label><input id="mpUnit" type="text" value="项"></div>
@@ -3290,7 +3307,7 @@ a{color:#003a8c;text-decoration:none}
 </div>
 
 <!-- ═══ 新增/编辑 施工人员档案 ═══ -->
-<div class="modal-overlay" id="addPersonnelModal">
+<div class="modal-overlay" id="addPersonnelModal" style="z-index:220">
   <div class="modal" style="max-width:560px;width:94%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
     <div class="modal-header" style="flex-shrink:0"><div class="modal-title" id="personnelModalTitle">新增施工人员档案</div><div class="modal-close" onclick="closeModal('addPersonnelModal')">✕</div></div>
     <div class="adj-subtitle" style="flex-shrink:0">记录工人基本信息与合作关系；在「材料与厂家调配」中首次填写后会自动归档。</div>
@@ -3312,7 +3329,7 @@ a{color:#003a8c;text-decoration:none}
 </div>
 
 <!-- ═══ 新增/编辑 供应商档案 ═══ -->
-<div class="modal-overlay" id="addSupplierModal">
+<div class="modal-overlay" id="addSupplierModal" style="z-index:220">
   <div class="modal" style="max-width:560px;width:94%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
     <div class="modal-header" style="flex-shrink:0"><div class="modal-title" id="supplierModalTitle">新增供应商档案</div><div class="modal-close" onclick="closeModal('addSupplierModal')">✕</div></div>
     <div class="adj-subtitle" style="flex-shrink:0">记录厂家与品类信息；在「材料与厂家调配」中首次填写后会自动归档，供后续直接调取。</div>
@@ -12173,12 +12190,117 @@ function jumpToArchiveAdd(type){
 /* 人材档案变更后，刷新所有已打开表单中的人材下拉（保留当前选择） */
 function refreshOpenFormArchiveSelects(){
   const prev={};
-  ['mpVendor','enPayee','fPayee','fPayer'].forEach(id=>{const el=$(id); if(el)prev[id]=el.value;});
+  ['mpVendor','mpBuyer','enPayee','fPayee','fPayer'].forEach(id=>{const el=$(id); if(el)prev[id]=el.value;});
   if($('mpVendor'))fillArchiveSelect($('mpVendor'),{suppliers:true,placeholder:'请选择供应商档案'});
+  if($('mpBuyer'))fillArchiveSelect($('mpBuyer'),{personnel:true,placeholder:'请选择施工人员档案'});
   if($('enPayee'))fillArchiveSelect($('enPayee'),{suppliers:true,personnel:true,placeholder:'请选择（人材档案）'});
   if($('fPayee'))fillArchiveSelect($('fPayee'),{suppliers:true,personnel:true,placeholder:'请选择（人材档案）'});
   if($('fPayer'))fillArchiveSelect($('fPayer'),{suppliers:true,personnel:true,placeholder:'请选择（人材档案）'});
-  ['mpVendor','enPayee','fPayee','fPayer'].forEach(id=>{ const el=$(id); if(el&&prev[id]&&Array.from(el.options).some(o=>o.value===prev[id]))el.value=prev[id]; });
+  ['mpVendor','mpBuyer','enPayee','fPayee','fPayer'].forEach(id=>{ const el=$(id); if(el&&prev[id]&&Array.from(el.options).some(o=>o.value===prev[id]))el.value=prev[id]; });
+}
+
+/* ── 人材档案卡片选择器 ── */
+/* 切换卡片选择器显隐，并渲染卡片 */
+function toggleArchiveCardPicker(pickerId, type){
+  const picker=$(pickerId);
+  if(!picker)return;
+  if(picker.classList.contains('show')){ picker.classList.remove('show'); return; }
+  /* 先关闭其他卡片选择器 */
+  document.querySelectorAll('.archive-card-picker.show').forEach(el=>el.classList.remove('show'));
+  /* 渲染卡片 */
+  renderArchiveCards(pickerId, type);
+  picker.classList.add('show');
+}
+/* 渲染档案卡片网格 */
+function renderArchiveCards(pickerId, type){
+  let gridId=pickerId.replace('Picker','Grid');
+  const grid=$(gridId); if(!grid)return;
+  const arc=App.archive||{personnel:[],suppliers:[]};
+  const items=type==='personnel'?(arc.personnel||[]):(arc.suppliers||[]);
+  if(items.length===0){ grid.innerHTML='<div style="grid-column:1/-1;padding:16px;text-align:center;color:#999;font-size:13px">暂无档案，请点击「＋ 新增」添加</div>'; return; }
+  grid.innerHTML=items.map((item,idx)=>{
+    if(type==='personnel'){
+      const initial=(item.name||'?').charAt(0);
+      const sub=[item.trade,item.phone].filter(Boolean).join(' · ');
+      return `<div class="archive-card" onclick="pickArchiveCard('${pickerId}','${type}',${idx})" data-idx="${idx}"><div class="archive-card-avatar">${initial}</div><div class="archive-card-info"><div class="archive-card-name">${escHtml(item.name||'')}</div><div class="archive-card-sub">${escHtml(sub)}</div></div></div>`;
+    }else{
+      const initial=(item.shortName||item.name||'?').charAt(0);
+      const sub=[item.category,item.contact,item.phone].filter(Boolean).slice(0,2).join(' · ');
+      return `<div class="archive-card" onclick="pickArchiveCard('${pickerId}','${type}',${idx})" data-idx="${idx}"><div class="archive-card-avatar" style="background:linear-gradient(135deg,#fa8c16,#ffc53d)">${initial}</div><div class="archive-card-info"><div class="archive-card-name">${escHtml(item.shortName||item.name||'')}</div><div class="archive-card-sub">${escHtml(sub)}</div></div></div>`;
+    }
+  }).join('');
+}
+/* 点击卡片选中 */
+function pickArchiveCard(pickerId, type, idx){
+  const arc=App.archive||{personnel:[],suppliers:[]};
+  const items=type==='personnel'?(arc.personnel||[]):(arc.suppliers||[]);
+  const item=items[idx]; if(!item)return;
+  let selId='';
+  if(pickerId==='buyerCardPicker')selId='mpBuyer';
+  else if(pickerId==='vendorCardPicker')selId='mpVendor';
+  else return;
+  const sel=$(selId); if(!sel)return;
+  const displayVal=type==='personnel'?(item.name||''):arcSupLabel(item);
+  sel.value=displayVal;
+  sel.dispatchEvent(new Event('change'));
+  const grid=$(pickerId.replace('Picker','Grid'));
+  if(grid)grid.querySelectorAll('.archive-card').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.idx)===idx));
+  updateSelectedChip(selId, displayVal, type, item);
+  setTimeout(()=>{ const p=$(pickerId); if(p)p.classList.remove('show'); },350);
+}
+/* select 下拉变更时同步卡片高亮和 chip */
+function onArchiveSelectChange(selId, pickerId, type){
+  const sel=$(selId); if(!sel)return;
+  const val=sel.value;
+  const grid=$(pickerId); if(grid){
+    const cards=grid.querySelectorAll('.archive-card');
+    const arc=App.archive||{personnel:[],suppliers:[]};
+    const items=type==='personnel'?(arc.personnel||[]):(arc.suppliers||[]);
+    cards.forEach(c=>{
+      const idx=parseInt(c.dataset.idx);
+      const item=items[idx];
+      const itemVal=type==='personnel'?(item&&item.name):arcSupLabel(item);
+      c.classList.toggle('selected',itemVal===val);
+    });
+  }
+  if(val){
+    const arc=App.archive||{personnel:[],suppliers:[]};
+    const items=type==='personnel'?(arc.personnel||[]):(arc.suppliers||[]);
+    const found=items.find(m=>(type==='personnel'?m.name:arcSupLabel(m))===val);
+    updateSelectedChip(selId, val, type, found);
+  }else{
+    hideSelectedChip(selId);
+  }
+}
+/* 更新已选 chip 显示 */
+function updateSelectedChip(selId, val, type, item){
+  const chipId=selId+'SelectedChip';
+  const chip=$(chipId); if(!chip)return;
+  if(!val){ chip.style.display='none'; return; }
+  const label=val;
+  const subInfo=item?(type==='personnel'?item.trade:item.category):'';
+  chip.innerHTML=`<span>${escHtml(label)}${subInfo?' <span style="color:#888;font-weight:400">· '+escHtml(subInfo)+'</span>':''}</span><span class="chip-remove" onclick="clearArchiveSelection('${selId}','${chipId}')">✕</span>`;
+  chip.style.display='inline-flex';
+}
+/* 清除选择 */
+function clearArchiveSelection(selId, chipId){
+  const sel=$(selId); if(sel){sel.value=''; sel.dispatchEvent(new Event('change'));}
+  hideSelectedChip(selId);
+  const pickerId=selId==='mpBuyer'?'buyerCardPicker':'vendorCardPicker';
+  const grid=$(pickerId.replace('Picker','Grid'));
+  if(grid)grid.querySelectorAll('.archive-card.selected').forEach(c=>c.classList.remove('selected'));
+}
+function hideSelectedChip(chipIdOrSelId){
+  const chipId=chipIdOrSelId.endsWith('SelectedChip')?chipIdOrSelId:chipIdOrSelId+'SelectedChip';
+  const el=$(chipId); if(el)el.style.display='none';
+}
+/* 初始化材料弹窗的卡片选择器状态（打开时调用） */
+function initMaterialCardPickers(){
+  ['buyerCardPicker','vendorCardPicker'].forEach(pid=>{
+    const p=$(pid); if(p)p.classList.remove('show');
+  });
+  hideSelectedChip('mpBuyer');
+  hideSelectedChip('mpVendor');
 }
 
 /* ── 人材档案 增删改（账号级全局数据源 App.archive）── */
@@ -13614,12 +13736,8 @@ function openAddMaterialPlan(){
   /* 填充关联施工节点下拉（统一使用全局模板 STAGES，与「记一笔·所属阶段」一致） */
   const sel=$('mpStepId');
   sel.innerHTML='<option value="">暂不关联</option>'+steps.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
-  /* 填充调配负责人下拉（项目成员 + 施工人员档案 联合调取，去重） */
-  const buyerSel=$('mpBuyer');
-  const buyerNames=new Set();
-  (p.members||[]).forEach(m=>{if(m&&m.name)buyerNames.add(m.name);});
-  (App.archive.personnel||[]).forEach(m=>{if(m&&m.name)buyerNames.add(m.name);});
-  buyerSel.innerHTML='<option value="">暂不指定</option>'+Array.from(buyerNames).map(n=>`<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+  /* 填充调配负责人下拉（从施工人员档案调取，支持新增） */
+  fillArchiveSelect($('mpBuyer'),{personnel:true,placeholder:'请选择施工人员档案'});
   /* 填充厂家名称下拉（仅从供应商档案调取，禁止随手新建写回档案） */
   fillArchiveSelect($('mpVendor'),{suppliers:true,placeholder:'请选择供应商档案'});
   /* 填充材料名称联想列表（从已有采购+系统推荐材料） */
@@ -13653,6 +13771,8 @@ function openAddMaterialPlan(){
   _editingPurchaseId=null;
   const btn=document.querySelector('#addMaterialPlanModal .btn-primary');
   if(btn)btn.textContent='保存材料计划';
+  /* 初始化卡片选择器状态 */
+  initMaterialCardPickers();
   showModal('addMaterialPlanModal');
 }
 
@@ -13825,6 +13945,7 @@ function editPurchaseItem(id){
   $('mpCostCat').value=item.costCat||item.cat||'材料采购';
   $('mpStepId').value=item.stageId||'';
   $('mpBuyer').value=item.buyer||'';
+  ensureSelectKeepsValue($('mpBuyer'), item.buyer);
   $('mpVendor').value=item.vendor||'';
   ensureSelectKeepsValue($('mpVendor'), item.vendor);
   $('mpVendorPhone').value=item.vendorPhone||'';
@@ -13840,6 +13961,9 @@ function editPurchaseItem(id){
   $('mpAccountType').value=item.accountType||'对私';
   $('mpTaxRate').innerHTML=taxRateOptionsHtml(item.taxRate||DEFAULT_TAX_RATE);
   toggleMatTax();
+  /* 同步卡片选择器 chip 显示 */
+  if(item.buyer)onArchiveSelectChange('mpBuyer','buyerCardPicker','personnel');
+  if(item.vendor)onArchiveSelectChange('mpVendor','vendorCardPicker','supplier');
   $('mpDelayReason').value=item.delayReason||'';
   $('mpNote').value=item.note||'';
   /* 标记编辑模式 */
