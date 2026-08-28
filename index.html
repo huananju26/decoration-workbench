@@ -12561,6 +12561,13 @@ const TAX_RATES=[0,1,3,6,9,13]; /* 含 0% / 6% / 13% */
 const DEFAULT_TAX_RATE=9;
 let _conTab='全部';
 let _invTab='全部';
+let _conFilterProj='';   /* 合同管理·页面级项目筛选：'' = 全部项目 */
+let _invFilterProj='';   /* 发票管理·页面级项目筛选：'' = 全部项目 */
+/* 生成「项目筛选」下拉选项（含「全部项目」），selVal 为当前选中 projectId（''=全部） */
+function projFilterOptionsHtml(selVal){
+  const opts='<option value="">全部项目</option>'+(App.projects||[]).map(p=>`<option value="${p.id}" ${p.id===selVal?'selected':''}>${escHtml(projDisplayName(p))}</option>`).join('');
+  return opts;
+}
 /* 记一笔 ↔ 发票管理 联动状态 */
 let currentFinRecId='';      /* 当前记一笔记录的 id（新建时预生成，编辑时取原 id，保证与发票互链一致） */
 let currentFinInvoiceId='';  /* 当前已关联发票 id */
@@ -12796,7 +12803,7 @@ function stepNameById(pid,sid){
 function renderContracts(){
   const el=$('contractsPanel');if(!el)return;
   const list=App.contracts||[];
-  let filterProj=App.currentProjectId||'';
+  let filterProj=_conFilterProj||'';
   let base=list.slice();
   if(filterProj)base=base.filter(c=>c.projectId===filterProj);
   /* 缺合同清单（与待办同源）：按当前项目过滤 */
@@ -12896,7 +12903,10 @@ function renderContracts(){
          <div class="module-head-title">合同管理</div>
          <div class="module-head-desc">登记施工 / 采购 / 设计 / 其他合同，关联项目节点与供应商，并在发票管理开具体发票。</div>
        </div>
-       <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
+       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+         <select id="conProjFilter" style="max-width:200px" onchange="switchContractProj(this.value)">${projFilterOptionsHtml(filterProj)}</select>
+         <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
+       </div>
      </div>
      <div class="proj-tab-bar" id="conTabBar">
        ${conTabs.map(t=>{const dot=(t==='缺合同'&&missingConCount>0)?`<span class="tab-badge">${missingConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
@@ -12913,6 +12923,7 @@ function renderContracts(){
      </div>`;
 }
 function switchContractTab(t){_conTab=t;renderContracts();}
+function switchContractProj(v){_conFilterProj=v;renderContracts();}
 /* 一键把未签合同标记为已签（从「未开」版块移出） */
 function markContractSigned(id){
   const c=contractById(id);if(!c)return;
@@ -13100,7 +13111,7 @@ function getNonInvoicedRecords(fProj){
 function renderInvoices(){
   const el=$('invoicesPanel');if(!el)return;
   const list=App.invoices||[];
-  let fProj=App.currentProjectId||'';
+  let fProj=_invFilterProj||'';
   let base=list.slice();
   if(fProj)base=base.filter(v=>v.projectId===fProj);
   let arr=base.slice();
@@ -13179,7 +13190,10 @@ function renderInvoices(){
          <div class="module-head-title">发票管理</div>
          <div class="module-head-desc">按五态（待开 / 已开 / 待收 / 已收 / 无票）管理发票：待开=销项草稿待开给客户、已开=销项已开具、待收=进项草稿待向供应商取票、已收=进项已收票/已认证/已抵扣、无票=合法免开的收付款记录（只读备查）。按「含税价 ÷ (1+税率)」自动倒推不含税金额与税额，并汇总应缴增值税。</div>
        </div>
-       <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
+       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+         <select id="invProjFilter" style="max-width:200px" onchange="switchInvoiceProj(this.value)">${projFilterOptionsHtml(fProj)}</select>
+         <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
+       </div>
      </div>
      <div class="proj-tab-bar" id="invTabBar">
        ${invTabs.map(t=>{let dot='';if(t==='待开'&&pendingKaiCount>0)dot=`<span class="tab-badge">${pendingKaiCount}</span>`;if(t==='已开'&&doneKaiCount>0)dot=`<span class="tab-badge">${doneKaiCount}</span>`;if(t==='待收'&&pendingShouCount>0)dot=`<span class="tab-badge">${pendingShouCount}</span>`;if(t==='已收'&&doneShouCount>0)dot=`<span class="tab-badge">${doneShouCount}</span>`;if(t==='无票'&&noInvCount>0)dot=`<span class="tab-badge">${noInvCount}</span>`;return `<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}${dot}</button>`;}).join('')}
@@ -13200,6 +13214,7 @@ function renderInvoices(){
      </div>`;
 }
 function switchInvoiceTab(t){_invTab=t;renderInvoices();}
+function switchInvoiceProj(v){_invFilterProj=v;renderInvoices();}
 /* 将发票实际状态同步回其关联收/付款记录的开票状态（单一真相源：以实际发票状态为准），
    保证流水表「开票状态」列与筛选与发票管理一致、可精确过滤。 */
 function syncRecInvoiceStatus(v){
