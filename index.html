@@ -5053,6 +5053,55 @@ function cleanupDuplicateLinkedRecords(app){
   }
 
   if(changed)console.log('[cleanupDuplicateLinkedRecords] 已归并分次收付款产生的重复发票/合同与孤儿数据');
+
+  /* ── 额外清理：采购派生支出的「记一笔」自动合同/发票冗余 ──
+     场景：同一采购单(5000)分次付款(3000+2000)，syncPurchaseContract 正确建了 1 份采购合同(5000)，
+     但用户通过"记一笔"编辑其中一条支出时，fContractSelect 未回填→ finAutoCreateContract 又建了 1 份"上游采购合同"(2000)。
+     同理发票也可能按支出维度产生多张而非按采购单维度一张。
+     清理规则：
+     ① 支出有 purchaseId 且项目已有 linkedPurchaseId 匹配的草稿采购合同 → 删掉"上游采购合同"冗余
+     ② 支出有 purchaseId 且存在 linkedPurchaseId 匹配的进项草稿发票 → 删掉按支出维度建的冗余发票 */
+  if(Array.isArray(app.contracts)&&Array.isArray(app.projects)){
+    const beforeCon=app.contracts.length;
+    app.contracts=app.contracts.filter(c=>{
+      if(!c||c.status!=='草稿'&&c.status)return true; /* 非草稿保留（有法律效力） */
+      if(!c.linkedExpenseId)return true; /* 非"记一笔"创建的保留 */
+      /* 找到这笔合同关联的支出记录及其所属项目 */
+      let ownerExp=null, ownerPid='';
+      for(const p of app.projects){
+        const e=(p.expense||[]).find(e=>e.id===c.linkedExpenseId);
+        if(e){ownerExp=e;ownerPid=p.id;break;}
+      }
+      if(!ownerExp||!ownerExp.purchaseId)return true; /* 非采购派生，保留 */
+      /* 该支出所属的采购单是否已有正确的采购级合同？ */
+      const purCon=app.contracts.find(cc=>cc.projectId===ownerPid && cc.linkedPurchaseId===ownerExp.purchaseId && cc.id!==c.id);
+      if(purCon){ changed=true; return false; } /* 冗余：已有采购级合同，删掉这份"上游采购合同" */
+      return true;
+    });
+    if(app.contracts.length<beforeCon)changed=true;
+  }
+  if(Array.isArray(app.invoices)&&Array.isArray(app.projects)){
+    const beforeInv=app.invoices.length;
+    app.invoices=app.invoices.filter(v=>{
+      if(!v||v.status!=='草稿'&&v.status)return true; /* 非草稿保留 */
+      if(v.linkedPurchaseId)return true; /* 已是采购级发票，保留 */
+      if(!v.linkedExpenseId)return true; /* 非支出关联，保留 */
+      /* 找到这张发票关联的支出记录及其所属项目 */
+      let ownerExp=null, ownerPid='';
+      for(const p of app.projects){
+        const e=(p.expense||[]).find(e=>e.id===v.linkedExpenseId);
+        if(e){ownerExp=e;ownerPid=p.id;break;}
+      }
+      if(!ownerExp||!ownerExp.purchaseId)return true; /* 非采购派生，保留 */
+      /* 该支出所属的采购单是否已有采购级发票？ */
+      const purInv=app.invoices.find(vv=>vv.projectId===ownerPid && vv.linkedPurchaseId===ownerExp.purchaseId && vv.direction==='进项');
+      if(purInv){ changed=true; return false; } /* 冗余：已有采购级发票，删掉按支出维度建的 */
+      return true;
+    });
+    if(app.invoices.length<beforeInv)changed=true;
+  }
+  if(changed)console.log('[cleanupDuplicateLinkedRecords] 额外清理了采购派生支出的冗余合同/发票（分次付款不再重复）');
+
   return changed;
 }
 function cleanupOrphanedRecords(app){
@@ -14538,7 +14587,10 @@ function cascadeDeletePurchaseContract(purchaseId,projectId){
   App.contracts=App.contracts.filter(c=>!(c.linkedPurchaseId===purchaseId && (c.status==='草稿'||!c.status)));
 }
 /* 支出记录 → 发票管理联动：
-   - 对公 + 待收 + 已实际付款 → 建/更新一张草稿进项发票（按 linkedExpenseId 去重）
+   - 对公 + 待收 + 已实际付款 → 建/更新一张草稿进项发票
+   - **采购派生支出（有 purchaseId）**：按**采购单维度**去重（同采购只一张发票，金额=已付累计）
+     避免分次付款(3000+2000)产生两张发票(3000+2000)而非一张(5000)
+   - 纯"记一笔"支出（无 purchaseId）：按 linkedExpenseId 去重（原有逻辑不变）
    - 对公 + 无票 → 清理已关联的发票（合法免开）
    - 未付款（paid=false）不建票：钱未付，厂家不会开票 */
 function syncExpenseInvoice(rec,p){
@@ -14546,6 +14598,32 @@ function syncExpenseInvoice(rec,p){
   const st=getInvoiceStatus(rec,p,'expense');
   if(st==='待收'){
     if(!rec.paid) return; /* 待付款项不建票 */
+    /* 采购派生支出：按采购单维度查找/更新发票（同采购所有已付支出共享一张） */
+    if(rec.purchaseId){
+      const purInv=(App.invoices||[]).find(v=>
+        v.projectId===p.id && v.direction==='进项' && v.linkedPurchaseId===rec.purchaseId);
+      if(purInv){
+        if(purInv.status==='草稿'||!purInv.status){
+          /* 重新计算该采购下所有已付支出的累计金额 */
+          const paidExps=(p.expense||[]).filter(e=>e.purchaseId===rec.purchaseId && e.paid);
+          const total=paidExps.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+          const rate=rec.taxRate||DEFAULT_TAX_RATE;
+          purInv.amountTotal=total;
+          purInv.amountNoTax=taxInclToExcl(total,rate);
+          purInv.tax=taxInclTax(total,rate);
+          purInv.taxRate=rate;
+          purInv.payee=purInv.payee||rec.payee||'';
+          /* 保持 linkedExpenseId 指向最新一条已付支出（用于反向定位） */
+          purInv.linkedExpenseId=rec.id;
+        }
+        return;
+      }
+      /* 采购级发票不存在 → 新建并标记 linkedPurchaseId */
+      const inv=finAutoCreateInvoice(rec,'expense',p,'草稿');
+      inv.linkedPurchaseId=rec.purchaseId;
+      return;
+    }
+    /* 纯"记一笔"支出（无 purchaseId）：按 linkedExpenseId 去重（原有逻辑） */
     const existing=findLinkedInvoice(rec.id,'expense');
     if(existing){
       if(existing.status==='草稿'||!existing.status){
@@ -14562,6 +14640,10 @@ function syncExpenseInvoice(rec,p){
     finAutoCreateInvoice(rec,'expense',p,'草稿');
   }else if(st==='无票'){
     cascadeDeleteLinkedInvoice(rec.id,'expense',p.id);
+    /* 采购派生支出：同时清理可能存在的采购级发票（整单免开时） */
+    if(rec.purchaseId){
+      App.invoices=(App.invoices||[]).filter(v=>!(v.linkedPurchaseId===rec.purchaseId && v.projectId===p.id));
+    }
   }
 }
 
@@ -15820,6 +15902,14 @@ function editFinance(type,id){
   $('fInvoiceStatus').value=getInvoiceStatus(found, foundP, type);
   if(_linked)currentFinInvoiceId=_linked.id;
   toggleFinInvoice();
+  /* 关联回采合同回显（此前缺失：编辑已有支出记录时 fContractSelect 始终为空，
+     导致保存时误判"未选合同"→ finAutoCreateContract 重复新建一份"上游采购合同"） */
+  if(type==='expense' && found.linkedContractId){
+    setTimeout(()=>{
+      if($('fContractSelect'))populateFinContractSelect();
+      if($('fContractSelect'))$('fContractSelect').value=found.linkedContractId;
+    },0);
+  }
   /* 所属阶段必须在所有同步 DOM 操作完成后设值（setTimeout 0 确保 openFinanceModal 的 populateStageSelect 不覆盖） */
   if(type==='expense'){setTimeout(()=>{populateStageSelect('fStage');$('fStage').value=origStage;},0);}
   editingFinance={type:type,id:id,projectId:foundP.id};
@@ -16586,13 +16676,16 @@ function saveFinance(){
       rec.invoiceId='';
       (App.invoices||[]).forEach(v=>{ if(type==='income'){if(v.linkedIncomeId===recId)v.linkedIncomeId='';}else{if(v.linkedExpenseId===recId)v.linkedExpenseId='';} });
     }
-    /* 采购合同关联（仅对公付款有意义）：用户选中则关联；未选且项目尚无采购合同时自动建草稿采购合同进入合同管理 */
+    /* 采购合同关联（仅对公付款有意义）：用户选中则关联；未选时按优先级查找复用 */
     if(type==='expense'){
       let conId=$('fContractSelect')?$('fContractSelect').value:'';
       if(!conId){
-        /* 每笔对公付款默认创建独立采购合同（不同供应商/不同事项不应共用同一份合同）；
-           用户手动选择了已有合同时才复用（fContractSelect 有值时走上面分支） */
-        const c=finAutoCreateContract(rec,target); conId=c.id;
+        /* 优先级：① 已有采购级合同（purchaseId→linkedPurchaseId）→ 复用，不新建
+           ② 纯"记一笔"（无 purchaseId）且项目无已签采购合同 → 自动建草稿
+           ③ 用户手动选了已有合同（fContractSelect 有值）→ 走上面分支 */
+        const purCon=rec.purchaseId ? (App.contracts||[]).find(c=>c.projectId===target.id && c.linkedPurchaseId===rec.purchaseId) : null;
+        if(purCon){ conId=purCon.id; }
+        else { const c=finAutoCreateContract(rec,target); conId=c.id; }
       }
       rec.linkedContractId=conId;
     }
