@@ -12681,7 +12681,7 @@ function ledgerInvoiceCell(r){
   const bg    = isDone?'#e6f4ff' : isPending?'#fff7e6' : '#f5f6f8';
   const bd    = isDone?'#91caff' : isPending?'#ffd591' : '#e3e6eb';
   const opts=(r.type==='expense'?INV_STATUS_OPTIONS_EX:INV_STATUS_OPTIONS_IN).map(v=>'<option value="'+v+'"'+(v===cur?' selected':'')+'>'+v+'</option>').join('');
-  return '<td class="ld-inv" style="white-space:nowrap"><select class="inv-status-pill" style="color:'+color+';background:'+bg+';border:1px solid '+bd+'" onchange="setLedgerInvoiceStatus(\''+r.proj.id+'\',\''+r.type+'\',\''+r.rec.id+'\',this.value)">'+opts+'</select></td>';
+  return '<td class="ld-inv" style="white-space:nowrap"><select class="inv-status-pill" style="color:'+color+';background:'+bg+';border:1px solid '+bd+';font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600" onchange="setLedgerInvoiceStatus(\''+r.proj.id+'\',\''+r.type+'\',\''+r.rec.id+'\',this.value)">'+opts+'</select></td>';
 }
 /* 在流水表格直接修改「是否开票」：写回记录 + 同步关联发票（单一真相源）+ 联动全局节点重渲染。
    newVal ∈ {无票,待开,已开,待收,已收}；type ∈ {income,adj,expense}，增减项按 income 链接发票。
