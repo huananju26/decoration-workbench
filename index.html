@@ -39,7 +39,9 @@ a{color:#003a8c;text-decoration:none}
 .nav-item:hover{background:#e6f4ff;color:#003a8c}
 .nav-item.active{background:#e6f4ff;color:#003a8c;font-weight:600}
 .nav-item .nav-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.nav-badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:auto;font-size:11px;font-weight:700;line-height:1;color:#fff;background:#ff4d4f;border-radius:10px;flex-shrink:0}
+/* 默认 display:none：HTML 里的徽章 span 是空的，若默认可见会在页面解析瞬间闪出 4 个红色空圆点，
+   直到 JS 跑到 refreshNavBadges() 才修正。显示由 setNavBadge() 显式置为 inline-flex。 */
+.nav-badge{display:none;align-items:center;justify-content:center;width:20px;height:20px;margin-left:auto;font-size:11px;font-weight:700;line-height:1;color:#fff;background:#ff4d4f;border-radius:10px;flex-shrink:0}
 .sidebar-footer{padding:16px;border-top:1px solid #f0f0f0}
 .sidebar-tip{font-size:12px;color:#faad14;background:#fffbe6;border-radius:8px;padding:10px 12px;line-height:1.5}
 .sidebar-link{display:flex;align-items:center;gap:8px;padding:8px 14px;color:#888;font-size:13px;cursor:pointer;border-radius:8px;margin-top:4px}
@@ -4478,13 +4480,20 @@ function enterApp(){
   if(!VALID_PAGES.includes(savedPage))savedPage='home';
   switchPage(savedPage);
   $('app').style.display='';
-  /* 徽章口径依赖「今天」（逾期判断），页面长期开着跨天时也需自动刷新；低频、幂等，无性能压力 */
-  if(!enterApp.__badgeTicker){
-    enterApp.__badgeTicker=setInterval(()=>{
-      if(document.hidden)return;
-      try{ refreshNavBadges(); }catch(e){}
-    },60000);
-  }
+  initNavBadgeTicker();
+}
+/* 徽章刷新：① 60s 低频轮询（口径依赖「今天」，页面开一整夜跨天后自动重算）
+   ② 切回前台立刻刷新一次（不必等下一个 60s）—— 手机/后台标签场景常见 */
+function initNavBadgeTicker(){
+  if(initNavBadgeTicker.__on)return;
+  initNavBadgeTicker.__on=true;
+  setInterval(()=>{
+    if(document.hidden)return;
+    try{ refreshNavBadges(); }catch(e){}
+  },60000);
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden){ try{ refreshNavBadges(); }catch(e){} }
+  });
 }
 /* 登录成功后：先同步再进工作台 */
 function cloudEnterApp(){
@@ -7935,7 +7944,13 @@ function scheduleNavBadgeRefresh(delay){
 }
 function setNavBadge(id,count){
   const el=$(id);if(!el)return;
-  if(count>0){el.textContent=count>9?'9+':String(count);el.style.display='';}else{el.style.display='none';}
+  const txt=count>0?(count>9?'9+':String(count)):'';
+  const show=count>0;
+  /* 只在值真的变化时才写 DOM —— 60s ticker 与频繁 persist 下避免无谓的重排/重绘 */
+  if(el.dataset.nbVal===String(count))return;
+  el.dataset.nbVal=String(count);
+  if(show){el.textContent=txt;el.style.display='inline-flex';}
+  else{el.textContent='';el.style.display='none';}
 }
 
 /* ── 指标卡：跨项目 8 张 ── */
@@ -17930,6 +17945,9 @@ document.addEventListener('click',function(e){
 // ============================================================
 async function init(){
   load();
+  /* 徽章 ticker 在此挂载一次：init() 是所有路径的必经入口（含未登录停在登录页的场景）；
+     enterApp() 里也有调用，靠 __on 防重，不会重复注册监听器。 */
+  initNavBadgeTicker();
   loadAcceptTplFromStorage();
   upgradeLegacyAcceptance();
   updateHeroGreeting();
