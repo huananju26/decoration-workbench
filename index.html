@@ -8117,7 +8117,11 @@ function renderActionQueueAll(projects){
     }
     /* 当前状态：pending / overdue / done —— 用于原位编辑高亮 */
     const curStatus=item.done?'done':(isOver?'overdue':'pending');
-    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?(item.done?'已开':'待开'):(kind==='step'?(item.done?'节点完成':'节点逾期'):(kind==='contract'?(item.done?'合同已签':(item._conId?'待签约':'缺合同')):(kind==='income_ov'?'收款逾期':(kind==='expense_ov'?'付款逾期':(kind==='purchase_ov'?'材料超期':(item.done?'已完成':'待办'))))))));
+    /* 发票类待办的标签需区分方向：收款(销项)=待开/已开；付款(进项)=待收/已收（此前一律显示「待开」，付款侧语义错误） */
+    const invKindLabel=(item._finType==='expense')
+      ? (item.done?'已收':'待收')
+      : (item.done?'已开':'待开');
+    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?invKindLabel:(kind==='step'?(item.done?'节点完成':'节点逾期'):(kind==='contract'?(item.done?'合同已签':(item._conId?'待签约':'缺合同')):(kind==='income_ov'?'收款逾期':(kind==='expense_ov'?'付款逾期':(kind==='purchase_ov'?'材料超期':(item.done?'已完成':'待办'))))))));
     /* 未开票/缺合同提醒项点击右侧标签也跳转，而非打开状态编辑 */
     const labelOnclick = kind==='invoice'
       ? `openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')`
@@ -14289,10 +14293,14 @@ function ampUpdateCount(){
 function syncPurchaseToExpense(p, purchase){
   if(!p||!purchase||!purchase.id)return;
   p.expense=p.expense||[];
-  /* 移除该采购关联的所有旧支出记录（避免重复累积） */
-  const beforeLen=p.expense.length;
+  /* 移除该采购关联的所有旧支出记录（避免重复累积）。
+     ⚠️ 关键：先留存旧记录，重建时**复用其 id**——否则每次改单都会产生全新 id，
+     导致发票/合同按 linkedExpenseId 的关联全部失效，分次付款会重复建票并留下孤儿发票（2026-08-28 修复）。 */
+  const oldExps=p.expense.filter(e=>e.purchaseId===purchase.id);
   p.expense=p.expense.filter(e=>e.purchaseId!==purchase.id);
-  const removed=beforeLen-p.expense.length;
+  /* 按序复用旧 id，保证「已付/待付」记录身份稳定 */
+  let _reuseIdx=0;
+  const takeId=()=>{ const old=oldExps[_reuseIdx++]; return (old&&old.id)?old.id:uid(); };
 
   const fullAmt=purchase.budget||0;
   const paidAmt=purchase.paidAmount||0;
@@ -14315,21 +14323,69 @@ function syncPurchaseToExpense(p, purchase){
   const made=[];
   if(payStatus==='已付清'){
     /* 已付清：一条全量已付记录 */
-    const rec={id:uid(),name:'材料采购 · '+purchase.name,amount:fullAmt,note:baseNote,paid:true,...baseData};
+    const rec={id:takeId(),name:'材料采购 · '+purchase.name,amount:fullAmt,note:baseNote,paid:true,...baseData};
     p.expense.push(rec); made.push(rec);
   } else if(payStatus==='部分付款' && paidAmt>0){
     /* 部分付款：拆两条 — 已付 + 待付 */
-    if(paidAmt>0){ const rec={id:uid(),name:'材料采购(已付) · '+purchase.name,amount:paidAmt,note:baseNote+' · 已付'+paidAmt+'元',paid:true,...baseData}; p.expense.push(rec); made.push(rec); }
+    if(paidAmt>0){ const rec={id:takeId(),name:'材料采购(已付) · '+purchase.name,amount:paidAmt,note:baseNote+' · 已付'+paidAmt+'元',paid:true,...baseData}; p.expense.push(rec); made.push(rec); }
     const remain=fullAmt-paidAmt;
-    if(remain>0){ const rec={id:uid(),name:'材料采购(待付) · '+purchase.name,amount:remain,note:baseNote+' · 待付'+remain+'元',paid:false,...baseData}; p.expense.push(rec); made.push(rec); }
+    if(remain>0){ const rec={id:takeId(),name:'材料采购(待付) · '+purchase.name,amount:remain,note:baseNote+' · 待付'+remain+'元',paid:false,...baseData}; p.expense.push(rec); made.push(rec); }
   } else {
     /* 未付款：一条全量待付记录 */
-    const rec={id:uid(),name:'材料采购 · '+purchase.name,amount:fullAmt,note:baseNote,paid:false,...baseData};
+    const rec={id:takeId(),name:'材料采购 · '+purchase.name,amount:fullAmt,note:baseNote,paid:false,...baseData};
     p.expense.push(rec); made.push(rec);
   }
-  /* 对公开票联动（与「记一笔」对齐）：让调配单产生的支出在发票管理有对应草稿进项发票，
-     避免「待办有提醒、发票管理却查无此票」的不一致。 */
-  made.forEach(rec=>syncExpenseInvoice(rec,p));
+  /* 清理「被丢弃的旧支出记录」上残留的关联发票（如 部分付款2条→已付清1条 时，多出的那条），
+     避免留下 linkedExpenseId 指向已不存在记录的孤儿发票。 */
+  const keptIds={}; made.forEach(r=>{keptIds[r.id]=1;});
+  oldExps.forEach(old=>{
+    if(keptIds[old.id])return;
+    /* 真正被丢弃的旧记录：连带清理其派生的发票与草稿合同，避免留下孤儿数据 */
+    cascadeDeleteLinkedInvoice(old.id,'expense',p.id);
+    cascadeDeleteLinkedContract(old.id,'expense',p.id);
+  });
+  /* 对公联动（与「记一笔」对齐）：
+     ① 合同按「采购单」维度建一份（分次付款不会拆成多份），并回写到各支出记录；
+     ② 发票按「支出记录」维度建/更新，分次付款自动累计合并为一张。 */
+  const conId=syncPurchaseContract(p,purchase);
+  made.forEach(rec=>{
+    if(conId) rec.linkedContractId=conId;
+    syncExpenseInvoice(rec,p);
+  });
+  /* 切换回对私：清理此前因对公自动创建的草稿采购合同 */
+  if(at!=='对公') cascadeDeleteLinkedContract(purchase.id,'purchase',p.id);
+}
+/* 材料调配单 → 采购合同联动（按**采购单维度**去重，一份调配单只对应一份采购合同）：
+   - 仅对公（对私个人转账不需要采购合同）
+   - 已存在则更新金额/厂家（分次付款只更新不新建）
+   - 用 linkedPurchaseId 关联，使 contractForPurchase() 能识别、「缺合同」清单不再误报 */
+function syncPurchaseContract(p,purchase){
+  if(!purchase||purchase.accountType!=='对公')return '';
+  if(!App.contracts)App.contracts=[];
+  const total=parseFloat(purchase.budget)||0;
+  const vendor=purchase.vendor||'';
+  const existing=(App.contracts||[]).find(c=>c.projectId===p.id && c.linkedPurchaseId===purchase.id);
+  if(existing){
+    if(existing.status==='草稿'||!existing.status){
+      existing.amount=total||existing.amount||0;
+      existing.party=existing.party||vendor;
+    }
+    return existing.id;
+  }
+  const c={
+    id:'con_'+uid(), type:'采购', projectId:p.id,
+    title:(projDisplayName(p))+' · '+(purchase.name||'材料')+' 采购合同（草稿）',
+    party:vendor, supplierId:'', linkedStepId:'', linkedPurchaseId:purchase.id, linkedExpenseId:'',
+    amount:total, signDate:todayISO(), status:'草稿',
+    note:'由「材料与厂家调配」对公采购自动关联创建：'+(purchase.name||'')
+  };
+  App.contracts.push(c);
+  return c.id;
+}
+/* 删除调配单时清理其自动创建的草稿采购合同（按 linkedPurchaseId 匹配） */
+function cascadeDeletePurchaseContract(purchaseId,projectId){
+  if(!App.contracts||!purchaseId)return;
+  App.contracts=App.contracts.filter(c=>!(c.linkedPurchaseId===purchaseId && (c.status==='草稿'||!c.status)));
 }
 /* 支出记录 → 发票管理联动：
    - 对公 + 待收 + 已实际付款 → 建/更新一张草稿进项发票（按 linkedExpenseId 去重）
