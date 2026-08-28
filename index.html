@@ -7787,7 +7787,7 @@ function refreshNavBadges(){
     });
     /* home: 缺合同 + 草稿合同 */
     homeCount+=missingContractsList().filter(m=>m._pid===p.id).length;
-    homeCount+=(App.contracts||[]).filter(c=>c.projectId===p.id&&c.status==='草稿').length;
+    homeCount+=(App.contracts||[]).filter(c=>c.projectId===p.id&&(c.status==='草稿'||!c.status)).length;
     /* home: 逾期收支材料 */
     homeCount+=p.income.filter(i=>incStatus(i)==='overdue').length;
     homeCount+=p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).length;
@@ -7797,8 +7797,8 @@ function refreshNavBadges(){
     /* process: 收款逾期 */
     processCount+=p.income.filter(i=>incStatus(i)==='overdue').length;
   });
-  /* 合同管理：草稿 + 缺合同 */
-  const conCount=(App.contracts||[]).filter(c=>c.status==='草稿').length + missingContractsList().length;
+  /* 合同管理：草稿待签 + 缺合同（与「缺合同」Tab 口径一致） */
+  const conCount=(App.contracts||[]).filter(c=>c.status==='草稿'||!c.status).length + missingContractsList().length;
   /* 发票管理：待开 + 待收 */
   let invCount=0;
   projects.forEach(p=>{
@@ -12923,15 +12923,40 @@ function renderContracts(){
   /* 缺合同清单（与待办同源）：按当前项目过滤 */
   const missingAll=missingContractsList();
   const missing=(filterProj?missingAll.filter(m=>m._pid===filterProj):missingAll);
-  const missingConCount=missing.length;
+  /* 草稿合同（已创建但尚未签署）同样属于「缺有效合同」，一并归入缺合同跟进清单 */
+  const draftList=(App.contracts||[])
+    .filter(c=>(c.status==='草稿'||!c.status)&&(!filterProj||c.projectId===filterProj))
+    .map(c=>({_isDraft:true,contractId:c.id,_pid:c.projectId,projectName:projNameById(c.projectId),
+      title:c.title||'—',type:c.type||'',amount:c.amount,supplier:contractSupName(c),
+      note:c.note||'合同已创建但尚未签署，请跟进完成签订'}));
+  const missingConCount=missing.length+draftList.length;
   const conTabs=['全部','设计','施工','采购','其他','缺合同'];
   const projName=filterProj?projNameById(filterProj):'全部项目';
 
   /* ── 缺合同版块：列出各项目/对象缺失的合同，带「去补签」入口 ── */
   if(_conTab==='缺合同'){
-    let cards='';
-    if(missing.length>0){
-      cards=missing.map(m=>{
+    /* 草稿合同卡片：已建未签，可直接标记已签 / 编辑 */
+    const draftCards=draftList.map(d=>{
+      return `<div class="archive-item con-missing">
+        <div class="archive-item-head">
+          <div class="archive-item-name">${escHtml(d.title)}</div>
+          ${d.type?`<span class="archive-tag blue">${escHtml(d.type)}</span>`:''}
+          <span class="archive-tag" style="color:#d48806;border-color:#ffd591;background:#fff7e6">草稿·待签</span>
+          <div class="archive-item-ops">
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#cf1322;border-color:#ffa39e;background:#fff2f0" onclick="markContractSigned('${d.contractId}')">标记已签</button>
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editContract('${d.contractId}')">编辑</button>
+          </div>
+        </div>
+        <div class="archive-item-rows">
+          <div class="archive-row"><span class="archive-row-label">归属项目</span><span class="archive-row-val">${escHtml(d.projectName)}</span></div>
+          ${d.supplier?`<div class="archive-row"><span class="archive-row-label">对方/供应商</span><span class="archive-row-val">${escHtml(d.supplier)}</span></div>`:''}
+          ${d.amount?`<div class="archive-row"><span class="archive-row-label">合同金额</span><span class="archive-row-val">¥${fmt(d.amount)}</span></div>`:''}
+          <div class="archive-row"><span class="archive-row-label">说明</span><span class="archive-row-val">${escHtml(d.note)}</span></div>
+        </div>
+      </div>`;
+    }).join('');
+    /* 真缺失项卡片：尚未创建合同，需去补签 */
+    const missingCards=missing.map(m=>{
         return `<div class="archive-item con-missing">
           <div class="archive-item-head">
             <div class="archive-item-name">${escHtml(m.projectName)} · ${escHtml(m.label)}</div>
@@ -12947,12 +12972,13 @@ function renderContracts(){
           </div>
         </div>`;
       }).join('');
-    }
+    const cards=draftCards+missingCards;
+    const draftProjCount=new Set(draftList.map(d=>d._pid).concat(missing.map(m=>m._pid))).size;
     el.innerHTML=
       `<div class="module-head">
          <div class="module-head-main">
            <div class="module-head-title">合同管理 · 缺合同</div>
-           <div class="module-head-desc">以下项目 / 对象尚未签订对应合同，点击「去补签」直接新建草稿并关联。</div>
+           <div class="module-head-desc">汇总两类待跟进：<b>草稿·待签</b>（合同已创建但尚未签署，可直接标记已签）与<b>缺合同</b>（项目 / 对象尚未创建合同，点击「去补签」新建并关联）。</div>
          </div>
          <div class="ledger-filter-bar" id="conFilterBar">
            <select id="conFilterProj" onchange="switchConProjFilter(this.value)"><option value="" ${filterProj?'':'selected'}>全部项目</option>${projFilterBarOptions(filterProj)}</select>
@@ -12965,12 +12991,14 @@ function renderContracts(){
          ${conTabs.map(t=>{const dot=(t==='缺合同'&&missingConCount>0)?`<span class="tab-badge">${missingConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
        </div>
       <div class="proj-stats-row" id="conStatsRow">
-        <div class="proj-stat-item"><div class="proj-stat-label">缺失合同</div><div class="proj-stat-val">${missingConCount}</div></div>
-         <div class="proj-stat-item"><div class="proj-stat-label">涉及项目</div><div class="proj-stat-val">${new Set(missing.map(m=>m._pid)).size}</div></div>
+        <div class="proj-stat-item"><div class="proj-stat-label">待跟进合计</div><div class="proj-stat-val" style="color:#ff4d4f">${missingConCount}</div></div>
+        <div class="proj-stat-item"><div class="proj-stat-label">草稿待签</div><div class="proj-stat-val" style="color:#d48806">${draftList.length}</div></div>
+        <div class="proj-stat-item"><div class="proj-stat-label">尚未创建</div><div class="proj-stat-val">${missing.length}</div></div>
+        <div class="proj-stat-item"><div class="proj-stat-label">涉及项目</div><div class="proj-stat-val">${draftProjCount}</div></div>
        </div>
-       <div class="archive-filter-bar"><span class="archive-count">缺合同 · 共 ${missing.length} 项（${escHtml(projName)}）</span></div>
+       <div class="archive-filter-bar"><span class="archive-count">待跟进 · 共 ${missingConCount} 项（${escHtml(projName)}）</span></div>
        <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
-         ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">🎉 当前范围没有缺失合同，所有项目合同齐全。</div>'}
+         ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">🎉 当前范围没有待跟进合同，所有项目合同均已签订生效。</div>'}
        </div>`;
     return;
   }
