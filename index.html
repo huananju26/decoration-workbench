@@ -216,7 +216,7 @@ a{color:#003a8c;text-decoration:none}
 /* ── 流程内容包裹（Tab 切换显隐） ── */
 .process-content-wrapper{}
 
-/* ── 流程子页面面板（合同收款 / 材料成本 / 客户交付）── */
+/* ── 流程子页面面板（合同收款 / 供应调配 / 客户交付）── */
 .proc-sub-panel{background:#fff;border:1px solid #e8e8e8;border-radius:12px;padding:24px 28px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .proc-sub-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
 .proc-sub-title{font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
@@ -2576,7 +2576,7 @@ a{color:#003a8c;text-decoration:none}
       <div class="proj-tab-bar" id="projTabBar">
         <div class="proj-tab active" data-tab="process" onclick="switchProjTab(this,'process')">施工执行</div>
         <div class="proj-tab" data-tab="finance" onclick="switchProjTab(this,'finance')">合同收款</div>
-        <div class="proj-tab" data-tab="purchase" onclick="switchProjTab(this,'purchase')">材料成本</div>
+        <div class="proj-tab" data-tab="purchase" onclick="switchProjTab(this,'purchase')">供应调配</div>
         <div class="proj-tab" data-tab="archive" onclick="switchProjTab(this,'archive')">人材档案</div>
         <div class="proj-tab" data-tab="diary" onclick="switchProjTab(this,'diary')">客户交付</div>
       </div>
@@ -2637,7 +2637,7 @@ a{color:#003a8c;text-decoration:none}
       <!-- ═══ 合同收款面板（Tab=合同收款） ═══ -->
       <div class="proc-sub-panel" id="processFinancePanel" style="display:none"></div>
 
-      <!-- ═══ 材料成本面板（Tab=材料成本） ═══ -->
+      <!-- ═══ 供应调配面板（Tab=供应调配） ═══ -->
       <div class="proc-sub-panel" id="processPurchasePanel" style="display:none"></div>
 
       <!-- ═══ 客户交付面板（Tab=客户交付） ═══ -->
@@ -3231,7 +3231,7 @@ a{color:#003a8c;text-decoration:none}
 <div class="modal-overlay" id="addMaterialPlanModal">
   <div class="modal" style="max-width:680px;width:96%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
     <div class="modal-header" style="flex-shrink:0"><div class="modal-title">新增材料与厂家调配</div><div class="modal-close" onclick="closeModal('addMaterialPlanModal')">✕</div></div>
-    <div class="adj-subtitle" style="flex-shrink:0">材料应付、实时与付时会自动同步下方"项目成本"，无需重复录入。</div>
+    <div class="adj-subtitle" style="flex-shrink:0">材料应付、实时与付时会自动同步到「装修记账」，无需重复录入。</div>
     <div class="modal-body" style="overflow-y:auto;padding:16px 22px">
 
       <!-- ═══ Section 1: 基础信息 ═══ -->
@@ -3252,7 +3252,7 @@ a{color:#003a8c;text-decoration:none}
 
       <!-- ═══ Section 2: 金额与付款 ═══ -->
       <div style="margin-bottom:18px">
-        <div style="font-size:12px;font-weight:700;color:#333;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #eee">金额与付款　<span style="font-weight:400;color:#888;font-size:11px">付款数据会同步到项目成本</span></div>
+        <div style="font-size:12px;font-weight:700;color:#333;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #eee">金额与付款　<span style="font-weight:400;color:#888;font-size:11px">付款数据会同步到装修记账</span></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-group"><label class="form-label">材料金额（元）</label><input id="mpAmount" type="number" value="0" min="0"></div>
           <div class="form-group"><label class="form-label">付款状态</label><select id="mpPayStatus"><option value="未付款">未付款</option><option value="部分付款">部分付款</option><option value="已付清">已付清</option></select></div>
@@ -3367,7 +3367,7 @@ a{color:#003a8c;text-decoration:none}
   </div>
 </div>
 
-<!-- ═══ 设置支出节点（材料成本） ═══ -->
+<!-- ═══ 设置支出节点（装修记账） ═══ -->
 <div class="modal-overlay" id="expenseNodeModal">
   <div class="modal" style="max-width:560px;width:94%;max-height:82vh;overflow:hidden;display:flex;flex-direction:column">
     <div class="modal-header" style="flex-shrink:0"><div class="modal-title">设置支出节点</div><div class="modal-close" onclick="closeModal('expenseNodeModal')">✕</div></div>
@@ -6572,7 +6572,7 @@ function switchProject(id){
   persist();
   refreshProjectUI();
   if(currentPage)switchPage(currentPage);
-  /* 同步刷新项目管理页当前激活的子面板（合同收款 / 材料成本 / 客户交付）
+  /* 同步刷新项目管理页当前激活的子面板（合同收款 / 供应调配 / 客户交付）
      解决顶部下拉框切换项目后子面板数据不更新的问题 */
   if(currentPage==='process'){
     if(curProjTab==='finance')renderProcessFinance();
@@ -7731,7 +7731,7 @@ function switchToProject(pid){
     else if(page==='finance')renderFinance();
     else if(page==='diary')renderDiary();
   }
-  /* 当前若在「施工进度」子页内，同步刷新其激活的子分区（合同收款/材料成本/客户交付） */
+  /* 当前若在「施工进度」子页内，同步刷新其激活的子分区（合同收款/供应调配/客户交付） */
   if(typeof curProjTab!=='undefined'){
     if(curProjTab==='finance')renderProcessFinance();
     else if(curProjTab==='purchase')renderProcessPurchase();
@@ -11867,7 +11867,7 @@ function _bindSheetPan(body){
 }
 
 /* ════════════════════════════════════════
-   材料成本子页面（参照截图2）
+   供应调配子页面
    ════════════════════════════════════════ */
 function renderProcessPurchase(){
   const p=cur();if(!p){$('processPurchasePanel').innerHTML='<div class="proc-empty">请先选择项目</div>';return;}
@@ -11882,7 +11882,7 @@ function renderProcessPurchase(){
   const materialTotal=purchases.reduce((s,x)=>s+(x.budget||0),0);
   /* 厂家已安装 = 已到场或已完成 */
   const factoryInstalled=purchases.filter(x=>x.status==='已到场'||x.status==='已完成').length;
-  /* 材料成本以「同步到记账的采购支出(带 purchaseId)」为单一真相源，与 projFinance 口径一致，
+  /* 供应调配以「同步到记账的采购支出(带 purchaseId)」为单一真相源，与 projFinance 口径一致，
      避免「计划预计成本」与「记账实际成本」双重记成本。旧数据若缺同步记录，按采购字段兜底推算。 */
   const matExps=(p.expense||[]).filter(e=>e.purchaseId);
   const syncedIds=new Set(matExps.map(e=>e.purchaseId));
@@ -11895,7 +11895,7 @@ function renderProcessPurchase(){
     else if(ps==='部分付款'){ if(pa>0) matPaid+=pa; const rem=b-pa; if(rem>0) matPending+=rem; }
     else matPending+=b;
   });
-  /* 项目成本（排除采购同步的支出记录，材料成本已在 matPaid/matPending 单独核算） */
+  /* 手工支出记录（排除采购同步的支出记录，采购已在 matPaid/matPending 单独核算） */
   const expList=(p.expense||[]).filter(e=>e.amount>0 && !e.purchaseId);
   const paidExp=expList.filter(e=>e.paid).reduce((s,e)=>s+e.amount,0);
   const unpaidExp=expList.filter(e=>!e.paid).reduce((s,e)=>s+e.amount,0);
@@ -11957,25 +11957,6 @@ function renderProcessPurchase(){
       </div>
       ${purchaseCards}
       ${planCount&&!purchaseCards?'':(!planCount?'<div class="proc-empty" style="padding:24px">还没有材料采购计划。</div>':'')}
-    </div>
-
-    <!-- 项目成本 -->
-    <div class="proc-card">
-      <div class="proc-sub-header" style="margin-bottom:12px">
-        <div><div class="proc-sub-title">项目成本</div><div class="proc-sub-desc">核应付节点、付款后确认认付；可按收款方勾选明细并导出双方签字的付款单。</div></div>
-        <div class="proc-sub-actions">
-          <button class="proc-sub-btn" onclick="openCostReconModal()">导出成本对账单</button>
-          <button class="proc-sub-btn primary" onclick="openExpenseNodeModal()">设置支出节点</button>
-        </div>
-      </div>
-      <div class="proc-metric-row" style="padding:18px 14px;margin-bottom:10px;grid-template-columns:repeat(5,1fr)">
-        <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(unpaidExp+matPending)}</div><div class="proc-metric-label">应付金额</div></div>
-        <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(paidExp+matPaid)}</div><div class="proc-metric-label">实付金额</div></div>
-        <div class="proc-metric-item"><div class="proc-metric-val red">¥${fmt(unpaidExp+matPending)}</div><div class="proc-metric-label">待付金额</div></div>
-        <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(totalProfit)}</div><div class="proc-metric-label">累计毛利</div></div>
-        <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(curProfit)}</div><div class="proc-metric-label">当前账面毛利</div></div>
-      </div>
-      ${expList.length?'': '<div class="proc-empty" style="padding:24px">还没有支出计划。</div>'}
     </div>`;
 }
 
@@ -14673,6 +14654,11 @@ function renderFinance(){
       </div>
     </div>`+
 
+    /* ── 底部操作栏 ── */
+    `<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn-outline btn-sm" onclick="openCostReconModal()">📋 导出成本对账单</button>
+    </div>`+
+
     /* ── 底部说明 ── */
     `<div class="fin-dash-note">账面毛利 = 累计已收 − 实际已支出，仅反映当前账面情况，不代表项目最终利润。毛利率 = 账面毛利 ÷ 累计已收。</div>`+
     `<div class="fin-acct-title">资金性质拆分（按每笔收付款标记）</div>`+acctSplitHTML(accountSplit(p));
@@ -15229,7 +15215,7 @@ function toggleFinType(t){
   refreshFinCorpExtras();
 }
 
-/* ── 设置支出节点（材料成本） ── */
+/* ── 设置支出节点（装修记账） ── */
 let _editingExpenseNodeId=null;
 function openExpenseNodeModal(editId){
   const p=cur();if(!p){alert('请先选择项目');return;}
