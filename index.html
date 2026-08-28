@@ -13082,6 +13082,10 @@ function getNonInvoicedRecords(fProj){
   projs.forEach(p=>{
     const push=(rec,type)=>{
       if(!rec||typeof rec!=='object')return;
+      /* 跳过未实际发生的纯计划项：收款未到账(received=false且无收据)、付款未付(paid=false) */
+      if(type==='收款' && rec.received===false && (!rec.receipts || !rec.receipts.length)) return;
+      if(type==='付款' && rec.paid===false) return;
+      if(type==='增减项' && rec.received===false && (!rec.receipts || !rec.receipts.length)) return;
       const dir = type==='付款' ? 'expense' : 'income';
       if(getInvoiceStatus(rec,p,dir)==='无票') out.push({rec:rec,proj:p,type:type,projName:projNameById(p.id)});
     };
