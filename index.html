@@ -3824,7 +3824,7 @@ a{color:#003a8c;text-decoration:none}
       </div>
       <div class="form-group" id="riInvoiceGroup" style="display:none">
         <label class="form-label">开票状态 *</label>
-        <select id="riInvoiceStatus">
+        <select id="riInvoiceStatus" onchange="_riInvoiceStatusTouched=true">
           <option value="无票">无票（免开 / 对私）</option>
           <option value="待开">待开（需开给客户）</option>
           <option value="已开">已开（已开给客户）</option>
@@ -13638,21 +13638,40 @@ function openRecordIncomeModal(pid,iid){
   $('riDate').value=todayISO();
   const lastMethod=(inc.receipts&&inc.receipts.length)?inc.receipts[inc.receipts.length-1].method:'';
   $('riPayMethod').value=lastMethod||'银行转账';
+  /* 开票状态预填：优先沿用该收款记录已显式设置的值；否则按「弹窗当前账户性质」推导（对公→待开、对私→无票）。
+     ⚠️ 不可直接用 getInvoiceStatus(inc,p,'income')：新收款记录的 inc.accountType 尚未落库，
+     defaultAccountType() 只看 rec.accountType/rec.cat（不参考项目 bizType），会误判为「对私」
+     → 兜底成「无票」→ 对公到账不会自动建待开草稿发票（2026-08-28 修复）。 */
+  _riInvoiceStatusTouched=false;
   $('riAccountType').value=(inc.accountType||defaultAccountTypeForProject(p));
   $('riTaxRate').innerHTML=taxRateOptionsHtml(inc.taxRate||DEFAULT_TAX_RATE);
-  toggleRiTax();
-  $('riInvoiceStatus').value=getInvoiceStatus(inc,p,'income');
+  toggleRiTax();               /* 内部会按账户性质联动一次开票状态默认值 */
+  riSyncInvoiceStatusDefault(inc); /* 再用记录本身已设值校正（分次到账保持一致性） */
   $('riRefNo').value='';
   $('riNote').value='';
   $('riFileName').textContent='未选择任何文件';
   $('riFileInput').value='';
   showModal('recordIncomeModal');
 }
+/* 用户是否已手动改过到账弹窗的「开票状态」（改过则不再随账户性质联动覆盖） */
+let _riInvoiceStatusTouched=false;
+/* 按弹窗当前账户性质同步开票状态默认值：对公→待开、对私→无票。
+   - 已有记录且显式设过五态值 → 沿用记录本身的值（分次到账时保持一致性）
+   - 用户本次已手动改过 → 不覆盖 */
+function riSyncInvoiceStatusDefault(inc){
+  const sel=$('riInvoiceStatus'); if(!sel)return;
+  const FIVE=['无票','待开','已开'];
+  if(inc&&FIVE.includes(inc.invoiceStatus)){ sel.value=inc.invoiceStatus; return; }
+  if(_riInvoiceStatusTouched)return;
+  sel.value=($('riAccountType').value==='对公')?'待开':'无票';
+}
 /* 对公才显示税率+开票状态字段（含税价模型） */
 function toggleRiTax(){
   const isCorp=$('riAccountType').value==='对公';
   const g=$('riTaxGroup'); if(g)g.style.display=isCorp?'':'none';
   const ig=$('riInvoiceGroup'); if(ig)ig.style.display=isCorp?'':'none';
+  /* 切换账户性质时联动开票状态默认值（用户已手动选过则不覆盖） */
+  riSyncInvoiceStatusDefault(null);
 }
 function onRiFileChange(input){
   if(input.files&&input.files[0]){
@@ -15664,6 +15683,8 @@ function finOpenInvoiceForLink(){
   openAddInvoice({financeId:currentFinRecId, projectId:$('fProject').value||'', type:type});
 }
 function toggleFinType(t){
+  /* 兜底：未显式传参时从 DOM 读取（避免无参调用被静默当成「收款」，导致付款的开票状态选项错配为 无票/待开/已开） */
+  if(t===undefined||t===null||t===''){ const ft=$('fType'); t=ft?ft.value:'income'; }
   const isIncome=t==='income';
   $('fStatusLabel').textContent=isIncome?'收款状态':'付款状态';
   $('fStatus').innerHTML=isIncome?'<option value="received">已收</option><option value="pending">待收</option>':'<option value="received">已付</option><option value="pending">待付</option>';
