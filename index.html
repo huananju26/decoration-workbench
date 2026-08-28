@@ -7506,13 +7506,11 @@ function renderHome(){
   // ── Hero（全项目聚合） ──
   $('breadcrumbProject').textContent='全部需要概览';
 
-  // 跨项目汇总今日待处理
+  // 跨项目汇总今日待处理（任务+采购+收款逾期+付款逾期+材料超期）
   let allHandleItems=[];
   projects.forEach(p=>{ handleItems(p).forEach(i=>allHandleItems.push({...i,_proj:projDisplayName(p)})); });
-  const overdueAll=allHandleItems.filter(i=>isOverdue(i));
-  $('heroHeadline').innerHTML='今天有 <strong>'+allHandleItems.length+'</strong> 项需要处理。';
 
-  // 统计摘要行（跨项目）
+  // 统计摘要行（跨项目，提前计算供 headline 判断告警）
   let noStageTotal=0, overIncomeTotal=0, overExpenseTotal=0, overPurchaseTotal=0;
   projects.forEach(p=>{
     noStageTotal+=p.tasks.filter(t=>!t.stage).length;
@@ -7520,6 +7518,19 @@ function renderHome(){
     overExpenseTotal+=p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).length;
     overPurchaseTotal+=p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).length;
   });
+
+  /* 补充：收款逾期 / 付款逾期 / 材料超期 也纳入"需要处理" */
+  projects.forEach(p=>{
+    p.income.filter(i=>incStatus(i)==='overdue').forEach(i=>allHandleItems.push({label:'收款逾期：'+(i.title||i.name||'未命名'),due:i.date||todayISO(),_proj:projDisplayName(p),_type:'income'}));
+    p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).forEach(e=>allHandleItems.push({label:'付款逾期：'+(e.title||e.name||'未命名'),due:e.date,_proj:projDisplayName(p),_type:'expense'}));
+    p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>allHandleItems.push({label:'材料超期：'+(x.name||'未命名'),due:x.dueDate,_proj:projDisplayName(p),_type:'purchase_ov'}));
+  });
+  const overdueAll=allHandleItems.filter(i=>isOverdue(i));
+  const hasAlerts=overIncomeTotal>0||overExpenseTotal>0||overPurchaseTotal>0||noStageTotal>0;
+  const hlNum=allHandleItems.length;
+  $('heroHeadline').innerHTML='今天有 <strong style="color:'+(hlNum===0&&hasAlerts?'#ff4d4f':'#003a8c')+'">'+hlNum+'</strong> 项需要处理。';
+
+  // 摘要行渲染
   $('heroSummary').innerHTML=
     (noStageTotal?noStageTotal+' 个任务未分配计划 · ':'')+
     (overIncomeTotal?overIncomeTotal+' 笔收款逾期 · ':'')+
