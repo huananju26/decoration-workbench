@@ -4563,6 +4563,7 @@ async function cloudSyncNow(){
     const d=await CloudSync.pull();
     if(d&&d.projects&&d.projects.length){
       applyCloudData(d,true);
+      cleanupOrphanedRecords(App);   /* 云端数据也可能含孤儿，拉取后再次清理再落地 */
       persist();
       refreshProjectUI();if(currentPage)switchPage(currentPage);
       cloudStatusSet('☁️ 已同步（已下载云端数据）'+new Date().toLocaleTimeString());
@@ -17547,6 +17548,7 @@ async function init(){
         const d=await CloudSync.pull();
         if(d&&d.projects){
           applyCloudData(d,true);
+          cleanupOrphanedRecords(App);   /* 云端数据也可能含孤儿，拉取后再次清理再落地 */
           persist();
           refreshProjectUI();
           /* 静默刷新当前页面（不跳转、不滚动），用户无感知数据已更新 */
