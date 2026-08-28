@@ -7545,15 +7545,13 @@ function renderHome(){
   const hlNum=allHandleItems.length;
   $('heroHeadline').innerHTML='今天有 <strong style="color:'+(hasAlerts?'#ff4d4f':'#003a8c')+'">'+hlNum+'</strong> 项需要处理。';
 
-  // 摘要行渲染（待签合同/待收发票可点击跳转）
+  // 摘要行渲染（顺序：项目进行中 → 待签合同 → 待收发票 → 逾期）
+  const overdueTotal=overIncomeTotal+overExpenseTotal+overPurchaseTotal;
   $('heroSummary').innerHTML=
-    (noStageTotal?noStageTotal+' 个任务未分配计划 · ':'')+
-    (overIncomeTotal?overIncomeTotal+' 笔收款逾期 · ':'')+
-    (overExpenseTotal?overExpenseTotal+' 笔付款逾期 · ':'')+
-    (overPurchaseTotal?overPurchaseTotal+' 项材料超期 · ':'')+
-    (pendingContractTotal?'<span class="today-stat-link" onclick="scrollToAqPending()" title="查看待签/缺合同">'+pendingContractTotal+' 待签合同</span> · ':'')+
-    (pendingInvoiceTotal?'<span class="today-stat-link" onclick="switchPage(\'invoice\')" title="去发票管理收票">'+pendingInvoiceTotal+' 待收发票</span> · ':'')+
-    (projects.length?projects.length+' 个项目进行中':'暂无项目');
+    (projects.length?projects.length+' 个项目进行中 · ':'')+
+    (pendingContractTotal?'<span class="today-stat-link" onclick="switchPage(\'contracts\')" title="查看待签/缺合同">'+pendingContractTotal+' 待签合同</span> · ':'')+
+    (pendingInvoiceTotal?'<span class="today-stat-link" onclick="switchPage(\'invoices\')" title="去发票管理收票">'+pendingInvoiceTotal+' 待收发票</span> · ':'')+
+    (overdueTotal?'<span class="today-stat-link" onclick="scrollToAqPending()" title="查看所有逾期事项">'+overdueTotal+' 逾期</span>':'');
 
   // ── 右侧今日面板（跨项目） ──
   const allFin=allProjectsFinance();
