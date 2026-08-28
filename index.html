@@ -7511,13 +7511,14 @@ function renderHome(){
   projects.forEach(p=>{ handleItems(p).forEach(i=>allHandleItems.push({...i,_proj:projDisplayName(p)})); });
 
   // 统计摘要行（跨项目，提前计算供 headline 判断告警）
-  let noStageTotal=0, overIncomeTotal=0, overExpenseTotal=0, overPurchaseTotal=0;
+  let noStageTotal=0, overIncomeTotal=0, overExpenseTotal=0, overPurchaseTotal=0, overStepTotal=0;
   let pendingContractTotal=0, pendingInvoiceTotal=0;
   projects.forEach(p=>{
     noStageTotal+=p.tasks.filter(t=>!t.stage).length;
     overIncomeTotal+=p.income.filter(i=>incStatus(i)==='overdue').length;
     overExpenseTotal+=p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).length;
     overPurchaseTotal+=p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).length;
+    overStepTotal+=(p.processSteps||[]).filter(s=>{const pe=s.planEndDate||'';return pe&&pe<todayISO()&&!(p.checked&&p.checked[s.id]);}).length;
   });
   /* 待签合同：草稿合同 + 缺合同（missingContractsList） */
   pendingContractTotal=(App.contracts||[]).filter(c=>c.status==='草稿').length + missingContractsList().length;
@@ -7539,14 +7540,15 @@ function renderHome(){
     p.income.filter(i=>incStatus(i)==='overdue').forEach(i=>allHandleItems.push({label:'收款逾期：'+(i.title||i.name||'未命名'),due:i.date||todayISO(),_proj:projDisplayName(p),_type:'income'}));
     p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).forEach(e=>allHandleItems.push({label:'付款逾期：'+(e.title||e.name||'未命名'),due:e.date,_proj:projDisplayName(p),_type:'expense'}));
     p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>allHandleItems.push({label:'材料超期：'+(x.name||'未命名'),due:x.dueDate,_proj:projDisplayName(p),_type:'purchase_ov'}));
+    (p.processSteps||[]).filter(s=>{const pe=s.planEndDate||'';return pe&&pe<todayISO()&&!(p.checked&&p.checked[s.id]);}).forEach(s=>allHandleItems.push({label:'节点逾期：'+(s.name||'未命名'),due:s.planEndDate||todayISO(),_proj:projDisplayName(p),_type:'step'}));
   });
   const overdueAll=allHandleItems.filter(i=>isOverdue(i));
-  const hasAlerts=overIncomeTotal>0||overExpenseTotal>0||overPurchaseTotal>0||noStageTotal>0||pendingContractTotal>0||pendingInvoiceTotal>0;
+  const hasAlerts=overIncomeTotal>0||overExpenseTotal>0||overPurchaseTotal>0||overStepTotal>0||noStageTotal>0||pendingContractTotal>0||pendingInvoiceTotal>0;
   const hlNum=allHandleItems.length;
   $('heroHeadline').innerHTML='今天有 <strong style="color:'+(hasAlerts?'#ff4d4f':'#003a8c')+'">'+hlNum+'</strong> 项需要处理。';
 
   // 摘要行渲染（顺序：项目进行中 → 待签合同 → 待收发票 → 逾期）
-  const overdueTotal=overIncomeTotal+overExpenseTotal+overPurchaseTotal;
+  const overdueTotal=overIncomeTotal+overExpenseTotal+overPurchaseTotal+overStepTotal;
   $('heroSummary').innerHTML=
     (projects.length?projects.length+' 个项目进行中 · ':'')+
     (pendingContractTotal?'<span class="today-stat-link" onclick="switchPage(\'contracts\')" title="查看待签/缺合同">'+pendingContractTotal+' 待签合同</span> · ':'')+
