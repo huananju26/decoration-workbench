@@ -3317,6 +3317,7 @@ a{color:#003a8c;text-decoration:none}
         <div class="form-group"><label class="form-label">工种</label><input id="perTrade" type="text" placeholder="例如：水电工 / 泥瓦工"></div>
         <div class="form-group"><label class="form-label">手机号</label><input id="perPhone" type="tel" placeholder=""></div>
         <div class="form-group"><label class="form-label">身份证号</label><input id="perIdCard" type="text" placeholder=""></div>
+        <div class="form-group"><label class="form-label">对私付款账号</label><input id="perPrivateAccount" type="text" placeholder="户名 / 开户行 / 卡号（个人）"></div>
         <div class="form-group"><label class="form-label">合作时间</label><input id="perSince" type="date"></div>
       </div>
       <div class="form-group" style="margin-top:12px"><label class="form-label">合作备注</label><textarea id="perNote" rows="3" style="resize:vertical" placeholder="施工特点、结算方式、信誉评价等"></textarea></div>
@@ -3381,6 +3382,7 @@ a{color:#003a8c;text-decoration:none}
         <div class="form-group"><label class="form-label">工种</label><input id="arcPerTrade" type="text" placeholder="例如：水电工 / 泥瓦工"></div>
         <div class="form-group"><label class="form-label">手机号</label><input id="arcPerPhone" type="tel" placeholder=""></div>
         <div class="form-group"><label class="form-label">身份证号</label><input id="arcPerIdCard" type="text" placeholder=""></div>
+        <div class="form-group"><label class="form-label">对私付款账号</label><input id="arcPerPrivateAccount" type="text" placeholder="户名 / 开户行 / 卡号（个人）"></div>
         <div class="form-group"><label class="form-label">合作时间</label><input id="arcPerSince" type="date"></div>
       </div>
       <div class="form-group" style="margin-top:12px"><label class="form-label">合作备注</label><textarea id="arcPerNote" rows="3" style="resize:vertical" placeholder="施工特点、结算方式、信誉评价等"></textarea></div>
@@ -12099,6 +12101,7 @@ function renderArchive(targetId){
         <div class="archive-item-rows">
           ${x.phone?`<div class="archive-row"><span class="archive-row-label">手机号</span><span class="archive-row-val">${escHtml(x.phone)}</span></div>`:''}
           ${x.idCard?`<div class="archive-row"><span class="archive-row-label">身份证号</span><span class="archive-row-val">${escHtml(x.idCard)}</span></div>`:''}
+          ${x.privateAccount?`<div class="archive-row"><span class="archive-row-label">对私付款账号</span><span class="archive-row-val">${escHtml(x.privateAccount)}</span></div>`:''}
           ${x.since?`<div class="archive-row"><span class="archive-row-label">合作时间</span><span class="archive-row-val">${escHtml(x.since)}</span></div>`:''}
           ${x.note?`<div class="archive-row"><span class="archive-row-label">合作备注</span><span class="archive-row-val">${escHtml(x.note)}</span></div>`:''}
         </div>
@@ -12163,7 +12166,7 @@ function autoArchivePersonnel(p,name,phone,trade){
   if(!name)return;
   const arc=App.archive; arc.personnel=arc.personnel||[];
   if(arc.personnel.some(x=>x.name===name))return;
-  arc.personnel.push({id:'per_'+uid(),name:name,phone:phone||'',idCard:'',trade:trade||'',since:todayISO().slice(0,7),note:''});
+  arc.personnel.push({id:'per_'+uid(),name:name,phone:phone||'',idCard:'',privateAccount:'',trade:trade||'',since:todayISO().slice(0,7),note:''});
 }
 function autoArchiveSupplier(p,raw,phone,category,contact){
   if(!raw)return;
@@ -12351,13 +12354,13 @@ function openAddPersonnel(){
   $('personnelModalTitle').textContent='新增施工人员档案';
   $('perSaveBtn').textContent='保存人员档案';
   $('perName').value='';$('perTrade').value='';$('perPhone').value='';
-  $('perIdCard').value='';$('perSince').value=todayISO();$('perNote').value='';
+  $('perIdCard').value='';$('perPrivateAccount').value='';$('perSince').value=todayISO();$('perNote').value='';
   showModal('addPersonnelModal');
 }
 function savePersonnel(){
   const name=$('perName').value.trim();
   if(!name){alert('请填写姓名');$('perName').focus();return;}
-  const data={name:name,trade:$('perTrade').value.trim(),phone:$('perPhone').value.trim(),idCard:$('perIdCard').value.trim(),since:$('perSince').value,note:$('perNote').value.trim()};
+  const data={name:name,trade:$('perTrade').value.trim(),phone:$('perPhone').value.trim(),idCard:$('perIdCard').value.trim(),privateAccount:$('perPrivateAccount').value.trim(),since:$('perSince').value,note:$('perNote').value.trim()};
   const arr=App.archive.personnel;
   if(_editingPersonnelId){
     const idx=arr.findIndex(x=>x.id===_editingPersonnelId);
@@ -12378,7 +12381,7 @@ function editPersonnel(id){
   $('personnelModalTitle').textContent='编辑施工人员档案';
   $('perSaveBtn').textContent='更新人员档案';
   $('perName').value=x.name||'';$('perTrade').value=x.trade||'';$('perPhone').value=x.phone||'';
-  $('perIdCard').value=x.idCard||'';$('perSince').value=x.since||todayISO();$('perNote').value=x.note||'';
+  $('perIdCard').value=x.idCard||'';$('perPrivateAccount').value=x.privateAccount||'';$('perSince').value=x.since||todayISO();$('perNote').value=x.note||'';
   showModal('addPersonnelModal');
 }
 function deletePersonnel(id){
@@ -12456,7 +12459,7 @@ function openUnifiedArchive(type){
   _archiveType=type||'personnel';
   /* 重置施工人员字段 */
   $('arcPerName').value='';$('arcPerTrade').value='';$('arcPerPhone').value='';
-  $('arcPerIdCard').value='';$('arcPerSince').value=todayISO();$('arcPerNote').value='';
+  $('arcPerIdCard').value='';$('arcPerPrivateAccount').value='';$('arcPerSince').value=todayISO();$('arcPerNote').value='';
   /* 重置供应商字段 */
   $('arcSupName').value='';$('arcSupShortName').value='';$('arcSupCategory').value='';
   $('arcSupContact').value='';$('arcSupPhone').value='';$('arcSupSince').value=todayISO();
@@ -12468,7 +12471,7 @@ function saveUnifiedArchive(){
   if(_archiveType==='personnel'){
     const name=$('arcPerName').value.trim();
     if(!name){alert('请填写姓名');$('arcPerName').focus();return;}
-    const data={name:name,trade:$('arcPerTrade').value.trim(),phone:$('arcPerPhone').value.trim(),idCard:$('arcPerIdCard').value.trim(),since:$('arcPerSince').value,note:$('arcPerNote').value.trim()};
+    const data={name:name,trade:$('arcPerTrade').value.trim(),phone:$('arcPerPhone').value.trim(),idCard:$('arcPerIdCard').value.trim(),privateAccount:$('arcPerPrivateAccount').value.trim(),since:$('arcPerSince').value,note:$('arcPerNote').value.trim()};
     data.id='per_'+uid();
     App.archive.personnel.push(data);
   }else{
