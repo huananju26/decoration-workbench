@@ -6785,9 +6785,6 @@ function switchPage(page){
   const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',contracts:'合同管理',invoices:'发票管理',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识',archive:'人材档案',standard:'施工标准'};
   const btnMap={home:'新增待办',process:'新建项目',purchase:'新增待购物品',finance:'记一笔',ledger:'',contracts:'新增合同',invoices:'新增发票',compare:'导出比价',tools:'',quote:'',diary:'写日记',knowledge:'返回总览',archive:'新增人员',standard:''};
   $('bc-page').textContent=bcMap[page]||'';
-  /* 合同管理/发票管理页面隐藏顶部全局项目切换下拉（按用户要求只在这两页去掉） */
-  const sw=$('topProjectSwitcher');
-  if(sw)sw.style.display=(page==='contracts'||page==='invoices')?'none':'';
   const tp=$('topPrimaryBtn');
   if(btnMap[page]){tp.style.display='';tp.textContent=btnMap[page]}else{tp.style.display='none'}
   $('sidebar').classList.remove('open');
@@ -6806,9 +6803,9 @@ function switchPage(page){
   if(page==='archive')renderArchive('archivePanel');
   if(page==='contracts')renderContracts();
   if(page==='invoices')renderInvoices();
-  /* 按页面控制顶部项目选择器显隐：全局聚合页(总览/工具/日记/知识/流水/报价)隐藏，项目专属页(流程/采购/记账/比价/合同/发票)显示 */
+  /* 按页面控制顶部项目选择器显隐：合同管理/发票管理/全局聚合页(总览/工具/日记/知识/流水/报价/标准)隐藏，其余项目专属页显示 */
   const ps=$('topProjectSwitcher');
-  if(ps){const hidePages=['home','tools','diary','knowledge','ledger','quote','standard'];ps.style.display=hidePages.includes(page)?'none':'';}
+  if(ps){const hidePages=['home','contracts','invoices','tools','diary','knowledge','ledger','quote','standard'];ps.style.display=hidePages.includes(page)?'none':'';}
   /* 切换页面时始终置顶（含 .main 滚动容器） */
   window.scrollTo(0,0);
   var _stdMain=document.querySelector('.main'); if(_stdMain)_stdMain.scrollTop=0;
