@@ -6740,12 +6740,8 @@ function delProject(id){
 function refreshProjectUI(){
   const sel=$('projectSelect');
   if(sel){
-    /* 顶部导航栏项目切换器：首项「全部项目」+ 各项目列表 */
-    const cur=App.currentProjectId||'';
-    sel.innerHTML='<option value="">📋 全部项目</option>'+App.projects.map(p=>`<option value="${p.id}">${HOUSE_ICONS[p.houseType]||''} ${projDisplayName(p)}</option>`).join('');
-    /* 有项目但从未选中过时，默认选中第一个（保持向后兼容）。
-       注意：currentProjectId='' 表示用户主动选了「全部项目」，不应被覆盖 */
-    if(App.projects.length&&App.currentProjectId==null)App.currentProjectId=App.projects[0].id;
+    sel.innerHTML=App.projects.map(p=>`<option value="${p.id}">${HOUSE_ICONS[p.houseType]||''} ${projDisplayName(p)}</option>`).join('');
+    if(App.projects.length&&!App.currentProjectId)App.currentProjectId=App.projects[0].id;
     sel.value=App.currentProjectId||'';
   }
   // 无论有无项目，工作台始终可进入（无项目时由空状态提示引导创建/选择）
