@@ -3272,8 +3272,9 @@ a{color:#003a8c;text-decoration:none}
           <div class="form-group" style="grid-column:1/-1"><label class="form-label">已支付金额（元）</label><input id="mpPaidAmount" type="number" value="0" min="0"></div>
           <div class="form-group" style="grid-column:1/-1"><label class="form-label">账户性质</label><select id="mpAccountType" onchange="toggleMatTax()"><option value="对私">对私（个人 / 微信 / 支付宝）</option><option value="对公">对公（企业 / 需发票）</option></select></div>
           <div class="form-group" id="mpTaxGroup" style="grid-column:1/-1;display:none"><label class="form-label">税率（%）</label><select id="mpTaxRate"></select></div>
+          <div class="form-group" id="mpInvoiceGroup" style="grid-column:1/-1;display:none"><label class="form-label">开票状态（对公进项）</label><select id="mpInvoiceStatus"></select></div>
         </div>
-        <div style="font-size:11px;color:#999;margin-top:6px;line-height:1.5">未付款自动为 0；已付清时自动等于材料金额。选「对公」将计入「对公资金流」并参与税费计算。</div>
+        <div style="font-size:11px;color:#999;margin-top:6px;line-height:1.5">未付款自动为 0；已付清时自动等于材料金额。选「对公」将计入「对公资金流」并参与税费计算；「待收」会在发票管理自动生成草稿进项发票，「无票」表示合法免开。</div>
       </div>
 
       <!-- ═══ Section 3: 采购与履约 ═══ -->
@@ -14180,8 +14181,19 @@ let _editingPurchaseId=null; /* 编辑模式：非null时为更新操作 */
 
 /* 材料弹窗：账户性质切换时显隐税率（仅对公需要） */
 function toggleMatTax(){
+  const isCorp=($('mpAccountType').value==='对公');
   const el=document.getElementById('mpTaxGroup');
-  if(el)el.style.display = ($('mpAccountType').value==='对公') ? 'block' : 'none';
+  if(el)el.style.display = isCorp ? 'block' : 'none';
+  /* 开票状态仅对公可见（与「记一笔」一致）：采购属付款，选项为 无票/待收/已收 */
+  const ig=document.getElementById('mpInvoiceGroup');
+  if(ig)ig.style.display = isCorp ? 'block' : 'none';
+}
+/* 填充调配单的开票状态下拉：采购=付款方向 → 无票/待收/已收 */
+function fillMatInvoiceStatus(selVal){
+  const sel=$('mpInvoiceStatus'); if(!sel)return;
+  const opts=INV_STATUS_OPTIONS_EX;
+  sel.innerHTML=opts.map(v=>`<option value="${v}">${escHtml(invStatusOptionLabel(v))}</option>`).join('');
+  sel.value=opts.includes(selVal)?selVal:'待收';
 }
 
 function openAddMaterialPlan(){
@@ -14221,6 +14233,8 @@ function openAddMaterialPlan(){
   /* 账户性质：默认按项目业务性质（企业→对公 / 个人→对私），可逐笔改 */
   $('mpAccountType').value=defaultAccountTypeForProject(p);
   $('mpTaxRate').innerHTML=taxRateOptionsHtml(DEFAULT_TAX_RATE);
+  /* 开票状态（仅对公可见）：采购是付款方向，默认「待收」（对公付款通常需向厂家取票） */
+  fillMatInvoiceStatus('待收');
   toggleMatTax();
   /* 重置编辑模式 */
   _editingPurchaseId=null;
@@ -14293,20 +14307,55 @@ function syncPurchaseToExpense(p, purchase){
     payee: purchase.vendor||'供应商待定',
     purchaseId: purchase.id,
     accountType: at,
-    taxRate: at==='对公' ? (purchase.taxRate||DEFAULT_TAX_RATE) : ''
+    taxRate: at==='对公' ? (purchase.taxRate||DEFAULT_TAX_RATE) : '',
+    /* 开票状态：对公沿用调配单选择（默认待收），对私恒为无票。缺省时按账户性质推导，保证旧数据也有确定归属 */
+    invoiceStatus: at==='对公' ? (purchase.invoiceStatus||'待收') : '无票'
   };
 
+  const made=[];
   if(payStatus==='已付清'){
     /* 已付清：一条全量已付记录 */
-    p.expense.push({id:uid(),name:'材料采购 · '+purchase.name,amount:fullAmt,note:baseNote,paid:true,...baseData});
+    const rec={id:uid(),name:'材料采购 · '+purchase.name,amount:fullAmt,note:baseNote,paid:true,...baseData};
+    p.expense.push(rec); made.push(rec);
   } else if(payStatus==='部分付款' && paidAmt>0){
     /* 部分付款：拆两条 — 已付 + 待付 */
-    if(paidAmt>0) p.expense.push({id:uid(),name:'材料采购(已付) · '+purchase.name,amount:paidAmt,note:baseNote+' · 已付'+paidAmt+'元',paid:true,...baseData});
+    if(paidAmt>0){ const rec={id:uid(),name:'材料采购(已付) · '+purchase.name,amount:paidAmt,note:baseNote+' · 已付'+paidAmt+'元',paid:true,...baseData}; p.expense.push(rec); made.push(rec); }
     const remain=fullAmt-paidAmt;
-    if(remain>0) p.expense.push({id:uid(),name:'材料采购(待付) · '+purchase.name,amount:remain,note:baseNote+' · 待付'+remain+'元',paid:false,...baseData});
+    if(remain>0){ const rec={id:uid(),name:'材料采购(待付) · '+purchase.name,amount:remain,note:baseNote+' · 待付'+remain+'元',paid:false,...baseData}; p.expense.push(rec); made.push(rec); }
   } else {
     /* 未付款：一条全量待付记录 */
-    p.expense.push({id:uid(),name:'材料采购 · '+purchase.name,amount:fullAmt,note:baseNote,paid:false,...baseData});
+    const rec={id:uid(),name:'材料采购 · '+purchase.name,amount:fullAmt,note:baseNote,paid:false,...baseData};
+    p.expense.push(rec); made.push(rec);
+  }
+  /* 对公开票联动（与「记一笔」对齐）：让调配单产生的支出在发票管理有对应草稿进项发票，
+     避免「待办有提醒、发票管理却查无此票」的不一致。 */
+  made.forEach(rec=>syncExpenseInvoice(rec,p));
+}
+/* 支出记录 → 发票管理联动：
+   - 对公 + 待收 + 已实际付款 → 建/更新一张草稿进项发票（按 linkedExpenseId 去重）
+   - 对公 + 无票 → 清理已关联的发票（合法免开）
+   - 未付款（paid=false）不建票：钱未付，厂家不会开票 */
+function syncExpenseInvoice(rec,p){
+  if(!rec||rec.accountType!=='对公')return;
+  const st=getInvoiceStatus(rec,p,'expense');
+  if(st==='待收'){
+    if(!rec.paid) return; /* 待付款项不建票 */
+    const existing=findLinkedInvoice(rec.id,'expense');
+    if(existing){
+      if(existing.status==='草稿'||!existing.status){
+        const rate=rec.taxRate||DEFAULT_TAX_RATE;
+        const total=parseFloat(rec.amount)||0;
+        existing.amountTotal=total;
+        existing.amountNoTax=taxInclToExcl(total,rate);
+        existing.tax=taxInclTax(total,rate);
+        existing.taxRate=rate;
+        existing.payee=existing.payee||rec.payee||'';
+      }
+      return;
+    }
+    finAutoCreateInvoice(rec,'expense',p,'草稿');
+  }else if(st==='无票'){
+    cascadeDeleteLinkedInvoice(rec.id,'expense',p.id);
   }
 }
 
@@ -14341,6 +14390,8 @@ function saveMaterialPlanBatch(){
     payStatus:payStatus,
     accountType:$('mpAccountType').value,
     taxRate:($('mpAccountType').value==='对公')?(parseFloat($('mpTaxRate').value)||DEFAULT_TAX_RATE):'',
+    /* 开票状态（五态·付款方向）：对公取下拉值，对私恒为「无票」（个人转账不涉及发票） */
+    invoiceStatus:($('mpAccountType').value==='对公')?($('mpInvoiceStatus').value||'待收'):'无票',
     status:$('mpStatus').value,
     factoryStatus:$('mpFactoryStatus').value,
     dueDate:dueDate,
@@ -14415,6 +14466,8 @@ function editPurchaseItem(id){
   /* 账户性质回填（影响对公/对私资金流分类） */
   $('mpAccountType').value=item.accountType||'对私';
   $('mpTaxRate').innerHTML=taxRateOptionsHtml(item.taxRate||DEFAULT_TAX_RATE);
+  /* 开票状态回填：沿用已存值（旧数据无此字段时按账户性质推导，对公→待收） */
+  fillMatInvoiceStatus(item.invoiceStatus || (item.accountType==='对公'?'待收':'无票'));
   toggleMatTax();
   /* 同步卡片选择器 chip 显示 */
   if(item.buyer)onArchiveSelectChange('mpBuyer','buyerCardPicker','personnel');
