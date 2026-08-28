@@ -1850,6 +1850,7 @@ a{color:#003a8c;text-decoration:none}
 .con-missing{border-left:4px solid #ff4d4f;background:#fffafa;}
 .badge-red{background:#fff1f0!important;color:#cf1322!important;border:1px solid #ffa39e!important;}
 .tab-badge{display:inline-block;min-width:16px;margin-left:5px;padding:0 5px;font-size:11px;font-weight:700;line-height:16px;text-align:center;color:#fff;background:#ff4d4f;border-radius:9px;}
+.tab-badge-blue{display:inline-block;min-width:16px;margin-left:5px;padding:0 5px;font-size:11px;font-weight:700;line-height:16px;text-align:center;color:#fff;background:#003a8c;border-radius:9px;}
 .aq-check-con{background:#e6f4ff;border-color:#91caff;color:#003a8c;font-size:12px;cursor:pointer;}
 .aq-kind-con{background:#e6f4ff;color:#003a8c;border:1px solid #91caff;}
 .aq-item-con{background:#f5f9ff;}
@@ -13049,6 +13050,9 @@ function renderContracts(){
       note:c.note||'合同已创建但尚未签署，请跟进完成签订'}));
   const missingConCount=missing.length+draftList.length;
   const conTabs=['全部','设计','施工','采购','其他','缺合同'];
+  /* 各 Tab 计数 + 颜色语义：正常分类(全部/设计/施工/采购/其他)=深蓝，缺合同=红色 */
+  const conTabCounts={'全部':base.length,'设计':base.filter(c=>c.type==='设计').length,'施工':base.filter(c=>c.type==='施工').length,'采购':base.filter(c=>c.type==='采购').length,'其他':base.filter(c=>c.type!=='设计'&&c.type!=='施工'&&c.type!=='采购').length,'缺合同':missingConCount};
+  const conTabRed=new Set(['缺合同']);
   const projName=filterProj?projNameById(filterProj):'全部项目';
 
   /* ── 缺合同版块：列出各项目/对象缺失的合同，带「去补签」入口 ── */
@@ -13105,7 +13109,7 @@ function renderContracts(){
          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
        </div>
        <div class="proj-tab-bar" id="conTabBar">
-         ${conTabs.map(t=>{const dot=(t==='缺合同'&&missingConCount>0)?`<span class="tab-badge">${missingConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
+         ${conTabs.map(t=>{const c=conTabCounts[t]||0;const cls=conTabRed.has(t)?'tab-badge':'tab-badge-blue';const dot=c>0?`<span class="${cls}">${c>9?'9+':c}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
        </div>
       <div class="proj-stats-row" id="conStatsRow">
         <div class="proj-stat-item"><div class="proj-stat-label">待跟进合计</div><div class="proj-stat-val" style="color:#ff4d4f">${missingConCount}</div></div>
@@ -13177,7 +13181,7 @@ function renderContracts(){
        </div>
      </div>
      <div class="proj-tab-bar" id="conTabBar">
-       ${conTabs.map(t=>{const dot=(t==='缺合同'&&missingConCount>0)?`<span class="tab-badge">${missingConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
+       ${conTabs.map(t=>{const c=conTabCounts[t]||0;const cls=conTabRed.has(t)?'tab-badge':'tab-badge-blue';const dot=c>0?`<span class="${cls}">${c>9?'9+':c}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
      </div>
      <div class="proj-stats-row" id="conStatsRow">
        <div class="proj-stat-item"><div class="proj-stat-label">合同份数</div><div class="proj-stat-val">${base.length}</div></div>
@@ -13467,6 +13471,9 @@ function renderInvoices(){
   const doneShouCount=base.filter(v=>(v.direction==='进项')&&['已收票','已认证','已抵扣'].includes(v.status)).length; /* 进项已收 */
   const noInvCount=noInvList.length; /* 标记为「无票（不开票）」的收付款记录数 */
   const invTabs=['全部','待开','已开','待收','已收','无票'];
+  /* 各 Tab 计数 + 颜色语义：已完成(已开/已收)=深蓝，待处理(待开/待收/无票)=红色 */
+  const invTabCounts={'全部':base.length,'待开':pendingKaiCount,'已开':doneKaiCount,'待收':pendingShouCount,'已收':doneShouCount,'无票':noInvCount};
+  const invTabBlue=new Set(['已开','已收']);
   const projName=fProj?projNameById(fProj):'全部项目';
   el.innerHTML=
     `<div class="module-head">
@@ -13485,7 +13492,7 @@ function renderInvoices(){
        </div>
      </div>
      <div class="proj-tab-bar" id="invTabBar">
-       ${invTabs.map(t=>{let dot='';if(t==='待开'&&pendingKaiCount>0)dot=`<span class="tab-badge">${pendingKaiCount}</span>`;if(t==='已开'&&doneKaiCount>0)dot=`<span class="tab-badge">${doneKaiCount}</span>`;if(t==='待收'&&pendingShouCount>0)dot=`<span class="tab-badge">${pendingShouCount}</span>`;if(t==='已收'&&doneShouCount>0)dot=`<span class="tab-badge">${doneShouCount}</span>`;if(t==='无票'&&noInvCount>0)dot=`<span class="tab-badge">${noInvCount}</span>`;return `<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}${dot}</button>`;}).join('')}
+       ${invTabs.map(t=>{const c=invTabCounts[t]||0;const cls=invTabBlue.has(t)?'tab-badge-blue':'tab-badge';const dot=c>0?`<span class="${cls}">${c>9?'9+':c}</span>`:'';return `<button class="proj-tab ${_invTab===t?'active':''}" onclick="switchInvoiceTab('${t}')">${t}${dot}</button>`;}).join('')}
      </div>
      <div class="proj-stats-row" id="invStatsRow">
        <div class="proj-stat-item"><div class="proj-stat-label">发票张数</div><div class="proj-stat-val">${base.length}</div></div>
