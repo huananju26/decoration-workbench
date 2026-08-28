@@ -258,6 +258,7 @@ a{color:#003a8c;text-decoration:none}
 .archive-item-name{font-size:14px;font-weight:700;color:#003a8c}
 .archive-tag{font-size:11px;padding:1px 9px;border-radius:10px;border:1px solid #91caff;background:#e6f4ff;color:#003a8c;white-space:nowrap}
 .archive-tag.blue{color:#003a8c}
+.archive-pill{display:inline-block;font-size:12px;font-weight:400;color:#1677ff;background:#e6f4ff;border:1px solid #91caff;border-radius:12px;padding:1px 10px;margin-left:4px;vertical-align:middle;white-space:nowrap}
 .archive-item-ops{margin-left:auto;display:flex;gap:6px;flex-shrink:0}
 .archive-item-rows{display:flex;flex-direction:column;gap:4px}
 .archive-row{display:flex;gap:8px;font-size:12.5px;line-height:1.5}
@@ -12091,8 +12092,7 @@ function renderArchive(targetId){
     personCards=personnel.map(x=>`
       <div class="archive-item">
         <div class="archive-item-head">
-          <div class="archive-item-name">${escHtml(x.name||'—')}</div>
-          ${x.trade?`<span class="archive-tag blue">${escHtml(x.trade)}</span>`:''}
+          <div class="archive-item-name">${escHtml(x.name||'—')}${x.trade?` <span class="archive-pill">${escHtml(x.trade)}</span>`:''}</div>
           <div class="archive-item-ops">
             <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editPersonnel('${x.id}')">编辑</button>
             <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deletePersonnel('${x.id}')">删除</button>
