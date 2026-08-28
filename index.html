@@ -15288,18 +15288,12 @@ function renderLedger(){
     else if(isCorp&&!isIncome){attrLabel='对公支出';attrPill='style="background:#f0f5ff;color:#003a8c;border:1px solid #adc6ff;border-radius:10px;padding:2px 10px;font-size:11px;white-space:nowrap;font-weight:600"';}
     else if(!isCorp&&isIncome){attrLabel='对私收入';attrPill='style="background:#e6fffb;color:#08979c;border:1px solid #87e8de;border-radius:10px;padding:2px 10px;font-size:11px;white-space:nowrap;font-weight:600"';}
     else{attrLabel='对私支出';attrPill='style="background:#fff7e6;color:#d46b08;border:1px solid #ffd591;border-radius:10px;padding:2px 10px;font-size:11px;white-space:nowrap;font-weight:600"';}
-    // 发票反向徽章：收款行→已开销项票；付款行→已收进项票（现查，不存储重复数据）
-    let flowBadge='';
-    const linkedInv = r.type==='income'
-      ? (App.invoices||[]).find(x=>x.linkedIncomeId===r.rec.id)
-      : (App.invoices||[]).find(x=>x.linkedExpenseId===r.rec.id);
-    if(linkedInv) flowBadge=' <span class="archive-tag blue" title="已开'+(r.type==='income'?'销项':'进项')+'发票">🧾'+(r.type==='income'?'销项票':'进项票')+'</span>';
     html+='<tr class="'+cls.trim()+'">'+
       '<td>'+r._idx+'</td>'+
       '<td class="ld-date">'+(r.date||'-')+'</td>'+
       '<td><span '+attrPill+'>'+attrLabel+'</span></td>'+
       '<td class="ld-proj" onclick="switchToProject(\''+r.proj.id+'\');switchPage(\'finance\')">'+escHtml(projDisplayName(r.proj))+'</td>'+
-      '<td class="ld-detail" title="'+escHtml(r.detail)+'">'+escHtml(r.detail)+flowBadge+'</td>'+
+      '<td class="ld-detail" title="'+escHtml(r.detail)+'">'+escHtml(r.detail)+'</td>'+
       '<td class="ld-person">'+escHtml(r.person)+'</td>'+
       ledgerInvoiceCell(r)+
       '<td class="amt-in">'+(isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
