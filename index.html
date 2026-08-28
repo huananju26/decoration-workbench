@@ -4948,6 +4948,94 @@ function runMigrations(app){
 /* 孤儿记录清理：删除项目时若当时版本未级联清理发票/合同（v<6 的旧数据或本次修复前的历史操作），
    会残留 projectId 指向已删除项目的发票/合同。加载时清理掉，避免税务汇总等派生面板显示已删项目的数据。
    - 仅清理 projectId 非空但已不存在于 projects 的条目；projectId 为空（全部项目视图下创建）的合法记录保留。 */
+/* 存量数据归并：修复「同一笔分次收付款产生多张发票 / 多份合同 + 孤儿数据」的历史脏数据。
+   背景：2026-08-28 之前 syncPurchaseToExpense 每次改单都重建 expense（id 每次变），
+   导致发票按 linkedExpenseId 的去重失效 → 分次付款重复建票、留下孤儿发票/合同。
+   该函数**幂等**，可随每次加载安全重复执行。
+   安全边界：只删除「草稿」状态的重复项（自动派生、无税务效力）；
+   已开/已收票的发票、已签合同一律保留（涉税/有法律效力），仅解除悬空的流水引用。 */
+function cleanupDuplicateLinkedRecords(app){
+  if(!Array.isArray(app.projects)||!app.projects.length)return false;
+  let changed=false;
+  /* 收集仍存在的收/付款/增减项记录 id 与采购项 id */
+  const liveRecIds=new Set(), livePurIds=new Set();
+  app.projects.forEach(p=>{
+    (p.income||[]).concat(p.expense||[],p.adjustments||[]).forEach(r=>{ if(r&&r.id)liveRecIds.add(r.id); });
+    (p.purchases||[]).forEach(x=>{ if(x&&x.id)livePurIds.add(x.id); });
+  });
+  const isDraftInv=v=>!v||v.status==='草稿'||!v.status;
+  const isDraftCon=c=>!c||c.status==='草稿'||!c.status;
+  const amtOf=o=>parseFloat(o&&(o.amountTotal||o.amount))||0;
+
+  /* ── 发票：按关联的同一笔流水归并 ── */
+  if(Array.isArray(app.invoices)){
+    const groups={}, standalone=[];
+    app.invoices.forEach(v=>{
+      if(!v)return;
+      const rid=v.linkedExpenseId||v.linkedIncomeId||'';
+      if(rid)(groups[rid]=groups[rid]||[]).push(v); else standalone.push(v);
+    });
+    const result=standalone.slice();
+    Object.keys(groups).forEach(rid=>{
+      const g=groups[rid].slice();
+      if(!liveRecIds.has(rid)){
+        /* 孤儿：流水已不存在 → 草稿丢弃；已开票的解绑保留（涉税不自动删） */
+        g.forEach(v=>{
+          if(isDraftInv(v)){ changed=true; return; }
+          v.linkedExpenseId='';v.linkedIncomeId='';changed=true;result.push(v);
+        });
+        return;
+      }
+      /* 同笔流水多张：非草稿优先，其次金额大的胜出 */
+      g.sort((a,b)=>{
+        const da=isDraftInv(a)?1:0, db=isDraftInv(b)?1:0;
+        return da!==db ? da-db : amtOf(b)-amtOf(a);
+      });
+      g.forEach((v,i)=>{
+        if(i===0){ result.push(v); return; }
+        if(isDraftInv(v)){ changed=true; return; }        /* 重复草稿：直接删 */
+        v.linkedExpenseId='';v.linkedIncomeId='';changed=true;result.push(v); /* 非草稿重复：解绑保留 */
+      });
+    });
+    if(result.length!==app.invoices.length)changed=true;
+    app.invoices=result;
+  }
+
+  /* ── 合同：按同一采购单 / 同一笔流水归并 ── */
+  if(Array.isArray(app.contracts)){
+    const groups={}, standalone=[];
+    app.contracts.forEach(c=>{
+      if(!c)return;
+      const key=c.linkedPurchaseId||c.linkedExpenseId||'';
+      if(key)(groups[key]=groups[key]||[]).push(c); else standalone.push(c);
+    });
+    const result=standalone.slice();
+    Object.keys(groups).forEach(key=>{
+      const g=groups[key].slice();
+      const alive=c=>(c.linkedPurchaseId?livePurIds.has(c.linkedPurchaseId):liveRecIds.has(c.linkedExpenseId));
+      if(!alive(g[0])){
+        /* 孤儿：关联的采购单/流水已不存在 → 草稿丢弃；已签的保留（有法律效力） */
+        g.forEach(c=>{ if(isDraftCon(c)){changed=true;} else result.push(c); });
+        return;
+      }
+      /* 同一对象多份：已签优先，其次金额大 */
+      g.sort((a,b)=>{
+        const da=isDraftCon(a)?1:0, db=isDraftCon(b)?1:0;
+        return da!==db ? da-db : amtOf(b)-amtOf(a);
+      });
+      g.forEach((c,i)=>{
+        if(i===0){ result.push(c); return; }
+        if(isDraftCon(c)){ changed=true; return; }        /* 重复草稿合同：直接删 */
+        result.push(c);                                    /* 非草稿重复：保留（有法律效力） */
+      });
+    });
+    if(result.length!==app.contracts.length)changed=true;
+    app.contracts=result;
+  }
+
+  if(changed)console.log('[cleanupDuplicateLinkedRecords] 已归并分次收付款产生的重复发票/合同与孤儿数据');
+  return changed;
+}
 function cleanupOrphanedRecords(app){
   if(!Array.isArray(app.projects))return;
   /* 项目数为零时，清空全部发票和合同（无项目可归属） */
@@ -4960,6 +5048,8 @@ function cleanupOrphanedRecords(app){
   }
   const validIds=new Set(app.projects.map(p=>p.id));
   let changed=false;
+  /* ── 归并历史脏数据：同一笔分次收付款重复产生的发票/合同 + 孤儿关联（幂等，只删草稿） ── */
+  if(cleanupDuplicateLinkedRecords(app))changed=true;
   /* ── 核心修复：空 projectId（''/null/undefined）在有项目存在时视为孤儿数据，不再保留 ──
      旧逻辑 `!v.projectId || validIds.has(v.projectId)` 会因 !''===true 而永久保留空关联记录，
      导致「归属项目=—」的合同/发票永远出现在"全部项目"视图中无法清除。 */
