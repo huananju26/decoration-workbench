@@ -4477,6 +4477,13 @@ function enterApp(){
   if(!VALID_PAGES.includes(savedPage))savedPage='home';
   switchPage(savedPage);
   $('app').style.display='';
+  /* 徽章口径依赖「今天」（逾期判断），页面长期开着跨天时也需自动刷新；低频、幂等，无性能压力 */
+  if(!enterApp.__badgeTicker){
+    enterApp.__badgeTicker=setInterval(()=>{
+      if(document.hidden)return;
+      try{ refreshNavBadges(); }catch(e){}
+    },60000);
+  }
 }
 /* 登录成功后：先同步再进工作台 */
 function cloudEnterApp(){
@@ -4608,6 +4615,8 @@ function persist(){
   try{localStorage.setItem(APP_KEY,JSON.stringify(App));__storageBroken=false;hideStorageWarning();}
   catch(e){__storageBroken=true;showStorageWarning();}
   if(CloudSync.configured&&CloudSync.loggedIn){cloudPushSoon();}
+  /* 数据一变更即刷新侧边栏红点数字（此前只在 switchPage/初始化时刷新，导致「要点一下才更新」） */
+  scheduleNavBadgeRefresh();
 }
 
 // 迁移：旧流程步骤 ID(t1..t27) -> 新步骤 ID(ps01..ps22)，保留用户已勾选的完成进度
@@ -7851,6 +7860,8 @@ function refreshNavBadges(){
   /* 今日总览：全部未完成任务/采购/增减项/逾期节点/待开发票/缺合同/草稿合同/逾期收支材料 */
   let homeCount=0;
   let processCount=0;  /* 项目管理：逾期任务+节点+整改 */
+  /* 缺合同清单提到循环外只算一次（原写法每个项目都全量重算一遍，项目多时是 O(n²)） */
+  const _missList=missingContractsList();
   projects.forEach(p=>{
     /* home: 未完成任务 */
     homeCount+=(p.tasks||[]).filter(t=>!t.done).length;
@@ -7877,7 +7888,7 @@ function refreshNavBadges(){
       });
     });
     /* home: 缺合同 + 草稿合同 */
-    homeCount+=missingContractsList().filter(m=>m._pid===p.id).length;
+    homeCount+=_missList.filter(m=>m._pid===p.id).length;
     homeCount+=(App.contracts||[]).filter(c=>c.projectId===p.id&&(c.status==='草稿'||!c.status)).length;
     /* home: 逾期收支材料 */
     homeCount+=p.income.filter(i=>incStatus(i)==='overdue').length;
@@ -7889,7 +7900,7 @@ function refreshNavBadges(){
     processCount+=p.income.filter(i=>incStatus(i)==='overdue').length;
   });
   /* 合同管理：草稿待签 + 缺合同（与「缺合同」Tab 口径一致） */
-  const conCount=(App.contracts||[]).filter(c=>c.status==='草稿'||!c.status).length + missingContractsList().length;
+  const conCount=(App.contracts||[]).filter(c=>c.status==='草稿'||!c.status).length + _missList.length;
   /* 发票管理：待开 + 待收 */
   let invCount=0;
   projects.forEach(p=>{
@@ -7910,6 +7921,16 @@ function refreshNavBadges(){
   setNavBadge('navBadge-process',processCount);
   setNavBadge('navBadge-contracts',conCount);
   setNavBadge('navBadge-invoices',invCount);
+}
+/* 侧边栏徽章刷新调度器（防抖合并：一次操作可能连续多次 persist，只刷一次）
+   —— 挂在 persist() 上，保证任何数据变更后徽章即时更新，无需点导航才刷新。 */
+let __navBadgeTimer=null;
+function scheduleNavBadgeRefresh(delay){
+  if(__navBadgeTimer) return;
+  __navBadgeTimer=setTimeout(()=>{
+    __navBadgeTimer=null;
+    try{ refreshNavBadges(); }catch(e){ console.error('[navBadge] 刷新失败',e); }
+  },delay||60);
 }
 function setNavBadge(id,count){
   const el=$(id);if(!el)return;
