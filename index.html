@@ -2409,9 +2409,6 @@ a{color:#003a8c;text-decoration:none}
   <header class="top-bar">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <div class="breadcrumb"><span id="bc-root">装修工作台</span> / <span id="bc-page">今日总览</span></div>
-      <div class="project-switcher" id="topProjectSwitcher">
-        <select id="projectSelect" onchange="switchProject(this.value)"></select>
-      </div>
     </div>
     <div class="top-actions">
       <div class="search-box">
@@ -12938,11 +12935,9 @@ function renderContracts(){
          </div>
          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
        </div>
-       <div class="proj-tab-bar" id="conTabBar">
-         ${conTabs.map(t=>{const dot=(t==='缺合同'&&missingConCount>0)?`<span class="tab-badge">${missingConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
-       </div>
-       <div class="proj-stats-row" id="conStatsRow">
-         <div class="proj-stat-item"><div class="proj-stat-label">缺失合同</div><div class="proj-stat-val">${missingConCount}</div></div>
+       <div class="proj-tab-bar" id="c      </div>
+      <div class="proj-stats-row" id="conStatsRow">
+        <div class="proj-stat-item"><div class="proj-stat-label">缺失合同</div><div class="proj-stat-val">${missingConCount}</div></div>
          <div class="proj-stat-item"><div class="proj-stat-label">涉及项目</div><div class="proj-stat-val">${new Set(missing.map(m=>m._pid)).size}</div></div>
        </div>
        <div class="archive-filter-bar"><span class="archive-count">缺合同 · 共 ${missing.length} 项（${escHtml(projName)}）</span></div>
@@ -13002,9 +12997,6 @@ function renderContracts(){
        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
        </div>
-     </div>
-     <div class="proj-tab-bar" id="conTabBar">
-       ${conTabs.map(t=>{const dot=(t==='缺合同'&&missingConCount>0)?`<span class="tab-badge">${missingConCount}</span>`:'';return `<button class="proj-tab ${_conTab===t?'active':''}" onclick="switchContractTab('${t}')">${t}${dot}</button>`;}).join('')}
      </div>
      <div class="proj-stats-row" id="conStatsRow">
        <div class="proj-stat-item"><div class="proj-stat-label">合同份数</div><div class="proj-stat-val">${base.length}</div></div>
