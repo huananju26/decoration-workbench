@@ -14554,6 +14554,45 @@ function syncPurchaseToExpense(p, purchase){
   /* 切换回对私：清理此前因对公自动创建的草稿采购合同 */
   if(at!=='对公') cascadeDeleteLinkedContract(purchase.id,'purchase',p.id);
 }
+
+/* ── 反向同步：记账支出 → 采购调配单（2026-08-29 修复双向联动断裂）
+   syncPurchaseToExpense 是"调配单→记账"的单向同步（用户改调配单时触发）。
+   但用户在「装修记账」里编辑支出记录（把待付改成已付、或删除记录）时，
+   purchase.payStatus / paidAmount 从未被反向更新 → 调配卡片仍显示旧状态。
+   
+   本函数扫描项目下所有带 purchaseId 的支出，按采购单维度重算 payStatus/paidAmount：
+   - paidAmount = 所有 paid===true 的支出金额之和
+   - payStatus = 未付款(0) / 部分付款(0<paid<budget) / 已付清(paid>=budget)
+   
+   幂等安全：可重复调用，不产生副作用。 */
+function syncExpensesToPurchases(p){
+  if(!p||!Array.isArray(p.expense)||!Array.isArray(p.purchases))return;
+  const expsByPid={};
+  (p.expense||[]).forEach(e=>{
+    if(!e.purchaseId)return;
+    if(!expsByPid[e.purchaseId])expsByPid[e.purchaseId]={paid:0,total:0,hasUnpaid:false};
+    const g=expsByPid[e.purchaseId];
+    const amt=parseFloat(e.amount)||0;
+    g.total+=amt;
+    if(e.paid)g.paid+=amt; else g.hasUnpaid=true;
+  });
+  let changed=false;
+  (p.purchases||[]).forEach(pur=>{
+    const g=expsByPid[pur.id];
+    if(!g)return;/* 该采购无关联支出（可能是纯调配未同步），跳过 */
+    const budget=parseFloat(pur.budget)||0;
+    const newPaidAmt=Math.round(g.paid*100)/100;
+    let newStatus='未付款';
+    if(newPaidAmt>=budget)newStatus='已付清';
+    else if(newPaidAmt>0)newStatus='部分付款';
+    if(pur.paidAmount!==newPaidAmt || pur.payStatus!==newStatus){
+      pur.paidAmount=newPaidAmt;
+      pur.payStatus=newStatus;
+      changed=true;
+    }
+  });
+  return changed;
+}
 /* 材料调配单 → 采购合同联动（按**采购单维度**去重，一份调配单只对应一份采购合同）：
    - 仅对公（对私个人转账不需要采购合同）
    - 已存在则更新金额/厂家（分次付款只更新不新建）
@@ -16628,18 +16667,27 @@ function saveFinance(){
   if(!amount){alert('请输入金额');return;}
   const status=$('fStatus').value==='received';
   // 编辑模式：先从原项目删除旧记录
+  /* 编辑模式：先缓存原记录的关键关联字段（必须在 splice 删除之前！），
+     否则 oarr.find 会找不到已删除的记录 → purchaseId/linkedContractId/invoiceId 全丢 */
+  let _origRec=null;
   if(editingFinance){
     const op=App.projects.find(x=>x.id===editingFinance.projectId);
     if(op){
       const oarr=editingFinance.type==='income'?op.income:op.expense;
       const oi=oarr.findIndex(x=>x.id===editingFinance.id);
-      if(oi>-1)oarr.splice(oi,1);
+      if(oi>-1){ _origRec=oarr[oi]; oarr.splice(oi,1); }
     }
   }
   const recId=currentFinRecId||uid();
   const at=$('fAccountType').value;
   const rec={id:recId,name:name,amount:amount,date:$('fDate').value,note:$('fNote').value,_source:'manual',accountType:at,
     taxRate: at==='对公' ? (parseFloat($('fTaxRate').value)||DEFAULT_TAX_RATE) : ''};
+  /* 将原记录的关联字段复制到新 rec（编辑模式下保留采购单/合同/发票绑定） */
+  if(_origRec){
+    if(_origRec.purchaseId)rec.purchaseId=_origRec.purchaseId;
+    if(_origRec.linkedContractId)rec.linkedContractId=_origRec.linkedContractId;
+    if(_origRec.invoiceId)rec.invoiceId=_origRec.invoiceId;
+  }
   /* 开票状态五态（无票 / 待开 / 已开 / 待收 / 已收）：仅对公走账有意义；对私统一为「无票」。
      方向语义：收款(income)=销项→待开/已开（开给客户）；付款(expense)=进项→待收/已收（向供应商取票）。 */
   if(at==='对公'){
@@ -16696,6 +16744,8 @@ function saveFinance(){
   }
   if(type==='income'){rec.received=status;rec.cat=$('fIncomeCat').value;rec.payer=$('fPayer').value;target.income.push(rec);}
   else{rec.paid=status;rec.cat=$('fCat').value;rec.stage=$('fStage').value;rec.payee=$('fPayee').value;target.expense.push(rec);}
+  /* 反向同步：记账支出改动后回写采购调配单的 payStatus/paidAmount（双向联动） */
+  if(type==='expense')syncExpensesToPurchases(target);
   persist();closeModal('financeModal');editingFinance=null;renderFinance();renderLedger&&renderLedger();renderHome();renderContracts&&renderContracts();
 }
 /* 由「记一笔」自动创建发票并关联（满足对公开票自动进入发票管理）。
@@ -16782,7 +16832,9 @@ function delFinance(type,id){
   if(!confirm('确认删除这条记录？'))return;
   if(type==='income'){ p.income=p.income.filter(i=>i.id!==id); cascadeDeleteLinkedInvoice(id,'income',p.id); cascadeDeleteLinkedContract(id,'income',p.id); }
   else { p.expense=p.expense.filter(e=>e.id!==id); cascadeDeleteLinkedInvoice(id,'expense',p.id); cascadeDeleteLinkedContract(id,'expense',p.id); }
-  persist();renderFinance();renderHome();renderContracts&&renderContracts();
+  /* 反向同步：删除支出后回写采购调配单的 payStatus/paidAmount */
+  syncExpensesToPurchases(p);
+  persist();renderFinance();renderHome();renderContracts&&renderContracts();renderProcessPurchase&&renderProcessPurchase();
 }
 
 // ============================================================
