@@ -13626,32 +13626,40 @@ function ampUpdateCount(){
   el.textContent='已选 '+n+' / '+total+' 项';
 }
 
-/* 将采购计划的付款状态同步到项目支出账单（expense） */
+/* 将采购计划的付款状态同步到项目支出账单（expense）
+   部分付款时拆为两条记录：已付(paid:true) + 待付(paid:false) */
 function syncPurchaseToExpense(p, purchase){
   if(!p||!purchase||!purchase.id)return;
   p.expense=p.expense||[];
-  /* 查找已关联此采购的支出记录（通过 purchaseId 字段关联） */
-  const existingIdx=p.expense.findIndex(e=>e.purchaseId===purchase.id);
-  const isPaid=purchase.payStatus==='已付清';
-  const payLabel=purchase.payStatus||'未付款';
-  const expData={
-    id: existingIdx>=0 ? p.expense[existingIdx].id : uid(),
-    name: '材料采购 · '+purchase.name,
-    amount: purchase.budget||0,
+  /* 移除该采购关联的所有旧支出记录（避免重复累积） */
+  const beforeLen=p.expense.length;
+  p.expense=p.expense.filter(e=>e.purchaseId!==purchase.id);
+  const removed=beforeLen-p.expense.length;
+
+  const fullAmt=purchase.budget||0;
+  const paidAmt=purchase.paidAmount||0;
+  const payStatus=purchase.payStatus||'未付款';
+  const payLabel=payStatus;
+  const baseNote=`采购${payLabel} · ${purchase.vendor||'供应商待定'} · ${purchase.qty||1}${purchase.unit||'项'}`;
+  const baseData={
     date: purchase.dueDate || todayISO(),
-    note: `采购${payLabel} · ${purchase.vendor||'供应商待定'} · ${purchase.qty||1}${purchase.unit||'项'}`,
     cat: purchase.cat||'材料采购',
     stage: purchase.stage||'材料采购',
     payee: purchase.vendor||'供应商待定',
-    paid: isPaid,
-    purchaseId: purchase.id /* 反向关联，便于追踪 */
+    purchaseId: purchase.id
   };
-  if(existingIdx>=0){
-    /* 更新已有支出记录 */
-    Object.assign(p.expense[existingIdx], expData);
+
+  if(payStatus==='已付清'){
+    /* 已付清：一条全量已付记录 */
+    p.expense.push({id:uid(),name:'材料采购 · '+purchase.name,amount:fullAmt,note:baseNote,paid:true,...baseData});
+  } else if(payStatus==='部分付款' && paidAmt>0){
+    /* 部分付款：拆两条 — 已付 + 待付 */
+    if(paidAmt>0) p.expense.push({id:uid(),name:'材料采购(已付) · '+purchase.name,amount:paidAmt,note:baseNote+' · 已付'+paidAmt+'元',paid:true,...baseData});
+    const remain=fullAmt-paidAmt;
+    if(remain>0) p.expense.push({id:uid(),name:'材料采购(待付) · '+purchase.name,amount:remain,note:baseNote+' · 待付'+remain+'元',paid:false,...baseData});
   } else {
-    /* 新增支出记录 */
-    p.expense.push(expData);
+    /* 未付款：一条全量待付记录 */
+    p.expense.push({id:uid(),name:'材料采购 · '+purchase.name,amount:fullAmt,note:baseNote,paid:false,...baseData});
   }
 }
 
