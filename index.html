@@ -3354,6 +3354,59 @@ a{color:#003a8c;text-decoration:none}
   </div>
 </div>
 
+<!-- ═══ 统一新增档案（卡片式类型选择） ═══ -->
+<div class="modal-overlay" id="addArchiveModal" style="z-index:230">
+  <div class="modal" style="max-width:600px;width:94%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-header" style="flex-shrink:0"><div class="modal-title">新增人材档案</div><div class="modal-close" onclick="closeModal('addArchiveModal')">✕</div></div>
+    <!-- 卡片式类型选择 -->
+    <div style="padding:14px 20px 0;border-bottom:1px solid #f0f0f0;flex-shrink:0">
+      <div style="font-size:12px;color:#888;margin-bottom:10px">选择要新增的档案类型</div>
+      <div style="display:flex;gap:12px">
+        <div id="arcTypeCard_personnel" class="archive-type-card archive-type-card--active" onclick="switchArchiveType('personnel')" style="flex:1;padding:14px 16px;border:2px solid #1677ff;border-radius:10px;background:#e6f4ff;cursor:pointer;transition:all .2s;text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:#1677ff;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:8px">👷</div>
+          <div style="font-weight:700;font-size:14px;color:#003a8c">施工人员</div>
+          <div style="font-size:11px;color:#666;margin-top:2px">工人 / 班组长 / 技术员</div>
+        </div>
+        <div id="arcTypeCard_supplier" class="archive-type-card" onclick="switchArchiveType('supplier')" style="flex:1;padding:14px 16px;border:2px solid #d9d9d9;border-radius:10px;background:#fafafa;cursor:pointer;transition:all .2s;text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:#fa8c16;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:8px">🏭</div>
+          <div style="font-weight:700;font-size:14px;color:#333">供应商</div>
+          <div style="font-size:11px;color:#666;margin-top:2px">厂家 / 品牌 / 材料商</div>
+        </div>
+      </div>
+    </div>
+    <!-- 施工人员表单 -->
+    <div id="archiveForm_personnel" class="modal-body" style="overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:0">
+      <div class="form-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label class="form-label">姓名 <b style="color:#ff4d4f">*</b></label><input id="arcPerName" type="text" placeholder="例如：张师傅"></div>
+        <div class="form-group"><label class="form-label">工种</label><input id="arcPerTrade" type="text" placeholder="例如：水电工 / 泥瓦工"></div>
+        <div class="form-group"><label class="form-label">手机号</label><input id="arcPerPhone" type="tel" placeholder=""></div>
+        <div class="form-group"><label class="form-label">身份证号</label><input id="arcPerIdCard" type="text" placeholder=""></div>
+        <div class="form-group"><label class="form-label">合作时间</label><input id="arcPerSince" type="date"></div>
+      </div>
+      <div class="form-group" style="margin-top:12px"><label class="form-label">合作备注</label><textarea id="arcPerNote" rows="3" style="resize:vertical" placeholder="施工特点、结算方式、信誉评价等"></textarea></div>
+    </div>
+    <!-- 供应商表单 -->
+    <div id="archiveForm_supplier" class="modal-body" style="overflow-y:auto;padding:16px 20px;display:none;flex-direction:column;gap:0">
+      <div class="form-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label class="form-label">供应商全称 <b style="color:#ff4d4f">*</b></label><input id="arcSupName" type="text" placeholder="营业执照全称，如：福建某某建材有限公司"></div>
+        <div class="form-group"><label class="form-label">供应商简称</label><input id="arcSupShortName" type="text" placeholder="常用叫法，如：某某建材"></div>
+        <div class="form-group"><label class="form-label">主营品类</label><input id="arcSupCategory" type="text" placeholder="例如：定制柜 / 瓷砖 / 卫浴"></div>
+        <div class="form-group"><label class="form-label">联系人</label><input id="arcSupContact" type="text" placeholder=""></div>
+        <div class="form-group"><label class="form-label">手机号</label><input id="arcSupPhone" type="tel" placeholder=""></div>
+        <div class="form-group"><label class="form-label">合作时间</label><input id="arcSupSince" type="date"></div>
+        <div class="form-group" style="grid-column:1 / -1"><label class="form-label">开票信息</label><input id="arcSupInvoice" type="text" placeholder="开票抬头 / 税号 / 发票类型"></div>
+        <div class="form-group"><label class="form-label">对公付款账号</label><input id="arcSupCorpAccount" type="text" placeholder="户名 / 开户行 / 对公账号"></div>
+        <div class="form-group"><label class="form-label">对私付款账号</label><input id="arcSupPrivateAccount" type="text" placeholder="户名 / 开户行 / 卡号（个人）"></div>
+        <div class="form-group" style="grid-column:1 / -1"><label class="form-label">备注</label><textarea id="arcSupNote" rows="3" style="resize:vertical" placeholder="供货特点、账期、质量评价等"></textarea></div>
+      </div>
+    </div>
+    <div class="form-actions" style="flex-shrink:0;padding:14px 20px;border-top:1px solid #f0f0f0">
+      <button class="btn-outline" onclick="closeModal('addArchiveModal')">取消</button>
+      <button class="btn-primary" onclick="saveUnifiedArchive()">保存档案</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ 数据恢复中心 ═══ -->
 <div class="modal-overlay" id="recoveryCenterModal">
   <div class="modal" style="max-width:660px;width:94%;max-height:86vh;overflow:hidden;display:flex;flex-direction:column">
@@ -12166,7 +12219,7 @@ function ensureSelectKeepsValue(sel, val){
 }
 /* 打开人材档案新增（供应商或施工人员）；保存后由 rerenderArchiveAll 自动刷新当前打开表单的下拉 */
 function jumpToArchiveAdd(type){
-  if(type==='supplier')openAddSupplier(); else openAddPersonnel();
+  openUnifiedArchive(type);
 }
 /* 人材档案变更后，刷新所有已打开表单中的人材下拉（保留当前选择） */
 function refreshOpenFormArchiveSelects(){
@@ -12380,6 +12433,53 @@ function deleteSupplier(id){
   if(!confirm(`确定删除「${x.name}」的供应商档案吗？`))return;
   App.archive.suppliers=App.archive.suppliers.filter(i=>i.id!==id);
   persist();
+  rerenderArchiveAll();
+}
+
+/* ── 统一新增档案（卡片式类型选择） ── */
+let _archiveType='personnel'; /* 'personnel' | 'supplier' */
+function switchArchiveType(type){
+  _archiveType=type;
+  const pCard=$('arcTypeCard_personnel'), sCard=$('arcTypeCard_supplier');
+  const pForm=$('archiveForm_personnel'), sForm=$('archiveForm_supplier');
+  if(type==='personnel'){
+    pCard.className='archive-type-card archive-type-card--active'; pCard.style.cssText='flex:1;padding:14px 16px;border:2px solid #1677ff;border-radius:10px;background:#e6f4ff;cursor:pointer;transition:all .2s;text-align:center';
+    sCard.className='archive-type-card'; sCard.style.cssText='flex:1;padding:14px 16px;border:2px solid #d9d9d9;border-radius:10px;background:#fafafa;cursor:pointer;transition:all .2s;text-align:center';
+    pForm.style.display=''; sForm.style.display='none';
+  }else{
+    sCard.className='archive-type-card archive-type-card--active'; sCard.style.cssText='flex:1;padding:14px 16px;border:2px solid #1677ff;border-radius:10px;background:#e6f4ff;cursor:pointer;transition:all .2s;text-align:center';
+    pCard.className='archive-type-card'; pCard.style.cssText='flex:1;padding:14px 16px;border:2px solid #d9d9d9;border-radius:10px;background:#fafafa;cursor:pointer;transition:all .2s;text-align:center';
+    sForm.style.display=''; pForm.style.display='none';
+  }
+}
+function openUnifiedArchive(type){
+  _archiveType=type||'personnel';
+  /* 重置施工人员字段 */
+  $('arcPerName').value='';$('arcPerTrade').value='';$('arcPerPhone').value='';
+  $('arcPerIdCard').value='';$('arcPerSince').value=todayISO();$('arcPerNote').value='';
+  /* 重置供应商字段 */
+  $('arcSupName').value='';$('arcSupShortName').value='';$('arcSupCategory').value='';
+  $('arcSupContact').value='';$('arcSupPhone').value='';$('arcSupSince').value=todayISO();
+  $('arcSupInvoice').value='';$('arcSupCorpAccount').value='';$('arcSupPrivateAccount').value='';$('arcSupNote').value='';
+  switchArchiveType(_archiveType);
+  showModal('addArchiveModal');
+}
+function saveUnifiedArchive(){
+  if(_archiveType==='personnel'){
+    const name=$('arcPerName').value.trim();
+    if(!name){alert('请填写姓名');$('arcPerName').focus();return;}
+    const data={name:name,trade:$('arcPerTrade').value.trim(),phone:$('arcPerPhone').value.trim(),idCard:$('arcPerIdCard').value.trim(),since:$('arcPerSince').value,note:$('arcPerNote').value.trim()};
+    data.id='per_'+uid();
+    App.archive.personnel.push(data);
+  }else{
+    const name=$('arcSupName').value.trim();
+    if(!name){alert('请填写供应商名称');$('arcSupName').focus();return;}
+    const data={name:name,category:$('arcSupCategory').value.trim(),shortName:$('arcSupShortName').value.trim(),contact:$('arcSupContact').value.trim(),phone:$('arcSupPhone').value.trim(),since:$('arcSupSince').value,invoice:$('arcSupInvoice').value.trim(),corpAccount:$('arcSupCorpAccount').value.trim(),privateAccount:$('arcSupPrivateAccount').value.trim(),note:$('arcSupNote').value.trim()};
+    data.id='sup_'+uid();
+    App.archive.suppliers.push(data);
+  }
+  persist();
+  closeModal('addArchiveModal');
   rerenderArchiveAll();
 }
 
