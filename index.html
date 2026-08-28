@@ -13488,7 +13488,7 @@ function renderInvoices(){
   const invTabs=['全部','待开','已开','待收','已收','无票'];
   /* 各 Tab 计数 + 颜色语义：已完成(已开/已收)=深蓝，待处理(待开/待收/无票)=红色 */
   const invTabCounts={'全部':base.length,'待开':pendingKaiCount,'已开':doneKaiCount,'待收':pendingShouCount,'已收':doneShouCount,'无票':noInvCount};
-  const invTabBlue=new Set(['已开','已收']);
+  const invTabBlue=new Set(['全部','已开','已收']);
   const projName=fProj?projNameById(fProj):'全部项目';
   el.innerHTML=
     `<div class="module-head">
