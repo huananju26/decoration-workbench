@@ -7512,11 +7512,26 @@ function renderHome(){
 
   // 统计摘要行（跨项目，提前计算供 headline 判断告警）
   let noStageTotal=0, overIncomeTotal=0, overExpenseTotal=0, overPurchaseTotal=0;
+  let pendingContractTotal=0, pendingInvoiceTotal=0;
   projects.forEach(p=>{
     noStageTotal+=p.tasks.filter(t=>!t.stage).length;
     overIncomeTotal+=p.income.filter(i=>incStatus(i)==='overdue').length;
     overExpenseTotal+=p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).length;
     overPurchaseTotal+=p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).length;
+  });
+  /* 待签合同：草稿合同 + 缺合同（missingContractsList） */
+  pendingContractTotal=(App.contracts||[]).filter(c=>c.status==='草稿').length + missingContractsList().length;
+  /* 待收发票：对公收支未开票数 */
+  projects.forEach(p=>{
+    [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
+      arr.forEach(rec=>{
+        if(defaultAccountType(rec,p)!=='对公') return;
+        if(tt==='income' && incReceivedAmt(rec)<=0) return;
+        const linked=findLinkedInvoice(rec.id,tt);
+        const resolved = rec.invoiceStatus==='已开票' || (linked && INV_ISSUED_STATUS.includes(linked.status));
+        if(!resolved) pendingInvoiceTotal++;
+      });
+    });
   });
 
   /* 补充：收款逾期 / 付款逾期 / 材料超期 也纳入"需要处理" */
@@ -7526,16 +7541,18 @@ function renderHome(){
     p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>allHandleItems.push({label:'材料超期：'+(x.name||'未命名'),due:x.dueDate,_proj:projDisplayName(p),_type:'purchase_ov'}));
   });
   const overdueAll=allHandleItems.filter(i=>isOverdue(i));
-  const hasAlerts=overIncomeTotal>0||overExpenseTotal>0||overPurchaseTotal>0||noStageTotal>0;
+  const hasAlerts=overIncomeTotal>0||overExpenseTotal>0||overPurchaseTotal>0||noStageTotal>0||pendingContractTotal>0||pendingInvoiceTotal>0;
   const hlNum=allHandleItems.length;
   $('heroHeadline').innerHTML='今天有 <strong style="color:'+(hlNum===0&&hasAlerts?'#ff4d4f':'#003a8c')+'">'+hlNum+'</strong> 项需要处理。';
 
-  // 摘要行渲染
+  // 摘要行渲染（待签合同/待收发票可点击跳转）
   $('heroSummary').innerHTML=
     (noStageTotal?noStageTotal+' 个任务未分配计划 · ':'')+
     (overIncomeTotal?overIncomeTotal+' 笔收款逾期 · ':'')+
     (overExpenseTotal?overExpenseTotal+' 笔付款逾期 · ':'')+
     (overPurchaseTotal?overPurchaseTotal+' 项材料超期 · ':'')+
+    (pendingContractTotal?'<span class="today-stat-link" onclick="scrollToAqPending()" title="查看待签/缺合同">'+pendingContractTotal+' 待签合同</span> · ':'')+
+    (pendingInvoiceTotal?'<span class="today-stat-link" onclick="switchPage(\'invoice\')" title="去发票管理收票">'+pendingInvoiceTotal+' 待收发票</span> · ':'')+
     (projects.length?projects.length+' 个项目进行中':'暂无项目');
 
   // ── 右侧今日面板（跨项目） ──
