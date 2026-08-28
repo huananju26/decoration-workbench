@@ -12954,6 +12954,11 @@ function renderContracts(){
            <div class="module-head-title">合同管理 · 缺合同</div>
            <div class="module-head-desc">以下项目 / 对象尚未签订对应合同，点击「去补签」直接新建草稿并关联。</div>
          </div>
+         <div class="ledger-filter-bar" id="conFilterBar">
+           <select id="conFilterProj" onchange="switchConProjFilter(this.value)"><option value="" ${filterProj?'':'selected'}>全部项目</option>${projFilterBarOptions(filterProj)}</select>
+           <select id="conFilterStatus" onchange="renderContracts()"><option value="">全部状态</option><option value="草稿">草稿</option><option value="已签">已签</option><option value="执行中">执行中</option><option value="已完成">已完成</option></select>
+           <input type="text" id="conSearchInput" autocomplete="off" placeholder="搜索合同名/对方..." oninput="renderContracts()">
+         </div>
          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
        </div>
        <div class="proj-tab-bar" id="conTabBar">
