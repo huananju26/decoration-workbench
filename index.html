@@ -7543,7 +7543,7 @@ function renderHome(){
   const overdueAll=allHandleItems.filter(i=>isOverdue(i));
   const hasAlerts=overIncomeTotal>0||overExpenseTotal>0||overPurchaseTotal>0||noStageTotal>0||pendingContractTotal>0||pendingInvoiceTotal>0;
   const hlNum=allHandleItems.length;
-  $('heroHeadline').innerHTML='今天有 <strong style="color:'+(hlNum===0&&hasAlerts?'#ff4d4f':'#003a8c')+'">'+hlNum+'</strong> 项需要处理。';
+  $('heroHeadline').innerHTML='今天有 <strong style="color:'+(hasAlerts?'#ff4d4f':'#003a8c')+'">'+hlNum+'</strong> 项需要处理。';
 
   // 摘要行渲染（待签合同/待收发票可点击跳转）
   $('heroSummary').innerHTML=
