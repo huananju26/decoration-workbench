@@ -3240,8 +3240,10 @@ a{color:#003a8c;text-decoration:none}
           <div class="form-group"><label class="form-label">材料金额（元）</label><input id="mpAmount" type="number" value="0" min="0"></div>
           <div class="form-group"><label class="form-label">付款状态</label><select id="mpPayStatus"><option value="未付款">未付款</option><option value="部分付款">部分付款</option><option value="已付清">已付清</option></select></div>
           <div class="form-group" style="grid-column:1/-1"><label class="form-label">已支付金额（元）</label><input id="mpPaidAmount" type="number" value="0" min="0"></div>
+          <div class="form-group" style="grid-column:1/-1"><label class="form-label">账户性质</label><select id="mpAccountType" onchange="toggleMatTax()"><option value="对私">对私（个人 / 微信 / 支付宝）</option><option value="对公">对公（企业 / 需发票）</option></select></div>
+          <div class="form-group" id="mpTaxGroup" style="grid-column:1/-1;display:none"><label class="form-label">税率（%）</label><select id="mpTaxRate"></select></div>
         </div>
-        <div style="font-size:11px;color:#999;margin-top:6px;line-height:1.5">未付款自动为 0；已付清时自动等于材料金额。</div>
+        <div style="font-size:11px;color:#999;margin-top:6px;line-height:1.5">未付款自动为 0；已付清时自动等于材料金额。选「对公」将计入「对公资金流」并参与税费计算。</div>
       </div>
 
       <!-- ═══ Section 3: 采购与履约 ═══ -->
@@ -11859,18 +11861,33 @@ function renderProcessPurchase(){
   const soonArrive=purchases.filter(x=>x.dueDate&&x.status!=='已到场'&&x.status!=='已完成'&&(x.dueDate<=shiftDate(today,7))).length;
   /* 已验期 = 已到场或已完成 */
   const arrivedCount=purchases.filter(x=>x.status==='已到场'||x.status==='已完成').length;
-  /* 采购待付款 = 未付清的采购金额 */
-  const purPendingPay=purchases.filter(x=>x.payStatus!=='已付清').reduce((s,x)=>s+(x.budget||0),0);
   /* 材料总额 = 所有采购项预算合计 */
   const materialTotal=purchases.reduce((s,x)=>s+(x.budget||0),0);
   /* 厂家已安装 = 已到场或已完成 */
   const factoryInstalled=purchases.filter(x=>x.status==='已到场'||x.status==='已完成').length;
-  /* 项目成本（排除采购同步的支出记录，避免与 purPendingPay 重复计算） */
+  /* 材料成本以「同步到记账的采购支出(带 purchaseId)」为单一真相源，与 projFinance 口径一致，
+     避免「计划预计成本」与「记账实际成本」双重记成本。旧数据若缺同步记录，按采购字段兜底推算。 */
+  const matExps=(p.expense||[]).filter(e=>e.purchaseId);
+  const syncedIds=new Set(matExps.map(e=>e.purchaseId));
+  let matPaid=matExps.filter(e=>e.paid).reduce((s,e)=>s+(e.amount||0),0);
+  let matPending=matExps.filter(e=>!e.paid).reduce((s,e)=>s+(e.amount||0),0);
+  purchases.forEach(it=>{
+    if(syncedIds.has(it.id))return; /* 已有同步记录的项不再兜底，避免重复 */
+    const b=it.budget||0, pa=it.paidAmount||0, ps=it.payStatus||'未付款';
+    if(ps==='已付清') matPaid+=b;
+    else if(ps==='部分付款'){ if(pa>0) matPaid+=pa; const rem=b-pa; if(rem>0) matPending+=rem; }
+    else matPending+=b;
+  });
+  /* 项目成本（排除采购同步的支出记录，材料成本已在 matPaid/matPending 单独核算） */
   const expList=(p.expense||[]).filter(e=>e.amount>0 && !e.purchaseId);
   const paidExp=expList.filter(e=>e.paid).reduce((s,e)=>s+e.amount,0);
   const unpaidExp=expList.filter(e=>!e.paid).reduce((s,e)=>s+e.amount,0);
-  const totalProfit=(p.totalAmount||0)-paidExp-unpaidExp;
-  const curProfit=(p.totalAmount||0)-paidExp-unpaidExp-purPendingPay;
+  const matCost=matPaid+matPending;
+  const totalCostAll=paidExp+unpaidExp+matCost;
+  /* 累计毛利 = 合同额 - 全部已发生成本（权责发生制） */
+  const totalProfit=(p.totalAmount||0)-totalCostAll;
+  /* 当前账面毛利 = 合同额 - 已付出现金（收付实现制） */
+  const curProfit=(p.totalAmount||0)-(paidExp+matPaid);
 
   /* 构建采购明细卡片 */
   let purchaseCards='';
@@ -11919,7 +11936,7 @@ function renderProcessPurchase(){
         <div class="proc-metric-item"><div class="proc-metric-val">${planCount}</div><div class="proc-metric-label">材料项目</div></div>
         <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(materialTotal)}</div><div class="proc-metric-label">材料总额</div></div>
         <div class="proc-metric-item"><div class="proc-metric-val">${factoryInstalled}</div><div class="proc-metric-label">厂家已安装</div></div>
-        <div class="proc-metric-item"><div class="proc-metric-val red">¥${fmt(purPendingPay)}</div><div class="proc-metric-label">材料待付款</div></div>
+        <div class="proc-metric-item"><div class="proc-metric-val red">¥${fmt(matPending)}</div><div class="proc-metric-label">材料待付款</div></div>
       </div>
       ${purchaseCards}
       ${planCount&&!purchaseCards?'':(!planCount?'<div class="proc-empty" style="padding:24px">还没有材料采购计划。</div>':'')}
@@ -11935,9 +11952,9 @@ function renderProcessPurchase(){
         </div>
       </div>
       <div class="proc-metric-row" style="padding:18px 14px;margin-bottom:10px;grid-template-columns:repeat(5,1fr)">
-        <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(unpaidExp)}</div><div class="proc-metric-label">应付金额</div></div>
-        <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(paidExp)}</div><div class="proc-metric-label">实付金额</div></div>
-        <div class="proc-metric-item"><div class="proc-metric-val red">¥${fmt(unpaidExp+purPendingPay)}</div><div class="proc-metric-label">待付金额</div></div>
+        <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(unpaidExp+matPending)}</div><div class="proc-metric-label">应付金额</div></div>
+        <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(paidExp+matPaid)}</div><div class="proc-metric-label">实付金额</div></div>
+        <div class="proc-metric-item"><div class="proc-metric-val red">¥${fmt(unpaidExp+matPending)}</div><div class="proc-metric-label">待付金额</div></div>
         <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(totalProfit)}</div><div class="proc-metric-label">累计毛利</div></div>
         <div class="proc-metric-item"><div class="proc-metric-val">¥${fmt(curProfit)}</div><div class="proc-metric-label">当前账面毛利</div></div>
       </div>
@@ -13584,6 +13601,12 @@ const CAT_LABEL_MAP={pre:'其他',electric:'辅材',masonry:'主材',wood:'辅�
 let _ampStageChecks={}; /* {stepId itemName: true/false} */
 let _editingPurchaseId=null; /* 编辑模式：非null时为更新操作 */
 
+/* 材料弹窗：账户性质切换时显隐税率（仅对公需要） */
+function toggleMatTax(){
+  const el=document.getElementById('mpTaxGroup');
+  if(el)el.style.display = ($('mpAccountType').value==='对公') ? 'block' : 'none';
+}
+
 function openAddMaterialPlan(){
   const p=cur();if(!p){alert('请先选择项目');return;}
   ensureProjectSteps(p);
@@ -13622,6 +13645,10 @@ function openAddMaterialPlan(){
   $('mpDueDate').value=todayISO();
   $('mpDelayReason').value='';
   $('mpNote').value='';
+  /* 账户性质：默认按项目业务性质（企业→对公 / 个人→对私），可逐笔改 */
+  $('mpAccountType').value=defaultAccountTypeForProject(p);
+  $('mpTaxRate').innerHTML=taxRateOptionsHtml(DEFAULT_TAX_RATE);
+  toggleMatTax();
   /* 重置编辑模式 */
   _editingPurchaseId=null;
   const btn=document.querySelector('#addMaterialPlanModal .btn-primary');
@@ -13682,13 +13709,16 @@ function syncPurchaseToExpense(p, purchase){
   const paidAmt=purchase.paidAmount||0;
   const payStatus=purchase.payStatus||'未付款';
   const payLabel=payStatus;
+  const at=purchase.accountType==='对公'?'对公':'对私';
   const baseNote=`采购${payLabel} · ${purchase.vendor||'供应商待定'} · ${purchase.qty||1}${purchase.unit||'项'}`;
   const baseData={
     date: purchase.dueDate || todayISO(),
     cat: purchase.cat||'材料采购',
     stage: purchase.stage||'材料采购',
     payee: purchase.vendor||'供应商待定',
-    purchaseId: purchase.id
+    purchaseId: purchase.id,
+    accountType: at,
+    taxRate: at==='对公' ? (purchase.taxRate||DEFAULT_TAX_RATE) : ''
   };
 
   if(payStatus==='已付清'){
@@ -13734,6 +13764,8 @@ function saveMaterialPlanBatch(){
     qty:parseFloat($('mpQty').value)||1,
     unit:$('mpUnit').value.trim()||'项',
     payStatus:payStatus,
+    accountType:$('mpAccountType').value,
+    taxRate:($('mpAccountType').value==='对公')?(parseFloat($('mpTaxRate').value)||DEFAULT_TAX_RATE):'',
     status:$('mpStatus').value,
     factoryStatus:$('mpFactoryStatus').value,
     dueDate:dueDate,
@@ -13804,6 +13836,10 @@ function editPurchaseItem(id){
   $('mpStatus').value=item.status||'待采购';
   $('mpFactoryStatus').value=item.factoryStatus||'未下单';
   $('mpDueDate').value=item.dueDate||'';
+  /* 账户性质回填（影响对公/对私资金流分类） */
+  $('mpAccountType').value=item.accountType||'对私';
+  $('mpTaxRate').innerHTML=taxRateOptionsHtml(item.taxRate||DEFAULT_TAX_RATE);
+  toggleMatTax();
   $('mpDelayReason').value=item.delayReason||'';
   $('mpNote').value=item.note||'';
   /* 标记编辑模式 */
