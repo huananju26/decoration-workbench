@@ -12819,7 +12819,7 @@ function stepNameById(pid,sid){
 function renderContracts(){
   const el=$('contractsPanel');if(!el)return;
   const list=App.contracts||[];
-  let filterProj=_conFilterProj||'';
+  const filterProj=''; /* 固定全量（已移除项目筛选下拉） */
   let base=list.slice();
   if(filterProj)base=base.filter(c=>c.projectId===filterProj);
   /* 缺合同清单（与待办同源）：按当前项目过滤 */
@@ -12920,7 +12920,6 @@ function renderContracts(){
          <div class="module-head-desc">登记施工 / 采购 / 设计 / 其他合同，关联项目节点与供应商，并在发票管理开具体发票。</div>
        </div>
        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-         <select id="conProjFilter" style="max-width:200px" onchange="switchContractProj(this.value)">${projFilterOptionsHtml(filterProj)}</select>
          <button class="proc-sub-btn primary" onclick="openAddContract()">+ 新增合同</button>
        </div>
      </div>
@@ -12937,11 +12936,8 @@ function renderContracts(){
      <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
        ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有合同，点击右上角「新增合同」开始登记。</div>'}
      </div>`;
-  /* 保险：确保下拉值与筛选变量同步（防止缓存/时序导致不一致） */
-  const cpf=$('conProjFilter');if(cpf)cpf.value=_conFilterProj||'';
 }
 function switchContractTab(t){_conTab=t;renderContracts();}
-function switchContractProj(v){_conFilterProj=v;renderContracts();}
 /* 一键把未签合同标记为已签（从「未开」版块移出） */
 function markContractSigned(id){
   const c=contractById(id);if(!c)return;
@@ -13129,7 +13125,7 @@ function getNonInvoicedRecords(fProj){
 function renderInvoices(){
   const el=$('invoicesPanel');if(!el)return;
   const list=App.invoices||[];
-  let fProj=_invFilterProj||'';
+  const fProj=''; /* 固定全量（已移除项目筛选下拉） */
   let base=list.slice();
   if(fProj)base=base.filter(v=>v.projectId===fProj);
   let arr=base.slice();
@@ -13209,7 +13205,6 @@ function renderInvoices(){
          <div class="module-head-desc">按五态（待开 / 已开 / 待收 / 已收 / 无票）管理发票：待开=销项草稿待开给客户、已开=销项已开具、待收=进项草稿待向供应商取票、已收=进项已收票/已认证/已抵扣、无票=合法免开的收付款记录（只读备查）。按「含税价 ÷ (1+税率)」自动倒推不含税金额与税额，并汇总应缴增值税。</div>
        </div>
        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-         <select id="invProjFilter" style="max-width:200px" onchange="switchInvoiceProj(this.value)">${projFilterOptionsHtml(fProj)}</select>
          <button class="proc-sub-btn primary" onclick="openAddInvoice()">+ 新增发票</button>
        </div>
      </div>
@@ -13230,11 +13225,8 @@ function renderInvoices(){
          ? (noInvCards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">当前项目没有标记为「无票（不开票）」的收付款记录。</div>')
          : (cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有发票，点击右上角「新增发票」开始登记。</div>')}
      </div>`;
-  /* 保险：确保下拉值与筛选变量同步 */
-  const ipf=$('invProjFilter');if(ipf)ipf.value=_invFilterProj||'';
 }
 function switchInvoiceTab(t){_invTab=t;renderInvoices();}
-function switchInvoiceProj(v){_invFilterProj=v;renderInvoices();}
 /* 将发票实际状态同步回其关联收/付款记录的开票状态（单一真相源：以实际发票状态为准），
    保证流水表「开票状态」列与筛选与发票管理一致、可精确过滤。 */
 function syncRecInvoiceStatus(v){
