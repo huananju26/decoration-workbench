@@ -2830,8 +2830,10 @@ a{color:#003a8c;text-decoration:none}
         <select id="ledgerFilterProj" onchange="renderLedger()"><option value="">全部项目</option></select>
         <select id="ledgerFilterType" onchange="renderLedger()">
           <option value="">全部类型</option>
-          <option value="income">仅收款</option>
-          <option value="expense">仅付款</option>
+          <option value="corp-in">对公收入</option>
+          <option value="corp-out">对公支出</option>
+          <option value="priv-in">对私收入</option>
+          <option value="priv-out">对私支出</option>
         </select>
         <select id="ledgerFilterStatus" onchange="renderLedger()">
           <option value="">全部已结算</option>
@@ -15001,7 +15003,7 @@ function renderLedger(){
         const nodeTarget=i.amount||0;
         const nodePct=nodeTarget?Math.round((r.amount||0)/nodeTarget*1000)/10:0;
         const detail=(i.name||'')+(nodeTarget?('（本节点 '+nodePct+'%）'):'');
-        rows.push({type:'income',proj:p,rec:i,receipt:r,date:r.date||'',detail:detail,person:r.payer||i.payer||(p.profile&&p.profile.owner)||'',amt:r.amount||0,note:r.note||''||i.note||'',status:'received'});
+        rows.push({type:'income',proj:p,rec:i,receipt:r,date:r.date||'',detail:detail,person:r.payer||i.payer||(p.profile&&p.profile.owner)||'',amt:r.amount||0,note:r.note||''||i.note||'',status:'received',accountType:defaultAccountType(i,p)});
       });
     });
     // 增减项到账记录（作为收入流水计入）
@@ -15017,19 +15019,27 @@ function renderLedger(){
         const adjTarget=Math.abs(a.amount||0);
         const adjPct=adjTarget?Math.round((r.amount||0)/adjTarget*1000)/10:0;
         const detail=(a.name||'增减项')+(adjTarget?('（本节点 '+adjPct+'%）'):'');
-        rows.push({type:'adj',proj:p,rec:a,receipt:r,date:r.date||'',detail:detail,person:r.payer||(p.profile&&p.profile.owner)||'客户',amt:r.amount||0,note:r.note||'',status:'received'});
+        rows.push({type:'adj',proj:p,rec:a,receipt:r,date:r.date||'',detail:detail,person:r.payer||(p.profile&&p.profile.owner)||'客户',amt:r.amount||0,note:r.note||'',status:'received',accountType:defaultAccountType(a,p)});
       });
     });
     // 支出记录：仅已付（paid）才计入流水账
     (p.expense||[]).forEach(e=>{
       if(!e.paid)return;
       if(fYear&&e.date&&!e.date.startsWith(fYear))return;
-      if(fType==='income')return;
       if(fStatus==='pending')return;
       if(fSearch&&!(e.name||'').toLowerCase().includes(fSearch)&&!(e.payee||'').toLowerCase().includes(fSearch))return;
-      rows.push({type:'expense',proj:p,rec:e,date:e.date||'',detail:e.name||'',person:e.payee||'',amt:e.amount||0,note:e.note||'',status:'received'});
+      rows.push({type:'expense',proj:p,rec:e,date:e.date||'',detail:e.name||'',person:e.payee||'',amt:e.amount||0,note:e.note||'',status:'received',accountType:defaultAccountType(e,p)});
     });
   });
+
+  /* 四分类属性筛选：对公收入(corp-in) / 对公支出(corp-out) / 对私收入(priv-in) / 对私支出(priv-out) */
+  if(fType){
+    const finMap={'corp-in':['income','adj'],'corp-out':['expense'],'priv-in':['income','adj'],'priv-out':['expense']};
+    const atMap={'corp-in':'对公','corp-out':'对公','priv-in':'对私','priv-out':'对私'};
+    const allowedTypes=finMap[fType];
+    const requiredAt=atMap[fType];
+    rows=rows.filter(r=>allowedTypes.includes(r.type)&&(r.accountType||'对私')===requiredAt);
+  }
 
   // 排序
   rows.sort((a,b)=>{
@@ -15076,29 +15086,30 @@ function renderLedger(){
     // 累计结余（已按日期升序逐笔计算并写入 r._bal）
     const bal=r._bal||0;
     const cls=isPending?' row-pending':'';
-    const tagCls=isIncome?' tag-income':' tag-expense';
-    const tagText=isIncome?'收入':'支出';
+    /* 四分类属性：对公收入 / 对公支出 / 对私收入 / 对私支出 */
+    const at=r.accountType||defaultAccountType(r.rec,r.proj)||'对私';
+    const isCorp=(at==='对公');
+    let attrPill='',attrLabel='';
+    if(isCorp&&isIncome){attrLabel='对公收入';attrPill='style="background:#e6f4ff;color:#1677ff;border:1px solid #91caff;border-radius:10px;padding:2px 10px;font-size:11px;white-space:nowrap;font-weight:600"';}
+    else if(isCorp&&!isIncome){attrLabel='对公支出';attrPill='style="background:#f0f5ff;color:#003a8c;border:1px solid #adc6ff;border-radius:10px;padding:2px 10px;font-size:11px;white-space:nowrap;font-weight:600"';}
+    else if(!isCorp&&isIncome){attrLabel='对私收入';attrPill='style="background:#e6fffb;color:#08979c;border:1px solid #87e8de;border-radius:10px;padding:2px 10px;font-size:11px;white-space:nowrap;font-weight:600"';}
+    else{attrLabel='对私支出';attrPill='style="background:#fff7e6;color:#d46b08;border:1px solid #ffd591;border-radius:10px;padding:2px 10px;font-size:11px;white-space:nowrap;font-weight:600"';}
     // 发票反向徽章：收款行→已开销项票；付款行→已收进项票（现查，不存储重复数据）
     let flowBadge='';
     const linkedInv = r.type==='income'
       ? (App.invoices||[]).find(x=>x.linkedIncomeId===r.rec.id)
       : (App.invoices||[]).find(x=>x.linkedExpenseId===r.rec.id);
     if(linkedInv) flowBadge=' <span class="archive-tag blue" title="已开'+(r.type==='income'?'销项':'进项')+'发票">🧾'+(r.type==='income'?'销项票':'进项票')+'</span>';
-    /* 账户性质徽章：对公（深蓝）/ 对私（橙），真相源为每笔 rec.accountType */
-    const at=defaultAccountType(r.rec,r.proj);
-    const acctBadge = at==='对公'
-      ? ' <span class="archive-tag" style="background:#e6f4ff;color:#003a8c;border:1px solid #91caff" title="对公账户（对公户 / 可开票主体）">对公</span>'
-      : ' <span class="archive-tag" style="background:#fff7e6;color:#d48806;border:1px solid #ffd591" title="对私账户（个人卡 / 微信 / 业主个人付）">对私</span>';
     /* 对公未开票提醒徽章：已在发票系统登记则不再提示 */
-    const noInvBadge = (at==='对公' && !linkedInv)
+    const noInvBadge = (isCorp && !linkedInv)
       ? ' <span class="archive-tag" style="background:#fff1f0;color:#cf1322;border:1px solid #ffa39e" title="对公走账但未开票，请跟进开/取票">⚠ 未开票</span>'
       : '';
     html+='<tr class="'+cls.trim()+'">'+
       '<td>'+r._idx+'</td>'+
       '<td class="ld-date">'+(r.date||'-')+'</td>'+
-      '<td><span class="ld-tag'+tagCls+'">'+tagText+'</span></td>'+
+      '<td><span '+attrPill+'>'+attrLabel+'</span></td>'+
       '<td class="ld-proj" onclick="switchToProject(\''+r.proj.id+'\');switchPage(\'finance\')">'+escHtml(projDisplayName(r.proj))+'</td>'+
-      '<td class="ld-detail" title="'+escHtml(r.detail)+'">'+escHtml(r.detail)+flowBadge+acctBadge+noInvBadge+'</td>'+
+      '<td class="ld-detail" title="'+escHtml(r.detail)+'">'+escHtml(r.detail)+flowBadge+noInvBadge+'</td>'+
       '<td class="ld-person">'+escHtml(r.person)+'</td>'+
       '<td class="amt-in">'+(isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
       '<td class="amt-out">'+(!isIncome?'<span style="cursor:pointer" onclick="jumpToFinance(\''+r.proj.id+'\',\''+r.type+'\',\''+(r.rec.id||'')+'\')" title="点击跳转到装修记账">¥'+fmt(r.amt)+'</span>':'')+'</td>'+
