@@ -3311,6 +3311,7 @@ a{color:#003a8c;text-decoration:none}
           <div class="form-group" style="grid-column:1/-1"><label class="form-label">账户性质</label><select id="mpAccountType" onchange="toggleMatTax()"><option value="对私">对私（个人 / 微信 / 支付宝）</option><option value="对公">对公（企业 / 需发票）</option></select></div>
           <div class="form-group" id="mpTaxGroup" style="grid-column:1/-1;display:none"><label class="form-label">税率（%）</label><select id="mpTaxRate"></select></div>
           <div class="form-group" id="mpInvoiceGroup" style="grid-column:1/-1;display:none"><label class="form-label">开票状态（对公进项）</label><select id="mpInvoiceStatus"></select></div>
+          <div id="mpContractHint" style="display:none;grid-column:1/-1;margin-top:-2px;font-size:11.5px;line-height:1.5;border-radius:6px;padding:8px 10px"></div>
         </div>
         <div style="font-size:11px;color:#999;margin-top:6px;line-height:1.5">未付款自动为 0；已付清时自动等于材料金额。选「对公」将计入「对公资金流」并参与税费计算；「待收」会在发票管理自动生成草稿进项发票，「无票」表示合法免开。</div>
       </div>
@@ -13056,6 +13057,7 @@ function missingContractsList(){
     (p.purchases||[]).forEach(pur=>{
       const c=contractForPurchase(p.id,pur.id);
       if(c)return;
+      if(!purchaseMissingContractListed(p))return; /* 对私项目不判「缺合同」，否则会永远提醒却建不了 */
       out.push({ id:'con_pur_'+pur.id, title:(pur.name||'采购项')+' · 采购合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'采购', _targetKind:'purchase', _targetId:pur.id, projectName:pn, conType:'采购', targetKind:'purchase', targetId:pur.id, targetName:pur.name, label:'采购合同', note:'未关联采购合同，需补签' });
     });
     /* 3) 施工节点缺施工合同（关联了合同即视为已建，离开缺合同版块） */
@@ -13069,6 +13071,9 @@ function missingContractsList(){
     (p.expense||[]).forEach(e=>{
       if(defaultAccountType(e,p)!=='对公')return;
       if(e.linkedContractId)return;
+      /* 由调配单派生、且该采购单判定「不需要采购合同」→ 跳过（与 syncPurchaseContract 同一口径，
+         否则对私项目会造成"系统不给建合同、待办却一直催补签"的死循环） */
+      if(e.purchaseId && !purchaseNeedsContract(p,findPurchaseById(p.id,e.purchaseId)))return;
       const hasSignedGX=(App.contracts||[]).some(c=>c.projectId===p.id && c.type==='采购' && MAIN_CONTRACT_OK.includes(c.status));
       if(hasSignedGX)return;
       out.push({ id:'con_exp_'+e.id, title:(e.name||'对公付款')+' · 采购合同', done:false, due:'', _kind:'contract', _proj:pn, _pid:p.id, _conType:'采购', _targetKind:'expense', _targetId:e.id, projectName:pn, conType:'采购', targetKind:'expense', targetId:e.id, targetName:e.name, label:'采购合同', note:'对公付款给上游供应商，需有已签采购合同覆盖' });
@@ -13196,12 +13201,17 @@ function cascadeDeleteLinkedInvoice(recId, type, projectId){
 }
 /* 删除收/付款源记录后，级联移除自动创建的关联合同（仅限 linkedExpenseId/linkedIncomeId 反向指向源记录的草稿合同）。
    用户手动选择关联的合同不受影响（其 linkedExpenseId/linkedIncomeId 为空）。 */
-function cascadeDeleteLinkedContract(recId, type, projectId){
+function cascadeDeleteLinkedContract(recId, type, projectId, draftOnly){
   if(!App.contracts||!recId)return;
-  const key = type==='income' ? 'linkedIncomeId' : 'linkedExpenseId';
+  /* ⚠️ type='purchase' 必须映射到 linkedPurchaseId（此前一律用 linkedExpenseId，
+     导致「调配单切回对私时清理草稿采购合同」是一句永不生效的空操作，草稿合同会永久残留） */
+  const key = type==='income' ? 'linkedIncomeId' : (type==='purchase' ? 'linkedPurchaseId' : 'linkedExpenseId');
+  /* draftOnly=true：只删自动创建的草稿合同，保留已签约合同（采购单仍在、只是不再需要自动合同头） */
+  const isDraft=c=>c.status==='草稿'||!c.status;
+  const match=c=>c[key]===recId && (!draftOnly || isDraft(c));
   /* 先收集将被删除的合同 ID 列表，用于后续重置待办项 */
-  const removedIds = App.contracts.filter(c=> c[key]===recId ).map(c=>c.id);
-  App.contracts = App.contracts.filter(c=> c[key]!==recId );
+  const removedIds = App.contracts.filter(match).map(c=>c.id);
+  App.contracts = App.contracts.filter(c=>!match(c));
   /* 重置关联待办项的 done 状态（与 deleteContract 保持一致） */
   if(projectId){ const proj=App.projects.find(p=>p.id===projectId);
     if(proj&&(proj.actionQueue||[]).length){
@@ -14647,6 +14657,26 @@ function toggleMatTax(){
   /* 开票状态仅对公可见（与「记一笔」一致）：采购属付款，选项为 无票/待收/已收 */
   const ig=document.getElementById('mpInvoiceGroup');
   if(ig)ig.style.display = isCorp ? 'block' : 'none';
+  toggleMatContractHint(isCorp);
+}
+/* 采购合同提示条（2026-08-29）：
+   对私项目（个人业主）即使选「对公」也不会自动生成采购合同，需在此说明，
+   否则用户会疑惑「为什么合同管理里没有 / 为什么待办不催了」。 */
+function toggleMatContractHint(isCorp){
+  const box=document.getElementById('mpContractHint'); if(!box)return;
+  const p=cur();
+  const isBizCorp = !!(p && p.bizType==='企业');
+  if(!isBizCorp){
+    box.style.display='block';
+    box.style.background='#fafafa'; box.style.color='#888';
+    box.innerHTML='本项目为<span style="font-weight:600">对私（个人业主）</span>，保存后<b>不会自动生成采购合同</b>；如需留档请在合同管理手动新建。';
+  }else if(isCorp){
+    box.style.display='block';
+    box.style.background='#e6f4ff'; box.style.color='#003a8c';
+    box.innerHTML='对公采购：保存后将按本调配单<b>自动关联一份采购合同</b>（分次付款不重复建）。';
+  }else{
+    box.style.display='none';
+  }
 }
 /* 填充调配单的开票状态下拉：采购=付款方向 → 无票/待收/已收 */
 function fillMatInvoiceStatus(selVal){
@@ -14808,8 +14838,9 @@ function syncPurchaseToExpense(p, purchase){
     if(conId) rec.linkedContractId=conId;
     syncExpenseInvoice(rec,p);
   });
-  /* 切换回对私：清理此前因对公自动创建的草稿采购合同 */
-  if(at!=='对公') cascadeDeleteLinkedContract(purchase.id,'purchase',p.id);
+  /* 不再需要自动采购合同（切回对私付款，或项目本身是对私/个人业主）时，
+     清理此前自动创建的草稿合同；已签约的合同保留，不做无授权删除。 */
+  if(!purchaseNeedsContract(p,purchase)) cascadeDeleteLinkedContract(purchase.id,'purchase',p.id,true);
 }
 
 /* ── 反向同步：记账支出 → 采购调配单（2026-08-29 修复双向联动断裂）
@@ -14850,12 +14881,32 @@ function syncExpensesToPurchases(p){
   });
   return changed;
 }
+/* 采购单是否需要采购合同（唯一判定入口，合同创建与「缺合同」清单共用，保证口径一致）
+   两道闸门，缺一不可：
+   ① 流水级：采购单本身必须是对公（对私个人转账不需要采购合同）
+   ② 项目级：项目业务性质必须是「企业」（2026-08-29）——对私项目（个人业主）
+      即使某一笔走对公转账，也**不自动生成采购合同**；
+      理由：个人业主项目与供应商之间通常只有送货单/订单，不存在可签的采购合同主体，
+      自动建草稿合同会污染合同管理与待办事项。用户确有需要时可手动「去补签」。 */
+function purchaseNeedsContract(p,purchase){
+  if(!purchase)return false;
+  if(purchase.accountType!=='对公')return false;
+  if(!p||p.bizType!=='企业')return false;
+  return true;
+}
+/* 「缺合同」清单是否应列出某个采购项。
+   ⚠️ 与 purchaseNeedsContract 的区别：这里**只拦项目级**（对私项目不催），
+   不加 accountType 闸门 —— 企业项目下未标记账户性质的历史采购单仍要照常提醒
+   （这是既有行为，收窄会让老项目的缺合同提醒凭空消失）。 */
+function purchaseMissingContractListed(p){
+  return !!(p && p.bizType==='企业');
+}
 /* 材料调配单 → 采购合同联动（按**采购单维度**去重，一份调配单只对应一份采购合同）：
-   - 仅对公（对私个人转账不需要采购合同）
+   - 需同时满足「采购单对公」+「项目为企业主体」（见 purchaseNeedsContract）
    - 已存在则更新金额/厂家（分次付款只更新不新建）
    - 用 linkedPurchaseId 关联，使 contractForPurchase() 能识别、「缺合同」清单不再误报 */
 function syncPurchaseContract(p,purchase){
-  if(!purchase||purchase.accountType!=='对公')return '';
+  if(!purchaseNeedsContract(p,purchase))return '';
   if(!App.contracts)App.contracts=[];
   const total=parseFloat(purchase.budget)||0;
   const vendor=purchase.vendor||'';
