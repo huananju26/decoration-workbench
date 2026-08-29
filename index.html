@@ -1098,6 +1098,9 @@ a{color:#003a8c;text-decoration:none}
 .fin-rec-status{font-size:11px;padding:1px 8px;border-radius:20px;font-weight:600;white-space:nowrap;flex-shrink:0}
 .fin-rec-status.paid{color:#003a8c;background:#e6f4ff;border:1px solid #003a8c}
 .fin-rec-status.pending{color:#d48806;background:#fffbe6;border:1px solid #ffe58f}
+/* 由「材料与厂家调配」发起的付款记录：只读标记（记账端不可改，回调配端改） */
+.fin-rec-src{font-size:11px;padding:1px 7px;border-radius:4px;font-weight:600;white-space:nowrap;flex-shrink:0;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;cursor:help}
+.fin-rec-action-btn.locked{opacity:.32;cursor:not-allowed}
 /* 第二行：灰色小字 */
 .fin-rec-row2{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .fin-rec-note{font-size:11.5px;color:#999;line-height:1.3}
@@ -12334,7 +12337,13 @@ function renderProcessPurchase(){
             ${escHtml(item.vendor||'供应商待定')} · ${escHtml(item.buyer||'未分配采购人')}
           </div>
           <div style="font-size:11.5px;color:#888;line-height:1.6;margin-top:2px">
-            计划 ${item.dueDate||'—'} 到场 · 采购 ¥${fmt(item.budget||0)} · <span style="color:${payLabel==='已付清'?'#003a8c':payLabel==='部分付款'?'#faad14':'#ff4d4f'}">${payLabel}</span>
+            计划 ${item.dueDate||'—'} 到场 · 采购 ¥${fmt(item.budget||0)} · ${(()=>{
+              const b=item.budget||0, pa=item.paidAmount||0, ps=item.payStatus||'未付款';
+              const remain=Math.max(0,b-pa);
+              if(ps==='已付清')return '<span style="color:#003a8c;font-weight:600">已付清</span>';
+              if(ps==='部分付款')return `<span style="color:#faad14;cursor:pointer;font-weight:600;text-decoration:underline" onclick="event.stopPropagation();markPurchasePaidFull('${item.id}')" title="点击标记为已付清（尾款¥${fmt(remain)}）">部分付款 · 尾款<span style="color:#ff4d4f">¥${fmt(remain)}</span></span>`;
+              return `<span style="color:#ff4d4f;cursor:pointer;font-weight:600;text-decoration:underline" onclick="event.stopPropagation();markPurchasePaidFull('${item.id}')" title="点击标记为已付清（全额¥${fmt(b)}）">未付款 · <span style="color:#ff4d4f">¥${fmt(b)}</span></span>`;
+            })()}
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
@@ -14759,12 +14768,56 @@ function markPurchaseArrived(id){
   /* 如果有付款状态联动：到场后提示确认付款 */
   if(item.payStatus==='未付款'){
     const ok=confirm(`「${item.name}」已标记为到场。\n\n是否同时将付款状态改为"已付清"？`);
-    if(ok)item.payStatus='已付清';
+    if(ok){item.payStatus='已付清';item.paidAmount=item.budget||0;}
   }
-  /* 同步付款状态变更到支出账单 */
-  syncPurchaseToExpense(p, item);
+  settlePurchaseExpenses(p, item);
   persist();
   renderProcessPurchase();renderPurchase();renderHome();renderFinance();
+}
+
+/* 将采购单下的「待付」付款单就地结清为「已付」——保留分次付款的流水痕迹。
+   ⚠️ 为什么不直接调 syncPurchaseToExpense？因为它是**全量重建**：
+   会把 3000(已付)+2000(待付) 两条合并重建成一条 5000，
+   分次付款的笔数、金额、日期痕迹全部丢失，财务对账时看不出"付了几次"。
+   本函数只改 paid 标记，条数不变；发票/合同金额按「已付支出求和」聚合，会自动跟涨到全额。 */
+function settlePurchaseExpenses(p,item){
+  if(!p||!item)return false;
+  const linked=(p.expense||[]).filter(e=>e.purchaseId===item.id);
+  if(!linked.length){
+    /* 兜底：历史上从未生成过付款单（极旧数据），按当前状态全量补建 */
+    syncPurchaseToExpense(p, item);
+    return true;
+  }
+  const today=todayISO();
+  let changed=false;
+  linked.forEach(e=>{
+    if(!e.paid){ e.paid=true; if(!e.date)e.date=today; changed=true; }
+  });
+  /* ⚠️ 必须重跑发票同步：进项票金额按「已付支出求和」聚合，
+     只改 paid 而不重算的话，结清后发票金额会停留在部分付款时的旧值（3000 而非 5000）。 */
+  if(changed) linked.forEach(e=>{ syncExpenseInvoice(e,p); });
+  return changed;
+}
+
+/* 一键标记采购单已付清（从调配卡片点击触发）
+   将 payStatus 改为"已付清"、paidAmount 设为预算全额，
+   然后把该采购单下的待付付款单就地结清为已付。
+   这是调配单→记账的权威入口：用户应在此处完成付款状态管理。 */
+function markPurchasePaidFull(id){
+  const p=cur();if(!p)return;
+  const item=(p.purchases||[]).find(x=>x.id===id);
+  if(!item)return;
+  if(item.payStatus==='已付清'){alert('该采购单已是「已付清」状态');return;}
+  const budget=item.budget||0;
+  const remain=Math.max(0, budget-(item.paidAmount||0));
+  const ok=confirm(`确认将「${escHtml(item.name)}」标记为已付清？\n\n采购金额：¥${fmt(budget)}\n本次结清尾款：¥${fmt(remain)}\n\n该操作会把这张采购单下的待付付款单全部标记为「已付」，并保留分次付款的流水记录。`);
+  if(!ok)return;
+  item.payStatus='已付清';
+  item.paidAmount=budget;
+  /* 就地结清该采购单下的待付付款单（保留分次付款流水） */
+  settlePurchaseExpenses(p, item);
+  persist();
+  renderProcessPurchase();renderPurchase();renderHome();renderFinance();renderLedger&&renderLedger();
 }
 
 /* 编辑采购条目（更多操作） */
@@ -15549,10 +15602,16 @@ function renderFinanceRecords(){
 
   /* 左栏：付款账单（按日期降序，最新在前） */
   const expEl=$('finColExpense');
-  expEl.innerHTML=expSorted.length?expSorted.map(e=>{const ci=catInfo(e.cat);return`<div class="fin-record-item">
+  expEl.innerHTML=expSorted.length?expSorted.map(e=>{const ci=catInfo(e.cat);
+    /* 调配单发起的付款：只读，编辑/删除按钮置灰并提示回调配端修改 */
+    const _lock=isPurchaseDerivedExpense(e);
+    const _actBtns=_lock
+      ? '<button class="fin-rec-action-btn locked" title="由材料与厂家调配发起，不支持在记账中修改" onclick="notifyPurchaseDerivedReadonly()">✏</button><button class="fin-rec-action-btn del locked" title="由材料与厂家调配发起，不支持在记账中删除" onclick="notifyPurchaseDerivedReadonly()">✕</button>'
+      : `<button class="fin-rec-action-btn" onclick="editFinance('expense','${e.id}')">✏</button><button class="fin-rec-action-btn del" onclick="delFinance('expense','${e.id}')">✕</button>`;
+    return`<div class="fin-record-item">
       <div class="fin-rec-cat-icon" style="background:${ci.color}">${ci.short}</div>
       <div class="fin-rec-main">
-        <div class="fin-rec-row1"><span class="fin-rec-title">${escHtml(e.payee||'未填写')} · ¥${fmt(e.amount)}</span><span class="fin-rec-status ${e.paid?'paid':'pending'}">${e.paid?'已付':'待付'}</span>${e.date?'<span style="font-size:12px;color:#999;white-space:nowrap">'+e.date+'</span>':''}<div class="fin-rec-actions"><button class="fin-rec-action-btn" onclick="editFinance('expense','${e.id}')">✏</button><button class="fin-rec-action-btn del" onclick="delFinance('expense','${e.id}')">✕</button></div></div>
+        <div class="fin-rec-row1"><span class="fin-rec-title">${escHtml(e.payee||'未填写')} · ¥${fmt(e.amount)}</span>${_lock?'<span class="fin-rec-src" title="本笔由「材料与厂家调配」发起，如需修改请到调配端操作">调配</span>':''}<span class="fin-rec-status ${e.paid?'paid':'pending'}">${e.paid?'已付':'待付'}</span>${e.date?'<span style="font-size:12px;color:#999;white-space:nowrap">'+e.date+'</span>':''}<div class="fin-rec-actions">${_actBtns}</div></div>
         <div class="fin-rec-row2"><span class="fin-rec-note">${e.cat?e.cat:''}${e.name?' · '+escHtml(e.name):''}${e.note?' · '+escHtml(e.note):''}</span></div>
       </div></div>`;}).join(''):'<div style="text-align:center;padding:40px;color:#bbb;font-size:14px">暂无付款记录</div>';
 
@@ -15906,6 +15965,16 @@ function editLedgerBalance(currentVal){
   input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();done(true);}if(e.key==='Escape'){e.preventDefault();done(false);}});
   input.addEventListener('blur',()=>done(true));
 }
+/* ===== 调配单发起付款的只读保护（2026-08-29） =====
+   背景：从「材料与厂家调配」生成的付款账单，其付款状态/金额以调配单为准。
+   若记账端也能改，就会出现"记账已付、调配仍部分付款"的状态打架。
+   约定：这类记录在装修记账中只读，修改必须回到调配端（采购单卡片 / 调配编辑弹窗）。 */
+function isPurchaseDerivedExpense(rec){
+  return !!(rec && rec.purchaseId);
+}
+function notifyPurchaseDerivedReadonly(){
+  alert('该笔付款由「材料与厂家调配」发起，在装修记账中为只读，不支持修改或删除。\n\n如需修改付款状态、金额，请到「材料与厂家调配」中编辑对应的采购单（也可直接在调配卡片上点击「部分付款 · 尾款」一键标记已付清）。');
+}
 function editFinance(type,id){
   let found=null,foundP=null;
   for(const pr of App.projects){
@@ -15914,6 +15983,8 @@ function editFinance(type,id){
     if(it){found=it;foundP=pr;break;}
   }
   if(!found)return;
+  /* 只读保护：调配单发起的付款记录不允许在记账端编辑 */
+  if(type==='expense' && isPurchaseDerivedExpense(found)){ notifyPurchaseDerivedReadonly(); return; }
   /* 先保存原始值（特别是 stage），避免 openFinanceModal 重置后丢失 */
   let origStage=found.stage||'';
   /* 兼容：旧数据可能存的是阶段名称或 'undefined' 字符串，归一化为正确的 id */
@@ -16829,6 +16900,11 @@ function refreshContactDatalists(proj){
 }
 function delFinance(type,id){
   const p=cur();if(!p)return;
+  /* 只读保护：调配单发起的付款记录不允许在记账端删除（否则调配单尾款会凭空消失） */
+  if(type==='expense'){
+    const _rec=(p.expense||[]).find(e=>e.id===id);
+    if(isPurchaseDerivedExpense(_rec)){ notifyPurchaseDerivedReadonly(); return; }
+  }
   if(!confirm('确认删除这条记录？'))return;
   if(type==='income'){ p.income=p.income.filter(i=>i.id!==id); cascadeDeleteLinkedInvoice(id,'income',p.id); cascadeDeleteLinkedContract(id,'income',p.id); }
   else { p.expense=p.expense.filter(e=>e.id!==id); cascadeDeleteLinkedInvoice(id,'expense',p.id); cascadeDeleteLinkedContract(id,'expense',p.id); }
