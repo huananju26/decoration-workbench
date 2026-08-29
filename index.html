@@ -2701,7 +2701,7 @@ a{color:#003a8c;text-decoration:none}
 
       <!-- 支出分类网格 -->
       <div class="fin-cat-section">
-        <div class="fin-cat-title">支出分类（材料采购 / 人工劳务 等）</div>
+        <div class="fin-cat-title" id="finCatTitle">支出分类（材料采购 / 人工劳务 等）</div>
         <div class="fin-cat-grid" id="finCatGrid"></div>
       </div>
 
@@ -2716,7 +2716,7 @@ a{color:#003a8c;text-decoration:none}
           <div class="fin-col-body" id="finColIncome"></div>
         </div>
         <div class="fin-col">
-          <div class="fin-col-header">分类占比</div>
+          <div class="fin-col-header" style="display:flex;align-items:center;justify-content:center;gap:8px"><span>分类占比</span><span id="finCatScopeSeg"></span></div>
           <div class="fin-col-body" id="finColCategory"></div>
         </div>
       </div>
@@ -15502,12 +15502,52 @@ const EXPENSE_CAT_RENAME={'材料款':'材料采购','人工款':'人工劳务',
 function getExpenseCategories(p){
   const map={};
   EXPENSE_CATS.forEach(c=>map[c.key]=0);
+  map['其他']=0; /* 兜底桶：未命中已知分类的金额归集于此；缺失初始化会导致 NaN 污染整个统计 */
   (p.expense||[]).forEach(e=>{
     const k=EXPENSE_CAT_RENAME[e.cat]||e.cat||'其他';
     if(map[k]!==undefined)map[k]+=(e.amount||0);
     else map['其他']+=(e.amount||0);
   });
   return map;
+}
+/* 对公支出的分类占比（财务口径：分类分析只看对公资金流，不含对私转账） */
+function getCorpExpenseCategories(p){
+  const map={};
+  EXPENSE_CATS.forEach(c=>map[c.key]=0);
+  map['其他']=0; /* 同上：兜底桶必须初始化，否则 NaN 污染分母 */
+  (p.expense||[]).forEach(e=>{
+    if(defaultAccountType(e,p)!=='对公')return; /* 跳过对私 */
+    const k=EXPENSE_CAT_RENAME[e.cat]||e.cat||'其他';
+    if(map[k]!==undefined)map[k]+=(e.amount||0);
+    else map['其他']+=(e.amount||0);
+  });
+  return map;
+}
+/* ── 分类占比口径：'corp'=仅对公（默认，财务口径）| 'all'=全部支出 ──
+   2026-08-29：对公/对私是流水级维度，分类分析默认只看对公资金流；
+   用户可一键切到「全部」查看含对私转账的全口径。选择持久化到 localStorage。 */
+let _finCatScope=(function(){try{return localStorage.getItem('xzgz_fin_cat_scope')==='all'?'all':'corp';}catch(e){return 'corp';}})();
+function setFinCatScope(scope){
+  _finCatScope=(scope==='all'?'all':'corp');
+  try{localStorage.setItem('xzgz_fin_cat_scope',_finCatScope);}catch(e){}
+  if(typeof renderFinance==='function')renderFinance();
+}
+function finCatScopeLabel(){return _finCatScope==='all'?'全部支出':'仅对公';}
+/* 按当前口径取分类金额（「支出分类」网格与右侧「分类占比」共用，保证同页口径一致） */
+function getScopedExpenseCategories(p){
+  return _finCatScope==='all'?getExpenseCategories(p):getCorpExpenseCategories(p);
+}
+/* 百分比分配（最大余额法）：保证各行取整后合计恰好 100%，避免四舍五入后出现 99%/101% */
+function calcCategoryPcts(vals,total){
+  if(!(total>0))return vals.map(function(){return 0;});
+  const raw=vals.map(function(v){return v/total*100;});
+  const out=raw.map(function(x){return Math.floor(x);});
+  let rem=100-out.reduce(function(a,b){return a+b;},0);
+  if(rem>0){
+    const order=raw.map(function(x,i){return {i:i,frac:x-Math.floor(x)};}).sort(function(a,b){return b.frac-a.frac;});
+    for(let k=0;k<order.length&&rem>0;k++,rem--)out[order[k].i]++;
+  }
+  return out;
 }
 function renderFinance(){
   const p=cur();if(!p){showNoProject('finance');return;}hideNoProject();
@@ -15648,9 +15688,13 @@ function renderFinance(){
     `<div class="fin-dash-note">账面毛利 = 累计已收 − 实际已支出，仅反映当前账面情况，不代表项目最终利润。毛利率 = 账面毛利 ÷ 累计已收。</div>`+
     `<div class="fin-acct-title">资金性质拆分（按每笔收付款标记）</div>`+acctSplitHTML(accountSplit(p));
 
-  // 4. 支出分类网格
-  const cats=getExpenseCategories(p);
-  $('finCatGrid').innerHTML=EXPENSE_CATS.map(c=>`<div class="fin-cat-item" style="border-left-color:${c.color}"><div class="fin-cat-name">${c.label}</div><div class="fin-cat-val">¥${fmt(cats[c.key])}</div></div>`).join('');
+  // 4. 支出分类网格（口径与右侧「分类占比」一致，默认仅对公）
+  const cats=getScopedExpenseCategories(p);
+  const catTitleEl=$('finCatTitle');
+  if(catTitleEl)catTitleEl.innerHTML='支出分类（材料采购 / 人工劳务 等）<span style="margin-left:8px;font-size:11.5px;color:#003a8c;background:#e6f4ff;border:1px solid #91caff;border-radius:10px;padding:2px 8px;font-weight:600">'+finCatScopeLabel()+'</span>';
+  const gridCats=EXPENSE_CATS.slice();
+  if((cats['其他']||0)>0)gridCats.push({key:'其他',label:'其他',color:'#8c8c8c'});
+  $('finCatGrid').innerHTML=gridCats.map(c=>`<div class="fin-cat-item" style="border-left-color:${c.color}"><div class="fin-cat-name">${c.label}</div><div class="fin-cat-val">¥${fmt(cats[c.key]||0)}</div></div>`).join('');
 
   // 5. Tab + 记录列表
   renderFinanceRecords();
@@ -15757,16 +15801,30 @@ function renderFinanceRecords(){
       </div></div>`;
   }).join(''):'<div style="text-align:center;padding:40px;color:#bbb;font-size:14px">暂无收款记录</div>';
 
-  /* 右栏：分类占比 */
+  /* 右栏：分类占比（口径可切换，默认仅对公资金流） */
   const catEl=$('finColCategory');
-  const cats=getExpenseCategories(p);
-  const total=Object.values(cats).reduce((a,b)=>a+b,0)||1;
+  const cats=getScopedExpenseCategories(p);
+  const otherAmt=cats['其他']||0;
+  /* 分母 = 列表内分类之和 + 溢出到「其他」的金额；旧版只算列表内却把「其他」金额算进分母 → 百分比全错 */
+  const total=EXPENSE_CATS.reduce((s,c)=>(cats[c.key]||0)+s,0)+otherAmt;
+  const rowDefs=EXPENSE_CATS.slice();
+  if(otherAmt>0)rowDefs.push({key:'其他',label:'其他',color:'#8c8c8c'});
+  const pcts=calcCategoryPcts(rowDefs.map(c=>cats[c.key]||0),total);
   let html='<div style="padding:4px 0">';
-  EXPENSE_CATS.forEach(c=>{
-    const v=cats[c.key]||0; const pct=Math.round(v/total*100); const bg=c.color||'#003a8c';
+  rowDefs.forEach((c,idx)=>{
+    const v=cats[c.key]||0;
+    const pct=pcts[idx]||0;
+    const bg=c.color||'#003a8c';
     html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="width:72px;font-size:12.5px;color:#666;flex-shrink:0">'+c.label+'</div><div style="flex:1;height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+bg+';border-radius:4px;transition:width .3s"></div></div><div style="width:60px;text-align:right;font-size:12.5px;font-weight:600;color:#333;flex-shrink:0">¥'+fmt(v)+'</div><div style="width:36px;text-align:right;font-size:11.5px;color:#999;flex-shrink:0">'+pct+'%</div></div>';
   });
+  html+='<div style="font-size:11.5px;color:#bbb;margin-top:2px">合计 ¥'+fmt(total)+' · '+finCatScopeLabel()+'</div>';
   html+='</div>'; catEl.innerHTML=html;
+  /* 口径切换器（对公 / 全部） */
+  const segEl=$('finCatScopeSeg');
+  if(segEl){
+    const mk=(k,txt)=>'<button type="button" onclick="setFinCatScope(\''+k+'\')" style="border:1px solid '+(_finCatScope===k?'#91caff':'#e0e0e0')+';background:'+(_finCatScope===k?'#e6f4ff':'#fff')+';color:'+(_finCatScope===k?'#003a8c':'#999')+';font-size:11px;line-height:1;padding:3px 9px;border-radius:10px;cursor:pointer;font-weight:'+(_finCatScope===k?600:400)+';font-family:inherit">'+txt+'</button>';
+    segEl.innerHTML='<span style="display:inline-flex;gap:4px">'+mk('corp','对公')+mk('all','全部')+'</span>';
+  }
 }
 /* 当前项目总金额（含增减项联动）：合同总金额 + 增减项；未设合同额时退回 实收记录合计+增减项 */
 function projTotalAm(p){
