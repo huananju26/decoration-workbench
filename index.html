@@ -15618,16 +15618,23 @@ function renderFinanceRecords(){
 
   /* 左栏：付款账单（按日期降序，最新在前） */
   const expEl=$('finColExpense');
+  /* 当前项目 id：调配标签跳转时用它锁定项目，避免跳过去还要手动选项目 */
+  const _finPid=p.id;
   expEl.innerHTML=expSorted.length?expSorted.map(e=>{const ci=catInfo(e.cat);
     /* 调配单发起的付款：只读，编辑/删除按钮置灰并提示回调配端修改 */
     const _lock=isPurchaseDerivedExpense(e);
+    /* ⚠️ 必须用模板字符串（反引号）构造：写成 ${_lock?'<span ...${e.xx}'...:''} 时，
+       三元分支里的单引号是普通字符串，内部的 ${} 不会被插值，会把字面量 '${e.purchaseId}' 传进函数。 */
+    const _srcTag=_lock
+      ? `<span class="fin-rec-src" title="点击跳转到「材料与厂家调配」" onclick="event.stopPropagation();jumpToPurchaseFromFinance('${e.purchaseId}','${_finPid}')">调配</span>`
+      : '';
     const _actBtns=_lock
       ? '<button class="fin-rec-action-btn locked" title="由材料与厂家调配发起，不支持在记账中修改" onclick="notifyPurchaseDerivedReadonly()">✏</button><button class="fin-rec-action-btn del locked" title="由材料与厂家调配发起，不支持在记账中删除" onclick="notifyPurchaseDerivedReadonly()">✕</button>'
       : `<button class="fin-rec-action-btn" onclick="editFinance('expense','${e.id}')">✏</button><button class="fin-rec-action-btn del" onclick="delFinance('expense','${e.id}')">✕</button>`;
     return`<div class="fin-record-item">
       <div class="fin-rec-cat-icon" style="background:${ci.color}">${ci.short}</div>
       <div class="fin-rec-main">
-        <div class="fin-rec-row1"><span class="fin-rec-title">${escHtml(e.payee||'未填写')} · ¥${fmt(e.amount)}</span>${_lock?'<span class="fin-rec-src" title="点击跳转到「材料与厂家调配」" onclick="event.stopPropagation();jumpToPurchaseFromFinance(\'${e.purchaseId}\',\'${e._pid||currentProjectId}\')">调配</span>':''}<span class="fin-rec-status ${e.paid?'paid':'pending'}">${e.paid?'已付':'待付'}</span>${e.date?'<span style="font-size:12px;color:#999;white-space:nowrap">'+e.date+'</span>':''}<div class="fin-rec-actions">${_actBtns}</div></div>
+        <div class="fin-rec-row1"><span class="fin-rec-title">${escHtml(e.payee||'未填写')} · ¥${fmt(e.amount)}</span>${_srcTag}<span class="fin-rec-status ${e.paid?'paid':'pending'}">${e.paid?'已付':'待付'}</span>${e.date?'<span style="font-size:12px;color:#999;white-space:nowrap">'+e.date+'</span>':''}<div class="fin-rec-actions">${_actBtns}</div></div>
         <div class="fin-rec-row2"><span class="fin-rec-note">${e.cat?e.cat:''}${e.name?' · '+escHtml(e.name):''}${e.note?' · '+escHtml(e.note):''}</span></div>
       </div></div>`;}).join(''):'<div style="text-align:center;padding:40px;color:#bbb;font-size:14px">暂无付款记录</div>';
 
@@ -15991,16 +15998,22 @@ function isPurchaseDerivedExpense(rec){
 function notifyPurchaseDerivedReadonly(){
   alert('该笔付款由「材料与厂家调配」发起，在装修记账中为只读，不支持修改或删除。\n\n如需修改付款状态、金额，请到「材料与厂家调配」中编辑对应的采购单（也可直接在调配卡片上点击「部分付款 · 尾款」一键标记已付清）。');
 }
-/* 从付款账单的「调配」标签点击跳转到供应调配页面 */
+/* 从付款账单的「调配」标签点击跳转到供应调配页面（自动锁定来源项目，无需再手动选项目） */
 function jumpToPurchaseFromFinance(purchaseId, projectId){
-  if(!projectId) projectId=currentProjectId;
+  /* 兜底：id 无效（空值/已被删除的项目）时回退到当前项目，避免跳过去显示空态 */
+  const valid=(App.projects||[]).some(x=>x.id===projectId);
+  if(!valid) projectId=App.currentProjectId;
+  /* 先锁项目：switchToProject 内部只设 select.value，若下拉 options 尚未渲染则设不进去，
+     所以紧接着 refreshProjectUI() 重建 options 并按 currentProjectId 回填 → 顶部选择器一定同步 */
   switchToProject(projectId);
+  if(typeof refreshProjectUI==='function') refreshProjectUI();
   switchPage('process');
-  /* 切换到供应调配 tab */
+  /* 切到「供应调配」子 tab：直接点击 tab 元素以复用其自身的高亮与渲染逻辑 */
   const purchaseTab=document.querySelector('.proj-tab[data-tab="purchase"]');
-  if(purchaseTab){purchaseTab.click();}
-  /* 滚动到顶部，让用户看到供应调配内容 */
-  window.scrollTo({top:0,behavior:'smooth'});
+  if(purchaseTab && purchaseTab.click) purchaseTab.click();
+  else if(typeof switchProjTab==='function' && purchaseTab) switchProjTab(purchaseTab,'purchase');
+  /* 平滑置顶，让用户看到供应调配内容（jsdom 无 scrollTo 时静默降级） */
+  try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}
 }
 function editFinance(type,id){
   let found=null,foundP=null;
