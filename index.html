@@ -15817,20 +15817,23 @@ function renderLedger(){
     [...years].sort((a,b)=>b-a).forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y+'年';fy.appendChild(o);});
   }
 
-  // 填充项目筛选下拉
+  // 填充项目筛选下拉（每次渲染重建，保证新增/改名/删除项目后下拉不过期；保留当前选中）
   const fp=$('ledgerFilterProj');
-  if(fp.options.length<=1){
-    App.projects.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=projDisplayName(p);fp.appendChild(o);});
-  }
+  const keepProjVal=fp.value;
+  fp.innerHTML='<option value="">全部项目</option>';
+  App.projects.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=projDisplayName(p);fp.appendChild(o);});
+  if(keepProjVal&&App.projects.some(p=>p.id===keepProjVal))fp.value=keepProjVal;
 
-  // 汇总栏
-  const af=allProjectsFinance();
+  // 汇总栏：跟随项目筛选 —— 选了具体项目就显示该项目数据，否则显示全部项目
+  const fProj=$('ledgerFilterProj').value;
+  const filterProj=fProj?App.projects.find(p=>p.id===fProj):null;
+  const af=filterProj?projFinance(filterProj):allProjectsFinance();
   const todayStr=todayISO().slice(5,10).replace('-','/');
   /* 年度余额：优先使用手动编辑值，否则用自动计算值 */
   const manualBal=window.__ledgerManualBalance;
   const displayBal=(manualBal!==null&&manualBal!==undefined)?manualBal:af.grossProfit;
   $('ledgerSummaryBar').innerHTML=
-    '<div class="ledger-sum-item"><span class="ledger-sum-label">本年度项目总额</span><span class="ledger-sum-val income">¥'+fmt(af.totalIncome)+'</span></div>'+
+    '<div class="ledger-sum-item"><span class="ledger-sum-label">'+(filterProj?'本项目':'本年度项目总额')+'</span><span class="ledger-sum-val income">¥'+fmt(af.totalIncome)+'</span></div>'+
     '<div class="ledger-sum-item"><span class="ledger-sum-label">支出总计</span><span class="ledger-sum-val expense">¥'+fmt(af.totalCost)+'</span></div>'+
     '<div class="ledger-sum-item ledger-sum-highlight"><span class="ledger-sum-label">年度余额</span><span class="ledger-sum-val profit" id="ledgerBalanceDisplay" style="cursor:pointer;text-decoration:underline" title="点击手动编辑余额" onclick="editLedgerBalance('+displayBal+')">¥'+fmt(displayBal)+' ✏️</span></div>'+
     '<div class="ledger-sum-item"><span class="ledger-sum-label">已收款</span><span class="ledger-sum-val income">¥'+fmt(af.received)+'</span></div>'+
@@ -15842,7 +15845,6 @@ function renderLedger(){
   // 收集所有记录（流水账只记录已收/已付的实际发生流水，待收/待付不显示）
   let rows=[];
   const fYear=$('ledgerFilterYear').value;
-  const fProj=$('ledgerFilterProj').value;
   const fType=$('ledgerFilterType').value;
   const fStatus=$('ledgerFilterStatus').value;
   const fInv=$('ledgerFilterInvoice').value;
