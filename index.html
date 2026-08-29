@@ -6964,8 +6964,8 @@ function switchPage(page){
   if(page==='ledger')renderLedger();
   if(page==='quote')renderQuote();
   if(page==='archive')renderArchive('archivePanel');
-  if(page==='contracts')renderContracts();
-  if(page==='invoices')renderInvoices();
+  if(page==='contracts'){renderContracts();autoSwitchAlertTab('contract');}
+  if(page==='invoices'){renderInvoices();autoSwitchAlertTab('invoice');}
   /* 按页面控制顶部项目选择器显隐：合同管理/发票管理/全局聚合页(总览/工具/日记/知识/流水/报价/标准)隐藏，其余项目专属页显示 */
   const ps=$('topProjectSwitcher');
   if(ps){const hidePages=['home','contracts','invoices','tools','diary','knowledge','ledger','quote','standard'];ps.style.display=hidePages.includes(page)?'none':'';}
@@ -13308,6 +13308,24 @@ function renderContracts(){
      <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
        ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有已生效合同。新建的合同默认为「草稿」，请到「缺合同」Tab 标记已签后，才会在此显示。</div>'}
      </div>`;
+}
+/* 进入合同管理/发票管理时，如果「待处理」tab 有徽章（有待处理项），自动定位到该 tab；
+   如果没有徽章则停留在「全部」。仅在当前 tab 为「全部」时触发，不覆盖用户手动选择。 */
+function autoSwitchAlertTab(kind){
+  if(kind==='contract'){
+    if(_conTab!=='全部')return; /* 用户已手动选过其他 tab，不覆盖 */
+    const mc=missingContractsList().length
+      +(App.contracts||[]).filter(c=>c.status==='草稿'||!c.status).length;
+    if(mc>0)switchContractTab('缺合同');
+  }else if(kind==='invoice'){
+    if(_invTab!=='全部')return;
+    const list=App.invoices||[];
+    /* 优先级：待收 > 待开（进项更紧急——钱已付出去但票还没拿回来） */
+    const pendingShou=list.filter(v=>v.direction==='进项'&&(v.status==='草稿'||!v.status)).length;
+    const pendingKai =list.filter(v=>v.direction==='销项'&&(v.status==='草稿'||!v.status)).length;
+    if(pendingShou>0)switchInvoiceTab('待收');
+    else if(pendingKai>0)switchInvoiceTab('待开');
+  }
 }
 function switchContractTab(t){_conTab=t;renderContracts();}
 /* 一键把未签合同标记为已签（从「未开」版块移出） */
