@@ -8328,9 +8328,24 @@ function renderActionQueueAll(projects){
     const liExtra = item.done
       ? ' style="pointer-events:none" title="已完成，仅查看"'
       : (item._kind==='contract' ? ` onclick="event.stopPropagation();${item._conId?`editContract('${item._conId}')`:`openContractForTarget('${item._pid}','${item._conType}','${item._targetKind}','${item._targetId}','${escAttr(item.title)}')`}"` : '');
+    /* meta 行：按待办类型给出有语义的日期说明，避免裸日期让人猜（如 2026-09-01 到底是到场日？签约日？付款日？）
+       采购=预计到场时间；合同=签约截止；发票=开票/取票提醒；节点=计划完成日；增减项=到账日；逾期类=过期日 */
+    const dateLabel = kind==='purchase'
+      ? (item.done?'到场时间':'预计到场时间')
+      : (kind==='contract'
+        ? (item._conId?'签约时间':'建议签约时间')
+        : (kind==='invoice'
+          ? (item._finType==='expense'?(item.done?'收票时间':'应取票时间'):(item.done?'开票时间':'应开票时间'))
+          : (kind==='step'
+            ? (item.done?'完成时间':'计划完成时间')
+            : (kind==='adjust'?'到账日期':(kind==='income_ov'||kind==='expense_ov'?'原定支付日':(kind==='purchase_ov'?'原定到场日':''))))));
+    /* 有明确日期标签时，把日期格式化为「标签：日期」；无标签则沿用旧格式（项目名·日期） */
+    const labeledDate = dateLabel
+      ? `<span style="color:#888">${dateLabel}：</span>${metaDate}${item._proj?' · '+item._proj:''}`
+      : `${datePrefix}${item._proj||''}${dateSuffix}`;
     return `<li class="aq-item ${item.done?'aq-done':''} ${isStep?'aq-item-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''} ${isToday?'today':''}"${liExtra}>${checkHtml}
       <div class="aq-info"><div class="aq-title ${isOver?'overdue':''}">${item.title||item.name}${isOver?' <span style="color:#ff4d4f;font-size:11px">'+(isStep?'已逾期':'逾期')+'</span>':''}</div>
-      <div class="aq-meta">${datePrefix}${item._proj||''}${dateSuffix} ${item.stage?'· '+getStageName(item.stage):''}</div>${noteHtml}</div>
+      <div class="aq-meta">${labeledDate} ${item.stage?'· '+getStageName(item.stage):''}</div>${noteHtml}</div>
       <span class="aq-kind ${item.done?'aq-kind-done':''} ${isStep?'aq-kind-step':''} ${item._kind==='invoice'?'aq-item-inv':''} ${item._kind==='contract'?'aq-item-con':''}"${item.done?' title="已完成，仅查看"':' title="'+escAttr(labelTitle)+'" onclick="event.stopPropagation();'+labelOnclick}">${kindLabel}${item.done?'':'<span class="aq-kind-caret">▾</span>'}</span></li>`;
   }).join('');
 
