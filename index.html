@@ -13308,6 +13308,8 @@ function renderContracts(){
      <div class="archive-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
        ${cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有已生效合同。新建的合同默认为「草稿」，请到「缺合同」Tab 标记已签后，才会在此显示。</div>'}
      </div>`;
+  /* 回填筛选下拉选中态（innerHTML 重建后 select 会丢失 selection） */
+  if(conFStatus&&$('conFilterStatus'))$('conFilterStatus').value=conFStatus;
 }
 /* 进入合同管理/发票管理时，如果「待处理」tab 有徽章（有待处理项），自动定位到该 tab；
    如果没有徽章则停留在「全部」。仅在当前 tab 为「全部」时触发，不覆盖用户手动选择。 */
@@ -13641,6 +13643,9 @@ function renderInvoices(){
          ? (noInvCards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">当前没有「对公且合法免开」的收付款记录。注：对私转账不涉及发票，不计入无票；对公未开票的记录请在「待开 / 待收」查看。</div>')
          : (cards||'<div class="proc-empty" style="padding:24px;grid-column:1/-1">该分类下还没有发票，点击右上角「新增发票」开始登记。</div>')}
      </div>`;
+  /* 回填筛选下拉选中态（innerHTML 重建后 select 会丢失 selection） */
+  if(invFDir&&$('invFilterDir'))$('invFilterDir').value=invFDir;
+  if(invFStatus&&$('invFilterStatus'))$('invFilterStatus').value=invFStatus;
 }
 function switchInvoiceTab(t){_invTab=t;renderInvoices();}
 /* 将发票实际状态同步回其关联收/付款记录的开票状态（单一真相源：以实际发票状态为准），
