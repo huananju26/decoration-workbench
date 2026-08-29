@@ -269,43 +269,6 @@ a{color:#003a8c;text-decoration:none}
 .archive-row-val{color:#333;flex:1;min-width:0;word-break:break-all}
 @media(max-width:780px){
   .archive-grid{grid-template-columns:1fr!important}
-/* ══ 人材档案·紧凑分组卡片（2026-08-29 v2，对齐合同管理视觉语言）══ */
-.arc-group{margin-bottom:14px}
-/* 分组头：仿合同 Tab 栏风格 — 左侧图标+组名+计数徽章 + 右侧折叠箭头 */
-.arc-group-head{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;user-select:none;
-  background:#f8fafc;border:1px solid #e8ecf0;border-radius:10px;transition:all .2s;
-  border-left:4px solid #1677ff}
-.arc-group-head:hover{background:#eef3fe;border-color:#91caff;box-shadow:0 2px 8px rgba(22,119,255,.08)}
-.arc-group-name{font-size:13.5px;font-weight:700;color:#003a8c;flex:1;letter-spacing:.3px}
-.arc-group-count{font-size:11.5px;font-weight:600;color:#fff;background:#1677ff;padding:2px 9px;border-radius:10px;white-space:nowrap;line-height:1.4}
-.arc-group-arrow{transition:transform .25s ease;flex-shrink:0;color:#999}
-.arc-group-collapsed .arc-group-arrow{transform:rotate(-90deg)}
-.arc-group-collapsed .arc-group-body{display:none!important}
-.arc-group-body{padding:8px 4px;display:flex;flex-direction:column;gap:6px}
-
-/* 单条紧凑卡片：对齐 archive-item 卡片风格 */
-.arc-card{display:flex;align-items:center;gap:10px;padding:10px 14px;
-  background:#fff;border:1px solid #eaeef2;border-radius:10px;
-  cursor:pointer;transition:all .18s;position:relative}
-.arc-card:hover{border-color:#91caff;box-shadow:0 2px 8px rgba(22,119,255,.1);transform:translateY(-1px)}
-.arc-card-main{display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow:hidden}
-/* 姓名：加粗主文字 */
-.arc-card-name{font-size:13.5px;font-weight:700;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* 工种/品类标签：复用 archive-tag 蓝色药丸 */
-.arc-card-tag{font-size:11px;padding:1px 9px;border-radius:10px;border:1px solid #91caff;background:#e6f4ff;color:#003a8c;white-space:nowrap;flex-shrink:0}
-/* 手机号：次要信息灰色 */
-.arc-card-phone{font-size:12px;color:#8c8c8c;white-space:nowrap;flex-shrink:0;font-family:"SF Mono",SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace}
-/* 详情区：默认隐藏，展开后用 archive-row 风格展示 */
-.arc-card-detail{display:none;flex-direction:column;gap:4px;padding:8px 0 0;margin-top:6px;border-top:1px dashed #e8e8e8}
-.arc-card-expanded>.arc-card-detail{display:flex}
-.arc-card-detail-row{display:flex;gap:10px;font-size:12px;line-height:1.6}
-.arc-card-detail-label{color:#999;flex-shrink:0;width:64px}
-.arc-card-detail-val{color:#555;flex:1;min-width:0;word-break:break-all}
-/* 操作按钮：默认半透明，hover/展开时高亮 */
-.arc-card-ops{display:flex;gap:5px;flex-shrink:0;opacity:.45;transition:opacity .18s}
-.arc-card:hover .arc-card-ops,.arc-card-expanded .arc-card-ops{opacity:1}
-/* 展开态：浅蓝底 + 更宽边框 */
-.arc-card-expanded{flex-wrap:wrap;align-items:flex-start;background:#faffff;border-color:#bae7ff;box-shadow:0 2px 12px rgba(22,119,255,.06)}
 }
 .proc-card-title{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
 .adj-show{padding:6px 0}
@@ -12682,85 +12645,47 @@ function renderArchive(targetId){
   const personnel=App.archive.personnel||[];
   const suppliers=App.archive.suppliers||[];
 
-  /* ── 施工人员：按工种分组，标签式紧凑卡片 ── */
-  let personHtml='';
+  /* 左栏：施工人员档案卡片 */
+  let personCards='';
   if(personnel.length>0){
-    const groups={};
-    personnel.forEach(x=>{
-      const g=(x.trade||'未分类').trim()||'未分类';
-      (groups[g]=groups[g]||[]).push(x);
-    });
-    const gKeys=Object.keys(groups).sort();
-    personHtml=gKeys.map(g=>{
-      const items=groups[g];
-      return `<div class="arc-group">
-        <div class="arc-group-head" onclick="this.parentElement.classList.toggle('arc-group-collapsed')">
-          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#1677ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 3a7 7 0 100 14 7 7 0 000-14zM10 6v5l3 2"/></svg>
-          <span class="arc-group-name">${escHtml(g)}</span>
-          <span class="arc-group-count">${items.length}人</span>
-          <svg class="arc-group-arrow" viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="#999" stroke-width="1.8" stroke-linecap="round"/></svg>
+    personCards=personnel.map(x=>`
+      <div class="archive-item">
+        <div class="archive-item-head">
+          <div class="archive-item-name">${escHtml(arcPerLabel(x))}</div>
+          <div class="archive-item-ops">
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editPersonnel('${x.id}')">编辑</button>
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deletePersonnel('${x.id}')">删除</button>
+          </div>
         </div>
-        <div class="arc-group-body">${items.map(x=>`
-          <div class="arc-card" onclick="this.classList.toggle('arc-card-expanded')" title="点击展开详情">
-            <div class="arc-card-main">
-              <span class="arc-card-name">${escHtml(x.name||'—')}</span>
-              ${x.trade?`<span class="arc-card-tag">${escHtml(x.trade)}</span>`:''}
-              ${x.phone?`<span class="arc-card-phone">${escHtml(x.phone)}</span>`:''}
-            </div>
-            <div class="arc-card-detail">
-              ${x.idCard?`<div class="arc-card-detail-row"><span class="arc-card-detail-label">身份证</span><span class="arc-card-detail-val">${escHtml(x.idCard)}</span></div>`:''}
-              ${x.privateAccount?`<div class="arc-card-detail-row"><span class="arc-card-detail-label">对私账号</span><span class="arc-card-detail-val">${escHtml(x.privateAccount)}</span></div>`:''}
-              ${x.since?`<div class="arc-card-detail-row"><span class="arc-card-detail-label">合作时间</span><span class="arc-card-detail-val">${escHtml(x.since)}</span></div>`:''}
-              ${x.note?`<div class="arc-card-detail-row"><span class="arc-card-detail-label">备注</span><span class="arc-card-detail-val">${escHtml(x.note)}</span></div>`:''}
-            </div>
-            <div class="arc-card-ops">
-              <button class="btn-outline btn-sm" style="font-size:11px;padding:2px 8px;border-radius:4px" onclick="event.stopPropagation();editPersonnel('${x.id}')">编辑</button>
-              <button class="btn-outline btn-sm" style="font-size:11px;padding:2px 8px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="event.stopPropagation();deletePersonnel('${x.id}')">删除</button>
-            </div>
-          </div>`).join('')}
-      </div>`;
-    }).join('');
+        <div class="archive-item-rows">
+          ${x.phone?`<div class="archive-row"><span class="archive-row-label">手机号</span><span class="archive-row-val">${escHtml(x.phone)}</span></div>`:''}
+          ${x.idCard?`<div class="archive-row"><span class="archive-row-label">身份证号</span><span class="archive-row-val">${escHtml(x.idCard)}</span></div>`:''}
+          ${x.privateAccount?`<div class="archive-row"><span class="archive-row-label">对私付款账号</span><span class="archive-row-val">${escHtml(x.privateAccount)}</span></div>`:''}
+          ${x.since?`<div class="archive-row"><span class="archive-row-label">合作时间</span><span class="archive-row-val">${escHtml(x.since)}</span></div>`:''}
+          ${x.note?`<div class="archive-row"><span class="archive-row-label">合作备注</span><span class="archive-row-val">${escHtml(x.note)}</span></div>`:''}
+        </div>
+      </div>`).join('');
   }
 
-  /* ── 供应商：按品类分组，标签式紧凑卡片 ── */
-  let supplierHtml='';
+  /* 右栏：供应商档案卡片 */
+  let supplierCards='';
   if(suppliers.length>0){
-    const groups={};
-    suppliers.forEach(x=>{
-      const g=(x.category||'未分类').trim()||'未分类';
-      (groups[g]=groups[g]||[]).push(x);
-    });
-    const gKeys=Object.keys(groups).sort();
-    supplierHtml=gKeys.map(g=>{
-      const items=groups[g];
-      return `<div class="arc-group">
-        <div class="arc-group-head" style="border-left-color:#52c41a" onclick="this.parentElement.classList.toggle('arc-group-collapsed')">
-          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#52c41a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 9l9-7 5 4v10H3V9z"/><path d="M9 22V12h6v10"/></svg>
-          <span class="arc-group-name">${escHtml(g)}</span>
-          <span class="arc-group-count" style="background:#52c41a">${items.length}家</span>
-          <svg class="arc-group-arrow" viewBox="0 0 16 16" width="12" height="12"><path d="M4 6l4 4 4-4" fill="none" stroke="#999" stroke-width="1.8" stroke-linecap="round"/></svg>
+    supplierCards=suppliers.map(x=>{
+      const nm=arcSupLabel(x)||'—';
+      const title=nm+(x.category?` <span class="archive-pill">${escHtml(x.category)}</span>`:'');
+      return `
+      <div class="archive-item">
+        <div class="archive-item-head">
+          <div class="archive-item-name">${title}</div>
+          <div class="archive-item-ops">
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px" onclick="editSupplier('${x.id}')">编辑</button>
+            <button class="btn-outline" style="font-size:11px;padding:3px 10px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="deleteSupplier('${x.id}')">删除</button>
+          </div>
         </div>
-        <div class="arc-group-body">${items.map(x=>{const nm=x.shortName||x.name||'—';return `
-          <div class="arc-card" onclick="this.classList.toggle('arc-card-expanded')" title="点击展开详情">
-            <div class="arc-card-main">
-              <span class="arc-card-name">${escHtml(nm)}</span>
-              ${x.contact?`<span class="arc-card-tag" style="border-color:#b7eb8f;background:#f6ffed;color:#389e0d">${escHtml(x.contact)}</span>`:''}
-              ${x.category?`<span class="arc-card-tag">${escHtml(x.category)}</span>`:''}
-              ${x.phone?`<span class="arc-card-phone">${escHtml(x.phone)}</span>`:''}
-            </div>
-            <div class="arc-card-detail">
-              ${x.name&&x.shortName?`<div class="arc-card-detail-row"><span class="arc-card-detail-label">全称</span><span class="arc-card-detail-val">${escHtml(x.name)}</span></div>`:''}
-              ${x.since?`<div class="arc-card-detail-row"><span class="arc-card-detail-label">合作时间</span><span class="arc-card-detail-val">${escHtml(x.since)}</span></div>`:''}
-              ${x.invoice?`<div class="arc-card-detail-row"><span class="arc-card-detail-label">开票信息</span><span class="arc-card-detail-val">${escHtml(x.invoice)}</span></div>`:''}
-              ${x.corpAccount?`<div class="arc-card-detail-row"><span class="arc-card-detail-label">对公账号</span><span class="arc-card-detail-val">${escHtml(x.corpAccount)}</span></div>`:''}
-              ${x.privateAccount?`<div class="arc-card-detail-row"><span class="arc-card-detail-label">对私账号</span><span class="arc-card-detail-val">${escHtml(x.privateAccount)}</span></div>`:''}
-              ${x.note?`<div class="arc-card-detail-row"><span class="arc-card-detail-label">备注</span><span class="arc-card-detail-val">${escHtml(x.note)}</span></div>`:''}
-            </div>
-            <div class="arc-card-ops">
-              <button class="btn-outline btn-sm" style="font-size:11px;padding:2px 8px;border-radius:4px" onclick="event.stopPropagation();editSupplier('${x.id}')">编辑</button>
-              <button class="btn-outline btn-sm" style="font-size:11px;padding:2px 8px;border-radius:4px;color:#ff4d4f;border-color:#ffccc7;background:#fff2f0" onclick="event.stopPropagation();deleteSupplier('${x.id}')">删除</button>
-            </div>
-          </div>`;}).join('')}
+        <div class="archive-item-rows">
+          ${x.contact?`<div class="archive-row"><span class="archive-row-label">联系人</span><span class="archive-row-val">${escHtml(x.contact)}</span></div>`:''}
+          ${x.phone?`<div class="archive-row"><span class="archive-row-label">手机号</span><span class="archive-row-val">${escHtml(x.phone)}</span></div>`:''}
+        </div>
       </div>`;
     }).join('');
   }
@@ -12776,7 +12701,7 @@ function renderArchive(targetId){
             <div class="proc-sub-title">施工人员档案</div><div class="proc-sub-desc">记录工人姓名、手机号、身份证号、工种与合作关系。</div></div>
           <button class="proc-sub-btn primary" onclick="openAddPersonnel()">+ 新增人员</button>
         </div>
-        ${personHtml||'<div class="proc-empty" style="padding:24px">还没有施工人员档案。</div>'}
+        ${personCards||'<div class="proc-empty" style="padding:24px">还没有施工人员档案。</div>'}
       </div>
       <!-- 右栏：供应商档案 -->
       <div class="proc-card">
@@ -12786,10 +12711,13 @@ function renderArchive(targetId){
             <div class="proc-sub-title">供应商档案</div><div class="proc-sub-desc">记录厂家名称、联系人、品类与合作关系，供调配时直接调取。</div></div>
           <button class="proc-sub-btn primary" onclick="openAddSupplier()">+ 新增供应商</button>
         </div>
-        ${supplierHtml||'<div class="proc-empty" style="padding:24px">还没有供应商档案。</div>'}
+        ${supplierCards||'<div class="proc-empty" style="padding:24px">还没有供应商档案。</div>'}
       </div>
     </div>`;
 }
+
+/* 自动将人员/供应商归档（去重，按 name 匹配） */
+/* 自动归档写账号级全局档案 App.archive（p 仅保留兼容旧调用，不再写入项目级） */
 function autoArchivePersonnel(p,name,phone,trade){
   if(!name)return;
   const arc=App.archive; arc.personnel=arc.personnel||[];
