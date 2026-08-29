@@ -3208,6 +3208,37 @@ a{color:#003a8c;text-decoration:none}
   </div>
 </div>
 
+<!-- ═══ 采购付款确认弹窗（部分付款 / 结清尾款） ═══ -->
+<div class="modal-overlay" id="purchasePayModal" style="z-index:240">
+  <div class="modal" style="max-width:420px;width:94%">
+    <div class="modal-header"><div class="modal-title" id="ppModalTitle">确认付款</div><div class="modal-close" onclick="closeModal('purchasePayModal')">✕</div></div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div id="ppItemName" style="font-size:14.5px;font-weight:600;color:#1a1a1a;margin-bottom:12px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13.5px;color:#555;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between"><span>采购金额</span><span id="ppBudget" style="font-weight:600"></span></div>
+        <div style="display:flex;justify-content:space-between"><span>已付金额</span><span id="ppPaid" style="font-weight:600"></span></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px dashed #e8e8e8;padding-top:8px"><span>本次结清尾款</span><span id="ppRemain" style="font-weight:700;color:#ff4d4f"></span></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">本次支付金额</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="ppPayAmount" type="number" min="0" step="0.01" placeholder="留空则默认结清全部尾款" style="flex:1" oninput="previewPurchasePay()">
+          <span style="font-size:13.5px;color:#666;flex:none">元</span>
+        </div>
+        <div id="ppPreview" style="display:none;margin-top:8px;font-size:12.5px;line-height:1.5;padding:8px 10px;border-radius:6px;background:#e6f4ff;color:#003a8c"></div>
+      </div>
+      <div style="font-size:11.5px;color:#888;line-height:1.5;margin-top:10px;background:#fafafa;border-radius:6px;padding:10px 12px">
+        输入金额 → 标记为「部分付款」，采购卡片继续显示剩余尾款；<br>
+        留空 → 默认本次结清全部尾款，标记为「已付清」。
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-outline" onclick="closeModal('purchasePayModal')">取消</button>
+      <button class="btn-primary" onclick="confirmPurchasePay()">确定</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="taskModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="taskModalTitle">新增待办</div><div class="modal-close" onclick="closeModal('taskModal')">✕</div></div>
@@ -15068,23 +15099,91 @@ function settlePurchaseExpenses(p,item){
   return changed;
 }
 
-/* 一键标记采购单已付清（从调配卡片点击触发）
-   将 payStatus 改为"已付清"、paidAmount 设为预算全额，
-   然后把该采购单下的待付付款单就地结清为已付。
-   这是调配单→记账的权威入口：用户应在此处完成付款状态管理。 */
+/* 一键标记采购单付款（从调配卡片点击触发）
+   弹出「本次支付金额」输入框：留空→结清全部；填金额→部分付款 */
+let _ppTargetId=null; /* 当前操作的采购单 id */
 function markPurchasePaidFull(id){
   const p=cur();if(!p)return;
   const item=(p.purchases||[]).find(x=>x.id===id);
   if(!item)return;
   if(item.payStatus==='已付清'){alert('该采购单已是「已付清」状态');return;}
+  _ppTargetId=id;
+  const budget=item.budget||0;
+  const paid=item.paidAmount||0;
+  const remain=Math.max(0, budget-paid);
+  $('ppModalTitle').textContent=remain>0?'确认付款':'确认付款';
+  $('ppItemName').textContent='「'+escHtml(item.name)+'」';
+  $('ppBudget').textContent='¥'+fmt(budget);
+  $('ppPaid').textContent='¥'+fmt(paid);
+  $('ppRemain').textContent='¥'+fmt(remain);
+  $('ppPayAmount').value='';
+  $('ppPayAmount').placeholder='留空则默认结清全部尾款';
+  previewPurchasePay();
+  showModal('purchasePayModal');
+  /* 聚焦输入框方便直接输入 */
+  setTimeout(()=>{ const inp=$('ppPayAmount'); if(inp)inp.focus(); }, 200);
+}
+/* 实时预览：输入金额时提示将变成「部分付款 · 尾款 ¥X」还是「已付清」 */
+function previewPurchasePay(){
+  const box=$('ppPreview'); if(!box)return;
+  const p=cur(); if(!p||!_ppTargetId){ box.style.display='none'; return; }
+  const item=(p.purchases||[]).find(x=>x.id===_ppTargetId);
+  if(!item){ box.style.display='none'; return; }
   const budget=item.budget||0;
   const remain=Math.max(0, budget-(item.paidAmount||0));
-  const ok=confirm(`确认将「${escHtml(item.name)}」标记为已付清？\n\n采购金额：¥${fmt(budget)}\n本次结清尾款：¥${fmt(remain)}\n\n该操作会把这张采购单下的待付付款单全部标记为「已付」，并保留分次付款的流水记录。`);
-  if(!ok)return;
-  item.payStatus='已付清';
-  item.paidAmount=budget;
+  const raw=($('ppPayAmount').value||'').trim();
+  box.style.display='block'; /* 显式值，勿用 ''（会继承 CSS 的 none）*/
+  if(raw===''){
+    box.innerHTML='本次将支付 <b>¥'+fmt(remain)+'</b> → 结清全部尾款，标记「<b>已付清</b>」';
+    return;
+  }
+  const amt=parseFloat(raw);
+  if(isNaN(amt)||amt<=0){
+    box.style.color='#fa541c';
+    box.innerHTML='请输入大于 0 的有效金额，或留空结清全部尾款';
+    return;
+  }
+  if(amt>remain){
+    box.style.color='#fa541c';
+    box.innerHTML='支付金额 <b>¥'+fmt(amt)+'</b> 超出待付尾款 <b>¥'+fmt(remain)+'</b>，请调整';
+    return;
+  }
+  box.style.color='#003a8c';
+  const left=Math.max(0, remain-amt);
+  box.innerHTML=left>0.005
+    ? '本次支付 <b>¥'+fmt(amt)+'</b> → 标记「<b>部分付款</b>」，剩余尾款 <b style="color:#ff4d4f">¥'+fmt(left)+'</b>'
+    : '本次支付 <b>¥'+fmt(amt)+'</b> → 结清全部尾款，标记「<b>已付清</b>」';
+}
+/* 确认付款：读取输入金额，决定结清或部分付款 */
+function confirmPurchasePay(){
+  if(!_ppTargetId)return;
+  const p=cur();if(!p)return;
+  const item=(p.purchases||[]).find(x=>x.id===_ppTargetId);
+  if(!item){ closeModal('purchasePayModal'); _ppTargetId=null; return; }
+  const budget=item.budget||0;
+  const remain=Math.max(0, budget-(item.paidAmount||0));
+  /* 读取用户输入的支付金额（允许留空 = 默认结清全部） */
+  const raw=$('ppPayAmount').value.trim();
+  let payAmt=0;
+  if(raw!==''){
+    payAmt=parseFloat(raw);
+    if(isNaN(payAmt)||payAmt<=0){alert('请输入有效的支付金额，或留空以结清全部尾款');$('ppPayAmount').focus();return;}
+    if(payAmt>remain){alert(`支付金额（¥${fmt(payAmt)}）不能超过待付尾款（¥${fmt(remain)}），如需超额请先在装修记账中补录支出记录。`);$('ppPayAmount').focus();return;}
+  }else{
+    payAmt=remain; /* 留空 → 结清全部 */
+  }
+  /* 更新采购单状态 */
+  item.paidAmount=(item.paidAmount||0)+payAmt;
+  if(item.paidAmount>=budget){
+    item.payStatus='已付清';
+    item.paidAmount=budget; /* 防浮点超预算 */
+  }else{
+    item.payStatus='部分付款';
+  }
   /* 就地结清该采购单下的待付付款单（保留分次付款流水） */
   settlePurchaseExpenses(p, item);
+  closeModal('purchasePayModal');
+  _ppTargetId=null;
   persist();
   renderProcessPurchase();renderPurchase();renderHome();renderFinance();renderLedger&&renderLedger();
 }
