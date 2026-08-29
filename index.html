@@ -7804,6 +7804,10 @@ function renderHome(){
   /* 问候语/实时时钟与项目无关，应无条件更新（避免无项目时 early-return 导致静态「下午好」残留） */
   updateHeroGreeting();
   startHeroClock();
+  /* 侧边栏徽章与首页待办同源于 App 数据：绝大多数「数据变更 → 重渲染」链路都以 renderHome() 收尾，
+     在此同步刷新徽章，可消除「只靠 persist() 的 60ms 防抖」带来的时序不确定（发票改回草稿后徽章不回显即因此）。
+     refreshNavBadges 内部不调用 renderHome，无递归风险。 */
+  try{ refreshNavBadges(); }catch(e){ console.error('[renderHome] 徽章刷新失败',e); }
   const p=cur();
   if(!p){ showNoProject('home'); return; }
   hideNoProject();
@@ -13659,7 +13663,20 @@ function switchInvoiceTab(t){_invTab=t;renderInvoices();}
    导致徽章不消、待办不消失（即使发票已标记为已收票）。 */
 function syncRecInvoiceStatus(v){
   if(!v)return;
-  const newRecSt = v.direction==='进项' ? '已收' : '已开';
+  /* 根据发票实体状态（v.status）决定关联流水的 invoiceStatus——必须与 buildInvoiceTodoUnits 的闭环判定联动。
+     2026-08-29 修复：旧版写死 newRecSt='已收'/'已开'，导致发票改回草稿后流水仍为'已收'→徽章不消、待办不出现。 */
+  const ISSUED=new Set(['已开','已收票','已认证','已抵扣']);
+  let newRecSt;
+  if(ISSUED.has(v.status)){
+    /* 已闭环状态：进项→已收（供应商票已到手），销项→已开（客户票已开出） */
+    newRecSt = v.direction==='进项' ? '已收' : '已开';
+  } else if(v.status==='草稿' || !v.status){
+    /* 草稿/空 → 回退到待开待收（重新进入待办流程） */
+    newRecSt = v.direction==='进项' ? '待收' : '待开';
+  } else {
+    /* 作废等其余状态 → 视为无票 */
+    newRecSt = '无票';
+  }
   const linkedId = v.direction==='进项' ? v.linkedExpenseId : v.linkedIncomeId;
   const arrKey = v.direction==='进项' ? 'expense' : 'income';
   /* ① 同步精确关联的那条记录（原逻辑保留） */
