@@ -15163,21 +15163,16 @@ function markPurchaseArrived(id){
    本函数只改 paid 标记，条数不变；发票/合同金额按「已付支出求和」聚合，会自动跟涨到全额。 */
 function settlePurchaseExpenses(p,item){
   if(!p||!item)return false;
-  const linked=(p.expense||[]).filter(e=>e.purchaseId===item.id);
-  if(!linked.length){
-    /* 兜底：历史上从未生成过付款单（极旧数据），按当前状态全量补建 */
-    syncPurchaseToExpense(p, item);
-    return true;
-  }
-  const today=todayISO();
-  let changed=false;
-  linked.forEach(e=>{
-    if(!e.paid){ e.paid=true; if(!e.date)e.date=today; changed=true; }
-  });
-  /* ⚠️ 必须重跑发票同步：进项票金额按「已付支出求和」聚合，
-     只改 paid 而不重算的话，结清后发票金额会停留在部分付款时的旧值（3000 而非 5000）。 */
-  if(changed) linked.forEach(e=>{ syncExpenseInvoice(e,p); });
-  return changed;
+  /* 始终调用 syncPurchaseToExpense 全量重算支出记录。
+     原因：部分付款场景下，采购单 paidAmount 已变（如 5000→6000），
+     旧的支出记录金额（如「待付 ¥2000」）已不再准确。
+     若只标记 e.paid=true 不重建金额，会导致：
+     - 供应调配页材料已付款显示 ¥0（读的是旧记录）
+     - 付款账单显示 ¥2,000 已付（实际本次只付 ¥1,000）
+     - 财务流水支出金额错误
+     syncPurchaseToExpense 内部会复用旧 id（takeId），保证发票/合同关联不断裂。 */
+  syncPurchaseToExpense(p, item);
+  return true;
 }
 
 /* 一键标记采购单付款（从调配卡片点击触发）
