@@ -4426,12 +4426,33 @@ const CloudSync={
     await this._req('POST','/rest/v1/user_data?on_conflict=user',body,{'Authorization':'Bearer '+token,'Prefer':'resolution=merge-duplicates'},12000);
     return true;
   },
+  /* 卸载兜底推送：用 keepalive 让浏览器在页面销毁后仍把请求发出去，
+     专治「改完立刻刷新/关闭」时 700ms 防抖尚未触发导致变更丢失。不 await、不读响应。 */
+  pushBeacon(){
+    try{
+      if(!this.configured||!this.loggedIn||!cloudUser)return false;
+      const token=cloudUser.access;
+      if(!token)return false;
+      const uid=cloudUser.uid||tokenSub(token);
+      const data=Object.assign({},App,{projects:(App.projects||[])});
+      fetch(cloudCfg.url+'/rest/v1/user_data?on_conflict=user',{
+        method:'POST',keepalive:true,
+        headers:Object.assign({},this._headers({'Authorization':'Bearer '+token,'Prefer':'resolution=merge-duplicates'})),
+        body:JSON.stringify([{user:uid,data}])
+      }).catch(()=>{});
+      return true;
+    }catch(e){return false;}
+  },
   async pull(){
     if(!this.configured||!this.loggedIn)return null;
     const token=await this._ensureToken();
     if(!token)return null;
     const j=await this._req('GET','/rest/v1/user_data?select=*',null,{'Authorization':'Bearer '+token},12000);
-    if(j&&j.length)return j[0].data;
+    if(j&&j.length){
+      /* 记录云端快照的服务器时间戳，供 applyCloudData 判断「云端是否比本地旧」 */
+      this.__serverUpdatedAt=j[0].updated_at?new Date(j[0].updated_at).getTime():0;
+      return j[0].data;
+    }
     return null;
   }
 };
@@ -4442,8 +4463,29 @@ function cloudPushSoon(){
   _pushTimer=setTimeout(()=>{
     _pushTimer=null;
     if(!CloudSync.configured||!CloudSync.loggedIn)return;
-    CloudSync.push().then(()=>cloudStatusSet('☁️ 已同步 '+new Date().toLocaleTimeString())).catch(e=>cloudStatusSet('⚠️ 同步失败：'+e.message));
+    CloudSync.push().then(()=>{
+      /* 推送成功 → 清除「已改未推」标记并直接写盘。
+         此处必须直接 setItem，不能调 persist()：persist 会重新置脏并再次触发推送，形成死循环。 */
+      delete App.__pendingPush;
+      try{ localStorage.setItem(APP_KEY,JSON.stringify(App)); }catch(e){}
+      cloudStatusSet('☁️ 已同步 '+new Date().toLocaleTimeString());
+    }).catch(e=>cloudStatusSet('⚠️ 同步失败：'+e.message));
   },700);
+}
+/* 卸载兜底：页面刷新/关闭时，若仍有未推送的变更（防抖未完成或上次推送失败），
+   用 keepalive 请求补发一次。这是「改完立刻刷新」场景的最后一道防线。 */
+function cloudFlushOnUnload(){
+  try{
+    if(!CloudSync.configured||!CloudSync.loggedIn)return;
+    if(!App.__pendingPush)return;
+    CloudSync.pushBeacon();
+    delete App.__pendingPush;
+    try{ localStorage.setItem(APP_KEY,JSON.stringify(App)); }catch(e){}
+  }catch(e){}
+}
+if(typeof window!=='undefined'){
+  window.addEventListener('pagehide',cloudFlushOnUnload);
+  window.addEventListener('beforeunload',cloudFlushOnUnload);
 }
 function cloudStatusSet(msg){const el=document.getElementById('cloudStatus');if(el)el.textContent=msg;updateCloudUI();}
 function showCloudView(v){
@@ -4561,6 +4603,18 @@ async function cloudLogout(){
    keepLocalOnly=true 时保留“本地独有”项目，但仅限【末次同步之后新建】的，
    避免把“云端已删除、本机还残留”的旧项目误当新增而复活（多设备删除不同步的根因）。 */
 function applyCloudData(d,keepLocalOnly){
+  /* ── 安全闸门：拒绝用「比本地更旧」的云端快照覆盖本地 ──
+     本地存在「已改未推」的变更，且云端快照的服务器时间早于该变更（留 5s 时钟偏移余量）
+     → 说明云端还没收到本地最新数据，此时覆盖等于把用户刚做的修改回滚掉
+     （典型表现：刷新后任务短暂出现随即消失）。返回 false 让调用方跳过本次渲染。 */
+  if(keepLocalOnly){
+    const localPending=(typeof App.__pendingPush==='number')?App.__pendingPush:0;
+    const serverAt=(typeof CloudSync.__serverUpdatedAt==='number')?CloudSync.__serverUpdatedAt:0;
+    if(localPending&&serverAt&&serverAt < localPending-5000){
+      console.warn('[cloud] 云端快照落后于本地未推送的变更，已跳过覆盖以保住本地数据');
+      return false;
+    }
+  }
   const cloudProj=(Array.isArray(d.projects)?d.projects:[]).map(mergeProject);
   let projects=cloudProj;
   if(keepLocalOnly){
@@ -4577,15 +4631,34 @@ function applyCloudData(d,keepLocalOnly){
   App.projects=projects;
   App.__lastPullAt=Date.now();   /* 记录本次成功拉取时刻，作为下一轮“删除 vs 新增”的判定基准 */
   if(App.currentProjectId&&!App.projects.find(p=>p.id===App.currentProjectId))App.currentProjectId=App.projects.length?App.projects[0].id:null;
+  return true;
+}
+/* 同步前置动作：本地若有「已改未推」的变更，先把本地推上云端再拉取。
+   否则 pull 回来的旧快照会覆盖本地 → 刚做的修改被回滚。
+   推送失败时返回 false，调用方应放弃本次覆盖（保住本地数据优先）。 */
+async function cloudPushBeforePull(){
+  if(!App.__pendingPush)return true;
+  if(!CloudSync.configured||!CloudSync.loggedIn)return true;
+  try{
+    await CloudSync.push();
+    delete App.__pendingPush;
+    try{ localStorage.setItem(APP_KEY,JSON.stringify(App)); }catch(e){}
+    return true;
+  }catch(e){
+    console.warn('[cloud] 本地变更推送失败，已跳过本次云端覆盖以保住本地数据',e);
+    return false;
+  }
 }
 async function cloudSyncNow(){
   if(!CloudSync.loggedIn){showCloudView('auth');return;}
-  try{
-    cloudStatusSet('☁️ 同步中…');
-    /* 先下载云端数据并合并到本机；云端为空时才上传本机作为首次种子 */
-    const d=await CloudSync.pull();
-    if(d&&d.projects&&d.projects.length){
-      applyCloudData(d,true);
+    try{
+      cloudStatusSet('☁️ 同步中…');
+      /* 先上传本地未推送的变更，再下载云端数据并合并到本机 */
+      const canPull=await cloudPushBeforePull();
+      if(!canPull){ cloudStatusSet('⚠️ 同步未完成：本地变更上传失败，已保留本地数据'); return; }
+      const d=await CloudSync.pull();
+      if(d&&d.projects&&d.projects.length){
+        if(applyCloudData(d,true)===false){ cloudStatusSet('⚠️ 云端数据比本地旧，已保留本地数据'); return; }
       cleanupOrphanedRecords(App);   /* 云端数据也可能含孤儿，拉取后再次清理再落地 */
       persist();
       refreshProjectUI();if(currentPage)switchPage(currentPage);
@@ -4626,6 +4699,11 @@ function hideStorageWarning(){
 function persist(){
   /* 任何保存前，先按当前施工计划重算所有关联的收款日期 */
   try{ syncAllPayLinks(); }catch(e){ console.error('[persist] syncAllPayLinks 失败', e); }
+  /* ── 云端「已改未推」标记（必须在写盘前设置）──
+     背景：push 是 700ms 防抖的，用户「改完立刻刷新」时防抖定时器随页面销毁，
+     变更就再也没推上云端；下次 init() 后台 pull 拉回旧快照覆盖本地 → 刚做的修改凭空消失。
+     标记落盘后，新会话 init() 能检测到「本地有未推送变更」，从而先 push 再 pull。 */
+  if(CloudSync.configured&&CloudSync.loggedIn){ App.__pendingPush=Date.now(); }
   try{localStorage.setItem(APP_KEY,JSON.stringify(App));__storageBroken=false;hideStorageWarning();}
   catch(e){__storageBroken=true;showStorageWarning();}
   if(CloudSync.configured&&CloudSync.loggedIn){cloudPushSoon();}
@@ -18388,9 +18466,13 @@ async function init(){
   if(cloudUser&&CloudSync.configured){
     (async()=>{
       try{
+        /* 关键顺序：本地有「已改未推」的变更时必须先 push 再 pull。
+           反序会让云端旧快照覆盖本地，用户刚做的修改刷新后凭空消失。 */
+        const canPull=await cloudPushBeforePull();
+        if(!canPull){ updateCloudUI(); return; }
         const d=await CloudSync.pull();
         if(d&&d.projects){
-          applyCloudData(d,true);
+          if(applyCloudData(d,true)===false){ updateCloudUI(); return; }  /* 云端快照更旧 → 不覆盖 */
           cleanupOrphanedRecords(App);   /* 云端数据也可能含孤儿，拉取后再次清理再落地 */
           persist();
           refreshProjectUI();
