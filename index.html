@@ -3943,8 +3943,25 @@ a{color:#003a8c;text-decoration:none}
         </select>
       </div>
       <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">金额（元，含税价）<span class="req">*</span></label><input type="number" id="adjAmount" min="0" step="0.01" placeholder="请输入金额" style="font-size:13px;padding:8px 12px"></div>
-      <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">税率（对公走账时适用）</label><select id="adjTaxRate" style="font-size:13px;padding:8px 12px"></select>
-        <div class="form-hint" style="font-size:11px;color:#8a94a6">对公金额按含税价登记，不含税价 = 含税价 ÷ (1+税率) 自动倒推。对私忽略。</div></div>
+      <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">账户性质</label>
+        <select id="adjAccountType" onchange="toggleAdjCorp()" style="font-size:13px;padding:8px 12px">
+          <option value="对私">对私（个人卡 / 微信支付宝）</option>
+          <option value="对公">对公（对公户 / 可开票主体）</option>
+        </select>
+        <div class="form-hint" style="font-size:11px;color:#8a94a6">资金真实走账性质；同一项目可混用。对私忽略税率和开票。</div>
+      </div>
+      <div id="adjCorpGroup" style="display:none">
+        <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">开票状态（对公）</label>
+          <select id="adjInvoiceStatus" style="font-size:13px;padding:8px 12px">
+            <option value="无票">无票（免开 / 对私）</option>
+            <option value="待开">待开（需开给客户）</option>
+            <option value="已开">已开（已开给客户）</option>
+          </select>
+          <div class="form-hint" style="font-size:11px;color:#8a94a6">对公增减项应开具或索取发票；选待开将自动进入「待办事项」提醒跟进，并联动发票管理。</div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">税率（对公）</label><select id="adjTaxRate" style="font-size:13px;padding:8px 12px"></select>
+          <div class="form-hint" style="font-size:11px;color:#8a94a6">对公金额按含税价登记，不含税价 = 含税价 ÷ (1+税率) 自动倒推。</div></div>
+      </div>
       <div class="form-group adj-cb-row" style="margin-bottom:12px"><label class="adj-checkbox-wrap" style="font-size:12px"><input type="checkbox" id="adjClientConfirmed"> <span>客户已确认此增减项</span></label></div>
       <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">工期影响（天）</label><input type="number" id="adjDaysImpact" min="0" value="0" style="font-size:13px;padding:8px 12px"></div>
       <div class="form-group" style="margin-bottom:12px"><label style="font-size:12px">客户确认说明</label><textarea id="adjClientNote" rows="2" placeholder="确认方式、确认日期或其他依据" style="font-size:13px;padding:8px 12px"></textarea></div>
@@ -14349,17 +14366,28 @@ function openAdjustmentModal(editId){
   _adjEditId=editId||null;
   if(editId){
     const a=(p.adjustments||[]).find(x=>x.id===editId);
-    if(a){$('adjName').value=a.name||'';$('adjType').value=a.type||'增加';$('adjAmount').value=a.amount||'';$('adjClientConfirmed').checked=!!a.clientConfirmed;$('adjDaysImpact').value=a.daysImpact||0;$('adjClientNote').value=a.clientConfirmNote||'';$('adjChangeNote').value=a.changeNote||'';$('adjProofName').textContent=a.proofFile?a.proofFile.name:'未选择任何文件';$('adjTaxRate').innerHTML=taxRateOptionsHtml(a.taxRate||DEFAULT_TAX_RATE);}
+    if(a){$('adjName').value=a.name||'';$('adjType').value=a.type||'增加';$('adjAmount').value=a.amount||'';$('adjClientConfirmed').checked=!!a.clientConfirmed;$('adjDaysImpact').value=a.daysImpact||0;$('adjClientNote').value=a.clientConfirmNote||'';$('adjChangeNote').value=a.changeNote||'';$('adjProofName').textContent=a.proofFile?a.proofFile.name:'未选择任何文件';$('adjAccountType').value=a.accountType||defaultAccountTypeForProject(p);$('adjInvoiceStatus').value=a.invoiceStatus||'无票';$('adjTaxRate').innerHTML=taxRateOptionsHtml(a.taxRate||DEFAULT_TAX_RATE);}
     $('adjustmentModal').querySelector('.modal-title').textContent='编辑合同增减项';
   }else{
-    $('adjName').value='';$('adjType').value='增加';$('adjAmount').value='';$('adjClientConfirmed').checked=false;$('adjDaysImpact').value=0;$('adjClientNote').value='';$('adjChangeNote').value='';$('adjProofName').textContent='未选择任何文件';$('adjProofInput').value='';$('adjTaxRate').innerHTML=taxRateOptionsHtml(DEFAULT_TAX_RATE);
+    $('adjName').value='';$('adjType').value='增加';$('adjAmount').value='';$('adjClientConfirmed').checked=false;$('adjDaysImpact').value=0;$('adjClientNote').value='';$('adjChangeNote').value='';$('adjProofName').textContent='未选择任何文件';$('adjProofInput').value='';$('adjAccountType').value=defaultAccountTypeForProject(p);$('adjInvoiceStatus').value='无票';$('adjTaxRate').innerHTML=taxRateOptionsHtml(DEFAULT_TAX_RATE);
     $('adjustmentModal').querySelector('.modal-title').textContent='新增合同增减项';
   }
   showModal('adjustmentModal');
+  toggleAdjCorp(); /* 根据账户性质显隐对公信息区 */
 }
 let _adjEditId=null;
 function onAdjFileChange(input){
   if(input.files&&input.files[0]){$('adjProofName').textContent=input.files[0].name;}else{$('adjProofName').textContent='未选择任何文件';}
+}
+/* 增减项·账户性质联动：对公时显示税率+开票状态区 */
+function toggleAdjCorp(){
+  const cg=$('adjCorpGroup'); if(!cg)return;
+  const isCorp=$('adjAccountType').value==='对公';
+  cg.style.display=isCorp?'block':'none';
+  /* 首次展开时填充税率选项（避免每次切换都重建） */
+  if(isCorp && !$('adjTaxRate').options.length){
+    $('adjTaxRate').innerHTML=taxRateOptionsHtml(DEFAULT_TAX_RATE);
+  }
 }
 function saveAdjustment(){
   const p=cur();if(!p){closeModal('adjustmentModal');return;}
@@ -14381,7 +14409,9 @@ function saveAdjustment(){
     changeNote:$('adjChangeNote').value.trim(),
     receipts:[],
     received:false,
-    taxRate:parseFloat($('adjTaxRate').value)||DEFAULT_TAX_RATE,
+    accountType:$('adjAccountType').value,
+    invoiceStatus:(($('adjAccountType').value==='对公')?($('adjInvoiceStatus').value||'无票'):'无票'),
+    taxRate:(($('adjAccountType').value==='对公')?(parseFloat($('adjTaxRate').value)||DEFAULT_TAX_RATE):''),
     createdAt:localISODate(new Date())
   };
   /* 文件处理 */
