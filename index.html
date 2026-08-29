@@ -2586,7 +2586,6 @@ a{color:#003a8c;text-decoration:none}
         <div class="proj-tab active" data-tab="process" onclick="switchProjTab(this,'process')">施工执行</div>
         <div class="proj-tab" data-tab="finance" onclick="switchProjTab(this,'finance')">合同收款</div>
         <div class="proj-tab" data-tab="purchase" onclick="switchProjTab(this,'purchase')">供应调配</div>
-        <div class="proj-tab" data-tab="archive" onclick="switchProjTab(this,'archive')">人材档案</div>
         <div class="proj-tab" data-tab="diary" onclick="switchProjTab(this,'diary')">客户交付</div>
       </div>
       <!-- 统计行 -->
@@ -2651,9 +2650,6 @@ a{color:#003a8c;text-decoration:none}
 
       <!-- ═══ 客户交付面板（Tab=客户交付） ═══ -->
       <div class="proc-sub-panel" id="processDiaryPanel" style="display:none"></div>
-
-      <!-- ═══ 人材档案面板（Tab=人材档案） ═══ -->
-      <div class="proc-sub-panel" id="processArchivePanel" style="display:none"></div>
     </div>
 
     <!-- PAGE: 采购清单 -->
@@ -11167,6 +11163,9 @@ function toggleProjMoreMenu(btn){
 }
 /* Tab 切换 */
 function switchProjTab(el,tab){
+  /* 防御：项目管理内的「人材档案」Tab 已于 2026-08-29 移除（左侧导航已有全局入口）。
+     若旧状态/旧调用仍传入 archive，回退到默认 tab，避免所有面板被隐藏导致空白页。 */
+  if(tab==='archive'){ tab='process'; el=document.querySelector('.proj-tab[data-tab="process"]')||el; }
   curProjTab=tab;
   document.querySelectorAll('.proj-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
@@ -11177,12 +11176,10 @@ function switchProjTab(el,tab){
   $('processFinancePanel').style.display=(tab==='finance'?'':'none');
   $('processPurchasePanel').style.display=(tab==='purchase'?'':'none');
   $('processDiaryPanel').style.display=(tab==='diary'?'':'none');
-  $('processArchivePanel').style.display=(tab==='archive'?'':'none');
   /* 渲染对应面板 */
   if(tab==='finance')renderProcessFinance();
   else if(tab==='purchase')renderProcessPurchase();
   else if(tab==='diary')renderProcessDiary();
-  else if(tab==='archive')renderProcessArchive();
 }
 
 /* ════════════════════════════════════════
@@ -12665,9 +12662,6 @@ function renderArchive(targetId){
     </div>`;
 }
 
-/* 项目内「人材档案」Tab 复用全局渲染 */
-function renderProcessArchive(){ renderArchive('processArchivePanel'); }
-
 /* 自动将人员/供应商归档（去重，按 name 匹配） */
 /* 自动归档写账号级全局档案 App.archive（p 仅保留兼容旧调用，不再写入项目级） */
 function autoArchivePersonnel(p,name,phone,trade){
@@ -12854,8 +12848,8 @@ function initMaterialCardPickers(){
 
 /* ── 人材档案 增删改（账号级全局数据源 App.archive）── */
 function rerenderArchiveAll(){
-  /* 重新渲染人材档案：项目内 Tab 面板（若可见）+ 全局页面，并刷新收付款人联想 */
-  if($('processArchivePanel')&&$('processArchivePanel').style.display!=='none')renderArchive('processArchivePanel');
+  /* 重新渲染人材档案：全局页面（左侧导航「人材档案」）+ 刷新收付款人联想
+     注：项目管理内的人材档案 Tab 已于 2026-08-29 移除（左侧导航已有全局入口），此处不再处理 */
   if($('archivePanel'))renderArchive('archivePanel');
   refreshContactDatalists();
   refreshOpenFormArchiveSelects();
@@ -15137,7 +15131,6 @@ function saveMaterialPlanBatch(){
   persist();
   closeModal('addMaterialPlanModal');
   renderProcessPurchase();renderPurchase();renderHome();renderFinance();
-  if($('processArchivePanel').style.display!=='none')renderProcessArchive();
 }
 
 /* 标记采购材料已到场 */
@@ -16005,7 +15998,7 @@ function renderFinance(){
       <span class="fin-adj-label">合同增减项：</span>
       <span class="fin-adj-val" style="color:${adjVal>=0?'#003a8c':'#fa541c'}">${adjVal>0?'+':''}¥${fmt(adjVal)}</span>
       <span class="fin-adj-count">（${adjCount} 项）</span>
-      <button class="btn-outline btn-sm fin-adj-btn" onclick="switchToProject('${p.id}');switchProjTab(document.querySelectorAll('.proj-tab')[1],'finance');openAdjustmentModal()">新增增减项</button>
+      <button class="btn-outline btn-sm fin-adj-btn" onclick="switchToProject('${p.id}');switchProjTab(document.querySelector('.proj-tab[data-tab=\'finance\']'),'finance');openAdjustmentModal()">新增增减项</button>
     </div>`+
 
     /* ── 顶行：5 列大数字 ── */
