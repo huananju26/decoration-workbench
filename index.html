@@ -14843,6 +14843,58 @@ function cascadeDeletePurchaseContract(purchaseId,projectId){
   if(!App.contracts||!purchaseId)return;
   App.contracts=App.contracts.filter(c=>!(c.linkedPurchaseId===purchaseId && (c.status==='草稿'||!c.status)));
 }
+/* ── 删除采购单（供应调配计划）的统一级联清理（2026-08-29）──
+   采购单是上游单据，其名下的合同、发票、支出账单、待办都因它而存在。
+   此前三个删除入口（详情删除 / 材料计划单删 / 批量删减）都只删了 purchases 本身
+   （其中两个连支出账单都没清），导致派生数据变成永远无法消除的孤儿——
+   已签合同尤其明显：采购单都删了，合同还挂在合同管理和待办里。
+   ⚠️ 与 cleanupOrphanedRecords 的区别：那是「自动清理孤儿」，为安全起见仍保留已签合同；
+      本函数是「用户主动删除采购单」，已在确认弹窗中告知会一并删除合同（含已签），属用户明确授权。 */
+function cascadeDeletePurchase(purchaseId,p){
+  if(!purchaseId||!p)return {contracts:0,invoices:0,expense:0,todos:0};
+  const pid=p.id;
+  const stat={contracts:0,invoices:0,expense:0,todos:0};
+  /* 先取出要删的支出 id：它们的流水级关联合同/发票也要一并清掉 */
+  const expIds=(p.expense||[]).filter(e=>e.purchaseId===purchaseId).map(e=>e.id);
+  /* ① 合同：采购级（linkedPurchaseId）+ 流水级（linkedExpenseId）都要清，含已签 */
+  const c0=(App.contracts||[]).length;
+  App.contracts=(App.contracts||[]).filter(c=>{
+    if(c.projectId!==pid)return true;
+    if(c.linkedPurchaseId===purchaseId)return false;
+    if(expIds.length&&c.linkedExpenseId&&expIds.indexOf(c.linkedExpenseId)>=0)return false;
+    return true;
+  });
+  stat.contracts=c0-App.contracts.length;
+  /* ② 发票：同上，采购级 + 流水级 */
+  const v0=(App.invoices||[]).length;
+  App.invoices=(App.invoices||[]).filter(v=>{
+    if(v.projectId!==pid)return true;
+    if(v.linkedPurchaseId===purchaseId)return false;
+    if(expIds.length&&v.linkedExpenseId&&expIds.indexOf(v.linkedExpenseId)>=0)return false;
+    return true;
+  });
+  stat.invoices=v0-App.invoices.length;
+  /* ③ 支出账单 */
+  const e0=(p.expense||[]).length;
+  p.expense=(p.expense||[]).filter(e=>e.purchaseId!==purchaseId);
+  stat.expense=e0-p.expense.length;
+  /* ④ 待办：清掉引用该采购单的条目（采购项 id 即采购单 id；超期项带 pur_ov_ 前缀） */
+  const q0=(p.actionQueue||[]).length;
+  p.actionQueue=(p.actionQueue||[]).filter(q=>{
+    if(!q)return true;
+    if(q._kind==='purchase'&&q.id===purchaseId)return false;
+    if(q._kind==='purchase_ov'&&q.id===('pur_ov_'+purchaseId))return false;
+    if(q._targetKind==='purchase'&&q._targetId===purchaseId)return false;
+    return true;
+  });
+  stat.todos=q0-p.actionQueue.length;
+  return stat;
+}
+/* 统计某采购单下将一并删除的合同（用于删除前告知用户，含已签份数） */
+function countPurchaseLinkedContracts(purchaseId,projectId){
+  const list=(App.contracts||[]).filter(c=>c.projectId===projectId&&c.linkedPurchaseId===purchaseId);
+  return {total:list.length, signed:list.filter(c=>c.status&&c.status!=='草稿').length};
+}
 /* 支出记录 → 发票管理联动：
    - 对公 + 待收 + 已实际付款 → 建/更新一张草稿进项发票
    - **采购派生支出（有 purchaseId）**：按**采购单维度**去重（同采购只一张发票，金额=已付累计）
@@ -15075,16 +15127,22 @@ function deletePurchasePlan(id){
   const item=(p.purchases||[]).find(x=>x.id===id);
   if(!item)return;
   const hasPayment=item.payStatus&&item.payStatus!=='未付款';
-  const msg=hasPayment
+  /* 关联合同统计：已签合同也会一并删除，必须在确认前明确告知（合同有法律意义，不能悄悄删） */
+  const lc=countPurchaseLinkedContracts(id,p.id);
+  let msg=hasPayment
     ? `确定删除「${item.name}」采购计划吗？\n\n该计划已有${item.payStatus}记录，将一并从付款账单中删除。`
     : `确定删除「${item.name}」采购计划吗？`;
+  if(lc.total){
+    msg+=`\n\n将同时删除关联的 ${lc.total} 份合同`+(lc.signed?`（其中 ${lc.signed} 份为已签合同）`:'');
+    msg+=`、以及由该计划派生的发票与待办。`;
+  }
   if(!confirm(msg))return;
   /* 1. 删除采购计划 */
   p.purchases=(p.purchases||[]).filter(x=>x.id!==id);
-  /* 2. 清理关联的支出账单记录（通过 purchaseId 关联） */
-  p.expense=(p.expense||[]).filter(e=>e.purchaseId!==id);
+  /* 2. 级联清理：合同（含已签）/ 发票 / 支出账单 / 待办 —— 统一走 cascadeDeletePurchase，避免漏项 */
+  cascadeDeletePurchase(id,p);
   persist();
-  renderProcessPurchase();renderPurchase();renderHome();renderFinance();
+  renderProcessPurchase();renderPurchase();renderHome();renderFinance();renderContracts&&renderContracts();renderInvoices&&renderInvoices();renderLedger&&renderLedger();
 }
 
 /* ── 材料计划管理弹窗（查看+删减） ── */
@@ -15149,24 +15207,36 @@ function updateMplSelCount(){
 function deleteMplSelected(){
   const selIds=Object.keys(_mplChecks).filter(k=>_mplChecks[k]);
   if(!selIds.length){alert('请先勾选要删除的项目');return;}
-  if(!confirm('确定删除已选中的 '+selIds.length+' 项材料计划？'))return;
   const p=cur();if(!p)return;
+  /* 汇总将一并删除的合同（含已签），在确认前告知 */
+  let cTotal=0,cSigned=0;
+  selIds.forEach(id=>{ const c=countPurchaseLinkedContracts(id,p.id); cTotal+=c.total; cSigned+=c.signed; });
+  let tip='确定删除已选中的 '+selIds.length+' 项材料计划？';
+  if(cTotal) tip+=`\n\n将同时删除关联的 ${cTotal} 份合同`+(cSigned?`（其中 ${cSigned} 份为已签合同）`:'');
+  if(!confirm(tip))return;
   p.purchases=(p.purchases||[]).filter(x=>!selIds.includes(x.id));
+  /* 级联清理每一项派生的合同（含已签）/ 发票 / 支出账单 / 待办 */
+  selIds.forEach(id=>cascadeDeletePurchase(id,p));
   persist();
   openMaterialPlanList();
-  renderProcessPurchase();renderPurchase();renderHome();
+  renderProcessPurchase();renderPurchase();renderHome();renderFinance();
 }
 
 function deleteMaterialPlan(id){
   const p=cur();if(!p)return;
   const item=(p.purchases||[]).find(x=>x.id===id);
   if(!item)return;
-  if(!confirm('确定删除材料计划「'+item.name+'」？'))return;
+  const lc=countPurchaseLinkedContracts(id,p.id);
+  let tip='确定删除材料计划「'+item.name+'」？';
+  if(lc.total) tip+=`\n\n将同时删除关联的 ${lc.total} 份合同`+(lc.signed?`（其中 ${lc.signed} 份为已签合同）`:'');
+  if(!confirm(tip))return;
   p.purchases=(p.purchases||[]).filter(x=>x.id!==id);
+  /* 级联清理：此前此入口连支出账单都没清，会留下大量孤儿数据 */
+  cascadeDeletePurchase(id,p);
   persist();
   /* 刷新列表（不关闭弹窗） */
   openMaterialPlanList();
-  renderProcessPurchase();renderPurchase();renderHome();
+  renderProcessPurchase();renderPurchase();renderHome();renderFinance();
 }
 
 /* ── 兼容旧单条保存入口（保留供其他地方调用） ── */
