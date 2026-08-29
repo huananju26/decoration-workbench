@@ -5122,6 +5122,8 @@ function cleanupOrphanedRecords(app){
   let changed=false;
   /* ── 归并历史脏数据：同一笔分次收付款重复产生的发票/合同 + 孤儿关联（幂等，只删草稿） ── */
   if(cleanupDuplicateLinkedRecords(app))changed=true;
+  /* ── 自愈：已闭环发票的关联支出记录 invoiceStatus 可能未同步（旧 bug 遗留） ── */
+  try{ if(typeof healInvoiceSyncStatus==='function')healInvoiceSyncStatus(); }catch(e){}
   /* ── 核心修复：空 projectId（''/null/undefined）在有项目存在时视为孤儿数据，不再保留 ──
      旧逻辑 `!v.projectId || validIds.has(v.projectId)` 会因 !''===true 而永久保留空关联记录，
      导致「归属项目=—」的合同/发票永远出现在"全部项目"视图中无法清除。 */
@@ -13675,6 +13677,16 @@ function syncRecInvoiceStatus(v){
       (p[arrKey]||[]).filter(e=>e.purchaseId===purId).forEach(e=>{ e.invoiceStatus=newRecSt; });
     }
   }
+}
+/* 数据自愈：扫描所有已闭环发票，将状态同步到关联的收/付款记录（含同采购单全部支出）。
+   2026-08-29 新增：修复历史数据——旧版 syncRecInvoiceStatus 只同步了 1 条支出，
+   导致已标记「已收票」的发票，其采购单下其余支出的 invoiceStatus 仍为「待收」，
+   徽章和待办无法自动消失。本函数幂等，每次 load 都跑一次，无副作用。 */
+function healInvoiceSyncStatus(){
+  const CLOSED=['已开','已收票','已认证','已抵扣'];
+  (App.invoices||[]).filter(v=>CLOSED.includes(v.status)).forEach(v=>{
+    try{ syncRecInvoiceStatus(v); }catch(e){/* 单条失败不阻断 */ }
+  });
 }
 /* 一键把待开发票标记为已开：销项→已开（从「待开」版块移出），进项→已收票（从「待开」版块移出）；
    同步回写关联收/付款记录的开票状态，保证流水筛选精确。 */
