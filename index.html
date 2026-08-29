@@ -13645,14 +13645,30 @@ function renderInvoices(){
 function switchInvoiceTab(t){_invTab=t;renderInvoices();}
 /* 将发票实际状态同步回其关联收/付款记录的开票状态（单一真相源：以实际发票状态为准），
    保证流水表「开票状态」列与筛选与发票管理一致、可精确过滤。 */
+/* 将发票状态同步回写关联的收/付款记录（invoiceStatus 五态）。
+   2026-08-29 修复：同一采购单分 N 笔付款时，必须同步**所有**相关支出记录，
+   而非仅 linkedExpenseId/linkedIncomeId 指向的那一条——否则 buildInvoiceTodoUnits
+   的 .every(isResolved) 会因其余支出仍为「待收」而判定整个聚合单元未闭环，
+   导致徽章不消、待办不消失（即使发票已标记为已收票）。 */
 function syncRecInvoiceStatus(v){
   if(!v)return;
   const newRecSt = v.direction==='进项' ? '已收' : '已开';
   const linkedId = v.direction==='进项' ? v.linkedExpenseId : v.linkedIncomeId;
-  if(!linkedId)return;
-  for(const p of (App.projects||[])){
-    const r=(p.income||[]).find(x=>x.id===linkedId)||(p.adjustments||[]).find(x=>x.id===linkedId)||(p.expense||[]).find(x=>x.id===linkedId);
-    if(r){ r.invoiceStatus=newRecSt; return; }
+  const arrKey = v.direction==='进项' ? 'expense' : 'income';
+  /* ① 同步精确关联的那条记录（原逻辑保留） */
+  if(linkedId){
+    for(const p of (App.projects||[])){
+      const r=(p.income||[]).find(x=>x.id===linkedId)||(p.adjustments||[]).find(x=>x.id===linkedId)||(p.expense||[]).find(x=>x.id===linkedId);
+      if(r){ r.invoiceStatus=newRecSt; }
+    }
+  }
+  /* ② 如果发票关联了采购单（linkedPurchaseId），同步该采购单下**所有**同方向支出/收款记录
+     —— 解决"同一采购单拆分付款 → 只同步了 1 条 → 徽章残留"的 bug */
+  const purId=v.linkedPurchaseId;
+  if(purId){
+    for(const p of (App.projects||[])){
+      (p[arrKey]||[]).filter(e=>e.purchaseId===purId).forEach(e=>{ e.invoiceStatus=newRecSt; });
+    }
   }
 }
 /* 一键把待开发票标记为已开：销项→已开（从「待开」版块移出），进项→已收票（从「待开」版块移出）；
@@ -13764,6 +13780,8 @@ function saveInvoice(){
     if($('fInvoiceStatus')){ $('fInvoiceStatus').value='已开'; toggleFinInvoice(); if($('fInvoiceSelect'))$('fInvoiceSelect').value=_savedInvId; }
     _pendingFinInvoiceLink=null;
   }
+  /* 编辑/新建发票后同步回写关联流水的 invoiceStatus（保证徽章+待办即时闭环） */
+  if(_savedInvId){ const _inv=arr.find(x=>x.id===_savedInvId); if(_inv) syncRecInvoiceStatus(_inv); }
   persist();closeModal('invoiceModal');renderInvoices();if(typeof renderFinance==='function')renderFinance();renderHome();
 }
 function editInvoice(id){
