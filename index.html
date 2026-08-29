@@ -3235,6 +3235,37 @@ a{color:#003a8c;text-decoration:none}
   </div>
 </div>
 
+<!-- ═══ 材料到场确认弹窗（录入实际到场时间，供应调配 / 今日总览待办 共用） ═══ -->
+<div class="modal-overlay" id="arriveModal" style="z-index:240">
+  <div class="modal" style="max-width:420px;width:94%">
+    <div class="modal-header"><div class="modal-title">确认材料到场</div><div class="modal-close" onclick="closeModal('arriveModal')">✕</div></div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div id="arItemName" style="font-size:14.5px;font-weight:600;color:#1a1a1a;margin-bottom:12px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:13.5px;color:#555;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between"><span>供应商</span><span id="arVendor" style="font-weight:600"></span></div>
+        <div style="display:flex;justify-content:space-between"><span>计划到场日</span><span id="arPlanDate" style="font-weight:600"></span></div>
+        <div id="arOverdueTip" style="display:none;font-size:12.5px;line-height:1.5;padding:8px 10px;border-radius:6px;background:#fff2f0;color:#cf1322"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">实际到场时间 <span style="color:#ff4d4f">*</span></label>
+        <input id="arArrivedAt" type="date" style="width:100%" onchange="previewArrive()">
+        <div class="form-hint" style="font-size:11px;color:#8a94a6;margin-top:6px">该时间会同步到「今日总览 · 待办事项」，逾期项自动转为已完成。</div>
+      </div>
+      <div id="arPayRow" style="display:none;margin-top:12px;background:#fafafa;border-radius:6px;padding:10px 12px">
+        <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#555;cursor:pointer;line-height:1.5">
+          <input type="checkbox" id="arAlsoPay" style="margin-top:2px">
+          <span>同时将付款状态标记为「已付清」（当前未付款，采购金额 ¥<b id="arPayAmt">0</b>）</span>
+        </label>
+      </div>
+      <div id="arPreview" style="display:none;margin-top:10px;font-size:12.5px;line-height:1.5;padding:8px 10px;border-radius:6px;background:#e6f4ff;color:#003a8c"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-outline" onclick="closeModal('arriveModal')">取消</button>
+      <button class="btn-primary" onclick="confirmArrive()">确认到场</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="taskModal">
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="taskModalTitle">新增待办</div><div class="modal-close" onclick="closeModal('taskModal')">✕</div></div>
@@ -7984,7 +8015,7 @@ function renderHome(){
     /* 1. 全部未完成任务 */
     (p.tasks||[]).filter(t=>!t.done).forEach(t=>allHandleItems.push({...t,_kind:'task',_proj:pn,_pid:p.id}));
     /* 2. 全部未完成采购 */
-    (p.purchases||[]).filter(x=>x.status!=='已到货').forEach(x=>allHandleItems.push({...x,_kind:'purchase',_proj:pn,_pid:p.id}));
+    (p.purchases||[]).filter(x=>!purchaseArrived(x)).forEach(x=>allHandleItems.push({...x,_kind:'purchase',_proj:pn,_pid:p.id}));
     /* 3. 未完成增减项 */
     (p.adjustments||[]).forEach(a=>{
       if(adjStatus(a)==='done') return;
@@ -8009,7 +8040,7 @@ function renderHome(){
     /* 7. 收款/付款/材料/节点逾期（独立告警项） */
     p.income.filter(i=>incStatus(i)==='overdue').forEach(i=>allHandleItems.push({label:'收款逾期：'+(i.title||i.name||'未命名'),due:i.date||todayISO(),_proj:pn,_type:'income'}));
     p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).forEach(e=>allHandleItems.push({label:'付款逾期：'+(e.title||e.name||'未命名'),due:e.date,_proj:pn,_type:'expense'}));
-    p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>allHandleItems.push({label:'材料超期：'+(x.name||'未命名'),due:x.dueDate,_proj:pn,_type:'purchase_ov'}));
+    p.purchases.filter(x=>!purchaseArrived(x)&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>allHandleItems.push({label:'材料超期：'+(x.name||'未命名'),due:x.dueDate,_proj:pn,_type:'purchase_ov'}));
   });
 
   // 统计摘要行（跨项目，提前计算供 headline 判断告警）
@@ -8019,9 +8050,9 @@ function renderHome(){
     noStageTotal+=p.tasks.filter(t=>!t.stage).length;
     overIncomeTotal+=p.income.filter(i=>incStatus(i)==='overdue').length;
     overExpenseTotal+=p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).length;
-    overPurchaseTotal+=p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).length;
+    overPurchaseTotal+=p.purchases.filter(x=>!purchaseArrived(x)&&x.dueDate&&x.dueDate<todayISO()).length;
     overStepTotal+=(p.processSteps||[]).filter(s=>{const pe=s.planEndDate||'';return pe&&pe<todayISO()&&!(p.checked&&p.checked[s.id]);}).length;
-    pendingPurchaseTotal+=p.purchases.filter(x=>x.status!=='已到货').length;
+    pendingPurchaseTotal+=p.purchases.filter(x=>!purchaseArrived(x)).length;
   });
   /* 待签合同：草稿合同 + 缺合同（missingContractsList） */
   pendingContractTotal=(App.contracts||[]).filter(c=>c.status==='草稿').length + missingContractsList().length;
@@ -8086,7 +8117,7 @@ function refreshNavBadges(){
     const odTasks=(p.tasks||[]).filter(t=>t.due&&t.due<todayISO()&&!t.done).length;
     homeCount+=odTasks; processCount+=odTasks;
     /* home: 未完成采购 */
-    homeCount+=(p.purchases||[]).filter(x=>x.status!=='已到货').length;
+    homeCount+=(p.purchases||[]).filter(x=>!purchaseArrived(x)).length;
     /* home: 未完成增减项 */
     homeCount+=(p.adjustments||[]).filter(a=>adjStatus(a)!=='done').length;
     /* home + process: 逾期节点 */
@@ -8102,7 +8133,7 @@ function refreshNavBadges(){
     /* home: 逾期收支材料 */
     homeCount+=p.income.filter(i=>incStatus(i)==='overdue').length;
     homeCount+=p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).length;
-    homeCount+=p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).length;
+    homeCount+=p.purchases.filter(x=>!purchaseArrived(x)&&x.dueDate&&x.dueDate<todayISO()).length;
     /* process: 整改待处理（siteRecord tag=整改, rectifyStatus=待处理|进行中） */
     processCount+=(p.siteRecords||[]).filter(r=>r.tag==='整改'&&(r.rectifyStatus==='待处理'||r.rectifyStatus==='进行中')).length;
     /* process: 收款逾期 */
@@ -8154,7 +8185,7 @@ function renderMetricCardsAll(projects){
     overStep+=(p.processSteps||[]).filter(s=>!(p.checked&&p.checked[s.id])&&s.planEndDate&&s.planEndDate<todayISO()).length;
     overIncomeAmt+=p.income.filter(i=>incStatus(i)==='overdue').reduce((s,i)=>s+(i.amount-incReceivedAmt(i)),0);
     overExpenseAmt+=p.expense.filter(e=>!e.paid).reduce((s,e)=>s+e.amount,0);
-    overPurchase+=p.purchases.filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).length;
+    overPurchase+=p.purchases.filter(x=>!purchaseArrived(x)&&x.dueDate&&x.dueDate<todayISO()).length;
     totalProgress+=engProgress(p);
     totalBudget+=(p.profile.totalBudget||0);
     const pf=projFinance(p); totalPaid+=pf.paid; totalReceived+=pf.received;
@@ -8283,9 +8314,14 @@ function renderActionQueueAll(projects){
   let items=[];
   projects.forEach(p=>{
     const pn=projDisplayName(p);
-    /* 待办 & 采购 */
-    [...(p.tasks||[]),...(p.purchases||[])].forEach(t=>{
-      items.push({...t,_kind:(t.status?'purchase':'task'),_proj:pn,_pid:p.id});
+    /* 已超期且未到场的采购：由下方「材料超期」单独承载一条，此处不再重复生成「采购」待办。
+       ⚠️ 2026-08-29 修复：同一材料同时产出 _kind:'purchase' 与 'purchase_ov' 两条待办，
+          完成其中一条另一条不消失，用户感觉"待办越点越多"。 */
+    const ovPurIds=new Set((p.purchases||[]).filter(x=>!purchaseArrived(x)&&x.dueDate&&x.dueDate<todayISO()).map(x=>x.id));
+    /* 待办 & 采购（采购完成时的日期=实际到场时间 arrivedAt） */
+    [...(p.tasks||[]),...(p.purchases||[]).filter(x=>!ovPurIds.has(x.id))].forEach(t=>{
+      items.push({...t,_kind:(t.status?'purchase':'task'),_proj:pn,_pid:p.id,
+        _completedAt:(t.status?(t.arrivedAt||''):(t._completedAt||''))});
     });
     /* 收支增减项（收齐后自动移入「已完成」；未收齐进待办，避免凭空消失） */
     (p.adjustments||[]).forEach(a=>{
@@ -8371,9 +8407,18 @@ function renderActionQueueAll(projects){
     (p.expense||[]).filter(e=>!e.paid&&e.date&&e.date<todayISO()).forEach(e=>{
       items.push({ id:'exp_ov_'+e.id, title:'付款逾期：'+(e.name||e.title||'未命名'), done:false, due:e.date, _kind:'expense_ov', _proj:pn, _pid:p.id, note:'¥'+fmt(e.amount||0)+' · 未支付 · 已过期' });
     });
-    /* 材料超期：未到货且已过交期的采购项 */
-    (p.purchases||[]).filter(x=>x.status!=='已到货'&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>{
-      items.push({ id:'pur_ov_'+x.id, title:'材料超期：'+(x.name||'未命名'), done:false, due:x.dueDate, _kind:'purchase_ov', _proj:pn, _pid:p.id, note:x.status||'待购'+' · 预算 ¥'+fmt(x.budget||0)+' · 已过期' });
+    /* 材料超期：未到场且已过计划到场日的采购项 */
+    (p.purchases||[]).filter(x=>!purchaseArrived(x)&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>{
+      items.push({ id:'pur_ov_'+x.id, title:'材料超期：'+(x.name||'未命名'), done:false, due:x.dueDate, _kind:'purchase_ov', _proj:pn, _pid:p.id, note:'原定 '+x.dueDate+' 到场 · 预算 ¥'+fmt(x.budget||0)+' · 已过期 '+dayGap(x.dueDate,todayISO())+' 天' });
+    });
+    /* 逾期到场：计划日已过但材料已到场 → 进「已完成」，并展示实际到场时间
+       （与未超期的采购已完成项同源，避免逾期材料完成后凭空消失、看不出什么时候到的） */
+    (p.purchases||[]).filter(x=>purchaseArrived(x)&&x.dueDate&&x.dueDate<todayISO()).forEach(x=>{
+      const at=x.arrivedAt||x.dueDate||todayISO();
+      const late=dayGap(x.dueDate,at);
+      items.push({ id:'pur_ov_done_'+x.id, title:'材料超期：'+(x.name||'未命名'), done:true, due:x.dueDate, _kind:'purchase_ov_done',
+        _proj:pn, _pid:p.id, _completedAt:at,
+        note:'原定 '+x.dueDate+' 到场 · 实际 '+at+' 到场'+(late>0?('（逾期 '+late+' 天）'):'') });
     });
   });
   items.sort((a,b)=>{
@@ -8442,7 +8487,7 @@ function renderActionQueueAll(projects){
     const invKindLabel=(item._finType==='expense')
       ? (item.done?'已收票':'待收票')
       : (item.done?'已开票':'待开票');
-    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?invKindLabel:(kind==='step'?(item.done?'节点完成':'节点逾期'):(kind==='contract'?(item.done?'合同已签':(item._conId?'待签约':'缺合同')):(kind==='income_ov'?'收款逾期':(kind==='expense_ov'?'付款逾期':(kind==='purchase_ov'?'材料超期':(item.done?'已完成':'待办'))))))));
+    const kindLabel=kind==='purchase'?'采购':(kind==='adjust'?'增减项':(kind==='invoice'?invKindLabel:(kind==='step'?(item.done?'节点完成':'节点逾期'):(kind==='contract'?(item.done?'合同已签':(item._conId?'待签约':'缺合同')):(kind==='income_ov'?'收款逾期':(kind==='expense_ov'?'付款逾期':(kind==='purchase_ov'?'材料超期':(kind==='purchase_ov_done'?'材料超期':(item.done?'已完成':'待办')))))))));
     /* 未开票/缺合同提醒项点击右侧标签也跳转，而非打开状态编辑 */
     const labelOnclick = kind==='invoice'
       ? `openInvoiceForFlow('${item._pid}','${item._finId}','${item._finType}')`
@@ -8467,7 +8512,7 @@ function renderActionQueueAll(projects){
           ? (item._finType==='expense'?(item.done?'收票时间':'应取票时间'):(item.done?'开票时间':'应开票时间'))
           : (kind==='step'
             ? (item.done?'完成时间':'计划完成时间')
-            : (kind==='adjust'?'到账日期':(kind==='income_ov'||kind==='expense_ov'?'原定支付日':(kind==='purchase_ov'?'原定到场日':''))))));
+            : (kind==='adjust'?'到账日期':(kind==='income_ov'||kind==='expense_ov'?'原定支付日':(kind==='purchase_ov'?'原定到场日':(kind==='purchase_ov_done'?'实际到场时间':'')))))));
     /* 有明确日期标签时，把日期格式化为「标签：日期」；无标签则沿用旧格式（项目名·日期） */
     const labeledDate = dateLabel
       ? `<span style="color:#888">${dateLabel}：</span>${metaDate}${item._proj?' · '+item._proj:''}`
@@ -8573,6 +8618,12 @@ function saveAqItemEdit(id,kind,pid){
 /* 设置条目状态：待办 / 节点逾期 / 已完成（task/purchase/step 分别落库） */
 function setItemStatus(id,kind,pid,status){
   const p=App.projects.find(x=>x.id===pid); if(!p)return;
+  /* 「材料超期」(pur_ov_ / pur_ov_done_ 前缀) 与「采购」待办指向同一条采购单：
+     归一处理，保证在任一侧完成都能双向同步到供应调配。 */
+  if(kind==='purchase_ov'||kind==='purchase_ov_done'){
+    kind='purchase';
+    id=String(id).replace(/^pur_ov_done_/,'').replace(/^pur_ov_/,'');
+  }
   if(kind==='adjust'){ /* 增减项完成=收齐款项，需走登记到账，不在此伪造 */
     openRecordAdjModal(id); switchToProject(pid); return;
   }
@@ -8593,9 +8644,12 @@ function setItemStatus(id,kind,pid,status){
     }
   } else if(kind==='purchase'){
     const x=p.purchases.find(i=>i.id===id); if(!x)return;
-    if(status==='done'){x.status='已到货';x.done=true;}
+    if(status==='done'){
+      /* 完成=材料到场：必须录入实际到场时间，走统一弹窗（同步供应调配 + 逾期项转已完成） */
+      closeAqStatusPop(); openArriveModal(id,pid); return;
+    }
     else{
-      x.status='未到货';x.done=false;
+      x.status='待采购';x.done=false;x.arrivedAt='';
       if(status==='overdue'&&(!x.dueDate||x.dueDate>=todayISO())) x.dueDate=shiftDate(todayISO(),-1);
       /* 切回「待办」时，若截止日期已过期则重置为今天 */
       if(status==='pending'&&x.dueDate&&x.dueDate<todayISO()) x.dueDate=todayISO();
@@ -12482,7 +12536,7 @@ function renderProcessPurchase(){
             ${escHtml(item.vendor||'供应商待定')} · ${escHtml(item.buyer||'未分配采购人')}
           </div>
           <div style="font-size:11.5px;color:#888;line-height:1.6;margin-top:2px">
-            计划 ${item.dueDate||'—'} 到场 · 采购 ¥${fmt(item.budget||0)} · ${(()=>{
+            ${isArrived?`<span style="color:#003a8c;font-weight:600">实际 ${escHtml(item.arrivedAt||'—')} 到场</span> · `:''}计划 ${item.dueDate||'—'} 到场 · 采购 ¥${fmt(item.budget||0)} · ${(()=>{
               const b=item.budget||0, pa=item.paidAmount||0, ps=item.payStatus||'未付款';
               const remain=Math.max(0,b-pa);
               if(ps==='已付清')return '<span style="color:#003a8c;font-weight:600">已付清</span>';
@@ -14631,7 +14685,7 @@ function setHouseTypeView(type){
 function renderPurchase(){
   const p=cur();if(!p){showNoProject('purchase');return;}hideNoProject();
   $('purRefCount').textContent=PURCHASE_CATS.reduce((s,c)=>s+c.items.length,0);
-  $('purBoughtCount').textContent=p.purchases.filter(x=>x.status==='已到货').length;
+  $('purBoughtCount').textContent=p.purchases.filter(x=>purchaseArrived(x)).length;
   const container=$('purchaseCategories');
   container.innerHTML=PURCHASE_CATS.map(cat=>{
     return `<div class="cat-group" data-cat="${cat.key}"><div class="cat-header" onclick="toggleCatGroup(this)">
@@ -15133,20 +15187,98 @@ function saveMaterialPlanBatch(){
   renderProcessPurchase();renderPurchase();renderHome();renderFinance();
 }
 
-/* 标记采购材料已到场 */
-function markPurchaseArrived(id){
-  const p=cur();if(!p)return;
+/* ══ 采购「到场」统一口径（2026-08-29）══
+   ⚠️ 历史遗留三套写法互不相认：
+      - 供应调配 markPurchaseArrived 写 status='已到场'
+      - 待办 setItemStatus 写 status='已到货'
+      - 各处筛选判据又写 status!=='已到货'
+   后果：① 供应调配确认到场后，待办里那条采购仍显示"待办"不消失；
+         ② 超期告警 pur_ov 也不消失 → 同一材料同时出现两条待办；
+         ③ 待办里点完成写 '已到货'，供应调配的 isArrived 判据不认 → 不联动。
+   统一：写入一律 ARRIVED_STATUS，读取一律 purchaseArrived()。 */
+const ARRIVED_STATUS='已到场';
+function purchaseArrived(x){
+  if(!x)return false;
+  return x.status===ARRIVED_STATUS||x.status==='已完成'||x.status==='已到货'||x.done===true;
+}
+/* 两个日期相差天数（b-a），格式 YYYY-MM-DD */
+function dayGap(a,b){
+  if(!a||!b)return 0;
+  const da=new Date(a+'T00:00:00'), db=new Date(b+'T00:00:00');
+  if(isNaN(da.getTime())||isNaN(db.getTime()))return 0;
+  return Math.round((db-da)/86400000);
+}
+
+/* ── 材料到场统一入口 ──
+   供应调配「确认到场」/ 今日总览待办勾选 / 待办改状态为已完成，三条路径共用：
+   必须先经弹窗录入「实际到场时间」，杜绝"点一下就完成、到场时间永远空白"。 */
+let _arTargetId=null, _arTargetPid=null;
+function openArriveModal(id,pid){
+  const p=pid?App.projects.find(x=>x.id===pid):cur();
+  if(!p)return;
   const item=(p.purchases||[]).find(x=>x.id===id);
   if(!item)return;
-  item.status='已到场';
-  /* 如果有付款状态联动：到场后提示确认付款 */
-  if(item.payStatus==='未付款'){
-    const ok=confirm(`「${item.name}」已标记为到场。\n\n是否同时将付款状态改为"已付清"？`);
-    if(ok){item.payStatus='已付清';item.paidAmount=item.budget||0;}
+  _arTargetId=id; _arTargetPid=p.id;
+  closeAqStatusPop();
+  $('arItemName').textContent=(item.name||'未命名材料')+' · '+(item.qty||1)+(item.unit||'项');
+  $('arVendor').textContent=item.vendor||'供应商待定';
+  $('arPlanDate').textContent=item.dueDate||'未设定';
+  const today=todayISO();
+  const tip=$('arOverdueTip');
+  if(item.dueDate&&item.dueDate<today){
+    tip.style.display='block';
+    tip.textContent='⚠ 该材料已超期：计划 '+item.dueDate+' 到场，已逾期 '+dayGap(item.dueDate,today)+' 天。确认后将同步实际到场时间，并把「材料超期」待办转为已完成。';
+  } else { tip.style.display='none'; tip.textContent=''; }
+  $('arArrivedAt').value=item.arrivedAt||today;
+  const unpaid=(item.payStatus||'未付款')==='未付款';
+  $('arPayRow').style.display=unpaid?'block':'none';
+  if(unpaid)$('arPayAmt').textContent=fmt(item.budget||0);
+  const cb=$('arAlsoPay'); if(cb)cb.checked=false;
+  previewArrive();
+  showModal('arriveModal');
+}
+function previewArrive(){
+  const box=$('arPreview'); if(!box)return;
+  const p=_arTargetPid?App.projects.find(x=>x.id===_arTargetPid):cur();
+  const item=p?(p.purchases||[]).find(x=>x.id===_arTargetId):null;
+  if(!item){box.style.display='none';return;}
+  const d=($('arArrivedAt')&&$('arArrivedAt').value)||'';
+  box.style.display='block';
+  if(!d){ box.textContent='请选择实际到场时间'; return; }
+  let t='实际到场时间：'+d;
+  if(item.dueDate){
+    const gap=dayGap(item.dueDate,d);
+    if(gap>0) t+='（比计划晚 '+gap+' 天，记为逾期到场）';
+    else t+='（按计划到场）';
   }
-  settlePurchaseExpenses(p, item);
+  box.textContent=t;
+}
+function confirmArrive(){
+  const p=_arTargetPid?App.projects.find(x=>x.id===_arTargetPid):cur();
+  if(!p)return;
+  const item=(p.purchases||[]).find(x=>x.id===_arTargetId);
+  if(!item)return;
+  const d=(($('arArrivedAt')&&$('arArrivedAt').value)||'').trim();
+  if(!d){ alert('请选择实际到场时间'); return; }
+  const alsoPay=!!($('arAlsoPay')&&$('arAlsoPay').checked);
+  closeModal('arriveModal');
+  applyPurchaseArrive(p,item,d,alsoPay);
+}
+/* 落库：写状态 + 实际到场时间 + 全量联动。供应调配与今日总览共用，保证双向一致。 */
+function applyPurchaseArrive(p,item,arrivedAt,alsoPay){
+  if(!p||!item)return;
+  item.status=ARRIVED_STATUS;
+  item.done=true;
+  item.arrivedAt=arrivedAt||todayISO();
+  if(alsoPay&&(item.payStatus||'未付款')==='未付款'){ item.payStatus='已付清'; item.paidAmount=item.budget||0; }
+  settlePurchaseExpenses(p,item);
   persist();
   renderProcessPurchase();renderPurchase();renderHome();renderFinance();
+}
+/* 供应调配「确认到场」按钮：改为先弹窗录入实际到场时间 */
+function markPurchaseArrived(id){
+  const p=cur(); if(!p)return;
+  openArriveModal(id,p.id);
 }
 
 /* 将采购单下的「待付」付款单就地结清为「已付」——保留分次付款的流水痕迹。
@@ -17616,7 +17748,12 @@ function savePurchase(){
 function toggleItem(id,kind,pid){
   const p=pid?App.projects.find(x=>x.id===pid):cur();
   if(!p)return;
-  if(kind==='purchase'){const x=p.purchases.find(i=>i.id===id);if(x)x.done=!x.done;}
+  if(kind==='purchase'){
+    const x=p.purchases.find(i=>i.id===id); if(!x)return;
+    if(!purchaseArrived(x)){ openArriveModal(id,p.id); return; } /* 勾选=确认到场，需先录实际到场时间 */
+    x.done=false; x.status='已订购'; x.arrivedAt='';
+    persist();renderHome();return;
+  }
   else{const t=p.tasks.find(i=>i.id===id);if(t){t.done=!t.done;t._completedAt=t.done?todayISO():'';}}
   persist();renderHome();
 }
@@ -18013,7 +18150,7 @@ function collectCalendarEvents(){
   App.projects.forEach(p=>{
     const pn=p.name||p.code||'';
     (p.tasks||[]).forEach(t=>{ add(t.due,{type:'task',title:t.title||'',proj:pn,id:t.id,pid:p.id,done:!!t.done}); });
-    (p.purchases||[]).forEach(pu=>{ add(pu.dueDate,{type:'purchase',title:pu.name||'',proj:pn,id:pu.id,pid:p.id,done:pu.status==='已购'||pu.status==='已到货'}); });
+    (p.purchases||[]).forEach(pu=>{ add(pu.dueDate,{type:'purchase',title:pu.name||'',proj:pn,id:pu.id,pid:p.id,done:pu.status==='已购'||purchaseArrived(pu)}); });
     (p.diaries||[]).forEach(d=>{ add(d.date,{type:'diary',title:d.title||'日记',proj:pn,id:d.id,pid:p.id}); });
     (p.processSteps||[]).forEach(s=>{
       const sDone=!!(p.checked&&p.checked[s.id]);
@@ -18395,7 +18532,7 @@ function getCurrentStageIndex(){
 function getCurrentStage(){return STAGES[getCurrentStageIndex()]||null}
 function getStageName(key){const s=STAGES.find(x=>x.id===key);return s?s.name:key||''}
 function engProgress(p){const steps=p.processSteps||[];const exec=steps.filter(s=>!s.isParent);const total=exec.length;if(!total)return 0;const done=p.checked?exec.filter(s=>p.checked[s.id]).length:0;return Math.round(done/total*100);}
-function purchasePending(p){return p.purchases.filter(x=>x.status!=='已到货'&&x.status!=='已下单').length;}
+function purchasePending(p){return p.purchases.filter(x=>!purchaseArrived(x)&&x.status!=='已下单').length;}
 function pendingCount(p){return p.tasks.filter(t=>!t.done).length+purchasePending(p);}
 function populateStageSelect(id){const sel=$(id);sel.innerHTML='<option value="">无</option>'+STAGES.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');}
 
