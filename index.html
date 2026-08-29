@@ -7830,17 +7830,12 @@ function renderHome(){
       const pe=s.planEndDate||'';
       if(pe&&pe<todayISO()&&!(p.checked&&p.checked[s.id])) allHandleItems.push({id:s.id,title:s.name||'',_kind:'step',_proj:pn,_pid:p.id,due:pe});
     });
-    /* 5. 对公待开（开票状态三态：无/已开/待开） */
+    /* 5. 对公待开（开票状态三态：无/已开/待开）
+       ⚠️ 与待办列表共用 buildInvoiceTodoUnits：同一采购单拆分付款只计 1 条，避免首页「待审」数虚高 */
     [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
-      arr.forEach(rec=>{
-        if(defaultAccountType(rec,p)!=='对公') return;
-        if(tt==='income'&&incReceivedAmt(rec)<=0) return;
-        if(tt==='expense'&&!rec.paid) return; /* 付款同理：钱未付则厂家不会开票，与建票口径一致，不产生取票提醒（避免「有提醒却无票」） */
-        const linked=findLinkedInvoice(rec.id,tt);
-        const invSt=getInvoiceStatus(rec,p,tt);
-        const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
-        const resolved=invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
-        if((invSt==='待开'||invSt==='待收')&&!resolved) allHandleItems.push({id:'fin_'+rec.id,title:(rec.name||'对公'+(tt==='income'?'收款':'付款')),_kind:'invoice',_proj:pn,_pid:p.id,due:''});
+      buildInvoiceTodoUnits(p,tt,arr).forEach(u=>{
+        if(u.resolved) return; /* 仅「待开/待收且未闭环」计入，与待办列口径一致 */
+        allHandleItems.push({id:u.isPurAgg?('fin_purinv_'+u.purPid):('fin_'+u.first.id),title:(u.first.name||'对公'+(tt==='income'?'收款':'付款')),_kind:'invoice',_proj:pn,_pid:p.id,due:''});
       });
     });
     /* 6. 缺合同 + 草稿合同 */
@@ -7865,19 +7860,11 @@ function renderHome(){
   });
   /* 待签合同：草稿合同 + 缺合同（missingContractsList） */
   pendingContractTotal=(App.contracts||[]).filter(c=>c.status==='草稿').length + missingContractsList().length;
-  /* 待收发票：对公收支待开数（开票状态三态） */
+  /* 待收发票：对公收支待开数（开票状态三态）
+     ⚠️ 与待办列表同口径：用 buildInvoiceTodoUnits 聚合，同一采购单拆分付款只算 1 张待收票 */
   projects.forEach(p=>{
     [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
-      arr.forEach(rec=>{
-        if(defaultAccountType(rec,p)!=='对公') return;
-        if(tt==='income' && incReceivedAmt(rec)<=0) return;
-        if(tt==='expense' && !rec.paid) return; /* 付款同理：钱未付则厂家不会开票，与建票口径一致，不产生取票提醒（避免「有提醒却无票」） */
-        const linked=findLinkedInvoice(rec.id,tt);
-        const invSt=getInvoiceStatus(rec,p,tt);
-        const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
-        const resolved=invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
-        if((invSt==='待开'||invSt==='待收')&&!resolved) pendingInvoiceTotal++;
-      });
+      buildInvoiceTodoUnits(p,tt,arr).forEach(u=>{ if(!u.resolved) pendingInvoiceTotal++; });
     });
   });
   const overdueAll=allHandleItems.filter(i=>isOverdue(i));
@@ -7940,18 +7927,9 @@ function refreshNavBadges(){
     /* home + process: 逾期节点 */
     const odSteps=(p.processSteps||[]).filter(s=>{const pe=s.planEndDate||'';return pe&&pe<todayISO()&&!(p.checked&&p.checked[s.id]);}).length;
     homeCount+=odSteps; processCount+=odSteps;
-    /* home: 对公待开/待收发票 */
+    /* home: 对公待开/待收发票（用 buildInvoiceTodoUnits 聚合，同单拆分付款只算 1 条） */
     [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
-      arr.forEach(rec=>{
-        if(defaultAccountType(rec,p)!=='对公') return;
-        if(tt==='income'&&incReceivedAmt(rec)<=0) return;
-        if(tt==='expense'&&!rec.paid) return; /* 付款同理：钱未付则厂家不会开票，与建票口径一致，不产生取票提醒（避免「有提醒却无票」） */
-        const linked=findLinkedInvoice(rec.id,tt);
-        const invSt=getInvoiceStatus(rec,p,tt);
-        const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
-        const resolved=invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
-        if((invSt==='待开'||invSt==='待收')&&!resolved) homeCount++;
-      });
+      buildInvoiceTodoUnits(p,tt,arr).forEach(u=>{ if(!u.resolved) homeCount++; });
     });
     /* home: 缺合同 + 草稿合同 */
     homeCount+=_missList.filter(m=>m._pid===p.id).length;
@@ -7971,16 +7949,7 @@ function refreshNavBadges(){
   let invCount=0;
   projects.forEach(p=>{
     [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
-      arr.forEach(rec=>{
-        if(defaultAccountType(rec,p)!=='对公') return;
-        if(tt==='income'&&incReceivedAmt(rec)<=0) return;
-        if(tt==='expense'&&!rec.paid) return; /* 付款同理：钱未付则厂家不会开票，与建票口径一致，不产生取票提醒（避免「有提醒却无票」） */
-        const linked=findLinkedInvoice(rec.id,tt);
-        const invSt=getInvoiceStatus(rec,p,tt);
-        const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
-        const resolved=invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
-        if((invSt==='待开'||invSt==='待收')&&!resolved) invCount++;
-      });
+      buildInvoiceTodoUnits(p,tt,arr).forEach(u=>{ if(!u.resolved) invCount++; });
     });
   });
   /* 写入 DOM（数量为 0 时隐藏） */
@@ -8192,32 +8161,26 @@ function renderActionQueueAll(projects){
         });
       }
     });
-    /* 对公待开提醒：待开进待办；已开/免开（显式标记或关联发票已开）进「已完成」，不再凭空消失 */
+    /* 对公待开提醒：待开进待办；已开/免开（显式标记或关联发票已开）进「已完成」，不再凭空消失。
+       ⚠️ 聚合（2026-08-29）：同一采购单拆分付款只产生 1 条「待收票」提醒，金额=该单已付金额之和，
+         全部付清且票收齐后该条自动进入「已完成」。聚合细节见 buildInvoiceTodoUnits。 */
     [['income',p.income||[]],['expense',p.expense||[]]].forEach(([tt,arr])=>{
-      arr.forEach(rec=>{
-        if(defaultAccountType(rec,p)!=='对公') return;
-        if(tt==='income' && incReceivedAmt(rec)<=0) return; /* 对公收款已删空到账，无需再提醒开票（待办同步清理） */
-        if(tt==='expense' && !rec.paid) return; /* 付款同理：钱未付则厂家不会开票，与建票口径一致，不产生取票提醒（避免「有提醒却无票」） */
-        const linked=findLinkedInvoice(rec.id,tt);
-        const invSt=getInvoiceStatus(rec,p,tt);
-        const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
-        const resolved=invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
-        const planAmt=rec.amount||0;
-        /* 收款：累计实际到账；支出：按 paid 布尔判断 */
-        const actualAmt = tt==='income' ? incReceivedAmt(rec) : (rec.paid ? planAmt : 0);
-        const amtNote = tt==='income'
-          ? (actualAmt>=planAmt ? '' : ` · 已收 ¥${fmt(actualAmt)}`)
-          : (rec.paid ? ' · 已付' : ' · 待付');
-        /* 待办文案按方向区分，并直接指明票在发票管理的哪个 Tab ——
-           原文案「待开/待收，需跟进开/取票」方向含糊，用户常去「待开」Tab 找付款（进项）的票而找不到。
-           收款=销项→票在「待开」；付款=进项→票在「待收」。 */
+      buildInvoiceTodoUnits(p,tt,arr).forEach(u=>{
+        const paidWord=tt==='income'?'收':'付';
+        /* 全额→「· 已付/已收」；部分→补上已付金额（金额主体为整单总额 orderTotal） */
+        const amtNote = u.paidAmt>=u.orderTotal-0.005
+          ? ' · 已'+paidWord
+          : ` · 已${paidWord} ¥${fmt(u.paidAmt)}`;
         const invStatusNote = tt==='income'
-          ? (resolved ? ' 已开票/免开，提醒闭环' : ' 待开票给客户 → 见发票管理「待开」')
-          : (resolved ? ' 已收票/免票，提醒闭环' : ' 待向厂家取票 → 见发票管理「待收」');
+          ? (u.resolved ? ' 已开票/免开，提醒闭环' : ' 待开票给客户 → 见发票管理「待开」')
+          : (u.resolved ? ' 已收票/免票，提醒闭环' : ' 待向厂家取票 → 见发票管理「待收」');
         items.push({
-          id:'fin_'+rec.id, title:(rec.name||'对公'+(tt==='income'?'收款':'付款')), done:resolved,
-          due:'', _kind:'invoice', _proj:pn, _pid:p.id, _finType:tt, _finId:rec.id,
-          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(planAmt)+amtNote+invStatusNote
+          id:u.isPurAgg?('fin_purinv_'+u.purPid):('fin_'+u.first.id),
+          title:(u.first.name||'对公'+(tt==='income'?'收款':'付款'))+(u.isPurAgg&&u.recs.length>1?`（${u.recs.length} 笔合并）`:''),
+          done:u.resolved,
+          due:'', _kind:'invoice', _proj:pn, _pid:p.id, _finType:tt, _finId:u.first.id,
+          note:'对公'+(tt==='income'?'收款':'付款')+' ¥'+fmt(u.orderTotal)+amtNote+invStatusNote,
+          _isPurAgg:u.isPurAgg, _purPid:u.purPid, _aggCount:u.recs.length
         });
       });
     });
@@ -12987,6 +12950,52 @@ function getInvoiceStatus(rec, proj, dir){
 /* 五态下拉选项（按方向）：收款类=无票/待开/已开，付款类=无票/待收/已收 */
 const INV_STATUS_OPTIONS_IN=['无票','待开','已开'];
 const INV_STATUS_OPTIONS_EX=['无票','待收','已收'];
+
+/* ===== 对公发票提醒的「聚合单元」(2026-08-29) =====
+   问题：一张采购单分 N 次付款 → 生成 N 条支出 → 原本会产生 N 条「待收票」待办，
+        用户看到同一家供应商重复刷屏，无法一眼看出这张单到底还欠多少票。
+   规则：以 purchaseId 为聚合键，同一采购单的多笔付款合并成 1 个提醒单元：
+        - 金额 = 该单下所有【已付】支出之和（付多少催多少票，支持部分付款场景）；
+        - 状态 = 组内所有记录全部闭环才算闭环（任一笔仍欠票 → 整单元进待办）；
+        - 无 purchaseId 的手工记一笔 → 每条独立成单元，保持原有行为。
+   注意：本函数只产出「单元」描述，不感知 UI，供待办列表与首页待审计数共用，避免两处逻辑分叉。 */
+function buildInvoiceTodoUnits(p, tt, arr){
+  const out=[];
+  (arr||[]).forEach(rec=>{
+    /* 账户性质：仅对公才产生开票/取票提醒 */
+    if(defaultAccountType(rec,p)!=='对公') return;
+    /* 参与资格：付款需已付（钱没付厂家不会开票）；收款需已有到账金额 */
+    const eligible = tt==='expense' ? !!rec.paid : incReceivedAmt(rec)>0;
+    if(!eligible) return;
+    const key = rec.purchaseId ? ('pur:'+rec.purchaseId) : ('rec:'+rec.id);
+    let u = out.find(x=>x.key===key);
+    if(!u){ u={key:key, recs:[], isPurAgg:!!rec.purchaseId, purPid:rec.purchaseId||''}; out.push(u); }
+    u.recs.push(rec);
+  });
+  out.forEach(u=>{
+    u.first=u.recs[0];
+    /* 金额口径：付款=已付金额之和（全部付清时等于总额）；收款=累计到账之和 */
+    u.paidAmt  = u.recs.reduce((s,r)=> s + (tt==='expense' ? (r.amount||0) : incReceivedAmt(r)), 0);
+    u.totalAmt = u.recs.reduce((s,r)=> s + (r.amount||0), 0);
+    /* 逐条判定闭环，全部闭环才算闭环 */
+    const isResolved=r=>{
+      const invSt=getInvoiceStatus(r,p,tt);
+      const linked=findLinkedInvoice(r.id,tt);
+      const linkedIssued=linked&&INV_ISSUED_STATUS.includes(linked.status);
+      return invSt==='已开'||invSt==='已收'||invSt==='无票'||linkedIssued;
+    };
+    u.resolved = u.recs.every(isResolved);
+    u.pendingCount = u.recs.filter(r=>!isResolved(r)).length;
+    u.orderTotal = u.totalAmt; /* 默认=已参与金额；采购单聚合时下方会覆盖为「整单总额（含未付）」 */
+  });
+  /* 采购单聚合：orderTotal = 该采购单下**全部**支出（含未付），用于「已付 ¥3000 / 单总 ¥5000」展示。
+     注意与 totalAmt（仅已付部分）区分：催票金额按 totalAmt，单子规模看 orderTotal。 */
+  out.forEach(u=>{
+    if(!u.isPurAgg) return;
+    u.orderTotal=(arr||[]).filter(r=>r.purchaseId===u.purPid).reduce((s,r)=>s+(r.amount||0),0);
+  });
+  return out;
+}
 function invStatusOptionLabel(v){
   return ({'无票':'无票（免开/对私）','待开':'待开（需开给客户）','已开':'已开（已开给客户）','待收':'待收（需向供应商取票）','已收':'已收（已收供应商票）'})[v]||v;
 }
