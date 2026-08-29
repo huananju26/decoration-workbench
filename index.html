@@ -4467,6 +4467,8 @@ function cloudPushSoon(){
       /* 推送成功 → 清除「已改未推」标记并直接写盘。
          此处必须直接 setItem，不能调 persist()：persist 会重新置脏并再次触发推送，形成死循环。 */
       delete App.__pendingPush;
+      /* 推进同步水位线：此后 pull 若发现云端 updated_at 不比它新，即可判定「云端无新数据」而跳过覆盖 */
+      App.__lastSyncedAt=Date.now();
       try{ localStorage.setItem(APP_KEY,JSON.stringify(App)); }catch(e){}
       cloudStatusSet('☁️ 已同步 '+new Date().toLocaleTimeString());
     }).catch(e=>cloudStatusSet('⚠️ 同步失败：'+e.message));
@@ -4608,9 +4610,21 @@ function applyCloudData(d,keepLocalOnly){
      → 说明云端还没收到本地最新数据，此时覆盖等于把用户刚做的修改回滚掉
      （典型表现：刷新后任务短暂出现随即消失）。返回 false 让调用方跳过本次渲染。 */
   if(keepLocalOnly){
-    const localPending=(typeof App.__pendingPush==='number')?App.__pendingPush:0;
     const serverAt=(typeof CloudSync.__serverUpdatedAt==='number')?CloudSync.__serverUpdatedAt:0;
-    if(localPending&&serverAt&&serverAt < localPending-5000){
+    const syncedAt=(typeof App.__lastSyncedAt==='number')?App.__lastSyncedAt:0;
+    const localAt=(typeof App.__lastLocalChange==='number')?App.__lastLocalChange
+                 :(typeof App.__pendingPush==='number')?App.__pendingPush:0;
+    /* ① 同步水位线：云端的最后更新时间【严格早于】上次成功同步时刻 → 云端没有新东西，跳过覆盖。
+         这是最常用的一道闸——正常情况下刷新时云端就是自己上次推上去的那份，
+         根本不需要再覆盖一遍；覆盖反而给了旧快照回滚本地数据的机会。
+         ⚠️ 必须用严格小于：刚 push 完立刻 pull 时两个时间戳可能落在同一毫秒，
+            用 <= 会把「云端＝本地刚推的那份」误判为落后而跳过，导致后续流程被意外中断。 */
+    if(serverAt&&syncedAt&&serverAt<syncedAt){
+      console.info('[cloud] 云端自上次同步后无更新，跳过覆盖');
+      return false;
+    }
+    /* ② 本地更新优先：云端快照早于本地最后修改（留 5s 时钟偏移余量）→ 保住本地 */
+    if(localAt&&serverAt&&serverAt<localAt-5000){
       console.warn('[cloud] 云端快照落后于本地未推送的变更，已跳过覆盖以保住本地数据');
       return false;
     }
@@ -4630,6 +4644,10 @@ function applyCloudData(d,keepLocalOnly){
   App=Object.assign({},APP_DEFAULT,d);
   App.projects=projects;
   App.__lastPullAt=Date.now();   /* 记录本次成功拉取时刻，作为下一轮“删除 vs 新增”的判定基准 */
+  /* 覆盖后重置水位线：本地数据已等于云端快照，两者的"最后修改时间"都应对齐到云端快照时间，
+     否则后续 pull 会因「本地更旧/云端无更新」判定而反复覆盖或漏同步。 */
+  App.__lastSyncedAt=Math.max(Date.now(),(typeof CloudSync.__serverUpdatedAt==='number')?CloudSync.__serverUpdatedAt:0);
+  App.__lastLocalChange=App.__lastSyncedAt;
   if(App.currentProjectId&&!App.projects.find(p=>p.id===App.currentProjectId))App.currentProjectId=App.projects.length?App.projects[0].id:null;
   return true;
 }
@@ -4642,6 +4660,7 @@ async function cloudPushBeforePull(){
   try{
     await CloudSync.push();
     delete App.__pendingPush;
+    App.__lastSyncedAt=Date.now();   /* 同步水位线，与 cloudPushSoon 成功分支保持一致 */
     try{ localStorage.setItem(APP_KEY,JSON.stringify(App)); }catch(e){}
     return true;
   }catch(e){
@@ -4658,7 +4677,17 @@ async function cloudSyncNow(){
       if(!canPull){ cloudStatusSet('⚠️ 同步未完成：本地变更上传失败，已保留本地数据'); return; }
       const d=await CloudSync.pull();
       if(d&&d.projects&&d.projects.length){
-        if(applyCloudData(d,true)===false){ cloudStatusSet('⚠️ 云端数据比本地旧，已保留本地数据'); return; }
+        if(applyCloudData(d,true)===false){
+          /* 跳过覆盖：把本地改动反向推上去，避免云端永久落后（同自动同步分支） */
+          try{
+            await CloudSync.push();
+            delete App.__pendingPush;
+            App.__lastSyncedAt=Date.now();
+            try{ localStorage.setItem(APP_KEY,JSON.stringify(App)); }catch(e){}
+          }catch(e){}
+          cloudStatusSet('☁️ 云端数据比本地旧，已保留本地并回传云端');
+          return;
+        }
       cleanupOrphanedRecords(App);   /* 云端数据也可能含孤儿，拉取后再次清理再落地 */
       persist();
       refreshProjectUI();if(currentPage)switchPage(currentPage);
@@ -4703,7 +4732,14 @@ function persist(){
      背景：push 是 700ms 防抖的，用户「改完立刻刷新」时防抖定时器随页面销毁，
      变更就再也没推上云端；下次 init() 后台 pull 拉回旧快照覆盖本地 → 刚做的修改凭空消失。
      标记落盘后，新会话 init() 能检测到「本地有未推送变更」，从而先 push 再 pull。 */
-  if(CloudSync.configured&&CloudSync.loggedIn){ App.__pendingPush=Date.now(); }
+  if(CloudSync.configured&&CloudSync.loggedIn){
+    App.__pendingPush=Date.now();
+    /* 本地最后修改水位线：不会因为推送成功而清除。
+       用途——拉取云端快照时，若云端 updated_at 早于它，说明「本地更新、云端落后」，
+       应跳过覆盖。仅靠 __pendingPush 不够：推送成功后该标记即被清除，
+       此后若云端因任何原因仍是旧快照，就会把本地刚确认过的数据回滚掉。 */
+    App.__lastLocalChange=Date.now();
+  }
   try{localStorage.setItem(APP_KEY,JSON.stringify(App));__storageBroken=false;hideStorageWarning();}
   catch(e){__storageBroken=true;showStorageWarning();}
   if(CloudSync.configured&&CloudSync.loggedIn){cloudPushSoon();}
@@ -18472,7 +18508,18 @@ async function init(){
         if(!canPull){ updateCloudUI(); return; }
         const d=await CloudSync.pull();
         if(d&&d.projects){
-          if(applyCloudData(d,true)===false){ updateCloudUI(); return; }  /* 云端快照更旧 → 不覆盖 */
+          if(applyCloudData(d,true)===false){
+            /* 云端无更新 / 云端比本地旧 → 跳过覆盖。但本地可能持有云端还没有的改动，
+               若不反过来推一次，云端会永久落后，换设备打开就会拿回旧数据。 */
+            try{
+              await CloudSync.push();
+              delete App.__pendingPush;
+              App.__lastSyncedAt=Date.now();
+              try{ localStorage.setItem(APP_KEY,JSON.stringify(App)); }catch(e){}
+            }catch(e){/* 推送失败不影响本地数据，下次再试 */}
+            updateCloudUI();
+            return;
+          }
           cleanupOrphanedRecords(App);   /* 云端数据也可能含孤儿，拉取后再次清理再落地 */
           persist();
           refreshProjectUI();
