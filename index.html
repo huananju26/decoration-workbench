@@ -2931,7 +2931,7 @@ a{color:#003a8c;text-decoration:none}
         <div class="form-group"><label class="form-label">归属项目</label><select id="conProject" onchange="refreshConStepOptions()"></select></div>
       </div>
       <div class="form-row-2">
-        <div class="form-group"><label class="form-label">关联供应商（人材档案）</label><select id="conSupplier" onchange="if(this.value){const s=(App.archive.suppliers||[]).find(x=>x.id===this.value);if(s)$('conParty').value=s.contact?((s.shortName||s.name)+' '+s.contact):(s.shortName||s.name);}"></select></div>
+        <div class="form-group"><label class="form-label">关联供应商（人材档案）</label><select id="conSupplier" onchange="if(this.value){const s=(App.archive.suppliers||[]).find(x=>x.id===this.value);if(s)$('conParty').value=arcSupLabel(s);}"></select></div>
         <div class="form-group"><label class="form-label">对方名称（手工）</label><input type="text" id="conParty" placeholder="如：业主姓名 / 厂家名"></div>
       </div>
       <div class="form-row-2">
@@ -12571,7 +12571,7 @@ function renderArchive(targetId){
   let supplierCards='';
   if(suppliers.length>0){
     supplierCards=suppliers.map(x=>{
-      const nm=x.shortName||x.name||'—';
+      const nm=arcSupLabel(x)||'—';
       const title=nm+(x.category?` <span class="archive-pill">${escHtml(x.category)}</span>`:'');
       return `
       <div class="archive-item">
@@ -12642,7 +12642,7 @@ function onPickSupplier(inputEl, phoneFieldId){
   if(!val)return;
   const sups=App.archive.suppliers||[];
   /* 精确匹配 name/shortName 或「(shortName||name) + contact」组合 */
-  const found=sups.find(s=>s.name===val || s.shortName===val || (s.contact && ((s.shortName||s.name)+' '+s.contact).trim()===val));
+  const found=sups.find(s=>s.name===val || s.shortName===val || arcSupLabel(s)===val);
   if(found&&found.phone){
     const ph=$(phoneFieldId);
     if(ph&&!ph.value)ph.value=found.phone; /* 仅在电话为空时自动填入，避免覆盖手动输入 */
@@ -12651,7 +12651,7 @@ function onPickSupplier(inputEl, phoneFieldId){
 
 /* ── 人材档案下拉（收款人/付款人/供应商/负责人 仅可从档案选择）── */
 /* 供应商档案展示标签：带联系人时「简称/全称 + 联系人」 */
-function arcSupLabel(s){ return s && s.contact ? `${s.shortName||s.name} ${s.contact}` : (s.shortName||s.name); }
+function arcSupLabel(s){ if(!s)return ''; const base=s.shortName||s.name||''; return s.contact ? `${base} ${s.contact}` : base; }
 /* 施工人员档案展示标签：「工种 姓名」，无工种时仅姓名（兼容旧数据） */
 function arcPerLabel(m){ if(!m) return ''; const t=(m.trade||'').trim(), n=(m.name||'').trim(); return t ? `${t} ${n}` : n; }
 /* 把「人材档案」来源填入下拉（收款人/付款人/供应商/负责人）
@@ -12723,9 +12723,10 @@ function renderArchiveCards(pickerId, type){
       const sub=[item.phone].filter(Boolean).join(' · ');
       return `<div class="archive-card" onclick="pickArchiveCard('${pickerId}','${type}',${idx})" data-idx="${idx}"><div class="archive-card-avatar">${initial}</div><div class="archive-card-info"><div class="archive-card-name">${escHtml(label)}</div><div class="archive-card-sub">${escHtml(sub)}</div></div></div>`;
     }else{
-      const initial=(item.shortName||item.name||'?').charAt(0);
-      const sub=[item.category,item.contact,item.phone].filter(Boolean).slice(0,2).join(' · ');
-      return `<div class="archive-card" onclick="pickArchiveCard('${pickerId}','${type}',${idx})" data-idx="${idx}"><div class="archive-card-avatar" style="background:linear-gradient(135deg,#fa8c16,#ffc53d)">${initial}</div><div class="archive-card-info"><div class="archive-card-name">${escHtml(item.shortName||item.name||'')}</div><div class="archive-card-sub">${escHtml(sub)}</div></div></div>`;
+      const label=arcSupLabel(item)||'';
+      const initial=label?label.charAt(0):'?';
+      const sub=[item.category,item.phone].filter(Boolean).slice(0,2).join(' · ');
+      return `<div class="archive-card" onclick="pickArchiveCard('${pickerId}','${type}',${idx})" data-idx="${idx}"><div class="archive-card-avatar" style="background:linear-gradient(135deg,#fa8c16,#ffc53d)">${initial}</div><div class="archive-card-info"><div class="archive-card-name">${escHtml(label)}</div><div class="archive-card-sub">${escHtml(sub)}</div></div></div>`;
     }
   }).join('');
 }
@@ -12897,7 +12898,7 @@ function editSupplier(id){
 function deleteSupplier(id){
   const x=(App.archive.suppliers||[]).find(i=>i.id===id);
   if(!x)return;
-  if(!confirm(`确定删除「${x.name}」的供应商档案吗？`))return;
+  if(!confirm(`确定删除「${arcSupLabel(x)}」的供应商档案吗？`))return;
   App.archive.suppliers=App.archive.suppliers.filter(i=>i.id!==id);
   persist();
   rerenderArchiveAll();
@@ -13465,7 +13466,7 @@ function markContractSigned(id){
   persist();renderContracts();renderHome();
 }
 function contractSupName(c){
-  if(c.supplierId){const s=(App.archive.suppliers||[]).find(x=>x.id===c.supplierId);if(s)return s.contact?((s.shortName||s.name)+' '+s.contact):(s.shortName||s.name);}
+  if(c.supplierId){const s=(App.archive.suppliers||[]).find(x=>x.id===c.supplierId);if(s)return arcSupLabel(s);}
   return c.party||'';
 }
 let _editingContractId=null;
@@ -13473,7 +13474,7 @@ let _editingContractScans=[];
 function fillSelect(sel,arr){if(!sel)return;sel.innerHTML=arr.map(o=>`<option value="${o}">${o}</option>`).join('');}
 function refreshConSupplierOptions(){
   const sel=$('conSupplier');if(!sel)return;
-  sel.innerHTML='<option value="">（手工填写对方名称）</option>'+(App.archive.suppliers||[]).map(s=>`<option value="${s.id}">${escHtml(s.contact?((s.shortName||s.name)+' '+s.contact):(s.shortName||s.name))}</option>`).join('');
+  sel.innerHTML='<option value="">（手工填写对方名称）</option>'+(App.archive.suppliers||[]).map(s=>`<option value="${s.id}">${escHtml(arcSupLabel(s))}</option>`).join('');
 }
 function refreshConStepOptions(){
   const pid=$('conProject')?$('conProject').value:'';
@@ -17264,9 +17265,9 @@ function refreshContactDatalists(proj){
   /* 收款人/付款人联想：合并「联系人历史 + 人材档案（供应商 + 施工人员）」，可直接调取 */
   const payeeNames=new Set((hist.payee||[]));
   const payerNames=new Set((hist.payer||[]));
-  (arc.suppliers||[]).forEach(s=>{if(s.name)payeeNames.add(s.contact?`${s.shortName||s.name} ${s.contact}`:s.shortName||s.name);});
+  (arc.suppliers||[]).forEach(s=>{const l=arcSupLabel(s); if(l)payeeNames.add(l);});
   (arc.personnel||[]).forEach(m=>{const l=arcPerLabel(m); if(l){payeeNames.add(l);payerNames.add(l);}});
-  (arc.suppliers||[]).forEach(s=>{if(s.name)payerNames.add(s.contact?`${s.shortName||s.name} ${s.contact}`:s.shortName||s.name);});
+  (arc.suppliers||[]).forEach(s=>{const l=arcSupLabel(s); if(l)payerNames.add(l);});
   const payeeList=$('payeeHistoryList');
   const payerList=$('payerHistoryList');
   if(payeeList)payeeList.innerHTML=Array.from(payeeNames).map(n=>`<option value="${escHtml(n)}">`).join('');
