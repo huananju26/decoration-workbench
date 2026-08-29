@@ -3260,7 +3260,7 @@ a{color:#003a8c;text-decoration:none}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-group"><label class="form-label">材料名称 <b style="color:#ff4d4f">*</b></label><input id="mpName" type="text" placeholder="例如：客厅地砖" list="mpNameList" autocomplete="off"><datalist id="mpNameList"></datalist></div>
           <div class="form-group"><label class="form-label">关联施工节点</label><select id="mpStepId"><option value="">暂不关联</option></select></div>
-          <div class="form-group"><label class="form-label">所属费用总项</label><select id="mpCostCat"><option value="">不归入，费用用总项</option><option value="材料费">材料费</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="设计费">设计费</option><option value="管理费">管理费</option><option value="其他">其他</option></select></div>
+          <div class="form-group"><label class="form-label">所属费用总项</label><select id="mpCostCat"><option value="">不归入，费用用总项</option><option value="材料采购">材料采购</option><option value="人工劳务">人工劳务</option><option value="包工包料">包工包料</option><option value="系统设备">系统设备</option><option value="家电电器">家电电器</option><option value="软装家具">软装家具</option><option value="项目工资">项目工资</option><option value="设计费用">设计费用</option><option value="运营管理">运营管理</option><option value="服务杂项">服务杂项</option><option value="采买报销">采买报销</option><option value="交通差旅">交通差旅</option><option value="对公转账">对公转账</option><option value="开票税费">开票税费</option></select></div>
           <div class="form-group"><label class="form-label">调配负责人（施工人员）</label><div style="display:flex;gap:8px;align-items:center"><select id="mpBuyer" style="flex:1" onchange="onArchiveSelectChange('mpBuyer','buyerCardPicker','personnel')"><option value="">请选择施工人员档案</option></select><button type="button" class="btn-outline" style="white-space:nowrap" onclick="jumpToArchiveAdd('personnel')">＋ 去人材档案新增</button></div><a class="archive-picker-toggle" onclick="toggleArchiveCardPicker('buyerCardPicker','personnel')">📋 卡片选择</a><div id="buyerCardPicker" class="archive-card-picker"><div class="archive-card-grid" id="buyerCardGrid"></div></div><div id="mpBuyerSelectedChip" class="archive-selected-chip" style="display:none"></div></div>
           <div class="form-group"><label class="form-label">厂家名称 <b style="color:#ff4d4f">*</b></label><div style="display:flex;gap:8px;align-items:center"><select id="mpVendor" style="flex:1" onchange="onPickArchiveSupplier('mpVendor','mpVendorPhone');onArchiveSelectChange('mpVendor','vendorCardPicker','supplier')"><option value="">请选择供应商档案</option></select><button type="button" class="btn-outline" style="white-space:nowrap" onclick="jumpToArchiveAdd('supplier')">＋ 去人材档案新增</button></div><a class="archive-picker-toggle" onclick="toggleArchiveCardPicker('vendorCardPicker','supplier')">📋 卡片选择</a><div id="vendorCardPicker" class="archive-card-picker"><div class="archive-card-grid" id="vendorCardGrid"></div></div><div id="mpVendorSelectedChip" class="archive-selected-chip" style="display:none"></div></div>
           <div class="form-group"><label class="form-label">厂家电话</label><input id="mpVendorPhone" type="tel" placeholder=""></div>
@@ -3451,7 +3451,7 @@ a{color:#003a8c;text-decoration:none}
     <div class="modal-body" style="overflow-y:auto;padding:16px 20px">
       <div class="form-group"><label class="form-label">关联施工节点</label><select id="enStepId"><option value="">暂不关联节点</option></select></div>
       <div class="form-group"><label class="form-label">支出节点名称 <b style="color:#ff4d4f">*</b></label><input id="enName" type="text" placeholder="例如：水电材料首付款"></div>
-      <div class="form-group"><label class="form-label">费用类别 <b style="color:#ff4d4f">*</b></label><select id="enCategory"><option value="材料费">材料费</option><option value="人工费">人工费</option><option value="机械费">机械费</option><option value="设计费">设计费</option><option value="管理费">管理费</option><option value="其他">其他</option></select></div>
+      <div class="form-group"><label class="form-label">费用类别 <b style="color:#ff4d4f">*</b></label><select id="enCategory"><option value="材料采购">材料采购</option><option value="人工劳务">人工劳务</option><option value="包工包料">包工包料</option><option value="系统设备">系统设备</option><option value="家电电器">家电电器</option><option value="软装家具">软装家具</option><option value="项目工资">项目工资</option><option value="设计费用">设计费用</option><option value="运营管理">运营管理</option><option value="服务杂项">服务杂项</option><option value="采买报销">采买报销</option><option value="交通差旅">交通差旅</option><option value="对公转账">对公转账</option><option value="开票税费">开票税费</option></select></div>
       <div class="form-group"><label class="form-label">预计支出金额（元）<b style="color:#ff4d4f">*</b></label><input id="enAmount" type="number" placeholder="" min="0"></div>
       <div class="form-group"><label class="form-label">预计支出日期 <b style="color:#ff4d4f">*</b></label><input id="enDate" type="date"></div>
       <div class="form-group"><label class="form-label">供应商 / 收款方</label><div style="display:flex;gap:8px;align-items:center"><select id="enPayee" style="flex:1"><option value="">请选择（人材档案）</option></select><button type="button" class="btn-outline" style="white-space:nowrap" onclick="jumpToArchiveAdd('supplier')">＋ 新增</button></div></div>
@@ -15497,8 +15497,12 @@ const EXPENSE_CATS=[
   {key:'对公转账',label:'对公转账',color:'#5a7d8c',short:'对'},
   {key:'开票税费',label:'开票税费',color:'#8a5a8c',short:'税'}
 ];
-/* 分类改名兼容：旧数据 cat 值映射到新 key，避免历史记录丢失颜色/统计 */
-const EXPENSE_CAT_RENAME={'材料款':'材料采购','人工款':'人工劳务','设计费':'设计费用'};
+/* 分类改名兼容：旧数据 cat 值映射到新 key，避免历史记录丢失颜色/统计。
+   2026-08-29 扩展：调配单「所属费用总项」旧选项（材料费/人工费/机械费/设计费/管理费）
+   已统一为 EXPENSE_CATS 14 项体系；此处保留旧值映射保证历史数据自动归入正确分类。 */
+const EXPENSE_CAT_RENAME={'材料款':'材料采购','人工款':'人工劳务','设计费':'设计费用',
+  /* 调配单旧分类 → EXPENSE_CATS 新分类（2026-08-29 统一前建的单据） */
+  '材料费':'材料采购','人工费':'人工劳务','机械费':'系统设备','管理费':'运营管理'};
 function getExpenseCategories(p){
   const map={};
   EXPENSE_CATS.forEach(c=>map[c.key]=0);
@@ -16334,7 +16338,7 @@ function openExpenseNodeModal(editId){
     _editingExpenseNodeId=editId;
     $('enName').value=node.name||'';
     $('enStepId').value=node.stepId||'';
-    $('enCategory').value=node.category||'材料费';
+    $('enCategory').value=node.category||'材料采购';
     $('enAmount').value=node.amount||'';
     $('enDate').value=node.date||'';
     $('enPayee').value=node.payee||'';
@@ -16342,7 +16346,7 @@ function openExpenseNodeModal(editId){
     $('enNote').value=node.note||'';
   } else {
     _editingExpenseNodeId=null;
-    $('enName').value='';$('enStepId').value='';$('enCategory').value='材料费';
+    $('enName').value='';$('enStepId').value='';$('enCategory').value='材料采购';
     $('enAmount').value='';$('enDate').value=todayISO();$('enPayee').value='';$('enNote').value='';
   }
   showModal('expenseNodeModal');
