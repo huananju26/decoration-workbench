@@ -11337,7 +11337,7 @@ function renderProcessFinance(){
     </div>
     <!-- 底行：5 列小数字 -->
     <div class="fin-dash-row2" style="grid-template-columns:repeat(7,1fr)">
-      <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(totalExp)}</div><div class="fin-dash-sm-label">预计成本</div></div>
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(totalExp)}</div><div class="fin-dash-sm-label">预计成本(含待付款)</div></div>
       <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(paidExp)}</div><div class="fin-dash-sm-label">实际已支出</div></div>
       <div class="fin-dash-sm"><div class="fin-dash-sm-val">¥${fmt(grossMargin>=0?grossMargin:0)}</div><div class="fin-dash-sm-label">预计毛利</div></div>
       <div class="fin-dash-sm"><div class="fin-dash-sm-val ${receivedAmt-paidExp>=0?'blue':'red'}">¥${fmt(receivedAmt-paidExp>=0?receivedAmt-paidExp:0)}</div><div class="fin-dash-sm-label">账面毛利</div></div>
@@ -15471,7 +15471,7 @@ function renderFinance(){
       <div class="fin-dash-big" style="cursor:pointer" onclick="showPendingPayments()" title="点击查看待付款账单"><div class="fin-dash-big-val" style="color:${af.pendingPay>0?'#f5222d':'#1a1a1a'}">¥${fmt(af.pendingPay)}</div><div class="fin-dash-big-label">总项目待付款项</div><div class="fin-dash-big-sub">共 ${sumPendingPayCount} 笔</div></div>
     </div>
     <div class="fin-dash-row2">
-      <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(af.totalCost)}</div><div class="fin-dash-sm-label">总项目预计成本</div></div>
+      <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(af.totalCost)}</div><div class="fin-dash-sm-label">总项目预计成本(含待付款)</div></div>
       <div class="fin-dash-sm"><div class="fin-dash-sm-val blue">¥${fmt(af.paid)}</div><div class="fin-dash-sm-label">总项目实际已支出</div></div>
       <div class="fin-dash-sm"><div class="fin-dash-sm-val">¥${fmt(sumEstGross)}</div><div class="fin-dash-sm-label">总项目预计毛利</div></div>
       <div class="fin-dash-sm"><div class="fin-dash-sm-val ${af.grossProfit>=0?'blue':'red'}">¥${fmt(af.grossProfit)}</div><div class="fin-dash-sm-label">总项目账面毛利</div></div>
@@ -15549,7 +15549,7 @@ function renderFinance(){
     `    <div class="fin-dash-row2" style="grid-template-columns:repeat(7,1fr)">
       <div class="fin-dash-sm">
         <div class="fin-dash-sm-val blue">¥${fmt(f.totalCost)}</div>
-        <div class="fin-dash-sm-label">预计成本</div>
+        <div class="fin-dash-sm-label">预计成本(含待付款)</div>
       </div>
       <div class="fin-dash-sm">
         <div class="fin-dash-sm-val blue">¥${fmt(f.paid)}</div>
