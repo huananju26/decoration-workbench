@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# 焕安居装修工作台 · 团队版 全量部署（#410-#419）
+# 焕安居装修工作台 · 团队版 全量部署（#410-#424）
 # 用法（在 106.55.14.231 上执行，需 sudo）：
 #   curl -sSL -o /tmp/d3.sh https://huananju26.github.io/decoration-workbench/deploy_server_v3.sh
 #   sudo bash /tmp/d3.sh
 #
 # 本脚本做的事：
-#   1) 从 GitHub Pages 中转站拉 5 个后端钩子 + 前端 app17.html + 运营后台 admin6.html
+#   1) 从 GitHub Pages 中转站拉 5 个后端钩子 + 前端 app18.html + 运营后台 admin9.html
 #   2) 字节校验（不一致=gh-pages 未同步，自动重试一次）
 #   3) 备份当前 pb_public/index.html（回退点）
 #   4) 写入 5 个常驻钩子（含 api_admin / api_cleanup）+ 重启 PB
-#   5) 部署前端 app17.html → index.html、运营后台 admin6.html
+#   5) 部署前端 app18.html → index.html、运营后台 admin9.html → admin.html（固定地址）
 #
 # 本次重点修复：
 #   - 运营后台成员页拉不到（api_admin 此前未部署，本次补上）
@@ -18,6 +18,9 @@
 #   - 清理页「允许删除付费公司」勾选（purge_paid 受控覆盖）
 #   - 影像资料筛选「节点验收」空结果（kind 映射修正）
 #   - 影像资料筛选条五行→单行加固（!important + nowrap + 防width覆盖，#419）
+#   - 到期日日期框空白修复（dateOnly 截取 YYYY-MM-DD，#421）
+#   - 运营后台满屏自适应布局（去掉 max-width:1080px，#423）
+#   - 开通新公司三字段加 * 必填标记（#424）
 set -e
 
 BASE="https://huananju26.github.io/decoration-workbench"
@@ -30,8 +33,8 @@ EXP_api_multiorg=33964 # api_multiorg_v1.js   → pb_hooks/api.pb.js
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
-EXP_app=1367017        # app17.html           → pb_public/index.html（#419 筛选条单行加固）
-EXP_admin=30243        # admin6.html          → pb_public/admin6.html
+EXP_app=1367417        # app18.html           → pb_public/index.html（#424 开通公司 * 标记）
+EXP_admin=30784        # admin9.html          → pb_public/admin.html（#423 满屏布局 + #421 dateOnly）
 
 dl() { # url out expected
   local url="$1" out="$2" exp="$3" got
@@ -58,9 +61,9 @@ dl "$BASE/api_review_v2.js"   /tmp/api_review.pb.js   $EXP_api_review
 dl "$BASE/api_admin_v1.js"    /tmp/api_admin.pb.js    $EXP_api_admin
 dl "$BASE/api_cleanup_v1.js"  /tmp/api_cleanup.pb.js  $EXP_api_cleanup
 
-echo "== [2/5] 下载前端 app17.html + 运营后台 admin6.html =="
-dl "$BASE/app17.html" /tmp/app17.html $EXP_app
-dl "$BASE/admin6.html" /tmp/admin6.html $EXP_admin
+echo "== [2/5] 下载前端 app18.html + 运营后台 admin9.html =="
+dl "$BASE/app18.html" /tmp/app18.html $EXP_app
+dl "$BASE/admin9.html" /tmp/admin9.html $EXP_admin
 
 echo "== [3/5] 备份当前 index.html + 写入 5 个钩子 =="
 if [ -f "$PUB/index.html" ]; then
@@ -83,17 +86,17 @@ if ! sudo systemctl is-active --quiet pocketbase; then
 fi
 echo "  ✓ pocketbase 已启动（5 钩子常驻）"
 
-echo "== [5/5] 部署前端 app17.html → index.html + 运营后台 admin6.html =="
-sudo cp /tmp/app17.html "$PUB/index.html"
-sudo cp /tmp/app17.html "$PUB/app17.html"
-sudo cp /tmp/admin6.html "$PUB/admin6.html"
-echo "  ✓ 前端已部署（index.html / app17.html）"
-echo "  ✓ 运营后台已部署：http://106.55.14.231/admin6.html"
+echo "== [5/5] 部署前端 app18.html → index.html + 运营后台 admin9.html → admin.html =="
+sudo cp /tmp/app18.html "$PUB/index.html"
+sudo cp /tmp/app18.html "$PUB/app18.html"
+sudo cp /tmp/admin9.html "$PUB/admin.html"
+echo "  ✓ 前端已部署（index.html / app18.html）"
+echo "  ✓ 运营后台已部署（固定地址）：http://106.55.14.231/admin.html"
 
 echo ""
 echo "DONE ✅ 部署完成。"
 echo "  浏览器硬刷新（Ctrl/Cmd+Shift+R）：http://106.55.14.231/"
-echo "  运营后台：http://106.55.14.231/admin6.html"
+echo "  运营后台：http://106.55.14.231/admin.html（固定地址，不再变）"
 echo "  回退方式：sudo cp $PUB/index.html.bak.* $PUB/index.html 后刷新"
 echo ""
 echo "  验证清单："
