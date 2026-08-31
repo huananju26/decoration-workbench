@@ -31,7 +31,9 @@
 #     users 集合无 username 字段 → 用户名改存内置 name 字段，login-username 同步改按 name 查（#429）
 #     ⚠️ 注：#427 曾误判为「前端重复调 signup()」，实际 400 发生在 /api/auth/register 这一步，
 #        与 signup() 无关；前端改为 login() 仍属正确（钩子已建好用户，无需再建一次）。
-#   - 🩸 静默 catch 治理（#429）：register 的「邮箱验证 / 邮箱唯一性」与 verify-code 三处 catch
+#   - 🩸 静默 catch 治理（#429）
+#   - 🩸 send-code 里调了 PB 不存在的 $app.findRecordByFilter()（被 catch 吞掉，
+#       导致「该邮箱已注册」提示从未生效）→ 改 findRecordsByFilter（#429）：register 的「邮箱验证 / 邮箱唯一性」与 verify-code 三处 catch
 #      原为「仅按 message 子串条件重抛」，其余异常静默吞掉 —— 前者等于可绕过邮箱验证，
 #      后者会让 save 撞唯一约束再被 PB 吞一层、只回 400 Something went wrong。现全部改为显式抛出。
 set -e
@@ -42,7 +44,7 @@ PUB="/opt/pocketbase/pb_public"
 
 # ── 预期字节（与本地 gh-pages 推送一致，用于完整性校验）──
 EXP_api_team=24377     # api_team_v1.js       → pb_hooks/api_team.pb.js
-EXP_api_multiorg=35846 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理）
+EXP_api_multiorg=36599 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在）
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js

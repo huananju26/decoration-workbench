@@ -536,12 +536,21 @@ routerAdd('POST', '/api/auth/send-code', (e) => {
   if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
     throw new BadRequestError('邮箱格式不正确');
   }
-  /* 检查是否已注册 */
+  /* 检查是否已注册
+     🩸 原写法调 $app.findRecordByFilter() —— PB 里**没有这个方法**（只有 findRecordsByFilter /
+        findFirstRecordByFilter，已在 pocketbase 二进制里核对过方法表）。抛 TypeError 后被
+        catch 全吞 → 这道「该邮箱已注册」提示形同虚设，已注册邮箱照样能反复拉验证码。
+     这里用 findRecordsByFilter（返回数组，与下面的 .length 判断一致）。 */
   var existing = null;
   try {
-    existing = $app.findRecordByFilter('users', 'email = "' + data.email.replace(/'/g, "\\'") + '"', '', 1, 0);
+    existing = $app.findRecordsByFilter('users', 'email = "' + data.email.replace(/'/g, "\\'") + '"', '', 1, 0);
     if (existing && existing.length > 0) existing = existing[0]; else existing = null;
-  } catch (err) { existing = null; }
+  } catch (err) {
+    /* 这只是「已注册」的便利性提示，查询失败时放行（注册接口自身的唯一性校验才是真正闸门），
+       但必须留痕，否则和之前一样查不到原因 */
+    console.warn('[send-code] 已注册检查失败（放行）：', String(err && err.message || err));
+    existing = null;
+  }
   if (existing) throw new BadRequestError('该邮箱已注册，请直接登录');
 
   /* 生成 6 位验证码 */
