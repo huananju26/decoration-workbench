@@ -99,7 +99,7 @@ routerAdd('POST', '/api/org/invite', (e) => {
   let emailed = false;
   let devInviteLink = '';
   try {
-    if (mailer && targetEmail && mailer.smtpEnabled()) {
+    if (mailer && targetEmail) {
       let orgName = '';
       try { const o = $app.findRecordById('organizations', org); orgName = String(o.get('name') || ''); } catch (e2) {}
       const roleLabel = role;
@@ -465,10 +465,10 @@ routerAdd('POST', '/api/auth/send-code', (e) => {
     vc.set('expires', new Date(Date.now() + 5 * 60 * 1000).toISOString());
     vc.set('used', false);
     $app.save(vc);
-    /* 已落库 → 尝试真实发送；未配 SMTP 则回退 dev_code */
+    /* 已落库 → 直接尝试真实发送（不预检测 SMTP，失败则回退 dev_code） */
     let emailed = false;
     try {
-      if (mailer && mailer.smtpEnabled()) {
+      if (mailer) {
         const subject = '【焕安居装修工作台】邮箱验证码：' + code;
         const html = mailer.mailShell('邮箱验证码',
           '<p>您正在注册焕安居装修工作台账号，验证码为：</p>'
@@ -477,9 +477,9 @@ routerAdd('POST', '/api/auth/send-code', (e) => {
         mailer.sendMail(data.email, subject, html, '您的验证码是 ' + code + '（5 分钟内有效）');
         emailed = true;
       }
-    } catch (eMail) { console.warn('[send-code] 邮件发送失败：', eMail); }
+    } catch (eMail) { console.warn('[send-code] 邮件发送失败（可能未配 SMTP）：', eMail); }
     if (emailed) return e.json(200, { ok: true, emailed: true, message: '验证码已发送到您的邮箱，请查收' });
-    return e.json(200, { ok: true, dev_code: code, message: '开发模式：验证码为 ' + code + '（尚未配置 SMTP，未真实发送）' });
+    return e.json(200, { ok: true, dev_code: code, message: '开发模式：验证码为 ' + code + '（邮件未发送，请检查 SMTP 配置）' });
   } catch (err) {
     /* 集合不存在等致命错误：开发模式直接返回验证码，便于联调 */
     console.warn('[send-code] 存储失败：', err);
@@ -626,7 +626,7 @@ routerAdd('POST', '/api/auth/request-reset', (e) => {
     const base = (mailer && mailer.APP_BASE_URL) ? mailer.APP_BASE_URL : 'http://106.55.14.231/';
     const link = base + '?reset=' + token + '&email=' + encodeURIComponent(data.email);
     try {
-      if (mailer && mailer.smtpEnabled()) {
+      if (mailer) {
         const subject = '【焕安居装修工作台】重置密码链接';
         const html = mailer.mailShell('重置密码',
           '<p>我们收到了您的密码重置请求。点击下面的链接设置新密码（30 分钟内有效）：</p>'
