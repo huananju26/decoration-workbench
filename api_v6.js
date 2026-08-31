@@ -74,7 +74,7 @@ routerAdd('POST', '/api/org/invite', (e) => {
   const org = auth.get('org_id');
   if (!org) throw new BadRequestError('你还没有公司');
 
-  const data = new DynamicModel({ role: 'member', email: '' });
+  const data = new DynamicModel({ role: 'reader', email: '' });
   e.bindBody(data);
   const targetEmail = String(data.email || '').trim();
   const role = data.role || 'member';
