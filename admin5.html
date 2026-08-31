@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>平台运营后台 · 装修工作台</title>
+<!-- 本运营后台通过单文件 HTML + 同源 PocketBase API 搭建，零外部依赖 -->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+background:#f0f2f5;color:#1f1f1f;font-size:14px;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 60px}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.hd h1{font-size:18px;font-weight:500;color:#003a8c}
+.hd .who{font-size:12px;color:#666}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:14px}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:8px 16px;border-radius:8px;border:1px solid #d9d9d9;background:#fff;cursor:pointer;font-size:14px;color:#1f1f1f}
+.tab.on{background:#1677ff;border-color:#1677ff;color:#fff}
+.btn{padding:7px 14px;border-radius:6px;border:1px solid #d9d9d9;background:#fff;cursor:pointer;font-size:13px}
+.btn.pri{background:#1677ff;border-color:#1677ff;color:#fff}
+.btn.dgr{background:#fff;border-color:#ff7875;color:#cf1322}
+.btn.sm{padding:4px 10px;font-size:12px}
+input,select{padding:8px 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:16px;outline:none;background:#fff;color:#1f1f1f}
+input:focus,select:focus{border-color:#1677ff}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.item{border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:10px;background:#fff}
+.item .t{font-weight:500;font-size:14px;color:#003a8c;margin-bottom:4px}
+.item .m{font-size:12px;color:#666}
+.item .act{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;background:#e6f4ff;color:#0958d9;border:1px solid #91caff}
+.tag.warn{background:#fffbe6;color:#d48806;border-color:#ffe58f}
+.tag.bad{background:#fff1f0;color:#cf1322;border-color:#ffa39e}
+.tag.gray{background:#fafafa;color:#666;border-color:#d9d9d9}
+.msg{font-size:13px;min-height:20px;color:#cf1322;margin-top:8px}
+.msg.ok{color:#1677ff}
+.empty{padding:24px;text-align:center;color:#999;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #f0f0f0}
+th{color:#666;font-weight:500;font-size:12px}
+.hidden{display:none}
+@media(max-width:768px){
+  .wrap{padding:14px 10px 50px}
+  table{font-size:12px}
+  th,td{padding:6px 6px}
+  .tab{padding:7px 12px;font-size:13px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hd">
+    <h1>平台运营后台</h1>
+    <div class="who" id="who"></div>
+  </div>
+
+  <div id="loginBox" class="card">
+    <div style="font-size:13px;color:#666;margin-bottom:10px">用平台管理员账号登录（需在 PocketBase 后台把该账号的 <b>platform_admin</b> 勾上）。</div>
+    <div style="font-size:12px;color:#666;margin-bottom:4px">邮箱</div>
+    <input id="em" placeholder="you@example.com" autocomplete="username" style="width:100%;margin-bottom:8px">
+    <div style="font-size:12px;color:#666;margin-bottom:4px">密码</div>
+    <input id="pw" type="password" autocomplete="current-password" style="width:100%;margin-bottom:10px">
+    <button class="btn pri" onclick="doLogin()">登录</button>
+    <div class="msg" id="loginMsg"></div>
+  </div>
+
+  <div id="mainBox" class="hidden">
+    <div class="tabs">
+      <div class="tab on" data-t="req" onclick="switchTab('req')">开通申请</div>
+      <div class="tab" data-t="org" onclick="switchTab('org')">全部公司</div>
+      <div class="tab" data-t="user" onclick="switchTab('user')">成员</div>
+      <div class="tab" data-t="clean" onclick="switchTab('clean')">清理</div>
+    </div>
+
+    <div id="pane-req" class="card">
+      <div class="row" style="margin-bottom:10px">
+        <select id="reqStatus" onchange="loadReqs()">
+          <option value="pending">待审核</option>
+          <option value="approved">已通过</option>
+          <option value="rejected">已拒绝</option>
+          <option value="">全部</option>
+        </select>
+        <button class="btn sm" onclick="loadReqs()">刷新</button>
+      </div>
+      <div id="reqList"><div class="empty">加载中…</div></div>
+    </div>
+
+    <div id="pane-org" class="card hidden">
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn sm" onclick="loadOrgs()">刷新</button>
+        <span style="font-size:12px;color:#666">每家公司可在右侧单独设置「套餐」与「续期天数」</span>
+      </div>
+      <div id="orgList"><div class="empty">加载中…</div></div>
+    </div>
+
+    <div id="pane-user" class="card hidden">
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn sm" onclick="loadMembers()">刷新成员</button>
+        <span style="font-size:12px;color:#666">全部注册成员，含所属公司与角色</span>
+      </div>
+      <div id="memberList"><div class="empty">加载中…</div></div>
+    </div>
+
+    <div id="pane-clean" class="card hidden">
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn pri sm" onclick="doScan()">开始体检</button>
+        <span style="font-size:12px;color:#666">孤儿账号判定天数</span>
+        <input id="cleanDays" type="number" value="7" style="width:80px">
+        <label style="font-size:12px;color:#1677ff;display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" id="cleanAll" onchange="toggleCleanAll(this)" style="width:16px;height:16px"> 全选可选项
+        </label>
+        <label style="font-size:12px;color:#666;display:flex;align-items:center;gap:4px">
+          <input type="checkbox" id="cleanForce" style="width:16px;height:16px"> 强制删除有成员的公司（成员会被踢回无公司状态）
+        </label>
+      </div>
+      <div style="font-size:12px;color:#8c8c8c;margin-bottom:10px;line-height:1.8">
+        <span class="tag">🟢 安全</span> 空壳零损失，默认勾选　
+        <span class="tag warn">🟡 需确认</span> 有业务数据或有成员，删前请确认　
+        <span class="tag bad">🔴 禁止</span> 有付费记录，连强制删除也不行
+      </div>
+      <div id="cleanMsg" class="msg"></div>
+      <div id="cleanList"><div class="empty">点「开始体检」扫描数据库</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var PB = (function(){
+  var o = location.origin || '';
+  if (o && o.indexOf('github.io') === -1) return o;
+  return 'http://106.55.14.231';
+})();
+var token = localStorage.getItem('xzgz_admin_token') || '';
+var me = null;
+var cleanData = null;
+var cleanSel = { users: {}, orgs: {} };
+var plansCatalog = [];
+
+function api(path, method, body){
+  var h = {'Content-Type':'application/json'};
+  if (token) h['Authorization'] = token;
+  return fetch(PB + path, {method: method || 'GET', headers: h,
+    body: body ? JSON.stringify(body) : undefined}).then(function(r){
+    return r.text().then(function(t){
+      var j = null; try { j = JSON.parse(t); } catch(e){ j = {__raw: t}; }
+      if (!r.ok) throw new Error((j && (j.message || j.__raw)) || ('HTTP ' + r.status));
+      return j;
+    });
+  });
+}
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+function doLogin(){
+  var em = document.getElementById('em').value.trim();
+  var pw = document.getElementById('pw').value;
+  var msg = document.getElementById('loginMsg');
+  msg.className = 'msg'; msg.textContent = '登录中…';
+  api('/api/collections/users/auth-with-password', 'POST', {identity: em, password: pw})
+    .then(function(j){
+      if (!j || !j.token) throw new Error('未返回凭证');
+      token = j.token;
+      localStorage.setItem('xzgz_admin_token', token);
+      return api('/api/me');
+    })
+    .then(function(m){
+      me = m;
+      if (!m.platform_admin){
+        token = ''; localStorage.removeItem('xzgz_admin_token');
+        throw new Error('该账号不是平台管理员（请在 PocketBase 后台勾选 users.platform_admin）');
+      }
+      enterMain();
+    })
+    .catch(function(e){
+      msg.className = 'msg';
+      msg.textContent = (e && e.message) || '登录失败';
+    });
+}
+function enterMain(){
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('mainBox').classList.remove('hidden');
+  document.getElementById('who').innerHTML = '已登录：' + esc(me && me.email ? me.email : '')
+    + '　<a href="javascript:void(0)" onclick="doLogout()" style="color:#1677ff">退出</a>';
+  loadReqs(); loadOrgs();
+}
+function doLogout(){
+  token = ''; localStorage.removeItem('xzgz_admin_token');
+  location.reload();
+}
+function switchTab(t){
+  ['req','org','user','clean'].forEach(function(k){
+    var el = document.getElementById('pane-' + k);
+    if (el) el.classList.toggle('hidden', k !== t);
+  });
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++){
+    tabs[i].classList.toggle('on', tabs[i].getAttribute('data-t') === t);
+  }
+  if (t === 'clean' && !cleanData) doScan();
+}
+
+function loadReqs(){
+  var st = document.getElementById('reqStatus').value;
+  api('/api/request/list?scope=org' + (st ? '&status=' + st : ''))
+    .then(function(j){
+      var items = (j && j.items) || [];
+      var box = document.getElementById('reqList');
+      if (!items.length){ box.innerHTML = '<div class="empty">暂无申请</div>'; return; }
+      var h = '';
+      for (var i = 0; i < items.length; i++){
+        var r = items[i];
+        var tg = r.status === 'pending' ? '<span class="tag warn">待审核</span>'
+          : r.status === 'approved' ? '<span class="tag">已通过</span>'
+          : '<span class="tag bad">已拒绝</span>';
+        h += '<div class="item">'
+          + '<div class="t">' + esc(r.org_name || '（未填公司名）') + '　' + tg + '</div>'
+          + '<div class="m">联系人：' + esc(r.contact_name || '—') + '　电话：' + esc(r.contact_phone || '—') + '</div>'
+          + '<div class="m">申请人：' + esc(r.user_name || '—') + '　' + esc(r.user_email || '') + '</div>'
+          + '<div class="m">提交时间：' + esc(String(r.created || '').replace('T',' ').slice(0,19)) + '</div>'
+          + (r.message ? '<div class="m">留言：' + esc(r.message) + '</div>' : '')
+          + (r.review_note ? '<div class="m">审核备注：' + esc(r.review_note) + '</div>' : '');
+        if (r.status === 'pending'){
+          h += '<div class="act">'
+            + '<button class="btn pri sm" onclick="review(\'' + esc(r.id) + '\',\'approve\')">通过并开通</button>'
+            + '<button class="btn dgr sm" onclick="review(\'' + esc(r.id) + '\',\'reject\')">拒绝</button>'
+            + '</div>';
+        }
+        h += '</div>';
+      }
+      box.innerHTML = h;
+    })
+    .catch(function(e){
+      document.getElementById('reqList').innerHTML = '<div class="empty" style="color:#cf1322">'
+        + esc((e && e.message) || '加载失败') + '</div>';
+    });
+}
+function review(id, action){
+  var note = '';
+  if (action === 'reject'){
+    note = window.prompt('拒绝原因（会展示给申请人，可留空）：', '');
+    if (note === null) return;
+  } else {
+    if (!window.confirm('确认通过？将自动创建公司（试用 14 天），并将申请人设为管理员。')) return;
+  }
+  api('/api/request/review', 'POST', {id: id, action: action, note: note || ''})
+    .then(function(){ loadReqs(); loadOrgs(); })
+    .catch(function(e){ window.alert((e && e.message) || '操作失败'); });
+}
+
+function loadOrgs(){
+  api('/api/admin/orgs')
+    .then(function(j){
+      var items = (j && j.items) || [];
+      plansCatalog = (j && j.plans) || [];
+      var box = document.getElementById('orgList');
+      if (!items.length){ box.innerHTML = '<div class="empty">暂无公司</div>'; return; }
+      var h = '<table><thead><tr><th>公司名称</th><th>套餐（可下拉切换）</th><th>状态</th><th>到期</th><th>成员</th><th>联系人</th><th>操作</th></tr></thead><tbody>';
+      for (var i = 0; i < items.length; i++){
+        var o = items[i];
+        var tg = o.status === 'active' ? '<span class="tag">正常</span>'
+          : o.status === 'suspended' ? '<span class="tag bad">已冻结</span>'
+          : '<span class="tag warn">' + esc(o.status || '—') + '</span>';
+        var paidBadge = o.is_paid
+          ? '<span class="tag">已付费</span>'
+          : '<span class="tag gray">试用</span>';
+        h += '<tr>'
+          + '<td>' + esc(o.name) + '</td>'
+          + '<td>'
+          +   '<select id="planSel_' + esc(o.id) + '">' + planOptions(o.plan) + '</select>'
+          +   '<div style="margin-top:4px"><button class="btn sm pri" onclick="orgSetPlan(\'' + esc(o.id) + '\')">设为该套餐</button></div>'
+          +   '<div style="font-size:12px;color:#666;margin-top:4px">' + esc(o.plan_desc || '') + '</div>'
+          +   '<div style="margin-top:4px">' + paidBadge + '</div>'
+          + '</td>'
+          + '<td>' + tg + '</td>'
+          + '<td>' + esc(o.paid_until || '—') + '</td>'
+          + '<td>' + esc(o.members) + '</td>'
+          + '<td>' + esc(o.contact_name || '—') + '<br><span style="font-size:12px;color:#999">' + esc(o.contact_phone || '') + '</span></td>'
+          + '<td><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">'
+          +   '<div class="row"><input type="number" id="extDays_' + esc(o.id) + '" value="365" style="width:74px"> <button class="btn sm" onclick="orgAct(\'' + esc(o.id) + '\',\'extend\')">续期</button></div>'
+          +   (o.status === 'suspended'
+                ? '<button class="btn sm" onclick="orgAct(\'' + esc(o.id) + '\',\'activate\')">解冻</button>'
+                : '<button class="btn dgr sm" onclick="orgAct(\'' + esc(o.id) + '\',\'suspend\')">冻结</button>')
+          + '</div></td>'
+          + '</tr>';
+      }
+      h += '</tbody></table>';
+      box.innerHTML = h;
+    })
+    .catch(function(e){
+      document.getElementById('orgList').innerHTML = '<div class="empty" style="color:#cf1322">'
+        + esc((e && e.message) || '加载失败') + '</div>';
+    });
+}
+/* 用后端下发的套餐目录生成下拉项，当前套餐默认选中 */
+function planOptions(sel){
+  var h = '';
+  for (var i = 0; i < plansCatalog.length; i++){
+    var p = plansCatalog[i];
+    h += '<option value="' + esc(p.value) + '"' + (p.value === sel ? ' selected' : '') + '>'
+      + esc(p.label) + '（' + esc(p.seat_admin) + ' 管理 / ' + esc(p.seat_member) + ' 成员 / ' + esc(p.storage_gb) + ' GB）</option>';
+  }
+  return h;
+}
+/* 把某公司的套餐设为下拉所选，并同步席位 / 存储额度 */
+function orgSetPlan(id){
+  var sel = document.getElementById('planSel_' + id);
+  if (!sel) return;
+  var plan = sel.value;
+  var txt = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : plan;
+  if (!window.confirm('确认将该公司套餐设为「' + txt + '」？\n\n将同步更新席位与存储额度（付费套餐默认续期 365 天，试用套餐 14 天；若仍在付费期内则不缩短）。')) return;
+  api('/api/admin/org/update', 'POST', {id: id, action: 'set_plan', plan: plan})
+    .then(function(j){
+      if (j && j.ok){
+        var msg = '套餐已更新为「' + plan + '」';
+        msg += j.is_paid ? '（已付费，到期 ' + (j.paid_until || '') + '）' : '（试用，到期 ' + (j.paid_until || '') + '）';
+        window.alert(msg);
+      }
+      loadOrgs();
+    })
+    .catch(function(e){ window.alert((e && e.message) || '操作失败'); });
+}
+function orgAct(id, action){
+  if (action === 'suspend' && !window.confirm('确认冻结？该公司成员将无法继续使用。')) return;
+  var el = document.getElementById('extDays_' + id);
+  var days = el ? (parseInt(el.value, 10) || 365) : 365;
+  api('/api/admin/org/update', 'POST', {id: id, action: action, days: days})
+    .then(function(){ loadOrgs(); })
+    .catch(function(e){ window.alert((e && e.message) || '操作失败'); });
+}
+
+/* ================= 成员列表 ================= */
+function loadMembers(){
+  api('/api/admin/members')
+    .then(function(j){
+      var items = (j && j.items) || [];
+      var box = document.getElementById('memberList');
+      if (!items.length){ box.innerHTML = '<div class="empty">暂无成员</div>'; return; }
+      var h = '<table><thead><tr><th>邮箱</th><th>姓名</th><th>角色</th><th>所属公司</th><th>公司套餐</th><th>公司状态</th><th>平台管理员</th><th>注册时间</th></tr></thead><tbody>';
+      for (var i = 0; i < items.length; i++){
+        var u = items[i];
+        var roleTag = u.role === 'admin' ? '<span class="tag">管理员</span>'
+          : u.role === 'member' ? '<span class="tag warn">成员</span>'
+          : '<span style="font-size:12px;color:#999">' + esc(u.role || '—') + '</span>';
+        var orgSt = u.org_status === 'suspended' ? '<span class="tag bad">已冻结</span>'
+          : u.org_status === 'active' ? '<span class="tag">正常</span>'
+          : u.org_status ? '<span class="tag warn">' + esc(u.org_status) + '</span>'
+          : '<span style="color:#999">—</span>';
+        h += '<tr>'
+          + '<td>' + esc(u.email) + '</td>'
+          + '<td>' + esc(u.display_name || '—') + '</td>'
+          + '<td>' + roleTag + '</td>'
+          + '<td>' + (u.org_name ? esc(u.org_name) : '<span style="color:#999">未加入</span>') + '</td>'
+          + '<td>' + (u.org_plan ? esc(u.org_plan) : '<span style="color:#999">—</span>') + '</td>'
+          + '<td>' + orgSt + '</td>'
+          + '<td>' + (u.platform_admin ? '✅' : '—') + '</td>'
+          + '<td style="font-size:12px;color:#999">' + esc(String(u.created || '').slice(0, 10)) + '</td>'
+          + '</tr>';
+      }
+      h += '</tbody></table>';
+      box.innerHTML = h;
+    })
+    .catch(function(e){
+      document.getElementById('memberList').innerHTML = '<div class="empty" style="color:#cf1322">'
+        + esc((e && e.message) || '加载失败') + '</div>';
+    });
+}
+
+/* ================= 清理：体检 + 人工确认删除 ================= */
+function lvTag(lv){
+  if (lv === 'safe') return '<span class="tag">🟢 安全</span>';
+  if (lv === 'warn') return '<span class="tag warn">🟡 需确认</span>';
+  return '<span class="tag bad">🔴 禁止</span>';
+}
+/* 默认只勾「安全」级：有数据 / 有人的一律留给人工判断。
+   单独抽成函数，好让 test_admin_clean_ui.js 能直接验证真实逻辑，
+   而不是在测试里复制一份（复制的那份迟早跟产品代码走偏）。 */
+function applyDefaultSelection(){
+  cleanSel = { users: {}, orgs: {} };
+  (cleanData.users || []).forEach(function(u){ if (u.level === 'safe') cleanSel.users[u.id] = 1; });
+  (cleanData.orgs || []).forEach(function(o){ if (o.level === 'safe') cleanSel.orgs[o.id] = 1; });
+}
+function doScan(){
+  var box = document.getElementById('cleanList');
+  var msg = document.getElementById('cleanMsg');
+  if (!box) return;
+  box.innerHTML = '<div class="empty">扫描中…</div>';
+  if (msg){ msg.className = 'msg'; msg.textContent = ''; }
+  var days = parseInt(document.getElementById('cleanDays').value, 10) || 7;
+  api('/api/admin/scan', 'POST', {days: days})
+    .then(function(j){
+      cleanData = j;
+      applyDefaultSelection();
+      renderClean();
+    })
+    .catch(function(e){
+      box.innerHTML = '<div class="empty" style="color:#cf1322">'
+        + esc((e && e.message) || '扫描失败') + '</div>';
+    });
+}
+function renderClean(){
+  var box = document.getElementById('cleanList');
+  if (!cleanData){ box.innerHTML = '<div class="empty">点「开始体检」扫描数据库</div>'; return; }
+  var us = cleanData.users || [], os = cleanData.orgs || [];
+  var h = '';
+
+  h += '<div style="font-weight:500;margin:6px 0 8px;color:#003a8c">账号（没有公司的孤儿账号）· ' + us.length + ' 个</div>';
+  if (!us.length) h += '<div class="empty">没有孤儿账号</div>';
+  else {
+    h += '<table><thead><tr><th style="width:36px"></th><th>邮箱</th><th>注册天数</th><th>级别</th><th>判定理由</th></tr></thead><tbody>';
+    for (var i = 0; i < us.length; i++){
+      var u = us[i];
+      var dis = u.level === 'block' ? 'disabled' : '';
+      var ck = cleanSel.users[u.id] ? 'checked' : '';
+      h += '<tr>'
+        + '<td><input type="checkbox" ' + dis + ' ' + ck + ' data-kind="users" data-id="' + esc(u.id) + '" data-level="' + esc(u.level) + '" onchange="toggleClean(\'users\',\'' + esc(u.id) + '\',this)"></td>'
+        + '<td>' + esc(u.email) + (u.name ? '<br><span style="font-size:12px;color:#999">' + esc(u.name) + '</span>' : '') + '</td>'
+        + '<td>' + esc(u.age) + ' 天</td>'
+        + '<td>' + lvTag(u.level) + '</td>'
+        + '<td style="font-size:12px;color:#666">' + esc((u.reasons || []).join('；')) + '</td>'
+        + '</tr>';
+    }
+    h += '</tbody></table>';
+  }
+
+  h += '<div style="font-weight:500;margin:16px 0 8px;color:#003a8c">公司 · ' + os.length + ' 家</div>';
+  if (!os.length) h += '<div class="empty">没有公司</div>';
+  else {
+    h += '<table><thead><tr><th style="width:36px"></th><th>公司名称</th><th>成员</th><th>业务数据</th><th>级别</th><th>判定理由</th></tr></thead><tbody>';
+    for (var k = 0; k < os.length; k++){
+      var o = os[k];
+      var d2 = o.level === 'block' ? 'disabled' : '';
+      var c2 = cleanSel.orgs[o.id] ? 'checked' : '';
+      var dat = (o.units || o.bytes) ? (o.units + ' 单元 / ' + Math.round((o.bytes || 0) / 1024) + ' KB') : '<span style="color:#999">无</span>';
+      h += '<tr>'
+        + '<td><input type="checkbox" ' + d2 + ' ' + c2 + ' data-kind="orgs" data-id="' + esc(o.id) + '" data-level="' + esc(o.level) + '" onchange="toggleClean(\'orgs\',\'' + esc(o.id) + '\',this)"></td>'
+        + '<td>' + esc(o.name) + '<br><span style="font-size:12px;color:#999">' + esc(String(o.created || '').slice(0, 10)) + '</span></td>'
+        + '<td>' + esc(o.members) + '</td>'
+        + '<td>' + dat + '</td>'
+        + '<td>' + lvTag(o.level) + '</td>'
+        + '<td style="font-size:12px;color:#666">' + esc((o.reasons || []).join('；')) + '</td>'
+        + '</tr>';
+    }
+    h += '</tbody></table>';
+  }
+
+  h += '<div class="row" style="margin-top:14px">'
+    + '<button class="btn dgr" onclick="doPurge()">删除选中</button>'
+    + '<button class="btn sm" onclick="doScan()">重新体检</button>'
+    + '<span id="cleanSum" style="font-size:12px;color:#666"></span>'
+    + '</div>';
+
+  box.innerHTML = h;
+  updateCleanSum();
+  syncCleanAllCheckbox();
+}
+function toggleClean(kind, id, el){
+  cleanSel[kind][id] = el.checked ? 1 : 0;
+  updateCleanSum();
+  syncCleanAllCheckbox();
+}
+/* 全选 / 取消全选所有「可选项」（🔴 禁止级永远不选） */
+function toggleCleanAll(el){
+  var on = !!el.checked;
+  if (cleanData){
+    (cleanData.users || []).forEach(function(u){ if (u.level !== 'block') cleanSel.users[u.id] = on ? 1 : 0; });
+    (cleanData.orgs || []).forEach(function(o){ if (o.level !== 'block') cleanSel.orgs[o.id] = on ? 1 : 0; });
+  }
+  renderClean();
+}
+/* 根据当前选择，回写「全选可选项」主框的 选中 / 半选 状态 */
+function syncCleanAllCheckbox(){
+  var ca = document.getElementById('cleanAll');
+  if (!ca || !cleanData) return;
+  var total = 0, sel = 0;
+  (cleanData.users || []).forEach(function(u){ if (u.level !== 'block'){ total++; if (cleanSel.users[u.id]) sel++; } });
+  (cleanData.orgs || []).forEach(function(o){ if (o.level !== 'block'){ total++; if (cleanSel.orgs[o.id]) sel++; } });
+  ca.checked = total > 0 && sel === total;
+  ca.indeterminate = sel > 0 && sel < total;
+}
+function updateCleanSum(){
+  var el = document.getElementById('cleanSum');
+  if (!el || !cleanData) return;
+  var nu = 0, no = 0, units = 0, kb = 0, mem = 0;
+  (cleanData.users || []).forEach(function(u){ if (cleanSel.users[u.id]) nu++; });
+  (cleanData.orgs || []).forEach(function(o){
+    if (!cleanSel.orgs[o.id]) return;
+    no++; units += (o.units || 0); kb += Math.round((o.bytes || 0) / 1024); mem += (o.members || 0);
+  });
+  var s = '已选：账号 ' + nu + ' 个 / 公司 ' + no + ' 家';
+  if (units || kb) s += '（含 ' + units + ' 个同步单元、' + kb + ' KB 业务数据，将一并删除）';
+  if (mem) s += '（将踢出 ' + mem + ' 名成员）';
+  el.textContent = s;
+}
+function doPurge(){
+  if (!cleanData) return;
+  var uid = [], oid = [];
+  (cleanData.users || []).forEach(function(u){ if (cleanSel.users[u.id]) uid.push(u.id); });
+  (cleanData.orgs || []).forEach(function(o){ if (cleanSel.orgs[o.id]) oid.push(o.id); });
+  if (!uid.length && !oid.length){ window.alert('还没选中任何对象'); return; }
+
+  // 有成员的公司必须先勾「强制删除」—— 否则后端会静默跳过，
+  // 用户看到「删了但没删掉」最难受，这里提前拦下并说清楚
+  var needForce = [];
+  (cleanData.orgs || []).forEach(function(o){
+    if (cleanSel.orgs[o.id] && (o.members || 0) > 0) needForce.push(o.name + '（' + o.members + ' 名成员）');
+  });
+  if (needForce.length && !document.getElementById('cleanForce').checked){
+    window.alert('以下公司有成员，请先勾选上方「强制删除有成员的公司」：\n\n' + needForce.join('\n')
+      + '\n\n勾选后删除，这些成员会被踢回「无公司」状态。');
+    return;
+  }
+
+  // 删除前把代价算清楚，别让人盲签
+  var units = 0, kb = 0, mem = 0, warnN = 0, names = [];
+  (cleanData.orgs || []).forEach(function(o){
+    if (!cleanSel.orgs[o.id]) return;
+    units += (o.units || 0); kb += Math.round((o.bytes || 0) / 1024); mem += (o.members || 0);
+    if (o.level === 'warn') warnN++;
+    if (names.length < 6) names.push(o.name);
+  });
+  var lines = [];
+  lines.push('账号 ' + uid.length + ' 个');
+  lines.push('公司 ' + oid.length + ' 家' + (names.length ? '（' + names.join('、') + (oid.length > names.length ? ' 等' : '') + '）' : ''));
+  if (units || kb) lines.push('⚠️ 将一并删除 ' + units + ' 个同步单元 / ' + kb + ' KB 业务数据');
+  if (mem) lines.push('⚠️ 将踢出 ' + mem + ' 名成员（他们会被退回「无公司」状态）');
+  if (warnN) lines.push('⚠️ 其中 ' + warnN + ' 家含有业务数据');
+  lines.push('');
+  lines.push('此操作不可恢复，确认继续？');
+  if (!window.confirm(lines.join('\n'))) return;
+
+  var force = document.getElementById('cleanForce').checked;
+  var msg = document.getElementById('cleanMsg');
+  if (msg){ msg.className = 'msg ok'; msg.textContent = '删除中…'; }
+  api('/api/admin/purge', 'POST', {
+    user_ids: uid.join(','), org_ids: oid.join(','), force: force
+  })
+    .then(function(j){
+      var du = (j && j.deleted_users) || [], dorg = (j && j.deleted_orgs) || [], sk = (j && j.skipped) || [];
+      var t = '完成：删除账号 ' + du.length + ' 个 / 公司 ' + dorg.length + ' 家';
+      if (sk.length) t += '；跳过 ' + sk.length + ' 项（' + sk.map(function(x){ return x.name + '：' + x.reason; }).join('；') + '）';
+      if (msg){ msg.className = 'msg ok'; msg.textContent = t; }
+      doScan();
+    })
+    .catch(function(e){
+      if (msg){ msg.className = 'msg'; msg.textContent = (e && e.message) || '删除失败'; }
+    });
+}
+
+/* 已存过 token 就直接进 */
+if (token){
+  api('/api/me').then(function(m){
+    me = m;
+    if (m && m.platform_admin) enterMain();
+    else { token = ''; localStorage.removeItem('xzgz_admin_token'); }
+  }).catch(function(){ token = ''; localStorage.removeItem('xzgz_admin_token'); });
+}
+</script>
+</body>
+</html>
