@@ -41,9 +41,16 @@ function mailShell(title, innerHtml) {
     + '</div></div>';
 }
 
-// 真实发送：依赖 $app.send()（底层走后台 SMTP 设置）
+// 真实发送：依赖 $app.send()（底层走后台 SMTP 设置）。
+// 注意：PocketBase JSVM 里 MailerMessage 是【直接注入的全局类】，不能用 require('pocketbase')（会报 Invalid module）。
+// 这里先取全局，取不到再尝试 require('pocketbase') 兜底，都失败才抛清晰错误。
 function sendMail(to, subject, html, text) {
-  const { MailerMessage } = require('pocketbase');
+  let MailerMessageCtor = null;
+  try { MailerMessageCtor = MailerMessage; } catch (e) { MailerMessageCtor = null; }
+  if (!MailerMessageCtor && typeof require === 'function') {
+    try { MailerMessageCtor = require('pocketbase').MailerMessage; } catch (e) { MailerMessageCtor = null; }
+  }
+  if (!MailerMessageCtor) throw new Error('MailerMessage 在当前 JSVM 不可用');
   const msg = {
     to: to,
     subject: subject,
@@ -51,7 +58,7 @@ function sendMail(to, subject, html, text) {
     text: text || (html ? html.replace(/<[^>]+>/g, ' ') : '')
   };
   if (FROM) msg.from = FROM;
-  const message = new MailerMessage(msg);
+  const message = new MailerMessageCtor(msg);
   $app.send(message);
 }
 
