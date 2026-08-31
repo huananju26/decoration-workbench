@@ -684,3 +684,28 @@ routerAdd('POST', '/api/auth/confirm-reset', (e) => {
 
   return e.json(200, { ok: true, message: '密码已重置，请用新密码登录' });
 });
+
+/* ============ 临时诊断路由（定位邮件发送失败，排查完即删） ============ */
+routerAdd('GET', '/api/_diag/mail', (e) => {
+  const out = {};
+  try {
+    const pb = require('pocketbase');
+    out.pbType = typeof pb;
+    out.pbKeys = Object.keys(pb);
+    out.mailerMsgType = typeof (pb.MailerMessage);
+  } catch (err) { out.pbErr = String(err); }
+  let mailer = null;
+  try { mailer = require(`${__hooks}/mailer.js`); out.mailerLoaded = !!mailer; }
+  catch (err) { out.mailerErr = String(err); out.mailerErrStack = err && err.stack ? String(err.stack) : 'n/a'; }
+  try {
+    if (mailer && typeof mailer.sendMail === 'function') {
+      out.smtp = (typeof mailer.smtpEnabled === 'function') ? mailer.smtpEnabled() : 'n/a';
+      mailer.sendMail('huananju@qq.com', '[diag] test', '<p>diag</p>', 'diag');
+      out.send = 'ok';
+    } else { out.send = 'no-mailer'; }
+  } catch (err) {
+    out.sendErr = String(err);
+    out.sendErrStack = err && err.stack ? String(err.stack) : 'n/a';
+  }
+  return e.json(200, out);
+});
