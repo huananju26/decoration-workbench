@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# 焕安居装修工作台 · 团队版 全量部署（#410-#424）
+# 焕安居装修工作台 · 团队版 全量部署（#410-#426）
 # 用法（在 106.55.14.231 上执行，需 sudo）：
 #   curl -sSL -o /tmp/d3.sh https://huananju26.github.io/decoration-workbench/deploy_server_v3.sh
 #   sudo bash /tmp/d3.sh
 #
 # 本脚本做的事：
-#   1) 从 GitHub Pages 中转站拉 5 个后端钩子 + 前端 app18.html + 运营后台 admin9.html
+#   1) 从 GitHub Pages 中转站拉 5 个后端钩子 + 前端 app20.html + 运营后台 admin10.html
 #   2) 字节校验（不一致=gh-pages 未同步，自动重试一次）
 #   3) 备份当前 pb_public/index.html（回退点）
 #   4) 写入 5 个常驻钩子（含 api_admin / api_cleanup）+ 重启 PB
-#   5) 部署前端 app18.html → index.html、运营后台 admin9.html → admin.html（固定地址）
+#   5) 部署前端 app20.html → index.html、运营后台 admin10.html → admin.html（固定地址）
 #
 # 本次重点修复：
+#   - 侧栏「影像资料」+「储存套餐」合并为「存储影像」（归企业设置组，套餐在上/影像在下，#425）
 #   - 运营后台成员页拉不到（api_admin 此前未部署，本次补上）
 #   - 改为试用套餐仍显示「付费」（同上）
 #   - 全部公司页增加「设到期日」日期框 + 按钮（set_expiry 动作）
@@ -21,6 +22,10 @@
 #   - 到期日日期框空白修复（dateOnly 截取 YYYY-MM-DD，#421）
 #   - 运营后台满屏自适应布局（去掉 max-width:1080px，#423）
 #   - 开通新公司三字段加 * 必填标记（#424）
+#   - 开通申请三项真校验（公司名/联系人/电话缺一不可）+ 提交后停留状态页、表单整块隐藏（#426）
+#   - 运营后台公司列表：「试用/已付费」徽章紧跟「设为该套餐」、「冻结」紧跟「续期」（同一行，#426）
+#   - 运营后台套餐下拉字号改为与公司名称一致（table select 用 1em，不再是全局 16px，#426）
+#   - 清理页取消「允许删除付费公司」后，主动剔除残留的付费公司选中（#426）
 set -e
 
 BASE="https://huananju26.github.io/decoration-workbench"
@@ -33,8 +38,8 @@ EXP_api_multiorg=33964 # api_multiorg_v1.js   → pb_hooks/api.pb.js
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
-EXP_app=1367417        # app18.html           → pb_public/index.html（#424 开通公司 * 标记）
-EXP_admin=30784        # admin9.html          → pb_public/admin.html（#423 满屏布局 + #421 dateOnly）
+EXP_app=1369654        # app20.html           → pb_public/index.html（#425 存储影像合并 + #426 开通申请状态页）
+EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 徽章同行 + 套餐字号对齐）
 
 dl() { # url out expected
   local url="$1" out="$2" exp="$3" got
@@ -61,9 +66,9 @@ dl "$BASE/api_review_v2.js"   /tmp/api_review.pb.js   $EXP_api_review
 dl "$BASE/api_admin_v1.js"    /tmp/api_admin.pb.js    $EXP_api_admin
 dl "$BASE/api_cleanup_v1.js"  /tmp/api_cleanup.pb.js  $EXP_api_cleanup
 
-echo "== [2/5] 下载前端 app18.html + 运营后台 admin9.html =="
-dl "$BASE/app18.html" /tmp/app18.html $EXP_app
-dl "$BASE/admin9.html" /tmp/admin9.html $EXP_admin
+echo "== [2/5] 下载前端 app20.html + 运营后台 admin10.html =="
+dl "$BASE/app20.html" /tmp/app20.html $EXP_app
+dl "$BASE/admin10.html" /tmp/admin10.html $EXP_admin
 
 echo "== [3/5] 备份当前 index.html + 写入 5 个钩子 =="
 if [ -f "$PUB/index.html" ]; then
@@ -86,11 +91,11 @@ if ! sudo systemctl is-active --quiet pocketbase; then
 fi
 echo "  ✓ pocketbase 已启动（5 钩子常驻）"
 
-echo "== [5/5] 部署前端 app18.html → index.html + 运营后台 admin9.html → admin.html =="
-sudo cp /tmp/app18.html "$PUB/index.html"
-sudo cp /tmp/app18.html "$PUB/app18.html"
-sudo cp /tmp/admin9.html "$PUB/admin.html"
-echo "  ✓ 前端已部署（index.html / app18.html）"
+echo "== [5/5] 部署前端 app20.html → index.html + 运营后台 admin10.html → admin.html =="
+sudo cp /tmp/app20.html "$PUB/index.html"
+sudo cp /tmp/app20.html "$PUB/app20.html"
+sudo cp /tmp/admin10.html "$PUB/admin.html"
+echo "  ✓ 前端已部署（index.html / app20.html）"
 echo "  ✓ 运营后台已部署（固定地址）：http://106.55.14.231/admin.html"
 
 echo ""
@@ -100,7 +105,13 @@ echo "  运营后台：http://106.55.14.231/admin.html（固定地址，不再�
 echo "  回退方式：sudo cp $PUB/index.html.bak.* $PUB/index.html 后刷新"
 echo ""
 echo "  验证清单："
+echo "  ✅ 侧栏「企业设置」组只剩一个「存储影像」（原影像资料/储存套餐已消失）"
+echo "  ✅ 点进去上半部分是储存套餐（套餐/有效期/席位/用量条/分类统计），下半部分是影像资料"
 echo "  ✅ 影像资料筛选条应为单行（搜索+项目+类型+时间+存储位置+重置）"
 echo "  ✅ 运营后台「成员」页应列出所有成员"
 echo "  ✅ 全部公司页每行有日期框 + 「设到期日」按钮"
-echo "  ✅ 清理页有「允许删除付费公司」勾选"
+echo "  ✅ 清理页有「允许删除付费公司」勾选；取消勾选后，之前选中的付费公司应自动取消选中"
+echo "  ✅ 开通新公司：公司名/联系人/电话任一为空都会红字拦截，不会提交"
+echo "  ✅ 开通申请提交后停在「审核中」状态页，① ② 表单整块消失（有刷新状态/重新申请/退出登录按钮）"
+echo "  ✅ 运营后台公司列表：「已付费/试用」徽章在「设为该套餐」按钮同一行右侧；「冻结」在「续期」同一行右侧"
+echo "  ✅ 套餐下拉字号与公司名称一致（不再明显大一号）"

@@ -20,8 +20,8 @@
 #
 # 不动钩子、不重启 PocketBase。
 
-SRC="${1:-admin9.html}"
-EXP="${2:-30784}"
+SRC="${1:-admin10.html}"
+EXP="${2:-32278}"
 
 BASE="https://huananju26.github.io/decoration-workbench"
 PUB="/opt/pocketbase/pb_public"
