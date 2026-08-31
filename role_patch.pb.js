@@ -1,4 +1,4 @@
-// 临时补丁：扩展 invitations.role 为 7 种角色值。
+// 临时补丁：扩展 invitations.role 为 8 种角色值。
 // 注意：PB JSVM 顶层 function/var 在 routerAdd 回调里不可见（每路由独立上下文），
 // 因此本文件全部逻辑内联在回调内，无任何外部 function 声明。
 // 用完验证邀请 designer 等可用后，可自行删除本文件（rm pb_hooks/role_patch.pb.js + restart）。
@@ -22,14 +22,8 @@ routerAdd('GET', '/api/patch_role', (e) => {
     const field = collection.fields.getByName('role');
     if (!field) return e.json(500, { ok: false, step: 'getByName', err: 'no role field' });
 
-    const vals = ['admin', 'pm', 'designer', 'finance', 'purchaser', 'qa', 'reader'];
-    const probe = {
-      type: field.type,
-      optsType: (typeof field.options),
-      valsType: (typeof field.values),
-      fieldKeys: Object.keys(field).slice(0, 40)
-    };
-
+    // 8 值并集：原 admin/member + 前端 ROLE_OPTIONS 的 7 种（pm/designer/finance/purchaser/qa/reader/admin）
+    const vals = ['admin', 'member', 'pm', 'designer', 'finance', 'purchaser', 'qa', 'reader'];
     let method = '';
     try {
       if (Array.isArray(field.values)) {
@@ -43,9 +37,13 @@ routerAdd('GET', '/api/patch_role', (e) => {
         method = 'rebuild field.options';
       }
       $app.save(collection);
-      return e.json(200, { ok: true, method: method, probe: probe, newValues: vals });
+      // 重新读回，只取安全原始值（避免序列化 Go 方法导致 marshal 报错）
+      const c2 = $app.findCollectionByNameOrId('invitations');
+      const f2 = c2.fields.getByName('role');
+      const out = Array.isArray(f2.values) ? f2.values.slice() : [];
+      return e.json(200, { ok: true, method: method, savedValues: out });
     } catch (saveErr) {
-      return e.json(500, { ok: false, step: 'save', method: method, err: String(saveErr), probe: probe });
+      return e.json(500, { ok: false, step: 'save', method: method, err: String(saveErr) });
     }
   } catch (err) {
     return e.json(500, { ok: false, step: 'top', err: String(err), stack: String((err && err.stack) || '') });
