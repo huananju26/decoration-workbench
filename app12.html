@@ -2988,13 +2988,14 @@ a{color:#003a8c;text-decoration:none}
           <div class="storage-info-card">
             <div class="storage-info-label">当前套餐</div>
             <div class="storage-info-value" id="storagePlan">加载中...</div>
+            <div class="storage-info-sub" id="storagePlanDesc" style="font-size:12px;color:#8c8c8c;margin-top:4px"></div>
           </div>
           <div class="storage-info-card">
             <div class="storage-info-label">套餐有效期</div>
             <div class="storage-info-value" id="storageExpiry">--</div>
           </div>
           <div class="storage-info-card">
-            <div class="storage-info-label">账号和用量数据</div>
+            <div class="storage-info-label">套餐配套标准（席位 / 空间）</div>
             <div class="storage-info-value" id="storageSeats">--</div>
           </div>
         </div>
@@ -19400,18 +19401,43 @@ async function loadStorageInfo(){
   }
 }
 
+const ORG_PLAN_INFO={
+  trial:      {label:'试用版', desc:'功能完整，14 天后需升级', seat_admin:1,  seat_member:2,   storage_gb:5},
+  starter:    {label:'基础版', desc:'适合个人工长 / 小团队', seat_admin:2,  seat_member:10,  storage_gb:20},
+  standard:   {label:'标准版', desc:'适合中小装修公司',     seat_admin:5,  seat_member:30,  storage_gb:100},
+  enterprise: {label:'旗舰版', desc:'适合多门店连锁',       seat_admin:20, seat_member:100, storage_gb:500}
+};
 function updateStorageUI(me){
   /* 套餐信息 */
   const planEl=document.getElementById('storagePlan');
   const expEl=document.getElementById('storageExpiry');
   const seatsEl=document.getElementById('storageSeats');
-  if(planEl)planEl.textContent=me?(me.plan==='trial'?'企业试用版':(me.plan==='pro'?'企业专业版':(me.plan||'未知'))):'本地模式';
-  if(expEl){
-    if(me&&me.paid_until){
-      try{ const d=new Date(me.paid_until);expEl.textContent=d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+' 到期 · 剩余 '+Math.max(0,Math.ceil((d-new Date())/86400000))+' 天'; }catch(e){expEl.textContent=me.paid_until;}
-    }else{expEl.textContent='--';}
+  const planDescEl=document.getElementById('storagePlanDesc');
+  if(!me){
+    if(planEl)planEl.textContent='本地模式';
+    if(planDescEl)planDescEl.textContent='';
+    if(expEl)expEl.textContent='--';
+    if(seatsEl)seatsEl.textContent='--';
+  }else{
+    const planKey=String(me.plan||'trial');
+    const pi=ORG_PLAN_INFO[planKey]||null;
+    const label=pi?pi.label:(planKey||'未知');
+    const isPaid=planKey!=='trial';
+    if(planEl){
+      planEl.innerHTML=label+' <span style="display:inline-block;font-size:12px;padding:1px 8px;border-radius:10px;margin-left:6px;'+(isPaid?'background:#e6f4ff;color:#1677ff;border:1px solid #91caff':'background:#fafafa;color:#8c8c8c;border:1px solid #d9d9d9')+'">'+(isPaid?'已付费':'试用')+'</span>';
+    }
+    if(planDescEl)planDescEl.textContent=pi?pi.desc:'';
+    if(expEl){
+      if(me.paid_until){
+        try{ const d=new Date(me.paid_until);expEl.textContent=d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+' 到期 · 剩余 '+Math.max(0,Math.ceil((d-new Date())/86400000))+' 天'; }catch(e){expEl.textContent=me.paid_until;}
+      }else{expEl.textContent='--';}
+    }
+    if(seatsEl){
+      const sa=me.seat_admin||0, sm=me.seat_member||0;
+      const gb=Math.round((Number(me.storage_quota||0))/(1024*1024*1024));
+      seatsEl.innerHTML='管理员 '+sa+' 席 · 成员 '+sm+' 席 · 存储 '+gb+' GB';
+    }
   }
-  if(seatsEl)seatsEl.textContent=me?(me.seat_admin||0)+' 个管理员席位，'+(me.seat_member||0)+' 个成员席位':'--';
 
   /* 存储统计：遍历所有项目的照片 */
   const stats=countPhotosByCategory();
