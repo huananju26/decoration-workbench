@@ -28,6 +28,8 @@
 #   - 清理页取消「允许删除付费公司」后，主动剔除残留的付费公司选中（#426）
 #   - 新用户注册 HTTP 400 修复：/api/auth/register 钩子已创建用户，前端不再重复调 signup()（#427）
 #   - 操作记录 localStorage key 按 org_id 隔离（xzgz_op_logs_{org_id}），防止跨公司泄露（#428）
+#   - 🩸 注册 400 真因修复：$app.collection() 在 goja 里不存在 → 改 findCollectionByNameOrId()；
+#     users 集合无 username 字段 → 用户名改存内置 name 字段，login-username 同步改按 name 查（#429）
 set -e
 
 BASE="https://huananju26.github.io/decoration-workbench"
@@ -36,7 +38,7 @@ PUB="/opt/pocketbase/pb_public"
 
 # ── 预期字节（与本地 gh-pages 推送一致，用于完整性校验）──
 EXP_api_team=24377     # api_team_v1.js       → pb_hooks/api_team.pb.js
-EXP_api_multiorg=33964 # api_multiorg_v1.js   → pb_hooks/api.pb.js
+EXP_api_multiorg=34644 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 修复）
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
@@ -117,3 +119,5 @@ echo "  ✅ 开通新公司：公司名/联系人/电话任一为空都会红字
 echo "  ✅ 开通申请提交后停在「审核中」状态页，① ② 表单整块消失（有刷新状态/重新申请/退出登录按钮）"
 echo "  ✅ 运营后台公司列表：「已付费/试用」徽章在「设为该套餐」按钮同一行右侧；「冻结」在「续期」同一行右侧"
 echo "  ✅ 套餐下拉字号与公司名称一致（不再明显大一号）"
+echo "  ✅ 🩸 新用户注册：填邮箱+验证码+用户名+密码后应成功进入「创建/加入公司」页，不再报 HTTP 400"
+echo "  ✅ 注册后用「用户名」或「邮箱」都能登录（用户名现在存在内置 name 字段里）"

@@ -635,11 +635,18 @@ routerAdd('POST', '/api/auth/register', (e) => {
     if (eu && eu.length > 0) throw new BadRequestError('该邮箱已注册');
   } catch (err) { if (err.message.indexOf('注册') > -1) throw err; }
 
-  /* 创建用户（PocketBase Auth Record） */
-  var user = new Record($app.collection('users') || {});
+  /* 创建用户（PocketBase Auth Record）
+     🩸 $app.collection() 在 goja JSVM 里不存在（typeof === 'undefined'），
+        一调用就抛 TypeError，PB 吞掉异常只回 400 "Something went wrong"。
+        必须用 $app.findCollectionByNameOrId()。
+     🩸 users 集合没有 username 字段（PB 内置的是 name），set('username') 静默失效，
+        导致后续按用户名登录永远查不到。统一用 name 存用户名。 */
+  var ucol = $app.findCollectionByNameOrId('users');
+  if (!ucol) throw new BadRequestError('系统未就绪：users 集合缺失');
+  var user = new Record(ucol);
   user.set('email', data.email);
   user.set('password', data.password);
-  user.set('username', data.username);
+  user.set('name', data.username);
   user.set('display_name', data.username);
   user.set('role', 'member');
   user.set('verified', true);
@@ -658,11 +665,12 @@ routerAdd('POST', '/api/auth/login-username', (e) => {
   try {
     var list = $app.findRecordsByFilter(
       'users',
-      '(username = "' + data.login.replace(/'/g, "\\'") + '" || email = "' + data.login.replace(/'/g, "\\'") + '")',
+      /* users 集合没有 username 字段 → 用 name（注册时存的用户名）+ email 双查 */
+      '(name = "' + data.login.replace(/'/g, "\\'") + '" || email = "' + data.login.replace(/'/g, "\\'") + '")',
       '', 1, 0
     );
     if (list && list.length > 0) found = list[0];
-  } catch (err) {}
+  } catch (err) { /* 过滤失败不抛，走下面的「账号不存在」 */ }
 
   if (!found) throw new NotFoundError('账号不存在');
 
@@ -671,7 +679,7 @@ routerAdd('POST', '/api/auth/login-username', (e) => {
   return e.json(200, {
     ok: true,
     email: found.get('email'),
-    username: found.get('username') || found.get('display_name') || '',
+    username: found.get('name') || found.get('display_name') || '',
     id: found.id
   });
 });
