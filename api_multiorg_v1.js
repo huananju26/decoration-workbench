@@ -605,7 +605,11 @@ routerAdd('POST', '/api/auth/verify-code', (e) => {
       }
     }
   } catch (err) {
-    if (err.message.indexOf('过期') > -1 || err.message.indexOf('正确') > -1) throw err;
+    /* 「已过期」是本路由主动抛的业务错误，原样透出 */
+    if (String(err.message || '').indexOf('过期') > -1) throw err;
+    /* 🩸 其余异常（集合缺失 / 过滤器错 / save 失败）不能再降级成「验证码错误」——
+       那会让用户在验证码没问题的情况下反复重发、永远排查不出原因。 */
+    throw new BadRequestError('验证码校验异常，请稍后重试');
   }
   throw new BadRequestError('验证码错误');
 });
@@ -617,7 +621,10 @@ routerAdd('POST', '/api/auth/register', (e) => {
   if (!data.username || data.username.length < 3 || data.username.length > 20) throw new BadRequestError('用户名需要 3-20 个字符');
   if (!data.password || data.password.length < 8) throw new BadRequestError('密码至少 8 个字符');
 
-  /* 二次验证：确保邮箱确实验证过（防止绕过前端直接调注册） */
+  /* 二次验证：确保邮箱确实验证过（防止绕过前端直接调注册）
+     🩸 原写法 `catch(err){ if(err.message.indexOf('验证')>-1) throw err; }` 会把
+        「集合缺失 / 过滤器语法错 / 权限异常」等所有非预期错误**静默放行** ——
+        等于验证码形同虚设，任何人都能直接注册。异常必须出声。 */
   try {
     var vrows = $app.findRecordsByFilter(
       'verification_codes',
@@ -626,14 +633,21 @@ routerAdd('POST', '/api/auth/register', (e) => {
     );
     if (!vrows || vrows.length === 0) throw new BadRequestError('请先完成邮箱验证');
   } catch (err) {
-    if (err.message.indexOf('验证') > -1) throw err;
+    if (String(err.message || '').indexOf('请先完成邮箱验证') > -1) throw err;
+    /* 非预期错误一律不放行：既不能绕过验证，也不能让调用方只看到 400 Something went wrong */
+    throw new BadRequestError('邮箱验证状态读取失败，请稍后重试');
   }
 
-  /* 检查用户名和邮箱唯一性 */
+  /* 检查邮箱唯一性
+     🩸 同上：原写法吞掉查询异常 → 重复邮箱一路走到 $app.save() 撞唯一约束
+        → PB 再吞一层 → 用户只看到 400 Something went wrong（本次注册故障的第二种可能路径）。 */
   try {
     var eu = $app.findRecordsByFilter('users', 'email = "' + data.email.replace(/'/g, "\\'") + '"', '', 1, 0);
     if (eu && eu.length > 0) throw new BadRequestError('该邮箱已注册');
-  } catch (err) { if (err.message.indexOf('注册') > -1) throw err; }
+  } catch (err) {
+    if (String(err.message || '').indexOf('该邮箱已注册') > -1) throw err;
+    throw new BadRequestError('邮箱唯一性校验失败，请稍后重试');
+  }
 
   /* 创建用户（PocketBase Auth Record）
      🩸 $app.collection() 在 goja JSVM 里不存在（typeof === 'undefined'），

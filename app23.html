@@ -5404,9 +5404,10 @@ async function doFinishRegister(){
   try{
     var code=$('regCodeInput').value.trim();
     await CloudSync._req('POST','/api/auth/register',{email:email,username:username,password:pwd,code:code});
-    /* /api/auth/register 钩子已创建用户（含 email/username/password/verified=true），
+    /* /api/auth/register 钩子已创建用户（email / name=用户名 / password / role=member / verified=true），
        不再重复调 signup()（POST /api/collections/users/records 会因邮箱唯一约束返回 400）。
-       直接用刚注册的凭证登录即可。 */
+       直接用刚注册的凭证登录即可。
+       注：users 集合没有 username 字段，用户名存在 PB 内置的 name 里（后端钩子同步按 name 查）。 */
     await CloudSync.login(email,pwd);
     await cloudEnterApp();
   }catch(err){$('regStep2Msg').textContent=err.message;}

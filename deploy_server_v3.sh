@@ -5,11 +5,11 @@
 #   sudo bash /tmp/d3.sh
 #
 # 本脚本做的事：
-#   1) 从 GitHub Pages 中转站拉 5 个后端钩子 + 前端 app22.html + 运营后台 admin10.html
+#   1) 从 GitHub Pages 中转站拉 5 个后端钩子 + 前端 app23.html + 运营后台 admin10.html
 #   2) 字节校验（不一致=gh-pages 未同步，自动重试一次）
 #   3) 备份当前 pb_public/index.html（回退点）
 #   4) 写入 5 个常驻钩子（含 api_admin / api_cleanup）+ 重启 PB
-#   5) 部署前端 app22.html → index.html、运营后台 admin10.html → admin.html（固定地址）
+#   5) 部署前端 app23.html → index.html、运营后台 admin10.html → admin.html（固定地址）
 #
 # 本次重点修复：
 #   - 侧栏「影像资料」+「储存套餐」合并为「存储影像」（归企业设置组，套餐在上/影像在下，#425）
@@ -26,10 +26,14 @@
 #   - 运营后台公司列表：「试用/已付费」徽章紧跟「设为该套餐」、「冻结」紧跟「续期」（同一行，#426）
 #   - 运营后台套餐下拉字号改为与公司名称一致（table select 用 1em，不再是全局 16px，#426）
 #   - 清理页取消「允许删除付费公司」后，主动剔除残留的付费公司选中（#426）
-#   - 新用户注册 HTTP 400 修复：/api/auth/register 钩子已创建用户，前端不再重复调 signup()（#427）
 #   - 操作记录 localStorage key 按 org_id 隔离（xzgz_op_logs_{org_id}），防止跨公司泄露（#428）
 #   - 🩸 注册 400 真因修复：$app.collection() 在 goja 里不存在 → 改 findCollectionByNameOrId()；
 #     users 集合无 username 字段 → 用户名改存内置 name 字段，login-username 同步改按 name 查（#429）
+#     ⚠️ 注：#427 曾误判为「前端重复调 signup()」，实际 400 发生在 /api/auth/register 这一步，
+#        与 signup() 无关；前端改为 login() 仍属正确（钩子已建好用户，无需再建一次）。
+#   - 🩸 静默 catch 治理（#429）：register 的「邮箱验证 / 邮箱唯一性」与 verify-code 三处 catch
+#      原为「仅按 message 子串条件重抛」，其余异常静默吞掉 —— 前者等于可绕过邮箱验证，
+#      后者会让 save 撞唯一约束再被 PB 吞一层、只回 400 Something went wrong。现全部改为显式抛出。
 set -e
 
 BASE="https://huananju26.github.io/decoration-workbench"
@@ -38,11 +42,11 @@ PUB="/opt/pocketbase/pb_public"
 
 # ── 预期字节（与本地 gh-pages 推送一致，用于完整性校验）──
 EXP_api_team=24377     # api_team_v1.js       → pb_hooks/api_team.pb.js
-EXP_api_multiorg=34644 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 修复）
+EXP_api_multiorg=35846 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理）
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
-EXP_app=1370066        # app22.html           → pb_public/index.html（#428 操作记录按 org_id 隔离）
+EXP_app=1370215        # app23.html           → pb_public/index.html（#428 日志隔离 + #429 注释订正）
 EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 徽章同行 + 套餐字号对齐）
 
 dl() { # url out expected
@@ -70,8 +74,8 @@ dl "$BASE/api_review_v2.js"   /tmp/api_review.pb.js   $EXP_api_review
 dl "$BASE/api_admin_v1.js"    /tmp/api_admin.pb.js    $EXP_api_admin
 dl "$BASE/api_cleanup_v1.js"  /tmp/api_cleanup.pb.js  $EXP_api_cleanup
 
-echo "== [2/5] 下载前端 app22.html + 运营后台 admin10.html =="
-dl "$BASE/app22.html" /tmp/app22.html $EXP_app
+echo "== [2/5] 下载前端 app23.html + 运营后台 admin10.html =="
+dl "$BASE/app23.html" /tmp/app23.html $EXP_app
 dl "$BASE/admin10.html" /tmp/admin10.html $EXP_admin
 
 echo "== [3/5] 备份当前 index.html + 写入 5 个钩子 =="
@@ -95,11 +99,11 @@ if ! sudo systemctl is-active --quiet pocketbase; then
 fi
 echo "  ✓ pocketbase 已启动（5 钩子常驻）"
 
-echo "== [5/5] 部署前端 app22.html → index.html + 运营后台 admin10.html → admin.html =="
-sudo cp /tmp/app22.html "$PUB/index.html"
-sudo cp /tmp/app22.html "$PUB/app22.html"
+echo "== [5/5] 部署前端 app23.html → index.html + 运营后台 admin10.html → admin.html =="
+sudo cp /tmp/app23.html "$PUB/index.html"
+sudo cp /tmp/app23.html "$PUB/app23.html"
 sudo cp /tmp/admin10.html "$PUB/admin.html"
-echo "  ✓ 前端已部署（index.html / app22.html）"
+echo "  ✓ 前端已部署（index.html / app23.html）"
 echo "  ✓ 运营后台已部署（固定地址）：http://106.55.14.231/admin.html"
 
 echo ""
@@ -121,3 +125,5 @@ echo "  ✅ 运营后台公司列表：「已付费/试用」徽章在「设为�
 echo "  ✅ 套餐下拉字号与公司名称一致（不再明显大一号）"
 echo "  ✅ 🩸 新用户注册：填邮箱+验证码+用户名+密码后应成功进入「创建/加入公司」页，不再报 HTTP 400"
 echo "  ✅ 注册后用「用户名」或「邮箱」都能登录（用户名现在存在内置 name 字段里）"
+echo "  ✅ 异常分支文案可诊断：重复邮箱→「该邮箱已注册」、验证码错→「验证码错误」、未验证→「请先完成邮箱验证」"
+echo "  ✅ 以上均不得为 「Something went wrong」（出现即说明有异常被吞，见 pb-pitfalls ②b）"
