@@ -608,12 +608,16 @@ routerAdd('POST', '/api/auth/request-reset', (e) => {
     } catch (err) {}
     /* 存新令牌（30 分钟有效期） */
     try {
-      var rc = new Record($app.collection('verification_codes') || {});
-      rc.set('email', data.email);
-      rc.set('code', token);
-      rc.set('expires', new Date(Date.now() + 30 * 60 * 1000).toISOString());
-      rc.set('used', false);
-      $app.save(rc);
+      let vcCol = null;
+      try { vcCol = $app.findCollectionByNameOrId('verification_codes'); } catch (e1) { vcCol = null; }
+      if (vcCol) {
+        var rc = new Record(vcCol);
+        rc.set('email', data.email);
+        rc.set('code', token);
+        rc.set('expires', new Date(Date.now() + 30 * 60 * 1000).toISOString());
+        rc.set('used', false);
+        $app.save(rc);
+      }
     } catch (err) { console.warn('[reset] 存储令牌失败：', err); }
 
     /* 真实发送重置邮件 */
