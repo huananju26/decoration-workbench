@@ -60,8 +60,16 @@ EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=4865 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集）
-EXP_app=1370215        # app23.html           → pb_public/index.html（#428 日志隔离 + #429 注释订正）
+EXP_app=1371374        # app23.html           → pb_public/index.html（#428 日志隔离 + #429 注释订正 + #430 角色下拉 selected 兜底）
+                       #   ⚠️ #430 兜底：前端 ROLE_OPTIONS 只有 7 项（无 member），而后端 role 是 8 值，
+                       #      原 replace 写法对 member 匹配不到 → 下拉框默认选第一项（项目经理），
+                       #      与同行文字标签「成员」自相矛盾，且该 select 是 onchange 立即提交，有误改权限风险。
+                       #      修复：未知角色时先插一个对应 option 并选中（见 test_role_select_fallback.js）。
 EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 徽章同行 + 套餐字号对齐）
+
+# 钩子数量。⚠️ 以前是写死在两处回显里的字面量，加第 6 个钩子（schema_patch_v3）时只改了
+# 其中一处 → 回显自相矛盾（"写入 5 个钩子" / "6 个钩子已写入"）。改用变量，加钩子时改这里即可。
+HOOK_N=6
 
 dl() { # url out expected
   local url="$1" out="$2" exp="$3" got
@@ -93,7 +101,7 @@ echo "== [2/5] 下载前端 app23.html + 运营后台 admin10.html =="
 dl "$BASE/app23.html" /tmp/app23.html $EXP_app
 dl "$BASE/admin10.html" /tmp/admin10.html $EXP_admin
 
-echo "== [3/5] 备份当前 index.html + 写入 5 个钩子 =="
+echo "== [3/5] 备份当前 index.html + 写入 $HOOK_N 个钩子 =="
 if [ -f "$PUB/index.html" ]; then
   sudo cp "$PUB/index.html" "$PUB/index.html.bak.$(date +%Y%m%d%H%M)"
   echo "  ✓ 已备份旧 index.html → index.html.bak.$(date +%Y%m%d%H%M)"
@@ -104,7 +112,7 @@ sudo cp /tmp/api_review.pb.js   "$HOOKS/api_review.pb.js"
 sudo cp /tmp/api_admin.pb.js    "$HOOKS/api_admin.pb.js"
 sudo cp /tmp/api_cleanup.pb.js  "$HOOKS/api_cleanup.pb.js"
 sudo cp /tmp/schema_patch_v3.pb.js "$HOOKS/schema_patch_v3.pb.js"
-echo "  ✓ 6 个钩子已写入 $HOOKS/"
+echo "  ✓ $HOOK_N 个钩子已写入 $HOOKS/"
 
 echo "== [4/5] 重启 pocketbase（加载含 api_admin / api_cleanup / schema_patch_v3 的钩子集）=="
 sudo systemctl restart pocketbase

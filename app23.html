@@ -19593,8 +19593,20 @@ function renderTeamList(members,isAdmin,localPerms){
         +(soleAdmin?' disabled title="你是本团队唯一的管理员，请先把管理员转让给其他成员再退出"':'')
         +' onclick="doLeaveOrg()" style="color:#cf1322;border-color:#ffa39e'+(soleAdmin?';opacity:.45;cursor:not-allowed':'')+'">退出团队</button>';
     }else if(isAdmin){
+      /* 🩸 角色下拉的 selected 兜底（2026-09-01，#430 连带发现）：
+         后端 role 候选值是 8 个（含 'member' —— api_review.pb.js 有 4 处 || 'member' 兜底），
+         而前端 ROLE_OPTIONS 只暴露 7 个邀请选项（没有 member）。
+         原写法 roleOpts.replace('value="'+m.role+'"', ...) 对未知角色**匹配不到** →
+         没有任何 option 带 selected → 浏览器默认选中第一项（项目经理），
+         与旁边 teamRoleLabel() 显示的「成员」自相矛盾（文字标签对、下拉框错）。
+         ⚠️ 该 select 是 onchange 立即提交，显示错会让管理员误判甚至误改权限。
+         故：未知角色时先插一个对应 option 并选中，保证下拉框与真实角色一致。 */
+      var roleOptsForMember=roleOpts, roleKnown=false;
+      for(var rk=0;rk<ROLE_OPTIONS.length;rk++){ if(ROLE_OPTIONS[rk].value===m.role){ roleKnown=true; break; } }
+      if(roleKnown) roleOptsForMember=roleOpts.replace('value="'+m.role+'"','value="'+m.role+'" selected');
+      else roleOptsForMember='<option value="'+escHtml(m.role)+'" selected>'+escHtml(teamRoleLabel(m.role))+'</option>'+roleOpts;
       html+='<select class="team-role-select" data-act="role" data-uid="'+escHtml(m.id)+'" onchange="doSetMemberRole(\''+escHtml(m.id)+'\',this.value)">'
-        +roleOpts.replace('value="'+m.role+'"','value="'+m.role+'" selected')
+        +roleOptsForMember
         +'</select>'
         +'<button class="btn-outline btn-sm" data-act="perm" data-uid="'+escHtml(m.id)+'" onclick="openPermEditor(\''+escHtml(m.id)+'\')">编辑权限</button>'
         +'<button class="btn-outline btn-sm" data-act="remove" data-uid="'+escHtml(m.id)+'" onclick="doRemoveMember(\''+escHtml(m.id)+'\')" style="color:#cf1322;border-color:#ffa39e">移出团队</button>';
