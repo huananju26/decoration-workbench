@@ -5,10 +5,10 @@
 #   sudo bash /tmp/d3.sh
 #
 # 本脚本做的事：
-#   1) 从 GitHub Pages 中转站拉 6 个后端钩子 + 前端 app23.html + 运营后台 admin10.html
+#   1) 从 GitHub Pages 中转站拉后端钩子（数量见下方 HOOK_N）+ 前端 app23.html + 运营后台 admin10.html
 #   2) 字节校验（不一致=gh-pages 未同步，自动重试一次）
 #   3) 备份当前 pb_public/index.html（回退点）
-#   4) 写入 6 个常驻钩子（含 api_admin / api_cleanup / schema_patch_v3）+ 重启 PB
+#   4) 写入 HOOK_N 个常驻钩子（含 api_admin / api_cleanup / schema_patch_v3）+ 重启 PB
 #   5) 部署前端 app23.html → index.html、运营后台 admin10.html → admin.html（固定地址）
 #
 # 本次重点修复：
@@ -74,7 +74,10 @@ HOOK_N=6
 dl() { # url out expected
   local url="$1" out="$2" exp="$3" got
   curl -sSL --max-time 120 -o "$out" "$url"
-  got=$(wc -c < "$out")
+  # ⚠️ 必须 tr -d ' '：BSD/macOS 的 `wc -c < file` 输出带前导空格（"   24377"），
+  #    GNU/Linux 不带。本脚本跑在 Linux 上原本没事，但一旦换个环境（或本地 dry-run）
+  #    就会误报「字节不符」。去掉空格对两边都无害，等于免费加固。
+  got=$(wc -c < "$out" | tr -d ' ')
   if [ "$got" != "$exp" ]; then
     echo "  !! 字节不符 $(basename "$out"): 期望 $exp 实际 $got（可能 gh-pages 未同步，15s 后重试）"
     sleep 15
@@ -121,7 +124,7 @@ if ! sudo systemctl is-active --quiet pocketbase; then
   echo "  !! PB 未起来，排查：journalctl -u pocketbase -n 50"
   exit 1
 fi
-echo "  ✓ pocketbase 已启动（6 钩子常驻）"
+echo "  ✓ pocketbase 已启动（$HOOK_N 钩子常驻）"
 echo ""
 echo "  ⏳ schema_patch_v3 走 cron（每分钟触发一次），不是启动即生效："
 echo "     重启后约 1 分钟内会自动把 invitations / access_requests / users 三张表的"
@@ -136,11 +139,34 @@ sudo cp /tmp/admin10.html "$PUB/admin.html"
 echo "  ✓ 前端已部署（index.html / app23.html）"
 echo "  ✓ 运营后台已部署（固定地址）：http://106.55.14.231/admin.html"
 
+# ── 部署后自检（2026-09-01 新增）──
+# 以前跑完只能自己手动去 curl 验证，现在脚本直接给结论。
+# ⚠️ 所有检查都要「只报告、不中断」：本脚本开头有 set -e，
+#    任一命令返回非 0 都会终止整个脚本，自检失败不该影响已完成的部署。
+echo ""
+echo "== [自检] 部署结果校验 =="
+for pair in "$PUB/index.html:$EXP_app" "$PUB/admin.html:$EXP_admin"; do
+  f="${pair%%:*}"; exp="${pair##*:}"
+  got=$(sudo stat -c%s "$f" 2>/dev/null || echo 0)
+  if [ "$got" = "$exp" ]; then echo "  ✓ $(basename "$f") = $got 字节"; else echo "  !! $(basename "$f") 期望 $exp 实际 $got"; fi
+done
+echo "  · pb_hooks 下的 .pb.js 文件："
+sudo ls -1 "$HOOKS"/*.pb.js 2>/dev/null | while read -r h; do echo "      $(basename "$h")  ($(sudo stat -c%s "$h" 2>/dev/null || echo 0) 字节)"; done
+echo "      本次部署 $HOOK_N 个；若上面列出更多，是历史残留的旧钩子，需人工确认是否被同时加载"
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1/api/health 2>/dev/null || echo 000)
+if [ "$code" = "200" ]; then echo "  ✓ /api/health → 200"; else echo "  !! /api/health → $code（服务可能还没起来，稍等再试）"; fi
+
 echo ""
 echo "DONE ✅ 部署完成。"
 echo "  浏览器硬刷新（Ctrl/Cmd+Shift+R）：http://106.55.14.231/"
 echo "  运营后台：http://106.55.14.231/admin.html（固定地址，不再变）"
-echo "  回退方式：sudo cp $PUB/index.html.bak.* $PUB/index.html 后刷新"
+# ⚠️ 别写成 `sudo cp $PUB/index.html.bak.* $PUB/index.html` —— 部署过多次后
+#    `index.html.bak.*` 会展开成**多个**文件，而 cp 多源到非目录目标会报
+#    `target '...' is not a directory` → 真要回退时命令执行不了，只能手忙脚乱。
+#    正确做法：用 ls -t 取**最新**那一份。
+echo "  回退方式（取最新一份备份）："
+echo "    sudo cp \"\$(ls -t $PUB/index.html.bak.* | head -1)\" $PUB/index.html"
+echo "  先看看有哪些备份：ls -lt $PUB/index.html.bak.*"
 echo ""
 echo "  验证清单："
 echo "  ✅ 侧栏「企业设置」组只剩一个「存储影像」（原影像资料/储存套餐已消失）"
