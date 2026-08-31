@@ -41,9 +41,11 @@ function mailShell(title, innerHtml) {
     + '</div></div>';
 }
 
-// 真实发送：依赖 $app.send()（底层走后台 SMTP 设置）。
-// 注意：PocketBase JSVM 里 MailerMessage 是【直接注入的全局类】，不能用 require('pocketbase')（会报 Invalid module）。
-// 这里先取全局，取不到再尝试 require('pocketbase') 兜底，都失败才抛清晰错误。
+// 真实发送：依赖 $app.newMailClient().send()（底层走后台 SMTP 设置）。
+// 注意（PB 0.40.1 JSVM 实测）：
+//   1. MailerMessage 是【直接注入的全局类】，不能用 require('pocketbase')（报 Invalid module）。
+//   2. 发信方法不是 $app.send / e.app.send（这些不存在），而是 $app.newMailClient().send(message)。
+//   3. message 的 from/to 必须是 {address,name} 对象（to 为数组）。
 function sendMail(to, subject, html, text) {
   let MailerMessageCtor = null;
   try { MailerMessageCtor = MailerMessage; } catch (e) { MailerMessageCtor = null; }
@@ -52,14 +54,15 @@ function sendMail(to, subject, html, text) {
   }
   if (!MailerMessageCtor) throw new Error('MailerMessage 在当前 JSVM 不可用');
   const msg = {
-    to: to,
+    to: [{ address: to }],
     subject: subject,
     html: html,
     text: text || (html ? html.replace(/<[^>]+>/g, ' ') : '')
   };
-  if (FROM) msg.from = FROM;
+  if (FROM) msg.from = { address: FROM, name: '焕安居装修工作台' };
   const message = new MailerMessageCtor(msg);
-  $app.send(message);
+  const client = $app.newMailClient();
+  client.send(message);
 }
 
 module.exports = { FROM, APP_BASE_URL, smtpEnabled, mailShell, sendMail };

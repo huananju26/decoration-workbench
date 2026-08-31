@@ -684,39 +684,3 @@ routerAdd('POST', '/api/auth/confirm-reset', (e) => {
 
   return e.json(200, { ok: true, message: '密码已重置，请用新密码登录' });
 });
-
-/* ============ 临时诊断路由（定位邮件发送失败，排查完即删） ============ */
-routerAdd('GET', '/api/_diag/mail', (e) => {
-  const out = {};
-  // 用全局 MailerMessage 构造消息
-  let MailerMessageCtor = null;
-  try { MailerMessageCtor = MailerMessage; } catch (err) { out.globalMM = String(err); }
-  let msg = null;
-  try {
-    msg = new MailerMessageCtor({
-      from: { address: 'huananju@qq.com', name: '焕安居装修工作台' },
-      to: [{ address: 'huananju@qq.com' }],
-      subject: '[diag] probe',
-      html: '<p>probe</p>',
-      text: 'probe'
-    });
-    out.msgBuilt = true;
-  } catch (err) { out.msgErr = String(err); }
-
-  // 探测各种发信 API 是否存在 / 能否发送
-  out.appSendType = (typeof $app.send);
-  out.eAppSendType = (typeof e.app.send);
-  out.newMailClientType = (typeof $app.newMailClient);
-  try { out.requireMailer = typeof require('mailer'); } catch (err) { out.requireMailer = 'ERR:' + String(err); }
-
-  try { e.app.send(msg); out.eAppSend = 'ok(已发)'; }
-  catch (err) { out.eAppSend = String(err); }
-
-  try { const c = $app.newMailClient(); c.send(msg); out.newMailClient = 'ok(已发)'; }
-  catch (err) { out.newMailClient = String(err); }
-
-  try { $app.send(msg); out.appSend = 'ok(已发)'; }
-  catch (err) { out.appSend = String(err); }
-
-  return e.json(200, out);
-});
