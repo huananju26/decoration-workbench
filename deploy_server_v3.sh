@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# 焕安居装修工作台 · 团队版 全量部署（#410-#427）
+# 焕安居装修工作台 · 团队版 全量部署（#410-#428）
 # 用法（在 106.55.14.231 上执行，需 sudo）：
 #   curl -sSL -o /tmp/d3.sh https://huananju26.github.io/decoration-workbench/deploy_server_v3.sh
 #   sudo bash /tmp/d3.sh
 #
 # 本脚本做的事：
-#   1) 从 GitHub Pages 中转站拉 5 个后端钩子 + 前端 app21.html + 运营后台 admin10.html
+#   1) 从 GitHub Pages 中转站拉 5 个后端钩子 + 前端 app22.html + 运营后台 admin10.html
 #   2) 字节校验（不一致=gh-pages 未同步，自动重试一次）
 #   3) 备份当前 pb_public/index.html（回退点）
 #   4) 写入 5 个常驻钩子（含 api_admin / api_cleanup）+ 重启 PB
-#   5) 部署前端 app21.html → index.html、运营后台 admin10.html → admin.html（固定地址）
+#   5) 部署前端 app22.html → index.html、运营后台 admin10.html → admin.html（固定地址）
 #
 # 本次重点修复：
 #   - 侧栏「影像资料」+「储存套餐」合并为「存储影像」（归企业设置组，套餐在上/影像在下，#425）
@@ -27,6 +27,7 @@
 #   - 运营后台套餐下拉字号改为与公司名称一致（table select 用 1em，不再是全局 16px，#426）
 #   - 清理页取消「允许删除付费公司」后，主动剔除残留的付费公司选中（#426）
 #   - 新用户注册 HTTP 400 修复：/api/auth/register 钩子已创建用户，前端不再重复调 signup()（#427）
+#   - 操作记录 localStorage key 按 org_id 隔离（xzgz_op_logs_{org_id}），防止跨公司泄露（#428）
 set -e
 
 BASE="https://huananju26.github.io/decoration-workbench"
@@ -39,7 +40,7 @@ EXP_api_multiorg=33964 # api_multiorg_v1.js   → pb_hooks/api.pb.js
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
-EXP_app=1369877        # app21.html           → pb_public/index.html（#427 注册不再重复创建用户）
+EXP_app=1370066        # app22.html           → pb_public/index.html（#428 操作记录按 org_id 隔离）
 EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 徽章同行 + 套餐字号对齐）
 
 dl() { # url out expected
@@ -67,8 +68,8 @@ dl "$BASE/api_review_v2.js"   /tmp/api_review.pb.js   $EXP_api_review
 dl "$BASE/api_admin_v1.js"    /tmp/api_admin.pb.js    $EXP_api_admin
 dl "$BASE/api_cleanup_v1.js"  /tmp/api_cleanup.pb.js  $EXP_api_cleanup
 
-echo "== [2/5] 下载前端 app21.html + 运营后台 admin10.html =="
-dl "$BASE/app21.html" /tmp/app21.html $EXP_app
+echo "== [2/5] 下载前端 app22.html + 运营后台 admin10.html =="
+dl "$BASE/app22.html" /tmp/app22.html $EXP_app
 dl "$BASE/admin10.html" /tmp/admin10.html $EXP_admin
 
 echo "== [3/5] 备份当前 index.html + 写入 5 个钩子 =="
@@ -92,11 +93,11 @@ if ! sudo systemctl is-active --quiet pocketbase; then
 fi
 echo "  ✓ pocketbase 已启动（5 钩子常驻）"
 
-echo "== [5/5] 部署前端 app21.html → index.html + 运营后台 admin10.html → admin.html =="
-sudo cp /tmp/app21.html "$PUB/index.html"
-sudo cp /tmp/app21.html "$PUB/app21.html"
+echo "== [5/5] 部署前端 app22.html → index.html + 运营后台 admin10.html → admin.html =="
+sudo cp /tmp/app22.html "$PUB/index.html"
+sudo cp /tmp/app22.html "$PUB/app22.html"
 sudo cp /tmp/admin10.html "$PUB/admin.html"
-echo "  ✓ 前端已部署（index.html / app21.html）"
+echo "  ✓ 前端已部署（index.html / app22.html）"
 echo "  ✓ 运营后台已部署（固定地址）：http://106.55.14.231/admin.html"
 
 echo ""
