@@ -47,7 +47,7 @@ routerAdd('POST', '/api/org/create', (e) => {
   org.set('status', 'active');
   const d = new Date();
   d.setDate(d.getDate() + 14);
-  org.set('paid_until', d.toISOString().slice(0, 10) + ' 00:00:00.000Z');
+  org.set('paid_until', d.toISOString().slice(0, 10) + 'T00:00:00.000Z');
   org.set('seat_admin', 1);
   org.set('seat_member', 2);
   org.set('storage_used', 0);
@@ -87,9 +87,11 @@ routerAdd('POST', '/api/org/invite', (e) => {
   inv.set('token', $security.randomString(24));
   const d = new Date();
   d.setDate(d.getDate() + 7);
-  inv.set('expires', d.toISOString().slice(0, 10) + ' 00:00:00.000Z');
+  inv.set('expires', d.toISOString().slice(0, 10) + 'T00:00:00.000Z');
   inv.set('accepted', false);
-  $app.save(inv);
+  try { $app.save(inv); } catch (saveErr) {
+    throw new BadRequestError('创建邀请记录失败：' + (saveErr.message || String(saveErr)));
+  }
 
   /* 真实发送邀请邮件（配置了 SMTP 且填写了邮箱才发；否则回退开发模式直返链接） */
   let mailer = null;
