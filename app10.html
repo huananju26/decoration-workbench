@@ -1752,7 +1752,7 @@ a{color:#003a8c;text-decoration:none}
 .badge-red{background:#fff1f0;color:#cf1322;border:1px solid #ffa39e}
 .badge-ok{background:#e6f4ff;color:#003a8c;border:1px solid #003a8c}
 .badge-orange{background:#fff7e6;color:#d46b08;border:1px solid #ffd591}
-/* ═══════════════ 首页新布局（对齐小装家截图） ═══════════════ */
+/* ═══════════════ 首页新布局（对齐焕安居风格） ═══════════════ */
 .home-top-grid{display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:16px;}
 .home-hero{background:#fff;border-radius:12px;padding:24px 28px;border:1px solid #e8e8e8;}
 .hero-breadcrumb{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
@@ -2218,6 +2218,8 @@ a{color:#003a8c;text-decoration:none}
 .proc-plan-export-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;min-width:200px;background:#fff;border:1px solid #e8e8e8;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);padding:6px;z-index:200}
 .proc-plan-export-menu.open{display:block;animation:ppe-fade-in .15s ease}
 @keyframes ppe-fade-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(-12px) translateX(-50%)}to{opacity:1;transform:translateY(0) translateX(-50%)}}
+@keyframes toastOut{to{opacity:0;transform:translateY(-8px) translateX(-50%)}}
 .ppe-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:8px;font-size:13.5px;color:#333;cursor:pointer;transition:background .12s;line-height:1.4}
 .ppe-item:hover{background:#e6f4ff;color:#003a8c}
 .ppe-icon{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;background:#f0f5ff;color:#003a8c;font-size:14px;flex-shrink:0}
@@ -2384,7 +2386,7 @@ a{color:#003a8c;text-decoration:none}
   .media-filter-row select,.media-filter-row input[type=text]{min-width:120px;font-size:16px}
 }
 
-/* ===== 团队与权限 ===== */
+/* ===== 权限管理 ===== */
 .team-desc,.logs-desc{font-size:13px;color:#666;line-height:1.6;margin-bottom:14px;padding:0 2px}
 .team-member-list{display:flex;flex-direction:column;gap:10px}
 .team-member-card{display:flex;align-items:center;gap:14px;padding:16px;background:#fff;border:1px solid #e8e8e8;border-radius:10px;transition:border-color .2s}
@@ -2399,9 +2401,35 @@ a{color:#003a8c;text-decoration:none}
 .team-member-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .team-role-label{font-size:12px;color:#8c8c8c;font-weight:500}
 .team-status-badge{font-size:11px;padding:1px 8px;border-radius:8px}
-.status-ok{background:#e6fffb;color:#13c2c2;border:1px solid #87e8de}
-.status-offline{background:#fff1f0;color:#ff4d4f;border:1px solid:#ffa39e}
-.team-member-actions{margin-top:8px}
+.status-ok{background:#e6f4ff;color:#1677ff;border:1px solid #91caff}
+.status-offline{background:#fff1f0;color:#ff4d4f;border:1px solid #ffa39e}
+.team-member-actions{margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.team-role-select{font-size:12px;padding:3px 6px;border:1px solid #d9d9d9;border-radius:5px;background:#fff;color:#003a8c}
+
+/* 当前团队 / 多团队切换条 */
+.team-org-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;margin-bottom:12px;background:#e6f4ff;border:1px solid #91caff;border-radius:10px}
+.team-org-main{flex:1;min-width:180px}
+.team-org-label{font-size:11px;color:#1677ff;letter-spacing:.5px}
+.team-org-name{font-size:17px;font-weight:700;color:#003a8c;margin-top:2px;word-break:break-all}
+.team-org-sub{font-size:12px;color:#5c8ab8;margin-top:3px}
+.team-org-ops{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.team-org-select{font-size:13px;padding:6px 10px;border:1px solid #91caff;border-radius:6px;background:#fff;color:#003a8c;max-width:220px}
+
+/* 待接受邀请 */
+.team-inv-card{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border:1px solid #e8e8e8;border-radius:10px}
+.team-inv-card+.team-inv-card{margin-top:8px}
+.team-inv-info{flex:1;min-width:0}
+.team-inv-mail{font-size:14px;font-weight:600;color:#003a8c;word-break:break-all}
+.team-inv-meta{font-size:12px;color:#999;margin-top:3px}
+.team-inv-st{font-size:11px;padding:2px 8px;border-radius:8px;flex-shrink:0}
+.team-inv-st.st-pending{background:#fff7e6;color:#d46b08;border:1px solid #ffd591}
+.team-inv-st.st-revoked{background:#fff1f0;color:#cf1322;border:1px solid #ffa39e}
+.team-inv-st.st-expired{background:#f5f5f5;color:#8c8c8c;border:1px solid #d9d9d9}
+.team-inv-acts{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap}
+@media(max-width:760px){
+  .team-inv-card{flex-wrap:wrap}
+  .team-inv-acts{width:100%}
+}
 
 /* ===== 操作记录 ===== */
 .logs-filter-card{margin-bottom:14px}
@@ -2416,7 +2444,7 @@ a{color:#003a8c;text-decoration:none}
 .log-meta{font-size:12px;color:#999;margin-top:3px}
 .log-time{font-size:12px;color:#bfbfbf;white-space:nowrap;flex-shrink:0}
 
-/* ===== 套餐与存储 ===== */
+/* ===== 储存套餐 ===== */
 .storage-section{padding:4px 0}
 .storage-header{margin-bottom:18px}
 .storage-title{font-size:20px;font-weight:700;color:#003a8c;margin-bottom:4px}
@@ -2494,9 +2522,9 @@ a{color:#003a8c;text-decoration:none}
     </div>
     <div class="nav-section">
       <div class="nav-section-title">企业设置</div>
-      <div class="nav-item" data-page="team" onclick="switchPage('team')"><span class="nav-icon">👥</span>团队与权限<span class="nav-badge" id="navBadge-team"></span></div>
+      <div class="nav-item" data-page="team" onclick="switchPage('team')"><span class="nav-icon">👥</span>权限管理<span class="nav-badge" id="navBadge-team"></span></div>
       <div class="nav-item" data-page="logs" onclick="switchPage('logs')"><span class="nav-icon">📋</span>操作记录</div>
-      <div class="nav-item" data-page="storage" onclick="switchPage('storage')"><span class="nav-icon">💾</span>套餐与存储</div>
+      <div class="nav-item" data-page="storage" onclick="switchPage('storage')"><span class="nav-icon">💾</span>储存套餐</div>
     </div>
   </nav>
   <div class="sidebar-footer">
@@ -2935,20 +2963,25 @@ a{color:#003a8c;text-decoration:none}
       <div id="mediaListArea"></div>
     </div>
 
-    <!-- PAGE: 团队与权限 -->
+    <!-- PAGE: 权限管理 -->
     <div class="page" id="page-team">
       <div class="card-header" style="margin-bottom:4px">
-        <div><div class="card-title">权限与权限</div><div class="card-subtitle">企业成员</div></div>
+        <div><div class="card-title">权限管理</div><div class="card-subtitle">企业成员</div></div>
         <button class="btn-primary" id="teamInviteBtn" onclick="openTeamInviteModal()">邀请成员</button>
       </div>
+      <!-- 当前团队 + 多团队切换（加入多个公司时显示下拉） -->
+      <div id="teamOrgBar"></div>
       <div class="team-desc" id="teamDesc">邀请自动带入常用项目大项；企业负责人还可为每位成员单独设置施工执行、合同收款、成本管理和客户交付权限。</div>
+      <div id="joinRequestBox" style="display:none"></div>
+      <!-- 已发出但还没被接受的邀请：可取消（链接失效）/ 删除（清记录） -->
+      <div id="teamInviteBox" style="display:none"></div>
       <div id="teamMemberList"></div>
     </div>
 
     <!-- PAGE: 操作记录 -->
     <div class="page" id="page-logs">
       <div class="card-header" style="margin-bottom:4px">
-        <div><div class="card-title">权限与权限筛选</div><div class="card-subtitle">操作记录中心</div></div>
+        <div><div class="card-title">操作记录筛选</div><div class="card-subtitle">操作记录中心</div></div>
         <button class="btn-outline btn-sm" onclick="renderLogs()">🔄 刷新记录</button>
       </div>
       <div class="logs-desc" id="logsDesc">查看谁在什么时间修改了施工计划、收款、增减项、材料、整改和客户发布。</div>
@@ -2973,10 +3006,10 @@ a{color:#003a8c;text-decoration:none}
       <div id="logsListArea"><div class="media-empty"><div class="media-empty-icon">📋</div>暂无操作记录。</div></div>
     </div>
 
-    <!-- PAGE: 套餐与存储 -->
+    <!-- PAGE: 储存套餐 -->
     <div class="page" id="page-storage">
       <div class="card-header" style="margin-bottom:4px">
-        <div><div class="card-title">套餐与存储</div></div>
+        <div><div class="card-title">储存套餐</div></div>
       </div>
       <div class="storage-section">
         <div class="storage-header">
@@ -2987,13 +3020,14 @@ a{color:#003a8c;text-decoration:none}
           <div class="storage-info-card">
             <div class="storage-info-label">当前套餐</div>
             <div class="storage-info-value" id="storagePlan">加载中...</div>
+            <div class="storage-info-sub" id="storagePlanDesc" style="font-size:12px;color:#8c8c8c;margin-top:4px"></div>
           </div>
           <div class="storage-info-card">
             <div class="storage-info-label">套餐有效期</div>
             <div class="storage-info-value" id="storageExpiry">--</div>
           </div>
           <div class="storage-info-card">
-            <div class="storage-info-label">账号和用量数据</div>
+            <div class="storage-info-label">套餐配套标准（席位 / 空间）</div>
             <div class="storage-info-value" id="storageSeats">--</div>
           </div>
         </div>
@@ -3113,9 +3147,9 @@ a{color:#003a8c;text-decoration:none}
     <div class="mtab" data-page="contracts" onclick="switchPage('contracts')"><span class="mtab-icon">📑</span>合同</div>
     <div class="mtab" data-page="invoices" onclick="switchPage('invoices')"><span class="mtab-icon">🧾</span>发票</div>
     <div class="mtab" data-page="tools" onclick="switchPage('tools')"><span class="mtab-icon">🔧</span>工具</div>
-    <div class="mtab" data-page="team" onclick="switchPage('team')"><span class="mtab-icon">👥</span>团队</div>
+    <div class="mtab" data-page="team" onclick="switchPage('team')"><span class="mtab-icon">👥</span>权限</div>
     <div class="mtab" data-page="logs" onclick="switchPage('logs')"><span class="mtab-icon">📋</span>记录</div>
-    <div class="mtab" data-page="storage" onclick="switchPage('storage')"><span class="mtab-icon">💾</span>存储</div>
+    <div class="mtab" data-page="storage" onclick="switchPage('storage')"><span class="mtab-icon">💾</span>套餐</div>
   </div>
 </nav>
 
@@ -4645,6 +4679,11 @@ const CloudSync={
   __rev:0,                                    /* 乐观锁版本号：pull 记下，push 带回 */
   __serverHasProjects:false,                  /* 云端是否有项目，push 前的最后一道闸门 */
   __me:null,                                  /* /api/me 缓存：公司名 / 角色 / 套餐 */
+  /* ── 切换团队硬闸门（2026-08-31）──
+     切换团队 ≡ 换租户 ≡ 等价于换账号。置 true 期间【禁止任何 push】：
+     此刻本地 App 正在被清空并从新团队重灌，任何一次推送都会把 A 团队的数据
+     写进 B 团队，而且是静默的、不可逆的。所有推送入口都必须先看这个旗标。 */
+  __switching:false,
 
   /* 统一请求：超时中断 + 错误中文化 + 保留 status 供冲突判断（409）*/
   async _req(method,path,body,tmo){
@@ -4704,8 +4743,10 @@ const CloudSync={
     const j=await this._req('POST','/api/org/create',{name:name});
     this.__me=null;return j;
   },
-  async invite(role){
-    return await this._req('POST','/api/org/invite',{role:role||'member'});
+  async invite(role,email){
+    const body={role:role||'member'};
+    if(email)body.email=email;
+    return await this._req('POST','/api/org/invite',body);
   },
   async acceptInvite(token){
     const j=await this._req('POST','/api/org/accept',{token:token});
@@ -4715,10 +4756,72 @@ const CloudSync={
     const j=await this._req('POST','/api/me/update',{display_name:display_name,phone:phone});
     this.__me=null;return j;
   },
+  /* ── 审核制（2026-08-31 新增）：提交申请 / 列申请 / 审核申请 ──
+     scope: mine=自己的 | join=本公司的加入申请(仅 admin) | org=开通公司申请(仅平台管理员) */
+  async submitRequest(payload){
+    return await this._req('POST','/api/request/submit',payload);
+  },
+  async listRequests(scope,status){
+    let p='/api/request/list?scope='+encodeURIComponent(scope||'mine');
+    if(status)p+='&status='+encodeURIComponent(status);
+    const j=await this._req('GET',p);
+    return (j&&j.items)||[];
+  },
+  async reviewRequest(id,action,note){
+    return await this._req('POST','/api/request/review',{id:id,action:action,note:note||''});
+  },
+
+  /* ── 团队管理增强（2026-08-31）：邀请取消/删除 · 退出/移出 · 多团队列表/切换 ──
+     后端 api_team.pb.js。成员关系的唯一权威是 memberships 表；
+     users.org_id / users.role 只是「当前激活团队」缓存。 */
+  async listInvitations(){
+    const j=await this._req('GET','/api/org/invitations');
+    return (j&&j.invitations)||[];
+  },
+  /* 取消邀请：链接立即失效，记录保留（与「删除」是两件事） */
+  async revokeInvite(id){
+    return await this._req('POST','/api/org/invite/revoke',{id:id});
+  },
+  /* 删除邀请：真删记录 */
+  async deleteInvite(id){
+    return await this._req('POST','/api/org/invite/delete',{id:id});
+  },
+  /* 真实成员列表（替代原来的 localStorage 假数据）。返回 {members,my_role,admin_count,degraded} */
+  async listMembers(){
+    const j=await this._req('GET','/api/org/members');
+    return j||{members:[]};
+  },
+  /* 本人退出团队。省略 orgId 则退出当前激活团队 */
+  async leaveOrg(orgId){
+    const j=await this._req('POST','/api/org/leave',orgId?{org_id:orgId}:{});
+    this.__me=null;return j;
+  },
+  /* 管理员把成员移出团队 */
+  async removeMember(userId){
+    const j=await this._req('POST','/api/org/remove',{user_id:userId});
+    return j;
+  },
+  /* 改成员角色 / 转让管理员（后端禁止改自己、且必须保留 ≥1 管理员） */
+  async setMemberRole(userId,role){
+    return await this._req('POST','/api/org/set-role',{user_id:userId,role:role});
+  },
+  /* 我加入的所有团队（切换下拉的数据源） */
+  async listOrgs(){
+    const j=await this._req('GET','/api/org/list');
+    return (j&&j.orgs)||[];
+  },
+  /* 切换当前激活团队。⚠️ 只改服务端身份，本地清空/重灌由 doSwitchTeam() 负责 */
+  async switchOrg(orgId){
+    const j=await this._req('POST','/api/org/switch',{org_id:orgId});
+    this.__me=null;this.__rev=0;this.__serverHasProjects=false;this.__serverUpdatedAt=0;
+    return j;
+  },
 
   /* 推送整份 App。冲突时抛出的 Error 上挂 .conflict（含 serverRev / updated_by / updated）*/
   async push(force){
     if(!this.loggedIn)return;
+    /* 切换团队期间禁止推送 —— 否则会把上一个团队的数据写进新团队 */
+    if(this.__switching)return false;
     const token=await this._ensureToken();
     if(!token)return;
     /* 最后一道安全闸门：云端有项目、本地一个都没有。
@@ -4749,6 +4852,7 @@ const CloudSync={
   pushBeacon(){
     try{
       if(!this.loggedIn||!cloudUser)return false;
+      if(this.__switching)return false;        /* 切换团队期间禁止推送 */
       const data=Object.assign({},App,{projects:(App.projects||[])});
       delete data.__pendingPush;delete data.__lastSyncedAt;
       delete data.__lastLocalChange;delete data.__lastPullAt;
@@ -4775,6 +4879,8 @@ function cloudPushSoon(){
   _pushTimer=setTimeout(()=>{
     _pushTimer=null;
     if(!CloudSync.configured||!CloudSync.loggedIn)return;
+    /* 切换团队期间禁止推送（防抖定时器可能正好落在切换窗口内） */
+    if(CloudSync.__switching)return;
     /* 单元模式：只推内容变了的单元，冲突也只影响冲突的那一个 */
     if(__unitMode){
       unitPush(false).then(r=>{
@@ -4814,6 +4920,7 @@ function cloudPushSoon(){
 function cloudFlushOnUnload(){
   try{
     if(!CloudSync.configured||!CloudSync.loggedIn)return;
+    if(CloudSync.__switching)return;           /* 切换团队期间禁止推送 */
     if(!App.__pendingPush)return;
     CloudSync.pushBeacon();
     delete App.__pendingPush;
@@ -4840,6 +4947,23 @@ function cloudStatusSet(msg,ok){
 /* 上一次同步是否失败（供退出登录前拦截使用） */
 function cloudSyncFailed(){return !!(__syncState&&__syncState.ok===false);}
 function cloudSyncReset(){__syncState={ok:true,msg:'',at:0};}
+/* 轻量 Toast 通知（自动消失，可多次调用） */
+let __toastTimer=null;
+function showToast(msg,type){
+  type=type||'info';
+  var c=document.getElementById('toastContainer');
+  if(!c){
+    c=document.createElement('div');c.id='toastContainer';
+    c.style.cssText='position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none';
+    document.body.appendChild(c);
+  }
+  var t=document.createElement('div');
+  var bg=(type==='ok')?'#1677ff':(type==='err')?'#cf1322':'#595959';
+  t.style.cssText='padding:10px 20px;border-radius:8px;color:#fff;font-size:14px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.18);white-space:nowrap;pointer-events:auto;animation:toastIn .25s ease-out;background:'+bg;
+  t.textContent=msg;
+  c.appendChild(t);
+  setTimeout(function(){t.style.animation='toastOut .25s ease-in forwards';setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},260);},2500);
+}
 function showCloudView(v){
   const map={org:'cloudOrgView',auth:'cloudAuthView',done:'cloudDoneView'};
   ['cloudOrgView','cloudAuthView','cloudDoneView'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=(id===map[v])?'block':'none';});
@@ -4906,13 +5030,46 @@ function showOrgGate(msg){
   $('app').style.display='none';
   showCloudView('org');
   const om=document.getElementById('cloudOrgMsg');
-  if(om){om.style.color='#d48806';om.textContent=msg||'你的账号还没有公司，数据无法保存到云端。请先创建公司，或用同事给的邀请码加入。';}
+  if(om){om.style.color='#d48806';om.textContent=msg||'你的账号还没有公司，数据无法保存到云端。请提交加入或开通申请，审核通过后即可使用。';}
+  /* 异步拉一下自己的申请状态（不 await：拿不到也不该挡住页面） */
+  try{ renderMyRequest(); }catch(e){}
+}
+/* 公司被运营后台冻结：所有成员无法进入 */
+function showOrgFrozen(){
+  $('loginPage').classList.add('show');
+  $('loginPage').style.display='flex';
+  $('app').style.display='none';
+  showCloudView('org');
+  const om=document.getElementById('cloudOrgMsg');
+  if(om){
+    om.style.color='#cf1322';
+    om.textContent='⚠️ 您的公司已被暂停服务。请联系管理员或平台运营方了解详情。';
+  }
 }
 /* 登录成功后：先确认有公司 → 再同步 → 最后进工作台 */
 async function cloudEnterApp(){
   let m=null;
   try{ m=await CloudSync.me(true); }catch(e){ m=null; }   /* 取不到就放行，保持离线可用 */
-  if(!m||!m.org_id){ showOrgGate(); return; }
+  /* 邀请自动兑换：未进公司但带着 pending 邀请令牌时，先尝试加入 */
+  if((!m||!m.org_id)&&window.__pendingInvite){
+    try{
+      await CloudSync.acceptInvite(window.__pendingInvite);
+      window.__pendingInvite=null;
+      try{ sessionStorage.removeItem('xzgz_invite_token'); }catch(e2){}
+      m=await CloudSync.me(true);
+    }catch(e){
+      window.__pendingInvite=null;
+      try{ sessionStorage.removeItem('xzgz_invite_token'); }catch(e2){}
+      showOrgGate('邀请链接无效或已过期：'+(e.message||'请确认链接正确'));
+      return;
+    }
+  }
+  if(!m||!m.org_id){
+    showOrgGate('你的账号还没有公司，数据无法保存到云端。请提交加入或开通申请，审核通过后即可使用。');
+    return;
+  }
+  /* 冻结拦截：运营后台冻结后，所有成员无法进入工作台 */
+  if(m.org_status==='suspended'){ showOrgFrozen(); return; }
   cloudSyncNow();
   enterApp();
 }
@@ -4920,29 +5077,69 @@ async function cloudEnterApp(){
 function enterLocalMode(){
   enterApp();
 }
-async function cloudDoCreateOrg(){
-  const inp=document.getElementById('orgNameInput');
-  const msg=document.getElementById('cloudOrgMsg');
-  const v=(inp&&inp.value||'').trim();
-  if(!v){if(msg)msg.textContent='请填写公司名称';return;}
-  if(msg){msg.style.color='#1677ff';msg.textContent='创建中…';}
-  try{
-    await CloudSync.createOrg(v);
-    if(msg)msg.textContent='';
-    await cloudEnterApp();
-  }catch(err){if(msg){msg.style.color='#ff4d4f';msg.textContent=err.message;}}
-}
-async function cloudDoAcceptInvite(){
+/* ── 审核制：凭邀请码提交「加入公司」申请（不再即时生效） ── */
+async function cloudDoSubmitJoin(){
   const inp=document.getElementById('orgInviteInput');
   const msg=document.getElementById('cloudOrgMsg');
   const v=(inp&&inp.value||'').trim();
-  if(!v){if(msg)msg.textContent='请粘贴邀请码';return;}
-  if(msg){msg.style.color='#1677ff';msg.textContent='加入中…';}
+  if(!v){if(msg){msg.style.color='#ff4d4f';msg.textContent='请粘贴邀请码';}return;}
+  if(msg){msg.style.color='#1677ff';msg.textContent='提交中…';}
   try{
-    await CloudSync.acceptInvite(v);
-    if(msg)msg.textContent='';
-    await cloudEnterApp();
+    await CloudSync.submitRequest({type:'join',token:v});
+    if(msg){msg.style.color='#1677ff';msg.textContent='申请已提交，等待公司管理员审核。';}
+    if(inp)inp.value='';
+    await renderMyRequest();
   }catch(err){if(msg){msg.style.color='#ff4d4f';msg.textContent=err.message;}}
+}
+/* ── 审核制：提交「开通新公司」申请（由平台管理员审核，不再自助开通） ── */
+async function cloudDoSubmitOrg(){
+  const nameEl=document.getElementById('orgNameInput');
+  const cEl=document.getElementById('orgContactInput');
+  const pEl=document.getElementById('orgPhoneInput');
+  const msg=document.getElementById('cloudOrgMsg');
+  const nm=(nameEl&&nameEl.value||'').trim();
+  if(!nm){if(msg){msg.style.color='#ff4d4f';msg.textContent='请填写公司名称';}return;}
+  if(msg){msg.style.color='#1677ff';msg.textContent='提交中…';}
+  try{
+    await CloudSync.submitRequest({type:'org',org_name:nm,
+      contact_name:(cEl&&cEl.value||'').trim(),
+      contact_phone:(pEl&&pEl.value||'').trim()});
+    if(msg){msg.style.color='#1677ff';msg.textContent='申请已提交，等待平台审核开通。';}
+    if(nameEl)nameEl.value='';
+    await renderMyRequest();
+  }catch(err){if(msg){msg.style.color='#ff4d4f';msg.textContent=err.message;}}
+}
+/* 我的申请状态：审核中给明确预期，通过后自动进工作台 */
+async function renderMyRequest(){
+  const box=document.getElementById('myRequestBox');
+  if(!box)return;
+  if(!CloudSync.loggedIn){box.style.display='none';return;}
+  let items=[];
+  try{ items=await CloudSync.listRequests('mine'); }catch(e){ box.style.display='none'; return; }
+  if(!items||!items.length){box.style.display='none';return;}
+  const r=items[0];
+  const isP=r.status==='pending', isA=r.status==='approved';
+  const titleMap={pending:'审核中',approved:'已通过',rejected:'未通过'};
+  let color='#d48806',bg='#fffbe6',bd='#ffe58f';
+  if(isA){color='#1677ff';bg='#e6f4ff';bd='#91caff';}
+  if(!isP&&!isA){color='#cf1322';bg='#fff1f0';bd='#ffa39e';}
+  const typeText=r.type==='org'?'开通公司':'加入公司';
+  let html='<div style="font-size:13px;font-weight:500;color:'+color+'">'
+    +escHtml(typeText+'申请 · '+(titleMap[r.status]||r.status))+'</div>';
+  html+='<div style="font-size:12px;color:#666;margin-top:4px">提交时间：'
+    +escHtml(String(r.created||'').replace('T',' ').slice(0,19))+'</div>';
+  if(isP){
+    html+='<div style="font-size:12px;color:#666;margin-top:2px">'
+      +(r.type==='org'?'平台审核中，开通后即可使用。':'已通知公司管理员，通过后即可使用。')
+      +' 可点下方「刷新状态」查看进展。</div>';
+  }
+  if(!isP&&!isA&&r.review_note){
+    html+='<div style="font-size:12px;color:#666;margin-top:2px">原因：'+escHtml(r.review_note)+'</div>';
+  }
+  if(isA)html+='<div style="font-size:12px;color:#666;margin-top:2px">已通过，正在进入工作台…</div>';
+  box.innerHTML=html;box.style.display='';box.style.background=bg;box.style.borderColor=bd;
+  /* 通过后用户的 org_id 已在服务端写入，自动重走闸门即可进入 */
+  if(isA)setTimeout(function(){ try{ cloudEnterApp(); }catch(e){} },900);
 }
 
 /* ── 冲突处理：绝不允许静默覆盖任何人的修改 ── */
@@ -5082,6 +5279,142 @@ async function cloudDoSignup(){
   if(p.length<6){$('cloudAuthMsg').textContent='密码至少 6 位';return;}
   try{await CloudSync.signup(e,p);await cloudEnterApp();}
   catch(err){$('cloudAuthMsg').textContent=err.message;}
+}
+
+/* ── 认证视图切换（登录 / 注册步骤1 / 注册步骤2 / 找回密码）── */
+function showAuthView(view){
+  /* 登录页各子视图：只显示目标视图，其余隐藏 */
+  var map={login:'authLoginView',register:'authRegStep1View',reg2:'authRegStep2View',forgot:'authForgotView',reset:'authResetView'};
+  Object.keys(map).forEach(function(k){
+    var el=document.getElementById(map[k]);
+    if(el)el.style.display=(k===view)?'':'none';
+  });
+  /* 确保外层 auth 容器可见 */
+  var av=document.getElementById('cloudAuthView');
+  if(av)av.style.display='';
+  /* 清除消息 */
+  ['cloudAuthMsg','regMsg','regStep2Msg','forgotMsg','resetMsg'].forEach(function(id){
+    var el=document.getElementById(id);if(el)el.textContent='';
+  });
+}
+/* 覆盖原来的 cloudDoLogin：支持用户名或邮箱登录 */
+async function cloudDoLogin(){
+  const login=$('cloudEmailInput').value.trim(),p=$('cloudPwdInput').value;
+  if(!login||!p){$('cloudAuthMsg').textContent='请输入用户名和密码';return;}
+  $('cloudAuthMsg').textContent='';
+  try{
+    /* 先尝试直接用 CloudSync.login（兼容邮箱登录） */
+    await CloudSync.login(login,p);
+    await cloudEnterApp();
+  }catch(err){
+    /* 如果邮箱登录失败，尝试用户名查找后用邮箱登录 */
+    if(err.message.indexOf('不存在')>-1 || err.message.indexOf('Invalid')>-1){
+      try{
+        var info=await CloudSync._req('POST','/api/auth/login-username',{login:login,password:p});
+        if(info&&info.email){
+          await CloudSync.login(info.email,p);
+          await cloudEnterApp();return;
+        }
+      }catch(e2){/* 继续走下面的错误显示 */ }
+    }
+    $('cloudAuthMsg').textContent=err.message;
+  }
+}
+/* 发送注册验证码 */
+var __sendCodeCooldown=false;
+async function sendRegCode(){
+  if(__sendCodeCooldown)return;
+  var email=$('regEmailInput').value.trim();
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){$('regMsg').textContent='请输入有效邮箱';return;}
+  var btn=document.getElementById('sendCodeBtn');
+  try{
+    var j=await CloudSync._req('POST','/api/auth/send-code',{email:email});
+    if(j.dev_code){
+      $('regMsg').style.color='#1677ff';
+      $('regMsg').textContent='开发模式验证码：'+j.dev_code+'（'+j.message+'）';
+    }else{
+      $('regMsg').style.color='#1677ff';
+      $('regMsg').textContent=j.message||'验证码已发送';
+    }
+    /* 冷却倒计时 60s */
+    __sendCodeCooldown=true;
+    var sec=60;
+    btn.disabled=true;
+    var iv=setInterval(function(){
+      sec--;btn.textContent=sec+'s 后重发';
+      if(sec<=0){clearInterval(iv);btn.disabled=false;btn.textContent='发送验证码';__sendCodeCooldown=false;}
+    },1000);
+  }catch(err){$('regMsg').textContent=err.message;}
+}
+/* 验证码校验 → 进入步骤2 */
+async function goToRegStep2(){
+  var email=$('regEmailInput').value.trim();
+  var code=$('regCodeInput').value.trim();
+  if(!email){$('regMsg').textContent='请输入邮箱';return;}
+  if(!code||code.length!==6){$('regMsg').textContent='请输入6位验证码';return;}
+  try{
+    var j=await CloudSync._req('POST','/api/auth/verify-code',{email:email,code:code});
+    if(j.verified){
+      showAuthView('reg2');
+      /* 把已验证的邮箱带到步骤2 */
+      $('regEmailVerified')?($('regEmailVerified').textContent=email):null;
+    }
+  }catch(err){$('regMsg').textContent=err.message;}
+}
+/* 完成注册 */
+async function doFinishRegister(){
+  var email=$('regEmailInput').value.trim();
+  var username=$('regUsernameInput').value.trim();
+  var pwd=$('regPwdInput').value;
+  var pwd2=$('regPwd2Input').value;
+  if(!username||username.length<3||username.length>20){$('regStep2Msg').textContent='用户名需要3-20个字符';return;}
+  if(!pwd||pwd.length<8){$('regStep2Msg').textContent='密码至少8个字符';return;}
+  if(pwd!==pwd2){$('regStep2Msg').textContent='两次密码不一致';return;}
+  $('regStep2Msg').textContent='';
+  try{
+    var code=$('regCodeInput').value.trim();
+    await CloudSync._req('POST','/api/auth/register',{email:email,username:username,password:pwd,code:code});
+    /* 注册成功后自动登录 */
+    await CloudSync.signup(email,pwd);
+    await cloudEnterApp();
+  }catch(err){$('regStep2Msg').textContent=err.message;}
+}
+/* 找回密码 - 发送重置链接 */
+async function doRequestReset(){
+  var email=$('forgotEmailInput').value.trim();
+  if(!email){$('forgotMsg').textContent='请输入邮箱';return;}
+  try{
+    var j=await CloudSync._req('POST','/api/auth/request-reset',{email:email});
+    $('forgotMsg').style.color='#1677ff';
+    var msg=j.message||'如果该邮箱有注册账号，重置链接将发送到该邮箱';
+    if(j.dev_reset_link){
+      msg+='（开发模式，重置链接：'+j.dev_reset_link+'）';
+      /* 开发模式下顺手把令牌存好，点链接也能直接进重置页 */
+      try{
+        var q=new URLSearchParams(j.dev_reset_link.split('?')[1]||'');
+        sessionStorage.setItem('xzgz_reset_token',q.get('reset')||'');
+        sessionStorage.setItem('xzgz_reset_email',q.get('email')||email);
+      }catch(e){}
+    }
+    $('forgotMsg').textContent=msg;
+  }catch(err){$('forgotMsg').textContent=err.message;}
+}
+/* 找回密码 - 用邮件里的令牌确认重置 */
+async function doConfirmReset(){
+  var pwd=$('resetPwdInput').value;
+  var pwd2=$('resetPwd2Input').value;
+  if(!pwd||pwd.length<8){$('resetMsg').textContent='密码至少 8 个字符';return;}
+  if(pwd!==pwd2){$('resetMsg').textContent='两次密码不一致';return;}
+  var email=sessionStorage.getItem('xzgz_reset_email')||'';
+  var token=sessionStorage.getItem('xzgz_reset_token')||'';
+  if(!email||!token){$('resetMsg').textContent='重置链接无效，请重新获取';return;}
+  try{
+    var j=await CloudSync._req('POST','/api/auth/confirm-reset',{email:email,token:token,password:pwd});
+    try{sessionStorage.removeItem('xzgz_reset_email');sessionStorage.removeItem('xzgz_reset_token');}catch(e){}
+    $('resetMsg').style.color='#1677ff';
+    $('resetMsg').textContent=(j.message||'密码已重置')+' 正在前往登录…';
+    setTimeout(function(){ showAuthView('login'); },1500);
+  }catch(err){$('resetMsg').textContent=err.message;}
 }
 /* 侧栏「退出登录」的专用入口：先确认，再执行。
    ⚠️ 只有【侧栏】这一个按钮走这里。登录页上的两个「退出登录」按钮直接调 cloudLogout()
@@ -7784,6 +8117,7 @@ function createProjectFromWizard(){
   App.projects.push(p);
   App.currentProjectId=p.id;
   persist();
+  recordOperation('other','新建项目「'+p.name+'」('+p.code+')',p.id);
   editingProjectId=null;
   closeProjectWizard();
   refreshProjectUI();
@@ -7810,7 +8144,7 @@ function saveProject(){
       p.profile=p.profile||{};p.profile.startDate=$('wPlanStartDate').value||'';
       p.processSteps=processSteps;
       p.income=saveEditIncome(p.income||[], totalAmount);
-      persist();closeProjectWizard();
+      persist();recordOperation('other','编辑项目资料「'+p.name+'」',p.id);closeProjectWizard();
       refreshProjectUI();if(currentPage)switchPage(currentPage);return;
     }
   }
@@ -7908,7 +8242,7 @@ function switchPage(page){
   $('page-'+page).classList.add('active');
   document.querySelectorAll('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
   document.querySelectorAll('.mtab').forEach(t=>t.classList.toggle('active',t.dataset.page===page));
-  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',contracts:'合同管理',invoices:'发票管理',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识',media:'影像资料',archive:'人材档案',standard:'施工标准',team:'团队与权限',logs:'操作记录',storage:'套餐与存储'};
+  const bcMap={home:'今日总览',process:'项目管理',purchase:'采购清单',finance:'装修记账',ledger:'收支流水',contracts:'合同管理',invoices:'发票管理',compare:'比价选品',tools:'实用工具',quote:'报价系统',diary:'装修日记',knowledge:'水电知识',media:'影像资料',archive:'人材档案',standard:'施工标准',team:'权限管理',logs:'操作记录',storage:'储存套餐'};
   const btnMap={home:'新增待办',process:'新建项目',purchase:'新增待购物品',finance:'记一笔',ledger:'',contracts:'新增合同',invoices:'新增发票',compare:'导出比价',tools:'',quote:'',diary:'写日记',knowledge:'返回总览',media:'',archive:'新增人员',standard:'',team:'邀请成员',logs:'',storage:''};
   $('bc-page').textContent=bcMap[page]||'';
   const tp=$('topPrimaryBtn');
@@ -8905,14 +9239,18 @@ function refreshNavBadges(){
     /* home: 缺合同 + 草稿合同 */
     homeCount+=_missList.filter(m=>m._pid===p.id).length;
     homeCount+=(App.contracts||[]).filter(c=>c.projectId===p.id&&(c.status==='草稿'||!c.status)).length;
-    /* home: 逾期收支材料 */
-    homeCount+=p.income.filter(i=>incStatus(i)==='overdue').length;
-    homeCount+=p.expense.filter(e=>!e.paid&&e.date&&e.date<todayISO()).length;
-    homeCount+=p.purchases.filter(x=>!purchaseArrived(x)&&x.dueDate&&x.dueDate<todayISO()).length;
+    /* home: 逾期收支材料
+       ⚠️ 这三行原来是裸 p.income.filter / p.expense / p.purchases，没有 ||[] 兜底：
+          任何一个缺数组的项目对象（旧版数据、云端半份 payload、测试构造的精简项目）
+          都会让整个 refreshNavBadges 抛错。而 loadTeamMembers 里调它时是在同一个 try 内，
+          于是「徽章算错」被放大成「成员列表整块显示加载失败」。已统一兜底。 */
+    homeCount+=(p.income||[]).filter(i=>incStatus(i)==='overdue').length;
+    homeCount+=(p.expense||[]).filter(e=>!e.paid&&e.date&&e.date<todayISO()).length;
+    homeCount+=(p.purchases||[]).filter(x=>!purchaseArrived(x)&&x.dueDate&&x.dueDate<todayISO()).length;
     /* process: 整改待处理（siteRecord tag=整改, rectifyStatus=待处理|进行中） */
     processCount+=(p.siteRecords||[]).filter(r=>r.tag==='整改'&&(r.rectifyStatus==='待处理'||r.rectifyStatus==='进行中')).length;
     /* process: 收款逾期 */
-    processCount+=p.income.filter(i=>incStatus(i)==='overdue').length;
+    processCount+=(p.income||[]).filter(i=>incStatus(i)==='overdue').length;
   });
   /* 合同管理：草稿待签 + 缺合同（与「缺合同」Tab 口径一致） */
   const conCount=(App.contracts||[]).filter(c=>c.status==='草稿'||!c.status).length + _missList.length;
@@ -13365,12 +13703,12 @@ function renderProcessDiary(){
     <!-- 客户个人端同步 -->
     <div class="proc-card">
       <div class="deliver-section-title">客户个人端同步</div>
-      <div class="proc-card-hint">绑定客户的「小装家账号」后，审核发布的进度和照片会进入客户个人网页页与微信小程序；企业内部日志、整改和成员信息不会同步。</div>
+      <div class="proc-card-hint">绑定客户的「焕安居账号」后，审核发布的进度和照片会进入客户个人网页页与微信小程序；企业内部日志、整改和成员信息不会同步。</div>
       <div class="deliver-form-row">
         <span class="deliver-tag">待绑定客户账号</span>
       </div>
       <div class="deliver-form-row">
-        <input type="text" id="clientBindInput" placeholder="输入客户的小装家用户名或登录邮箱" />
+        <input type="text" id="clientBindInput" placeholder="输入客户的焕安居用户名或登录邮箱" />
         <button class="proc-sub-btn primary" onclick="bindClientAccount()">绑定客户账号</button>
       </div>
       <div class="proc-card-hint" style="margin-top:8px">绑定只属客户与项目的关系，不会自动公开外部内容。负责人点击"发布给客户后"，客户才会在个人网页和小程序中看到。也可以生成下方客链，让客户主动绑定。</div>
@@ -14413,6 +14751,8 @@ function saveContract(){
     _pendingConLink=null;
   }
   persist();closeModal('contractModal');renderContracts();renderHome();
+  recordOperation(_editingContractId?'contract':'contract',(_editingContractId?'编辑':'新建')+'合同「'+title+'」',data.projectId);
+  _editingContractId=null;
 }
 function editContract(id){
   const c=contractById(id);if(!c){alert('未找到该合同');return;}
@@ -18551,6 +18891,7 @@ function saveFinance(){
   /* 反向同步：记账支出改动后回写采购调配单的 payStatus/paidAmount（双向联动） */
   if(type==='expense')syncExpensesToPurchases(target);
   persist();closeModal('financeModal');editingFinance=null;renderFinance();renderLedger&&renderLedger();renderHome();renderContracts&&renderContracts();
+  recordOperation(type==='income'?'payment':'payment',(editingFinance?'编辑':'')+(type==='income'?'收款':'付款')+'「'+name+'」('+amount+'元)',pid);
 }
 /* 由「记一笔」自动创建发票并关联（满足对公开票自动进入发票管理）。
    status 缺省 '草稿'（未开票路径）；已开票路径传 '已开'。 */
@@ -18940,67 +19281,222 @@ async function openMediaLightbox(imgEl){
 }
 
 // ============================================================
-// 团队与权限（企业成员管理 + 四维权限）
+// 权限管理（企业成员管理 + 四维权限）
 // ============================================================
 const PERM_LABELS={execute:'施工执行',contract:'合同收款',cost:'成本管理',delivery:'客户交付'};
 const PERM_ALL=['execute','contract','cost','delivery'];
+
+/* 企业角色 → 默认权限映射（邀请时自动赋予，后续可调整） */
+const ROLE_OPTIONS=[
+  {value:'pm',label:'项目经理',perms:['execute','delivery']},
+  {value:'designer',label:'设计师',perms:['execute']},
+  {value:'finance',label:'财务',perms:['contract','cost']},
+  {value:'purchaser',label:'采购',perms:['cost','delivery']},
+  {value:'qa',label:'质检',perms:['delivery']},
+  {value:'reader',label:'只读成员',perms:[]},
+  {value:'admin',label:'企业管理员',perms:['execute','contract','cost','delivery']}
+];
 /* 成员权限数据：key=userId, value={name, email, role, perms:[], status, joinedAt, avatar} */
 let __teamMembers=[];
 let __teamLoaded=false;
+let __teamOrgs=[];          /* 我加入的所有团队（切换下拉数据源） */
+let __teamAdminCount=0;     /* 本团队管理员数量：为 1 时唯一管理员不许退出 */
+let __teamDegraded=false;   /* true = 服务端 memberships 未回填，成员列表只有自己 */
 
 function isTeamAdmin(){
-  try{ return (cloudUser&&CloudSync.__me&&CloudSync.__me.role==='admin'); }catch(e){ return false; }
+  try{ return !!(cloudUser&&CloudSync.__me&&CloudSync.__me.role==='admin'); }catch(e){ return false; }
 }
+/* ⚠️ isTeamAdmin() 读的是同步缓存 CloudSync.__me。刚打开页面 / 刚登录时它还是 null，
+   于是「已发出的邀请」「加入申请待审核」这类仅管理员可见的区块会在首屏被误判成
+   非管理员而整块隐藏，且不会自动重渲染 —— 表现就是「刷新后第一次点权限管理，
+   邀请列表是空的，再切一次页面才出来」。凡是异步渲染的管理员区块都必须用这个
+   async 版本拿真实角色。 */
+async function isTeamAdminAsync(){
+  try{
+    if(!CloudSync.loggedIn)return false;
+    if(CloudSync.__me)return CloudSync.__me.role==='admin';
+    const me=await CloudSync.me();
+    return !!(me&&me.role==='admin');
+  }catch(e){ return false; }
+}
+
+/* 角色 value → 中文标签 */
+function teamRoleLabel(role){
+  for(var i=0;i<ROLE_OPTIONS.length;i++){if(ROLE_OPTIONS[i].value===role)return ROLE_OPTIONS[i].label;}
+  return role==='member'?'成员':(role||'成员');
+}
+/* 角色自带的默认四维权限 */
+function teamRoleDefaultPerms(role){
+  if(role==='admin')return PERM_ALL.slice();
+  for(var i=0;i<ROLE_OPTIONS.length;i++){if(ROLE_OPTIONS[i].value===role)return ROLE_OPTIONS[i].perms.slice();}
+  return [];
+}
+
+/* ⚠️ 权限本地存储的 key 必须带团队前缀 ——
+   同一个 userId 在 A 公司是采购、在 B 公司可能是质检。
+   只用 userId 当 key 的话切换团队后会把上一个团队的权限带过来（越权）。 */
+function curOrgId(){
+  try{ return (CloudSync.__me&&CloudSync.__me.org_id)||''; }catch(e){ return ''; }
+}
+function permKey(uid){ var o=curOrgId(); return (o?o+':':'')+uid; }
 
 function getLocalPerms(){
   try{ const d=JSON.parse(localStorage.getItem('xzgz_team_perms')||'{}'); return d||{}; }catch(e){ return {}; }
 }
 function saveLocalPerms(d){ try{ localStorage.setItem('xzgz_team_perms',JSON.stringify(d||{})); }catch(e){} }
+/* 读一个成员的已存权限：先按新 key（org:uid），回退旧 key（纯 uid，历史数据） */
+function readMemberPerms(pm,uid){
+  var k=permKey(uid);
+  var v=pm[k]||pm[uid];
+  return (v&&v.perms)?v.perms:null;
+}
 
 function renderTeam(){
   const area=document.getElementById('teamMemberList');
   const btn=document.getElementById('teamInviteBtn');
   if(!area)return;
-  /* 非管理员隐藏邀请按钮 */
-  if(btn)btn.style.display=isTeamAdmin()?'':'none';
+  /* 非管理员隐藏邀请按钮。先按同步缓存给个初值，再异步用真实角色补正
+     （首屏 CloudSync.__me 可能还是 null，只看同步缓存会把管理员的按钮也藏掉） */
+  if(btn){
+    btn.style.display=isTeamAdmin()?'':'none';
+    isTeamAdminAsync().then(function(ok){ btn.style.display=ok?'':'none'; }).catch(function(){});
+  }
   if(!CloudSync.loggedIn){
     area.innerHTML='<div class="media-empty"><div class="media-empty-icon">🔒</div>请先登录后查看团队成员。</div>';
+    var ob=document.getElementById('teamOrgBar');if(ob)ob.innerHTML='';
+    var ib=document.getElementById('teamInviteBox');if(ib){ib.innerHTML='';ib.style.display='none';}
+    setTeamBadge(0);
     return;
   }
+  /* 当前团队条 + 多团队切换（异步，不阻塞） */
+  try{ renderOrgBar(); }catch(e){}
   loadTeamMembers();
+  /* 管理员顺带拉待审的加入申请（异步，不阻塞成员列表） */
+  try{ renderJoinRequests(); }catch(e){}
+  /* 管理员顺带拉已发出的邀请（可取消 / 删除） */
+  try{ renderInvitations(); }catch(e){}
 }
 
+/* 侧栏「权限管理」徽章：有待审申请时显示数字 */
+function setTeamBadge(n){
+  const b=document.getElementById('navBadge-team');
+  if(!b)return;
+  b.textContent=n>0?String(n):'';
+  b.style.display=n>0?'':'none';
+}
+
+/* ── 加入申请待审核：仅本公司管理员可见 ── */
+async function renderJoinRequests(){
+  const box=document.getElementById('joinRequestBox');
+  if(!box)return;
+  if(!CloudSync.loggedIn||!(await isTeamAdminAsync())){
+    box.style.display='none';box.innerHTML='';setTeamBadge(0);return;
+  }
+  let items=[];
+  try{ items=await CloudSync.listRequests('join','pending'); }catch(e){ items=[]; }
+  if(!items||!items.length){
+    box.style.display='none';box.innerHTML='';setTeamBadge(0);return;
+  }
+  setTeamBadge(items.length);
+  let html='<div class="card" style="margin:12px 0">'
+    +'<div class="card-header" style="margin-bottom:8px">'
+    +'<div><div class="card-title">加入申请待审核</div>'
+    +'<div class="card-subtitle">共 '+items.length+' 条 · 通过后该成员立即可访问本公司数据</div></div>'
+    +'</div>';
+  for(var i=0;i<items.length;i++){
+    var r=items[i];
+    var nm=r.user_name||r.user_email||'';
+    var ini=(nm||'?').charAt(0).toUpperCase();
+    html+='<div class="team-member-card" data-req="'+escHtml(r.id)+'">'
+      +'<div class="team-member-avatar">'+escHtml(ini)+'</div>'
+      +'<div class="team-member-info">'
+      +'<div class="team-member-name-row">'
+      +'<span class="team-member-name">'+escHtml(nm||'（未填写姓名）')+'</span>'
+      +'<span class="team-perm-tag">'+(r.role==='admin'?'管理员':'成员')+'</span>'
+      +'</div>'
+      +'<div class="team-member-email">'+escHtml(r.user_email||'')+'</div>'
+      +'<div class="team-member-perms">申请时间：'+escHtml(String(r.created||'').replace('T',' ').slice(0,19))+'</div>'
+      +(r.message?'<div class="team-member-email">留言：'+escHtml(r.message)+'</div>':'')
+      +'</div>'
+      +'<div class="team-member-actions">'
+      +'<button class="btn-primary btn-sm" onclick="doReviewRequest(\''+escHtml(r.id)+'\',\'approve\')">通过</button>'
+      +'<button class="btn-outline btn-sm" onclick="doReviewRequest(\''+escHtml(r.id)+'\',\'reject\')">拒绝</button>'
+      +'</div>'
+      +'</div>';
+  }
+  html+='</div>';
+  box.innerHTML=html;box.style.display='';
+}
+
+/* 通过 / 拒绝一条加入申请
+   ⚠️ confirmDialog 是回调式，async 里没法 await 等用户选择，
+   所以这里用原生 confirm / prompt（记忆里的既有约定） */
+async function doReviewRequest(id,action){
+  var note='';
+  if(action==='reject'){
+    note=window.prompt('填写拒绝原因（会展示给申请人，可留空）：','');
+    if(note===null)return;                       /* 用户点了取消 */
+  }else{
+    if(!window.confirm('确认通过？通过后该成员即可访问本公司的全部数据。'))return;
+  }
+  try{
+    await CloudSync.reviewRequest(id,action,note||'');
+    if(typeof addOpLog==='function'){
+      addOpLog('member',(action==='approve'?'通过':'拒绝')+'一条加入申请','');
+    }
+    if(typeof renderTeam==='function')renderTeam();
+  }catch(e){
+    window.alert((e&&e.message)||'操作失败');
+  }
+}
+
+/* 成员列表 —— 数据源是服务端 memberships 表（唯一权威）。
+   ⚠️ 这里原来读的是 localStorage 'xzgz_team_cache'：邀请时前端自己 push 一条假记录，
+      于是"待接受"永远待接受、被移出的人永远还在、换台设备就整个列表空白。
+      真实成员一律走 /api/org/members，本地缓存已彻底废弃（下面顺手清掉遗留 key）。 */
 async function loadTeamMembers(){
   const area=document.getElementById('teamMemberList');
   if(!area)return;
   area.innerHTML='<div class="media-empty"><div class="media-empty-icon">⏳</div>正在加载成员列表...</div>';
+  try{ localStorage.removeItem('xzgz_team_cache'); }catch(e){}
   try {
     const me=await CloudSync.me(true);
-    const isAdmin=(me&&me.role==='admin');
-    /* 从 /api/me 拿到当前用户信息；成员列表需要后端支持。
-       前端先用本地缓存 + 当前用户自己展示，后续接 /api/members 接口 */
+    let resp=null;
+    try{ resp=await CloudSync.listMembers(); }catch(eM){ resp=null; }
+    /* 后端未部署 api_team 时降级：至少把自己列出来，页面不空白（并明确告知） */
+    let raw=(resp&&resp.members)||[];
+    __teamDegraded=!!(resp&&resp.degraded)||!resp;
+    if(!raw.length){
+      raw=[{user_id:me.id||'self',email:me.email||'',display_name:me.display_name||'',
+            role:me.role||'reader',status:'active',joined_at:'',is_me:true}];
+    }
+    __teamAdminCount=(resp&&typeof resp.admin_count==='number')?resp.admin_count:0;
+    const isAdmin=(resp&&resp.my_role==='admin')||(me&&me.role==='admin');
     const localPerms=getLocalPerms();
     const members=[];
-    /* 当前用户自己 */
-    members.push({
-      id: me.id || 'self',
-      name: me.display_name || me.email || '我',
-      email: me.email || '',
-      role: me.role || 'member',
-      perms: (isAdmin?PERM_ALL:(localPerms[me.id]&&localPerms[me.id].perms)||[]),
-      status: '正常',
-      joinedAt: '',
-      isMe: true
-    });
-    /* 本地缓存的其它成员（邀请功能上线前可手动添加） */
-    const cached=JSON.parse(localStorage.getItem('xzgz_team_cache')||'[]');
-    cached.forEach(function(m){
-      if(m.id!==(me.id||'self'))members.push(m);
-    });
+    for(var i=0;i<raw.length;i++){
+      var m=raw[i];
+      var uid=m.user_id||m.id;
+      var saved=readMemberPerms(localPerms,uid);
+      members.push({
+        id: uid,
+        memId: m.id||'',
+        name: m.display_name || m.email || '（未填写姓名）',
+        email: m.email || '',
+        role: m.role || 'reader',
+        /* 管理员恒为全权；其它角色以单独设置为准，没设过就用角色默认权限 */
+        perms: (m.role==='admin')?PERM_ALL.slice():(saved||teamRoleDefaultPerms(m.role)),
+        status: (m.user_status==='disabled')?'已停用':'正常',
+        joinedAt: String(m.joined_at||'').replace('T',' ').slice(0,10),
+        isMe: !!m.is_me
+      });
+    }
     __teamMembers=members;
     __teamLoaded=true;
     renderTeamList(members,isAdmin,localPerms);
-    refreshNavBadges();
+    /* ⚠️ 单独 try：徽章统计跟成员列表毫无关系，但它以前在同一个 try 里，
+       任何一个项目对象字段不全都会让整块成员列表变成「加载失败」（已踩） */
+    try{ refreshNavBadges(); }catch(eB){}
   }catch(e){
     area.innerHTML='<div class="media-empty"><div class="media-empty-icon">❌</div>加载失败：'+escHtml(e.message||'未知错误')+'</div>';
   }
@@ -19013,37 +19509,60 @@ function renderTeamList(members,isAdmin,localPerms){
     area.innerHTML='<div class="media-empty"><div class="media-empty-icon">👥</div>暂无其他成员。<br>'+((isAdmin?'点击右上角「邀请成员」邀请同事加入。':'请联系企业管理员邀请你加入。'))+'</div>';
     return;
   }
-  var html='<div class="team-member-list">';
+  /* 角色下拉的候选项（管理员改成员角色用） */
+  var roleOpts='';
+  for(var roi=0;roi<ROLE_OPTIONS.length;roi++){
+    roleOpts+='<option value="'+ROLE_OPTIONS[roi].value+'">'+escHtml(ROLE_OPTIONS[roi].label)+'</option>';
+  }
+  var html='';
+  if(__teamDegraded){
+    html+='<div class="team-inv-card" style="background:#fff7e6;border-color:#ffd591;margin-bottom:10px">'
+      +'<div class="team-inv-info"><div class="team-inv-mail" style="color:#d46b08">成员数据尚未初始化</div>'
+      +'<div class="team-inv-meta">服务端成员关系表还没回填，当前只能显示你自己。请联系平台运营方执行一次数据初始化后刷新。</div>'
+      +'</div></div>';
+  }
+  html+='<div class="team-member-list">';
   for(var mi=0;mi<members.length;mi++){
     var m=members[mi];
-    var roleLabel=m.role==='admin'?'企业负责人':(m.role==='member'?'成员':m.role);
+    var roleLabel=teamRoleLabel(m.role);
     var permTags=[];
     var perms=m.perms||[];
     for(var pi=0;pi<perms.length;pi++){
       var p=perms[pi];
       permTags.push('<span class="team-perm-tag">'+escHtml(PERM_LABELS[p]||p)+'</span>');
     }
+    if(!permTags.length)permTags.push('<span class="team-perm-tag">仅可查看</span>');
     var statusCls='正常'===m.status?'status-ok':'status-offline';
-    html+='<div class="team-member-card" data-uid="'+escHtml(m.id)+'">'
+    html+='<div class="team-member-card" data-uid="'+escHtml(m.id)+'" data-role="'+escHtml(m.role)+'"'
+      +(m.isMe?' data-me="1"':'')+'>'
       +'<div class="team-member-avatar">'+escHtml((m.name||'?').charAt(0).toUpperCase())+'</div>'
       +'<div class="team-member-info">'
       +'<div class="team-member-name-row">'
       +'<span class="team-member-name">'+escHtml(m.name)+'</span>'
       +(m.isMe?'<span class="badge badge-ok" style="font-size:11px;margin-left:6px">我</span>':'')
       +'</div>'
-      +'<div class="team-member-email">'+escHtml(m.email||'')+'</div>'
+      +'<div class="team-member-email">'+escHtml(m.email||'')+(m.joinedAt?' · 加入于 '+escHtml(m.joinedAt):'')+'</div>'
       +'<div class="team-member-perms">'+permTags.join('')+'</div>'
       +'</div>'
       +'<div class="team-member-meta">'
       +'<span class="team-role-label">'+escHtml(roleLabel)+'</span>'
       +'<span class="team-status-badge '+statusCls+'">'+escHtml(m.status||'--')+'</span>'
-      +'</div>';
-    if(isAdmin&&!m.isMe){
-      html+='<div class="team-member-actions">'
-        +'<button class="btn-outline btn-sm" onclick="openPermEditor(\''+escHtml(m.id)+'\')">编辑权限</button>'
-        +'</div>';
+      +'</div>'
+      +'<div class="team-member-actions">';
+    if(m.isMe){
+      /* 本人退出团队。唯一管理员必须先转让管理员，否则公司会没人管 */
+      var soleAdmin=(m.role==='admin'&&__teamAdminCount<=1);
+      html+='<button class="btn-outline btn-sm" data-act="leave" data-uid="'+escHtml(m.id)+'"'
+        +(soleAdmin?' disabled title="你是本团队唯一的管理员，请先把管理员转让给其他成员再退出"':'')
+        +' onclick="doLeaveOrg()" style="color:#cf1322;border-color:#ffa39e'+(soleAdmin?';opacity:.45;cursor:not-allowed':'')+'">退出团队</button>';
+    }else if(isAdmin){
+      html+='<select class="team-role-select" data-act="role" data-uid="'+escHtml(m.id)+'" onchange="doSetMemberRole(\''+escHtml(m.id)+'\',this.value)">'
+        +roleOpts.replace('value="'+m.role+'"','value="'+m.role+'" selected')
+        +'</select>'
+        +'<button class="btn-outline btn-sm" data-act="perm" data-uid="'+escHtml(m.id)+'" onclick="openPermEditor(\''+escHtml(m.id)+'\')">编辑权限</button>'
+        +'<button class="btn-outline btn-sm" data-act="remove" data-uid="'+escHtml(m.id)+'" onclick="doRemoveMember(\''+escHtml(m.id)+'\')" style="color:#cf1322;border-color:#ffa39e">移出团队</button>';
     }
-    html+='</div>';
+    html+='</div></div>';
   }
   html+='</div>';
   area.innerHTML=html;
@@ -19052,43 +19571,62 @@ function renderTeamList(members,isAdmin,localPerms){
 /* 邀请成员弹窗 */
 function openTeamInviteModal(){
   if(!isTeamAdmin()){ alert('只有企业管理员可以邀请成员');return; }
-  var body='<div style="display:grid;gap:14px">'
-    +'<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#333">成员邮箱</label>'
-    +'<input id="inviteEmail" type="email" placeholder="colleague@example.com" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:14px"></div>'
-    +'<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#333">角色</label>'
-    +'<select id="inviteRole" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:14px">'
-    +'<option value="member">成员</option></select></div>'
-    +'<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#333">默认权限（可后续调整）</label>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap">';
-  for(var pi=0;pi<PERM_ALL.length;pi++){
-    var p=PERM_ALL[pi];
-    body+='<label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" value="'+p+'" checked> '+escHtml(PERM_LABELS[p])+'</label>';
+  var roleOptions='';
+  for(var ri=0;ri<ROLE_OPTIONS.length;ri++){
+    var r=ROLE_OPTIONS[ri];
+    roleOptions+='<option value="'+r.value+'">'+r.label+'</option>';
   }
-  body+='</div></div></div>';
+  var body='<div style="display:grid;gap:14px">'
+    +'<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#333">用户名或邮箱 <span style="color:#cf1322">*</span></label>'
+    +'<input id="inviteEmail" type="text" placeholder="对方需先拥有焕安居账号，并使用对应用户名或邮箱接受。" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:14px"></div>'
+    +'<div><label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:#333">企业角色</label>'
+    +'<select id="inviteRole" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #d9d9d9;border-radius:6px;font-size:14px">'
+    +roleOptions
+    +'</select></div>'
+    +'<div id="invitePermPreview" style="font-size:12px;color:#666;background:#f5f5f5;padding:8px;border-radius:4px">选择角色后显示对应权限</div>'
+    +'</div>';
   confirmDialog(body,function(){
     doInviteMember();
   },{okText:'发送邀请',okClass:'primary'});
   $('confirmMsg').innerHTML='<div style="text-align:left">'+body+'</div>';
+  /* 角色切换时预览权限 */
+  setTimeout(function(){
+    var sel=document.getElementById('inviteRole');
+    if(sel)sel.onchange=function(){updateInvitePermPreview();};
+    updateInvitePermPreview();
+  },50);
+}
+function updateInvitePermPreview(){
+  var roleVal=$('inviteRole').value;
+  var box=document.getElementById('invitePermPreview');
+  if(!box)return;
+  var found=null;
+  for(var i=0;i<ROLE_OPTIONS.length;i++){if(ROLE_OPTIONS[i].value===roleVal){found=ROLE_OPTIONS[i];break;}}
+  if(!found){box.textContent='—';return;}
+  if(found.perms.length===0){box.textContent='只读成员：仅可查看，无编辑权限';return;}
+  var names=[];
+  for(var j=0;j<found.perms.length;j++)names.push(PERM_LABELS[found.perms[j]]||found.perms[j]);
+  box.textContent='将拥有权限：'+names.join('、');
 }
 
 async function doInviteMember(){
   const email=$('inviteEmail').value.trim();
-  if(!email){alert('请输入成员邮箱');return;}
-  const role=$('inviteRole').value;
-  /* 收集选中的权限 */
-  const perms=[];
-  document.querySelectorAll('#confirmModal input[type="checkbox"]:checked').forEach(function(cb){perms.push(cb.value);});
+  if(!email){alert('请输入用户名或邮箱');return;}
+  const roleKey=$('inviteRole').value;
+  var roleLabel=roleKey;
+  for(var rj=0;rj<ROLE_OPTIONS.length;rj++){if(ROLE_OPTIONS[rj].value===roleKey){roleLabel=ROLE_OPTIONS[rj].label;break;}}
   try {
-    const result=await CloudSync.invite(role);
-    /* 本地先添加到缓存，等对方接受后从后端同步 */
-    const cache=JSON.parse(localStorage.getItem('xzgz_team_cache')||'[]');
-    cache.push({id:'inv_'+Date.now(),name:email.split('@')[0],email:email,role:role,perms:perms,status:'待接受',joinedAt:''});
-    localStorage.setItem('xzgz_team_cache',JSON.stringify(cache));
-    /* 保存权限 */
-    const lp=getLocalPerms();lp['inv_'+Date.now()]=perms;saveLocalPerms(lp);
+    const result=await CloudSync.invite(roleKey,email);
+    /* ⚠️ 不再往 localStorage 塞假成员记录 ——
+       邀请的真实状态（待接受 / 已取消 / 已过期 / 已接受）由服务端 invitations 表说话，
+       renderTeam() 会重新拉一遍真实列表。本地缓存曾导致"已被移出的人永远还在列表里"。 */
     closeModal('confirmModal');
     renderTeam();
-    showToast('邀请已发出，令牌：'+(result.token||'').slice(0,8)+'…','ok');
+    /* 邮件已由服务端真实发送（若配置了 SMTP）；未配置则回退开发模式直返链接 */
+    let tip='邀请已发出：'+email+'（'+roleLabel+'）';
+    if(result&&result.emailed)tip+='（邀请邮件已发送至该邮箱）';
+    else if(result&&result.dev_invite_link)tip+='（尚未配置邮件服务，请手动转发邀请链接：'+result.dev_invite_link+'）';
+    showToast(tip,'ok');
   }catch(e){
     alert('邀请失败：'+(e.message||'未知错误'));
   }
@@ -19100,8 +19638,9 @@ function openPermEditor(uid){
   for(var ti=0;ti<__teamMembers.length;ti++){if(__teamMembers[ti].id===uid){m=__teamMembers[ti];break;}}
   if(!m)return;
   var lp=getLocalPerms();
-  var curPerms=(lp[uid]&&lp[uid].perms)||m.perms||[];
+  var curPerms=readMemberPerms(lp,uid)||m.perms||[];
   var body='<div style="text-align:left"><div style="margin-bottom:10px;font-size:14px;font-weight:600">编辑「'+escHtml(m.name)+'」的权限</div>'
+    +'<div style="font-size:12px;color:#999;margin-bottom:8px">当前角色：'+escHtml(teamRoleLabel(m.role))+'（勾选结果只覆盖本团队，不影响该成员在其它公司的权限）</div>'
     +'<div style="display:grid;gap:10px">';
   var permDesc={execute:'查看/编辑施工计划和节点',contract:'查看/编辑合同和收款记录',cost:'查看/编辑成本、采购和增减项',delivery:'查看/编辑客户交付和发布'};
   for(var pi=0;pi<PERM_ALL.length;pi++){
@@ -19125,13 +19664,338 @@ function savePermEdits(uid){
   var perms=[];
   var nodes=document.querySelectorAll('#confirmModal input[data-perm]:checked');
   for(var ni=0;ni<nodes.length;ni++){perms.push(nodes[ni].value);}
-  var lp=getLocalPerms();lp[uid]={perms:perms,updatedAt:new Date().toISOString()};
+  var lp=getLocalPerms();
+  lp[permKey(uid)]={perms:perms,updatedAt:new Date().toISOString()};
+  try{ delete lp[uid]; }catch(e){}      /* 顺手清掉不带团队前缀的历史 key */
   saveLocalPerms(lp);
   /* 更新内存 */
   for(var ti=0;ti<__teamMembers.length;ti++){if(__teamMembers[ti].id===uid){__teamMembers[ti].perms=perms;break;}}
   closeModal('confirmModal');
   renderTeamList(__teamMembers,isTeamAdmin(),lp);
   showToast('权限已更新','ok');
+}
+
+// ============================================================
+// 当前团队 / 多团队切换（2026-08-31）
+// ------------------------------------------------------------
+// 一个账号可以同时属于多家公司（memberships 表），users.org_id 只是
+// 「当前激活的那一个」。切换团队 ≡ 换租户 ≡ 等价于换账号：
+// 本机数据必须整包换掉，且切换窗口内绝对不许发生任何 push。
+// ============================================================
+
+async function renderOrgBar(){
+  const bar=document.getElementById('teamOrgBar');
+  if(!bar)return;
+  if(!CloudSync.loggedIn){bar.innerHTML='';return;}
+  let me=null;
+  try{ me=await CloudSync.me(); }catch(e){ me=null; }
+  if(!me||!me.org_id){bar.innerHTML='';return;}
+  const multi=(me.org_count||1)>1;
+  __teamOrgs=[];
+  if(multi){
+    try{ __teamOrgs=await CloudSync.listOrgs(); }catch(e){ __teamOrgs=[]; }
+  }
+  const planMap={trial:'试用版',basic:'基础版',standard:'标准版',pro:'专业版'};
+  const sub='角色：'+escHtml(teamRoleLabel(me.role||''))
+    +' · 套餐：'+escHtml(planMap[me.plan]||me.plan||'—')
+    +(me.paid_until?' · 有效期至 '+escHtml(String(me.paid_until).slice(0,10)):'');
+  let html='<div class="team-org-bar">'
+    +'<div class="team-org-main">'
+    +'<div class="team-org-label">当前团队</div>'
+    +'<div class="team-org-name" id="teamOrgName">'+escHtml(me.org_name||'（未命名公司）')+'</div>'
+    +'<div class="team-org-sub">'+sub+'</div>'
+    +'</div>'
+    +'<div class="team-org-ops">';
+  if(multi&&__teamOrgs.length>1){
+    html+='<select class="team-org-select" id="teamOrgSwitch" data-act="switch-select">';
+    for(var i=0;i<__teamOrgs.length;i++){
+      var o=__teamOrgs[i];
+      var frozen=(o.org_status==='frozen'||o.org_status==='disabled');
+      html+='<option value="'+escHtml(o.org_id)+'"'+(o.is_current?' selected':'')+(frozen?' disabled':'')+'>'
+        +escHtml(o.org_name||o.org_id)+'（'+escHtml(teamRoleLabel(o.role))+'）'+(frozen?' · 已冻结':'')
+        +'</option>';
+    }
+    html+='</select>'
+      +'<button class="btn-primary btn-sm" data-act="switch-go" onclick="doSwitchTeam(document.getElementById(\'teamOrgSwitch\').value)">切换团队</button>';
+  }else if(multi){
+    html+='<span class="team-org-sub">共加入 '+(me.org_count||1)+' 个团队</span>';
+  }
+  html+='</div></div>';
+  bar.innerHTML=html;
+}
+
+/* 切换激活团队 —— 全流程里最危险的一段，顺序不能动。
+   为什么这么绕：本机 localStorage 里躺着【上一个团队】的全部项目数据，
+   而同步是 700ms 防抖的。若切换后 A 团队的防抖定时器才触发，
+   就会把 A 的项目整包写进 B 团队 —— 跨公司数据污染，不可逆。
+   所以用 CloudSync.__switching 做硬闸门（push / pushBeacon /
+   cloudPushSoon / cloudFlushOnUnload 四处都会检查它）。
+   ⚠️ confirmDialog 是回调式，async 里没法 await 等用户选择 → 用原生 confirm。 */
+async function doSwitchTeam(orgId){
+  if(!orgId){showToast('请先选择要切换的团队','warn');return;}
+  let me=null;
+  try{ me=await CloudSync.me(); }catch(e){}
+  if(me&&me.org_id===orgId){showToast('已经在这个团队里了','ok');return;}
+  var tgt=null;
+  for(var i=0;i<__teamOrgs.length;i++){if(__teamOrgs[i].org_id===orgId){tgt=__teamOrgs[i];break;}}
+  var tgtName=(tgt&&tgt.org_name)||orgId;
+  var n=(App.projects||[]).length;
+  var dirty=!!App.__pendingPush||cloudSyncFailed();
+  var msg='确定切换到「'+tgtName+'」吗？\n\n';
+  msg+='切换团队等于换一个工作空间：本机当前团队的 '+n+' 个项目会先清空，\n再从新团队云端重新下载。\n\n';
+  if(dirty)msg+='⚠️ 当前团队还有改动没确认上传，切换前会先补推一次。\n\n';
+  msg+='切换过程中请不要关闭页面。';
+  if(!window.confirm(msg))return;
+
+  cloudStatusSet('☁️ 正在切换团队…');
+  /* ① 先把「已改未推」的改动补推到【当前】团队（此刻闸门还没落，push 才走得通） */
+  if(CloudSync.loggedIn&&App.__pendingPush){
+    var pushed=false;
+    try{
+      var r=await Promise.race([CloudSync.push(),new Promise(function(res){setTimeout(function(){res('timeout');},5000);})]);
+      pushed=(r!=='timeout');
+    }catch(e){ pushed=false; }
+    if(!pushed){
+      var goOn=window.confirm('⚠️ 当前团队有改动没能成功上传。\n\n'
+        +'继续切换会清空本机数据，这部分改动可能永久丢失。\n\n'
+        +'点「确定」= 先下载一份备份到电脑，然后继续切换\n'
+        +'点「取消」= 留在当前团队，稍后重试同步');
+      if(!goOn){cloudStatusSet('已取消切换',false);return;}
+      try{ if(typeof exportJSON==='function')exportJSON(); }catch(e){}
+    }else{
+      delete App.__pendingPush;
+    }
+  }
+  /* ② 断开上一个团队的实时推送，免得切换后还收到它的 SSE 事件 */
+  try{ unitRealtimeStop(); }catch(e){}
+  /* ③ 落闸：从这一刻起任何 push 都被拒绝 */
+  CloudSync.__switching=true;
+  try{
+    /* ④ 服务端换身份（只改 users.org_id / users.role） */
+    var res=await CloudSync.switchOrg(orgId);
+    /* ⑤ 本机数据整包清空 + 清掉所有同步水位线（水位线属于上一个团队，留着会误判） */
+    App=JSON.parse(JSON.stringify(APP_DEFAULT));
+    App.projects=[];App.currentProjectId=null;
+    delete App.__pendingPush;delete App.__units;delete App.__lastSyncedAt;
+    delete App.__lastPullAt;delete App.__lastLocalChange;
+    /* 直接写 localStorage 而不是 persist()：persist 会触发防抖上传，
+       虽然被闸门拦着，但不产生这次无意义的调用更干净 */
+    try{ localStorage.setItem(APP_KEY,JSON.stringify(App)); }catch(e){}
+    cloudSyncReset();          /* 同步状态属于上一个团队 */
+    __unitMode=null;           /* 新团队要重新探测单元化能力 */
+    __teamLoaded=false;__teamMembers=[];__teamAdminCount=0;
+  }catch(e){
+    CloudSync.__switching=false;
+    cloudStatusSet('⚠️ 切换失败：'+((e&&e.message)||'未知错误'),false);
+    window.alert('切换团队失败：'+((e&&e.message)||'未知错误')+'\n\n本机数据未做任何改动。');
+    return;
+  }
+  /* ⑥ 开闸 —— 必须在同步之前，否则下面的 pull/push 会被自己的闸门拦死 */
+  CloudSync.__switching=false;
+  try{
+    await CloudSync.me(true);  /* 刷新身份缓存（org_id/role/套餐都变了） */
+    /* ⑦ 本地此刻是空的 → 走「先拉后推」铁律，从新团队云端恢复 */
+    await cloudSyncNow();
+  }catch(e){
+    cloudStatusSet('⚠️ 已切换团队，但同步失败：'+((e&&e.message)||'未知错误'),false);
+  }
+  /* ⑧ 重画整个界面 */
+  try{ refreshProjectUI(); }catch(e){}
+  try{ if(typeof currentPage!=='undefined'&&currentPage)switchPage(currentPage); }catch(e){}
+  try{ renderTeam(); }catch(e){}
+  showToast('已切换到「'+((res&&res.org_name)||tgtName)+'」','ok');
+  if(typeof addOpLog==='function'){
+    try{ addOpLog('member','切换到团队「'+((res&&res.org_name)||tgtName)+'」',''); }catch(e){}
+  }
+}
+
+// ============================================================
+// 已发出的邀请：取消（链接失效）/ 删除（清记录）
+// ------------------------------------------------------------
+// 「取消」和「删除」是两件事：取消后链接立刻打不开、但记录还在（可追溯谁邀请过谁）；
+// 删除是把记录本身抹掉。只有管理员看得到这一块。
+// ============================================================
+async function renderInvitations(){
+  const box=document.getElementById('teamInviteBox');
+  if(!box)return;
+  if(!CloudSync.loggedIn||!(await isTeamAdminAsync())){box.style.display='none';box.innerHTML='';return;}
+  let items=[];
+  try{ items=await CloudSync.listInvitations(); }catch(e){ items=[]; }
+  /* 已被接受的不列 —— 那些人已经出现在下面的成员列表里了 */
+  const open=[];
+  for(var i=0;i<items.length;i++){ if(items[i].status!=='accepted')open.push(items[i]); }
+  if(!open.length){box.style.display='none';box.innerHTML='';return;}
+  const stLabel={pending:'待接受',revoked:'已取消',expired:'已过期'};
+  let html='<div class="card" style="margin:0 0 12px">'
+    +'<div class="card-header" style="margin-bottom:8px">'
+    +'<div><div class="card-title">已发出的邀请</div>'
+    +'<div class="card-subtitle">共 '+open.length+' 条待处理 · 取消后邀请链接立即失效，删除则清除记录</div></div>'
+    +'</div>';
+  for(var j=0;j<open.length;j++){
+    var v=open[j];
+    var link=location.origin+location.pathname+'?invite='+encodeURIComponent(v.token||'');
+    html+='<div class="team-inv-card" data-inv="'+escHtml(v.id)+'" data-st="'+escHtml(v.status)+'">'
+      +'<div class="team-inv-info">'
+      +'<div class="team-inv-mail">'+escHtml(v.email||'（未填邮箱，凭链接加入）')+'</div>'
+      +'<div class="team-inv-meta">角色：'+escHtml(teamRoleLabel(v.role))
+      +' · 发出于 '+escHtml(String(v.created||'').replace('T',' ').slice(0,16))
+      +(v.expires?' · 有效期至 '+escHtml(String(v.expires).replace('T',' ').slice(0,16)):'')
+      +(v.revoked_at?' · 取消于 '+escHtml(String(v.revoked_at).replace('T',' ').slice(0,16)):'')
+      +'</div></div>'
+      +'<span class="team-inv-st st-'+escHtml(v.status)+'">'+escHtml(stLabel[v.status]||v.status)+'</span>'
+      +'<div class="team-inv-acts">';
+    if(v.status==='pending'){
+      html+='<button class="btn-outline btn-sm" data-act="copy" data-inv="'+escHtml(v.id)+'" onclick="doCopyInviteLink(\''+escHtml(link)+'\')">复制链接</button>'
+        +'<button class="btn-outline btn-sm" data-act="revoke" data-inv="'+escHtml(v.id)+'" onclick="doRevokeInvite(\''+escHtml(v.id)+'\')" style="color:#d46b08;border-color:#ffd591">取消邀请</button>';
+    }
+    html+='<button class="btn-outline btn-sm" data-act="del-inv" data-inv="'+escHtml(v.id)+'" onclick="doDeleteInvite(\''+escHtml(v.id)+'\')" style="color:#cf1322;border-color:#ffa39e">删除</button>'
+      +'</div></div>';
+  }
+  html+='</div>';
+  box.innerHTML=html;box.style.display='';
+}
+
+function doCopyInviteLink(link){
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(link);
+      showToast('邀请链接已复制','ok');
+      return;
+    }
+  }catch(e){}
+  window.prompt('复制下面的邀请链接发给对方：',link);
+}
+
+async function doRevokeInvite(id){
+  if(!window.confirm('取消这条邀请？\n\n对方点开链接会提示「邀请已被管理员取消」，但记录会保留可追溯。'))return;
+  try{
+    await CloudSync.revokeInvite(id);
+    if(typeof addOpLog==='function'){try{addOpLog('member','取消了一条邀请','');}catch(e){}}
+    showToast('邀请已取消，链接立即失效','ok');
+    renderInvitations();
+  }catch(e){ window.alert('取消失败：'+((e&&e.message)||'未知错误')); }
+}
+
+async function doDeleteInvite(id){
+  if(!window.confirm('删除这条邀请记录？\n\n记录会被彻底清除（若还没取消，链接也会一并失效）。'))return;
+  try{
+    await CloudSync.deleteInvite(id);
+    if(typeof addOpLog==='function'){try{addOpLog('member','删除了一条邀请记录','');}catch(e){}}
+    showToast('邀请记录已删除','ok');
+    renderInvitations();
+  }catch(e){ window.alert('删除失败：'+((e&&e.message)||'未知错误')); }
+}
+
+// ============================================================
+// 退出团队（本人）/ 移出团队（管理员）/ 改角色
+// ============================================================
+
+/* 本人退出当前团队。退出即失去这家公司的全部数据访问权，
+   所以和退出登录一样：先补推未上传的改动，再清空本机。 */
+async function doLeaveOrg(){
+  let me=null;
+  try{ me=await CloudSync.me(); }catch(e){}
+  var orgName=(me&&me.org_name)||'当前团队';
+  if(me&&me.role==='admin'&&__teamAdminCount<=1){
+    window.alert('你是「'+orgName+'」唯一的管理员，不能直接退出。\n\n请先把管理员角色转让给其他成员（在其成员卡片上把角色改为「企业管理员」），再退出。');
+    return;
+  }
+  var n=(App.projects||[]).length;
+  var msg='确定退出「'+orgName+'」吗？\n\n';
+  msg+='退出后你将无法再访问该公司的项目、合同、成本和照片。\n';
+  msg+='本机当前的 '+n+' 个项目会被清空（云端数据保留给公司其他成员）。\n\n';
+  msg+='如需重新加入，需由该公司管理员再次邀请。';
+  if(!window.confirm(msg))return;
+  /* 补推未上传的改动（此时还是本团队成员，推得上去） */
+  if(CloudSync.loggedIn&&App.__pendingPush){
+    try{ await Promise.race([CloudSync.push(),new Promise(function(r){setTimeout(r,4000);})]); }catch(e){}
+  }
+  try{ unitRealtimeStop(); }catch(e){}
+  CloudSync.__switching=true;      /* 退出过程同样禁止任何反向 push */
+  let res=null;
+  try{
+    res=await CloudSync.leaveOrg();
+  }catch(e){
+    CloudSync.__switching=false;
+    window.alert('退出失败：'+((e&&e.message)||'未知错误'));
+    return;
+  }
+  /* 清空本机（属于刚退出的那家公司） */
+  App=JSON.parse(JSON.stringify(APP_DEFAULT));
+  App.projects=[];App.currentProjectId=null;
+  delete App.__pendingPush;delete App.__units;delete App.__lastSyncedAt;
+  delete App.__lastPullAt;delete App.__lastLocalChange;
+  try{ localStorage.setItem(APP_KEY,JSON.stringify(App)); }catch(e){}
+  cloudSyncReset();__unitMode=null;
+  __teamLoaded=false;__teamMembers=[];__teamAdminCount=0;__teamOrgs=[];
+  CloudSync.__switching=false;
+  var nextName=(res&&res.next_org_name)||'';
+  var nextId=(res&&res.next_org_id)||'';
+  if(nextId){
+    /* 还有其它团队 → 自动落到那一个，并把它的数据拉下来 */
+    try{ await CloudSync.me(true); }catch(e){}
+    try{ await cloudSyncNow(); }catch(e){}
+    try{ refreshProjectUI(); }catch(e){}
+    try{ if(typeof currentPage!=='undefined'&&currentPage)switchPage(currentPage); }catch(e){}
+    try{ renderTeam(); }catch(e){}
+    showToast('已退出「'+orgName+'」，当前团队切换为「'+(nextName||nextId)+'」','ok');
+  }else{
+    /* 一个团队都不剩 → 回「创建 / 加入公司」闸门页 */
+    try{ refreshProjectUI(); }catch(e){}
+    window.alert('已退出「'+orgName+'」。\n\n你目前不属于任何公司，需要重新申请开通或凭邀请码加入。');
+    try{ CloudSync.__me=null; }catch(e){}
+    if(typeof showOrgGate==='function')showOrgGate('你已退出「'+orgName+'」，目前不属于任何公司。请提交加入或开通申请，审核通过后即可继续使用。');
+    else if(typeof showLoginPage==='function')showLoginPage();
+  }
+}
+
+/* 管理员把某个成员移出团队 */
+async function doRemoveMember(uid){
+  var m=null;
+  for(var i=0;i<__teamMembers.length;i++){if(__teamMembers[i].id===uid){m=__teamMembers[i];break;}}
+  if(!m){showToast('找不到该成员，请刷新后重试','warn');return;}
+  if(m.isMe){window.alert('不能移出自己。若要离开团队，请点你自己卡片上的「退出团队」。');return;}
+  if(m.role==='admin'&&__teamAdminCount<=1){
+    window.alert('「'+m.name+'」是本团队唯一的管理员，不能移出。\n请先把管理员转让给其他成员。');
+    return;
+  }
+  var msg='确定把「'+m.name+'」移出团队吗？\n\n';
+  msg+='TA 会立刻失去本公司全部数据的访问权，下次打开工作台看到的是空白。\n';
+  msg+='本公司的数据不受影响。如需恢复，需要重新邀请。';
+  if(!window.confirm(msg))return;
+  try{
+    await CloudSync.removeMember(uid);
+    if(typeof addOpLog==='function'){try{addOpLog('member','将「'+m.name+'」移出团队','');}catch(e){}}
+    showToast('已将「'+m.name+'」移出团队','ok');
+    renderTeam();
+  }catch(e){ window.alert('移出失败：'+((e&&e.message)||'未知错误')); }
+}
+
+/* 管理员改成员角色（把某人改成 admin 即"转让管理员"）。
+   后端另有安全闸：不能改自己、且必须保留至少一名管理员。 */
+async function doSetMemberRole(uid,role){
+  var m=null;
+  for(var i=0;i<__teamMembers.length;i++){if(__teamMembers[i].id===uid){m=__teamMembers[i];break;}}
+  if(!m){renderTeam();return;}
+  if(m.role===role)return;
+  var msg='把「'+m.name+'」的角色从「'+teamRoleLabel(m.role)+'」改为「'+teamRoleLabel(role)+'」？';
+  if(role==='admin'){
+    msg+='\n\n⚠️ 管理员拥有全部权限，包括邀请/移出成员、审核加入申请、修改所有项目数据。';
+  }
+  if(!window.confirm(msg)){renderTeam();return;}    /* 取消 → 重画把下拉复位 */
+  try{
+    await CloudSync.setMemberRole(uid,role);
+    /* 角色变了，之前单独勾的四维权限已失去意义 → 清掉，回落到新角色的默认权限 */
+    var lp=getLocalPerms();
+    try{ delete lp[permKey(uid)];delete lp[uid]; }catch(e){}
+    saveLocalPerms(lp);
+    if(typeof addOpLog==='function'){try{addOpLog('member','把「'+m.name+'」的角色改为'+teamRoleLabel(role),'');}catch(e){}}
+    showToast('「'+m.name+'」的角色已改为'+teamRoleLabel(role),'ok');
+    renderTeam();
+  }catch(e){
+    window.alert('修改角色失败：'+((e&&e.message)||'未知错误'));
+    renderTeam();
+  }
 }
 
 // ============================================================
@@ -19236,6 +20100,26 @@ function buildLogsFromData(){
   return logs;
 }
 
+/* 记录一条操作日志（写入 localStorage，最多保留 500 条） */
+function recordOperation(action, desc, projectId){
+  try{
+    const logs=JSON.parse(localStorage.getItem('xzgz_op_logs')||'[]');
+    const me=(cloudUser&&cloudUser.email)||(CloudSync.__me&&CloudSync.__me.display_name)||'我';
+    const pname=(App.projects.find(function(p){return p.id===projectId})||{}).name||'';
+    logs.unshift({
+      id:uid(),
+      user:me,
+      action:action||'other',
+      desc:desc||'',
+      projectId:projectId||'',
+      projectName:pname,
+      time:new Date().toISOString()
+    });
+    if(logs.length>500)logs.length=500;
+    localStorage.setItem('xzgz_op_logs',JSON.stringify(logs));
+  }catch(e){/* 静默失败，不影响主流程 */ }
+}
+
 /* 供其它模块调用的记录函数 */
 function addOpLog(action,desc,projectId){
   var me=(cloudUser&&cloudUser.email)||(CloudSync.__me&&CloudSync.__me.display_name)||'我';
@@ -19250,7 +20134,7 @@ function addOpLog(action,desc,projectId){
 }
 
 // ============================================================
-// 套餐与存储（企业额度管理）
+// 储存套餐（企业额度管理）
 // ============================================================
 
 function renderStorage(){
@@ -19267,18 +20151,43 @@ async function loadStorageInfo(){
   }
 }
 
+const ORG_PLAN_INFO={
+  trial:      {label:'试用版', desc:'功能完整，14 天后需升级', seat_admin:1,  seat_member:2,   storage_gb:5},
+  starter:    {label:'基础版', desc:'适合个人工长 / 小团队', seat_admin:2,  seat_member:10,  storage_gb:20},
+  standard:   {label:'标准版', desc:'适合中小装修公司',     seat_admin:5,  seat_member:30,  storage_gb:100},
+  enterprise: {label:'旗舰版', desc:'适合多门店连锁',       seat_admin:20, seat_member:100, storage_gb:500}
+};
 function updateStorageUI(me){
   /* 套餐信息 */
   const planEl=document.getElementById('storagePlan');
   const expEl=document.getElementById('storageExpiry');
   const seatsEl=document.getElementById('storageSeats');
-  if(planEl)planEl.textContent=me?(me.plan==='trial'?'企业试用版':(me.plan==='pro'?'企业专业版':(me.plan||'未知'))):'本地模式';
-  if(expEl){
-    if(me&&me.paid_until){
-      try{ const d=new Date(me.paid_until);expEl.textContent=d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+' 到期 · 剩余 '+Math.max(0,Math.ceil((d-new Date())/86400000))+' 天'; }catch(e){expEl.textContent=me.paid_until;}
-    }else{expEl.textContent='--';}
+  const planDescEl=document.getElementById('storagePlanDesc');
+  if(!me){
+    if(planEl)planEl.textContent='本地模式';
+    if(planDescEl)planDescEl.textContent='';
+    if(expEl)expEl.textContent='--';
+    if(seatsEl)seatsEl.textContent='--';
+  }else{
+    const planKey=String(me.plan||'trial');
+    const pi=ORG_PLAN_INFO[planKey]||null;
+    const label=pi?pi.label:(planKey||'未知');
+    const isPaid=planKey!=='trial';
+    if(planEl){
+      planEl.innerHTML=label+' <span style="display:inline-block;font-size:12px;padding:1px 8px;border-radius:10px;margin-left:6px;'+(isPaid?'background:#e6f4ff;color:#1677ff;border:1px solid #91caff':'background:#fafafa;color:#8c8c8c;border:1px solid #d9d9d9')+'">'+(isPaid?'已付费':'试用')+'</span>';
+    }
+    if(planDescEl)planDescEl.textContent=pi?pi.desc:'';
+    if(expEl){
+      if(me.paid_until){
+        try{ const d=new Date(me.paid_until);expEl.textContent=d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+' 到期 · 剩余 '+Math.max(0,Math.ceil((d-new Date())/86400000))+' 天'; }catch(e){expEl.textContent=me.paid_until;}
+      }else{expEl.textContent='--';}
+    }
+    if(seatsEl){
+      const sa=me.seat_admin||0, sm=me.seat_member||0;
+      const gb=Math.round((Number(me.storage_quota||0))/(1024*1024*1024));
+      seatsEl.innerHTML='管理员 '+sa+' 席 · 成员 '+sm+' 席 · 存储 '+gb+' GB';
+    }
   }
-  if(seatsEl)seatsEl.textContent=me?(me.seat_admin||0)+' 个管理员席位，'+(me.seat_member||0)+' 个成员席位':'--';
 
   /* 存储统计：遍历所有项目的照片 */
   const stats=countPhotosByCategory();
@@ -20502,7 +21411,32 @@ document.addEventListener('click',function(e){
 // ============================================================
 // INIT
 // ============================================================
+/* ── 深链处理：邀请 / 重置密码链接带 ?invite= / ?reset=&email= ──
+   解析后存到 sessionStorage，并清理地址栏（避免刷新重复处理）。
+   登录后由 cloudEnterApp() 自动兑换邀请；重置令牌直接进入重置视图。 */
+function handleDeepLinks(){
+  try{
+    var q=new URLSearchParams(location.search);
+    var inviteToken=q.get('invite');
+    var resetToken=q.get('reset');
+    var resetEmail=q.get('email')||'';
+    if(inviteToken){
+      window.__pendingInvite=inviteToken;
+      try{ sessionStorage.setItem('xzgz_invite_token',inviteToken); }catch(e){}
+    }
+    if(resetToken){
+      window.__pendingReset={token:resetToken,email:resetEmail};
+      try{ sessionStorage.setItem('xzgz_reset_token',resetToken); sessionStorage.setItem('xzgz_reset_email',resetEmail); }catch(e){}
+    }
+    /* 清理地址栏参数（保留 hash 锚点） */
+    if(location.search){
+      try{ history.replaceState(null,'',location.pathname+(location.hash||'')); }catch(e){}
+    }
+  }catch(e){}
+}
+
 async function init(){
+  handleDeepLinks();
   load();
   /* 徽章 ticker 在此挂载一次：init() 是所有路径的必经入口（含未登录停在登录页的场景）；
      enterApp() 里也有调用，靠 __on 防重，不会重复注册监听器。 */
@@ -20526,11 +21460,24 @@ async function init(){
     (async()=>{
       try{
         const me=await CloudSync.me();
-        if(me&&!me.org_id)showOrgGate();
+        if(me&&!me.org_id){
+          if(window.__pendingInvite){ cloudEnterApp(); }
+          else showOrgGate();
+        }
+        else if(me&&me.org_status==='suspended')showOrgFrozen();
       }catch(e){/* 取不到身份就维持现状，不打断用户 */}
     })();
   }else{
     showLoginPage();
+    /* 深链处理：重置密码链接 → 直接进入重置视图；邀请链接 → 提示登录后自动加入 */
+    if(window.__pendingReset){
+      showAuthView('reset');
+      var rh=document.getElementById('resetEmailHint');
+      if(rh&&window.__pendingReset.email)rh.textContent=window.__pendingReset.email;
+    }else if(window.__pendingInvite){
+      var iam=document.getElementById('cloudAuthMsg');
+      if(iam){iam.style.color='#1677ff';iam.textContent='你收到一个团队邀请，登录后将自动加入。';}
+    }
     return; /* 未登录则停止，等用户手动操作（登录/仅本地使用） */
   }
   /* ── 后台云同步（非阻塞）：拉取完成后若数据有变更则静默刷新当前页 ── */
@@ -20615,32 +21562,128 @@ else init();
     </div>
 
     <div id="cloudOrgView" style="display:none">
-      <div style="font-size:13px;color:#666;margin-bottom:12px">登录成功。你还没有加入公司 —— 创建一家，或者用同事给你的邀请码加入。</div>
-      <div style="font-size:12px;color:#666;margin-bottom:4px">公司名称</div>
-      <input id="orgNameInput" placeholder="例如：福州焕安居装饰" class="login-input" autocomplete="off">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-        <button class="btn-primary" onclick="cloudDoCreateOrg()">创建公司</button>
-        <button class="btn-outline" onclick="cloudLogout()">退出登录</button>
-      </div>
-      <div style="border-top:1px solid #eee;margin:18px 0 14px"></div>
-      <div style="font-size:12px;color:#666;margin-bottom:4px">邀请码（找公司管理员要）</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px">登录成功。你还没有加入公司 —— 提交申请，<b>审核通过后</b>即可使用。</div>
+
+      <div id="myRequestBox" style="display:none;margin-bottom:14px;padding:10px 12px;border-radius:8px;background:#e6f4ff;border:1px solid #91caff"></div>
+
+      <div style="font-size:12px;color:#666;margin-bottom:4px">① 我有邀请码（加入已有公司）</div>
       <input id="orgInviteInput" placeholder="粘贴邀请码" class="login-input" autocomplete="off">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-        <button class="btn-outline" onclick="cloudDoAcceptInvite()">加入公司</button>
+        <button class="btn-primary" onclick="cloudDoSubmitJoin()">提交加入申请</button>
+        <button class="btn-outline" onclick="cloudLogout()">退出登录</button>
       </div>
+
+      <div style="border-top:1px solid #eee;margin:18px 0 14px"></div>
+
+      <div style="font-size:12px;color:#666;margin-bottom:4px">② 我要开通新公司</div>
+      <input id="orgNameInput" placeholder="公司名称，例如：福州焕安居装饰" class="login-input" autocomplete="off">
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <input id="orgContactInput" placeholder="联系人" class="login-input" autocomplete="off" style="flex:1">
+        <input id="orgPhoneInput" placeholder="联系电话" class="login-input" autocomplete="off" style="flex:1">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn-outline" onclick="cloudDoSubmitOrg()">提交开通申请</button>
+        <button class="btn-outline" onclick="renderMyRequest()">刷新状态</button>
+      </div>
+
       <div id="cloudOrgMsg" style="font-size:12px;min-height:16px;margin-top:10px;color:#ff4d4f"></div>
     </div>
 
     <div id="cloudAuthView" style="display:none">
-      <div style="font-size:13px;color:#666;margin-bottom:12px">登录你的账号即可同步（不同账号数据相互隔离）。</div>
-      <div style="font-size:12px;color:#666;margin-bottom:4px">邮箱</div>
-      <input id="cloudEmailInput" placeholder="you@example.com" class="login-input" autocomplete="email">
-      <div style="font-size:12px;color:#666;margin-bottom:4px">密码</div>
-      <input id="cloudPwdInput" type="password" class="login-input" autocomplete="current-password">
-      <div id="cloudAuthMsg" style="color:#ff4d4f;font-size:12px;min-height:16px;margin-bottom:8px"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-primary" onclick="cloudDoLogin()">登录</button>
-        <button class="btn-outline" onclick="cloudDoSignup()">注册新账号</button>
+      <!-- 登录（默认视图） -->
+      <div id="authLoginView">
+        <div style="font-size:14px;font-weight:600;margin-bottom:2px;color:#1a1a1a">登录账号</div>
+        <div style="font-size:12px;color:#888;margin-bottom:14px">输入账号信息，继续管理你的装修项目。</div>
+        <div style="font-size:12px;color:#666;margin-bottom:4px">用户名</div>
+        <input id="cloudEmailInput" placeholder="请输入用户名" class="login-input" autocomplete="username">
+        <div style="font-size:12px;color:#666;margin-bottom:4px">密码</div>
+        <input id="cloudPwdInput" type="password" class="login-input" autocomplete="current-password">
+        <div id="cloudAuthMsg" style="color:#ff4d4f;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="cloudDoLogin()" style="flex:1">登录</button>
+        </div>
+        <div style="margin-top:10px;text-align:center;font-size:13px">
+          <a href="javascript:void(0)" onclick="showAuthView('forgot')" style="color:#1677ff;text-decoration:none">忘记密码？用邮箱找回</a>
+          <span style="color:#ddd;margin:0 8px">|</span>
+          <a href="javascript:void(0)" onclick="showAuthView('register')" style="color:#1677ff;text-decoration:none">还没有账号？立即注册</a>
+        </div>
+      </div>
+
+      <!-- 注册 - 步骤1：验证邮箱 -->
+      <div id="authRegStep1View" style="display:none">
+        <div style="font-size:14px;font-weight:600;margin-bottom:2px;color:#1a1a1a">注册账号</div>
+        <div style="font-size:12px;color:#888;margin-bottom:14px">邮箱验证通过后才会创建账号，方便后续管理和找回密码。</div>
+        <div style="display:flex;gap:10px;margin-bottom:12px">
+          <div style="flex:1;background:#e6f4ff;border:1px solid #91caff;border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-size:15px;font-weight:700;color:#003a8c">1</div>
+            <div style="font-size:11px;color:#1677ff;margin-top:2px">验证邮箱</div>
+            <div style="font-size:10px;color:#999">获取并填写验证码</div>
+          </div>
+          <div style="flex:1;background:#f5f5f5;border:1px solid #d9d9d9;border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-size:15px;font-weight:700;color:#999">2</div>
+            <div style="font-size:11px;color:#666;margin-top:2px">设置账号</div>
+            <div style="font-size:10px;color:#999">填写用户名和密码</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#666;margin-bottom:4px">邮箱</div>
+        <input id="regEmailInput" placeholder="name@example.com" class="login-input" autocomplete="email">
+        <div style="font-size:12px;color:#666;margin-bottom:4px">邮箱验证码</div>
+        <div style="display:flex;gap:8px">
+          <input id="regCodeInput" placeholder="6 位验证码" class="login-input" autocomplete="one-time-code" style="flex:1">
+          <button class="btn-outline" onclick="sendRegCode()" id="sendCodeBtn" style="white-space:nowrap;padding:8px 16px">发送验证码</button>
+        </div>
+        <div id="regMsg" style="color:#ff4d4f;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="goToRegStep2()" style="flex:1">下一步</button>
+          <button class="btn-outline" onclick="showAuthView('login')">返回登录</button>
+        </div>
+      </div>
+
+      <!-- 注册 - 步骤2：设置用户名密码 -->
+      <div id="authRegStep2View" style="display:none">
+        <div style="font-size:14px;font-weight:600;margin-bottom:2px;color:#1a1a1a">注册账号</div>
+        <div style="font-size:12px;color:#888;margin-bottom:14px">设置您的登录信息。</div>
+        <div style="font-size:12px;color:#666;margin-bottom:4px">用户名</div>
+        <input id="regUsernameInput" placeholder="3-20 个字符" class="login-input" autocomplete="username">
+        <div style="font-size:12px;color:#666;margin-bottom:4px">密码</div>
+        <input id="regPwdInput" type="password" placeholder="至少 8 个字符" class="login-input" autocomplete="new-password">
+        <div style="font-size:12px;color:#666;margin-bottom:4px">确认密码</div>
+        <input id="regPwd2Input" type="password" placeholder="再次输入密码" class="login-input" autocomplete="new-password">
+        <div id="regStep2Msg" style="color:#ff4d4f;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="doFinishRegister()" style="flex:1">注册</button>
+          <button class="btn-outline" onclick="showAuthView('register')">上一步</button>
+        </div>
+      </div>
+
+      <!-- 找回密码 -->
+      <div id="authForgotView" style="display:none">
+        <div style="font-size:14px;font-weight:600;margin-bottom:2px;color:#1a1a1a">登录账号</div>
+        <div style="font-size:12px;color:#888;margin-bottom:14px">输入账号信息，继续管理你的装修项目。</div>
+        <div style="font-size:12px;color:#666;margin-bottom:4px">找回密码邮箱</div>
+        <input id="forgotEmailInput" placeholder="输入已绑定邮箱" class="login-input" autocomplete="email">
+        <div id="forgotMsg" style="color:#ff4d4f;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+        <button class="btn-primary" onclick="doRequestReset()" style="width:100%;margin-bottom:10px">发送重置链接</button>
+        <div style="text-align:center;font-size:13px">
+          <a href="javascript:void(0)" onclick="showAuthView('login')" style="color:#1677ff;text-decoration:none">返回登录</a>
+          <span style="color:#ddd;margin:0 8px">|</span>
+          <a href="javascript:void(0)" onclick="showAuthView('register')" style="color:#1677ff;text-decoration:none">还没有账号？立即注册</a>
+        </div>
+      </div>
+
+      <!-- 重置密码（来自邮件链接） -->
+      <div id="authResetView" style="display:none">
+        <div style="font-size:14px;font-weight:600;margin-bottom:2px;color:#1a1a1a">重置密码</div>
+        <div style="font-size:12px;color:#888;margin-bottom:14px">为 <b id="resetEmailHint"></b> 设置新密码。</div>
+        <div style="font-size:12px;color:#666;margin-bottom:4px">新密码</div>
+        <input id="resetPwdInput" type="password" placeholder="至少 8 个字符" class="login-input" autocomplete="new-password">
+        <div style="font-size:12px;color:#666;margin-bottom:4px">确认新密码</div>
+        <input id="resetPwd2Input" type="password" placeholder="再次输入密码" class="login-input" autocomplete="new-password">
+        <div id="resetMsg" style="color:#ff4d4f;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+        <button class="btn-primary" onclick="doConfirmReset()" style="width:100%;margin-bottom:10px">确认重置</button>
+        <div style="text-align:center;font-size:13px">
+          <a href="javascript:void(0)" onclick="showAuthView('login')" style="color:#1677ff;text-decoration:none">返回登录</a>
+        </div>
       </div>
     </div>
 
