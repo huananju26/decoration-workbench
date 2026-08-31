@@ -103,7 +103,11 @@ routerAdd('POST', '/api/org/invite', (e) => {
   const data = new DynamicModel({ role: 'reader', email: '' });
   e.bindBody(data);
   const targetEmail = String(data.email || '').trim();
-  const role = data.role || 'member';
+  /* 🩸 #430：兜底值原本是 'member'，但 invitations.role 的候选值早已扩成
+     ['admin','pm','designer','finance','purchaser','qa','reader']（'member' 不在其中）→
+     客户端一旦显式传 role:'' 就会拿到非法值、写库 400 validation_invalid_value。
+     改成与上面 DynamicModel 默认值一致的 'reader'（最小权限）。 */
+  const role = data.role || 'reader';
 
   const invCol = $app.findCollectionByNameOrId('invitations');
   const inv = new Record(invCol);

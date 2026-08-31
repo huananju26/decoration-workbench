@@ -5,10 +5,10 @@
 #   sudo bash /tmp/d3.sh
 #
 # 本脚本做的事：
-#   1) 从 GitHub Pages 中转站拉 5 个后端钩子 + 前端 app23.html + 运营后台 admin10.html
+#   1) 从 GitHub Pages 中转站拉 6 个后端钩子 + 前端 app23.html + 运营后台 admin10.html
 #   2) 字节校验（不一致=gh-pages 未同步，自动重试一次）
 #   3) 备份当前 pb_public/index.html（回退点）
-#   4) 写入 5 个常驻钩子（含 api_admin / api_cleanup）+ 重启 PB
+#   4) 写入 6 个常驻钩子（含 api_admin / api_cleanup / schema_patch_v3）+ 重启 PB
 #   5) 部署前端 app23.html → index.html、运营后台 admin10.html → admin.html（固定地址）
 #
 # 本次重点修复：
@@ -36,6 +36,17 @@
 #       导致「该邮箱已注册」提示从未生效）→ 改 findRecordsByFilter（#429）：register 的「邮箱验证 / 邮箱唯一性」与 verify-code 三处 catch
 #      原为「仅按 message 子串条件重抛」，其余异常静默吞掉 —— 前者等于可绕过邮箱验证，
 #      后者会让 save 撞唯一约束再被 PB 吞一层、只回 400 Something went wrong。现全部改为显式抛出。
+#   - 🩸 #430 邀请/角色链路全线 400：当年 role_patch 只把 invitations.role 扩成 8 值，
+#      漏了 access_requests.role 与 users.role（两者仍是 ['admin','member']）。后果：
+#        ① 邀请「项目经理(pm)」→ 员工拿码提交加入申请 400 validation_invalid_value
+#        ② 即便申请进了队，管理员点通过 → 写 users.role='pm' 再次 400
+#        ③ 「改成员角色」/api/org/set-role 写入 pm/designer/finance/purchaser/qa/reader 全部 400
+#      → 新增 schema_patch_v3.pb.js：把 invitations / access_requests / users 三张表的
+#        role 候选值统一扩为 8 值并集。
+#      ⚠️ 该补丁走 cronAdd（每分钟触发）+ cronRemove 自我注销 —— 本 PB 版本的 JSVM
+#         没有 onServe/onBootstrap（实测 globalThis 里注册类只有 routerAdd/cronAdd/cronRemove），
+#         而钩子文件顶层代码虽会在启动时执行，但那一刻 $app 的 DB 未就绪，
+#         调 findCollectionByNameOrId 会 nil pointer panic。
 set -e
 
 BASE="https://huananju26.github.io/decoration-workbench"
@@ -44,10 +55,11 @@ PUB="/opt/pocketbase/pb_public"
 
 # ── 预期字节（与本地 gh-pages 推送一致，用于完整性校验）──
 EXP_api_team=24377     # api_team_v1.js       → pb_hooks/api_team.pb.js
-EXP_api_multiorg=36599 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在）
+EXP_api_multiorg=36976 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在 + #430 邀请 role 兜底改 reader）
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
+EXP_schema_patch_v3=4865 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集）
 EXP_app=1370215        # app23.html           → pb_public/index.html（#428 日志隔离 + #429 注释订正）
 EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 徽章同行 + 套餐字号对齐）
 
@@ -75,6 +87,7 @@ dl "$BASE/api_multiorg_v1.js" /tmp/api.pb.js          $EXP_api_multiorg
 dl "$BASE/api_review_v2.js"   /tmp/api_review.pb.js   $EXP_api_review
 dl "$BASE/api_admin_v1.js"    /tmp/api_admin.pb.js    $EXP_api_admin
 dl "$BASE/api_cleanup_v1.js"  /tmp/api_cleanup.pb.js  $EXP_api_cleanup
+dl "$BASE/schema_patch_v3.pb.js" /tmp/schema_patch_v3.pb.js $EXP_schema_patch_v3
 
 echo "== [2/5] 下载前端 app23.html + 运营后台 admin10.html =="
 dl "$BASE/app23.html" /tmp/app23.html $EXP_app
@@ -90,16 +103,23 @@ sudo cp /tmp/api.pb.js          "$HOOKS/api.pb.js"
 sudo cp /tmp/api_review.pb.js   "$HOOKS/api_review.pb.js"
 sudo cp /tmp/api_admin.pb.js    "$HOOKS/api_admin.pb.js"
 sudo cp /tmp/api_cleanup.pb.js  "$HOOKS/api_cleanup.pb.js"
-echo "  ✓ 5 个钩子已写入 $HOOKS/"
+sudo cp /tmp/schema_patch_v3.pb.js "$HOOKS/schema_patch_v3.pb.js"
+echo "  ✓ 6 个钩子已写入 $HOOKS/"
 
-echo "== [4/5] 重启 pocketbase（加载含 api_admin / api_cleanup 的钩子集）=="
+echo "== [4/5] 重启 pocketbase（加载含 api_admin / api_cleanup / schema_patch_v3 的钩子集）=="
 sudo systemctl restart pocketbase
 sleep 4
 if ! sudo systemctl is-active --quiet pocketbase; then
   echo "  !! PB 未起来，排查：journalctl -u pocketbase -n 50"
   exit 1
 fi
-echo "  ✓ pocketbase 已启动（5 钩子常驻）"
+echo "  ✓ pocketbase 已启动（6 钩子常驻）"
+echo ""
+echo "  ⏳ schema_patch_v3 走 cron（每分钟触发一次），不是启动即生效："
+echo "     重启后约 1 分钟内会自动把 invitations / access_requests / users 三张表的"
+echo "     role 候选值扩为 8 值并集，打完补丁自我注销（cronRemove）。"
+echo "     确认命令：sudo journalctl -u pocketbase -n 50 | grep schema_patch_v3"
+echo "     预期看到：invitations.role 已扩展 / access_requests.role 已扩展 / users.role 已扩展 / cron 自我注销"
 
 echo "== [5/5] 部署前端 app23.html → index.html + 运营后台 admin10.html → admin.html =="
 sudo cp /tmp/app23.html "$PUB/index.html"
@@ -129,3 +149,7 @@ echo "  ✅ 🩸 新用户注册：填邮箱+验证码+用户名+密码后应成
 echo "  ✅ 注册后用「用户名」或「邮箱」都能登录（用户名现在存在内置 name 字段里）"
 echo "  ✅ 异常分支文案可诊断：重复邮箱→「该邮箱已注册」、验证码错→「验证码错误」、未验证→「请先完成邮箱验证」"
 echo "  ✅ 以上均不得为 「Something went wrong」（出现即说明有异常被吞，见 pb-pitfalls ②b）"
+echo "  ✅ 🩸 #430 重启后约 1 分钟，日志出现 schema_patch_v3 的 4 行："
+echo "       invitations.role 已扩展 / access_requests.role 已扩展 / users.role 已扩展 / cron 自我注销"
+echo "  ✅ 权限管理页：把成员角色改成「项目经理/设计师/财务/采购/质检/只读」任一项，保存应成功（不再 400）"
+echo "  ✅ 邀请成员选「项目经理」→ 对方提交加入申请→管理员通过→对方角色显示为「项目经理」（不是普通成员）"
