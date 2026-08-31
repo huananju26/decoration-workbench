@@ -1,28 +1,20 @@
 // 临时补丁：扩展 invitations.role 为 7 种角色值。
-// 作用：运行时读出 role 字段真实结构，自动尝试正确写法并保存（不会让 PB 启动崩溃）。
+// 注意：PB JSVM 顶层 function/var 在 routerAdd 回调里不可见（每路由独立上下文），
+// 因此本文件全部逻辑内联在回调内，无任何外部 function 声明。
 // 用完验证邀请 designer 等可用后，可自行删除本文件（rm pb_hooks/role_patch.pb.js + restart）。
-const PATCH_TOKEN = 'hjrp_9k2x';
-
-// 防御式读取查询参数 tok（避开 header 属性在 JSVM 的坑）
-function getTok(e) {
-  try {
-    const u = e.request.url;
-    const q = u && typeof u.query === 'function' ? u.query() : null;
-    if (q) {
-      if (typeof q.get === 'function') {
-        const v = q.get('tok');
-        if (v) return String(v);
-      }
-      if (q['tok']) return Array.isArray(q['tok']) ? String(q['tok'][0]) : String(q['tok']);
-    }
-  } catch (_) {}
-  return '';
-}
-
 routerAdd('GET', '/api/patch_role', (e) => {
   try {
-    const tok = getTok(e);
-    if (tok !== PATCH_TOKEN) return e.json(403, { ok: false, err: 'forbidden' });
+    // —— token 校验（内联，防御式读取查询参数 tok）——
+    let tok = '';
+    try {
+      const u = e.request.url;
+      const q = (u && typeof u.query === 'function') ? u.query() : null;
+      if (q) {
+        if (typeof q.get === 'function') { const v = q.get('tok'); if (v) tok = String(v); }
+        else if (q['tok']) tok = Array.isArray(q['tok']) ? String(q['tok'][0]) : String(q['tok']);
+      }
+    } catch (_) {}
+    if (tok !== 'hjrp_9k2x') return e.json(403, { ok: false, err: 'forbidden' });
 
     const collection = $app.findCollectionByNameOrId('invitations');
     if (!collection) return e.json(500, { ok: false, step: 'find', err: 'no invitations collection' });
@@ -56,7 +48,6 @@ routerAdd('GET', '/api/patch_role', (e) => {
       return e.json(500, { ok: false, step: 'save', method: method, err: String(saveErr), probe: probe });
     }
   } catch (err) {
-    // 任何意外都返回 JSON，绝不触发 PB 的 400 通用错误
-    return e.json(500, { ok: false, step: 'top', err: String(err), stack: String(err && err.stack || '') });
+    return e.json(500, { ok: false, step: 'top', err: String(err), stack: String((err && err.stack) || '') });
   }
 });
