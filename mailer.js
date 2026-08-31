@@ -41,11 +41,26 @@ function mailShell(title, innerHtml) {
     + '</div></div>';
 }
 
+// 读取后台 SMTP 设置里的发件人（主程序已配「发件人地址/名称」），
+// 显式填入 message.from —— JSVM 的 newMailClient().send() 在 from 缺失时会抛错。
+function getSender() {
+  try {
+    const st = $app.settings();
+    const s = (typeof st.smtp === 'function') ? st.smtp() : (st.smtp || null);
+    if (s) {
+      const addr = s.senderAddress || s.username || '';
+      if (addr) return { address: addr, name: s.senderName || '焕安居装修工作台' };
+    }
+  } catch (e) { /* 读不到就走兜底 */ }
+  if (FROM) return { address: FROM, name: '焕安居装修工作台' };
+  return { address: 'noreply@106.55.14.231', name: '焕安居装修工作台' };
+}
+
 // 真实发送：依赖 $app.newMailClient().send()（底层走后台 SMTP 设置）。
 // 注意（PB 0.40.1 JSVM 实测）：
 //   1. MailerMessage 是【直接注入的全局类】，不能用 require('pocketbase')（报 Invalid module）。
 //   2. 发信方法不是 $app.send / e.app.send（这些不存在），而是 $app.newMailClient().send(message)。
-//   3. message 的 from/to 必须是 {address,name} 对象（to 为数组）。
+//   3. message 的 from/to 必须是 {address,name} 对象（to 为数组），且 from 必须显式设置，否则 send 抛错。
 function sendMail(to, subject, html, text) {
   let MailerMessageCtor = null;
   try { MailerMessageCtor = MailerMessage; } catch (e) { MailerMessageCtor = null; }
@@ -54,15 +69,15 @@ function sendMail(to, subject, html, text) {
   }
   if (!MailerMessageCtor) throw new Error('MailerMessage 在当前 JSVM 不可用');
   const msg = {
+    from: getSender(),
     to: [{ address: to }],
     subject: subject,
     html: html,
     text: text || (html ? html.replace(/<[^>]+>/g, ' ') : '')
   };
-  if (FROM) msg.from = { address: FROM, name: '焕安居装修工作台' };
   const message = new MailerMessageCtor(msg);
   const client = $app.newMailClient();
   client.send(message);
 }
 
-module.exports = { FROM, APP_BASE_URL, smtpEnabled, mailShell, sendMail };
+module.exports = { FROM, APP_BASE_URL, smtpEnabled, mailShell, sendMail, getSender };
