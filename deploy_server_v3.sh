@@ -60,7 +60,7 @@ EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=4865 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集）
-EXP_app=1396692        # app23.html           → pb_public/index.html（#435 成员列表UI对齐截图：角色下拉加粗边框大框/操作按钮竖排三行+统一CSS类/清除冗余行内样式）
+EXP_app=1396831        # app23.html           → pb_public/index.html（#436 修复成员名竖排+下拉框过长：下拉 max-width:90px + min-width:max-content 缩短到1/4，名字 white-space:nowrap 强制横排，name-row flex-wrap:nowrap 防断行）
                        #   ⚠️ #430 兜底：前端 ROLE_OPTIONS 只有 7 项（无 member），而后端 role 是 8 值，
                        #      原 replace 写法对 member 匹配不到 → 下拉框默认选第一项（项目经理），
                        #      与同行文字标签「成员」自相矛盾，且该 select 是 onchange 立即提交，有误改权限风险。
