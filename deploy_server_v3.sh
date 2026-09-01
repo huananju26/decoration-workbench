@@ -60,11 +60,14 @@ EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=4865 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集）
-EXP_app=1398171        # app23.html           → pb_public/index.html（#438 报价系统「整理重复项」按钮：按「项目名称+说明」完全相同判重，保留第一条删其余，跨sheet/cat全局去重，确认前只统计不改数据）
-                       #   ⚠️ #430 兜底：前端 ROLE_OPTIONS 只有 7 项（无 member），而后端 role 是 8 值，
-                       #      原 replace 写法对 member 匹配不到 → 下拉框默认选第一项（项目经理），
-                       #      与同行文字标签「成员」自相矛盾，且该 select 是 onchange 立即提交，有误改权限风险。
-                       #      修复：未知角色时先插一个对应 option 并选中（见 test_role_select_fallback.js）。
+EXP_app=1411393        # app23.html           → pb_public/index.html（#439-#446 报价系统大轮改，一次部署）
+                       #   #439 总价清单名称可点击跳转+删除重编号、删均价行、消除打印空白页、说明textarea自适应
+                       #   #440 总价清单计算区动态化（删半包优惠一口价行、无主材隐藏管理费/主材合计）
+                       #   #441 累计总金额计算链修复（不再吃半包优惠常量，删除项后总额随动）
+                       #   #442 QUOTE_SEED 模板说明全补全（grep ', ''' =0 残留）
+                       #   #443 说明编号规范化(268条)+累计5%协调费硬核修复(无主材=0)+新增空间模板undefined修复
+                       #   #444 分类标题可编辑+分类删除、#445 分类序号固定+删除后自动重排
+                       #   #446 付款方式4比例可手调（35/35/25/5 填空风格联动）
 EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 徽章同行 + 套餐字号对齐）
 
 # 钩子数量。⚠️ 以前是写死在两处回显里的字面量，加第 6 个钩子（schema_patch_v3）时只改了
