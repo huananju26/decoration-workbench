@@ -55,7 +55,7 @@ PUB="/opt/pocketbase/pb_public"
 
 # ── 预期字节（与本地 gh-pages 推送一致，用于完整性校验）──
 EXP_api_team=24377     # api_team_v1.js       → pb_hooks/api_team.pb.js
-EXP_api_multiorg=39599 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在 + #430 邀请 role 兜底改 reader + 注册 save 段 try/catch + 移除 org_id/status 防御性 set（注册 400 真凶）+ 临时诊断路由 _diag_register（确认后删除））
+EXP_api_multiorg=38232 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在 + #430 邀请 role 兜底改 reader + 注册 save 段 try/catch + 移除 org_id/status 防御性 set（注册 400 真凶）+ 临时诊断路由 _diag_register 已验证删除）
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js

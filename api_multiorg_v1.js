@@ -698,39 +698,6 @@ routerAdd('POST', '/api/auth/register', (e) => {
   return e.json(200, { ok: true, id: user.id, email: data.email, username: data.username });
 });
 
-/* 🩸 临时诊断路由（2026-09-01 注册 400 排查用，确认后删除）：
-   用与 register 完全相同的建用户逻辑，但不走邮箱验证，直接把原始报错（含 stack）
-   以 JSON 返回。这样无需收验证码即可读出 $app.save 阶段在 PB 里到底炸在哪。
-   用完即删，勿留生产。 */
-routerAdd('POST', '/api/_diag_register', (e) => {
-  const data = new DynamicModel({ email: '', username: '', password: '' });
-  e.bindBody(data);
-  var created = null;
-  try {
-    var ucol = $app.findCollectionByNameOrId('users');
-    if (!ucol) return e.json(200, { ok: false, stage: 'findCollection', error: 'users collection missing' });
-    var u = new Record(ucol);
-    u.set('email', data.email);
-    u.set('password', data.password);
-    u.set('name', data.username);
-    u.set('display_name', data.username);
-    u.set('role', 'member');
-    u.set('verified', true);
-    $app.save(u);
-    created = u;
-    return e.json(200, { ok: true, id: u.id, email: data.email });
-  } catch (err) {
-    return e.json(200, {
-      ok: false,
-      error: String(err && err.message ? err.message : err),
-      stack: String(err && err.stack ? err.stack : '')
-    });
-  } finally {
-    /* 自愈：诊断产生的测试用户立即删掉，不留污染 */
-    if (created) { try { $app.deleteRecord(created); } catch (e2) {} }
-  }
-});
-
 routerAdd('POST', '/api/auth/login-username', (e) => {
   const data = new DynamicModel({ login: '', password: '' });
   e.bindBody(data);
