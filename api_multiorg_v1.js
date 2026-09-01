@@ -679,11 +679,14 @@ routerAdd('POST', '/api/auth/register', (e) => {
     user.set('display_name', data.username);
     user.set('role', 'member');
     user.set('verified', true);
-    /* 🩸 防御性补全：users.status 字段存在但代码未接（#430 记忆），org_id 是关系字段；
-       若集合对其有必填约束，未设置会导致 $app.save 抛「字段必填」被 PB 吞成英文兜底。
-       set 不存在的字段会被 PB 静默忽略，无副作用；存在则补默认值。 */
-    try { user.set('org_id', null); } catch (e) {}
-    try { user.set('status', 'pending'); } catch (e) {}
+    /* 🩸 不主动 set org_id / status（2026-09-01 注册 400 真凶定位）：
+       - org_id 是关系字段，对「尚未加入/创建公司」的新注册用户本就该为空；
+         实测 `user.set('org_id', null)` 在 goja 里会在 $app.save 时触发关系字段校验异常
+         （"Something went wrong" 的真凶之一），故干脆不设置。
+       - status 字段存在但代码未接（#430 记忆），其 select 候选值未知，
+         盲目 set('status','pending') 若不在候选值内会在 save 时抛「无效值」；
+         新建用户本就是待审核态，留空即可（前端按 org_id 为空判定「未加入公司」）。
+       之前 curl 实测游客直建用户（不带这两个字段）返回 200，证明二者均可空。 */
     $app.save(user);
   } catch (err) {
     /* 🩸 异常必须出声：save 阶段若因字段必填/类型不符/约束冲突（或 AfterCreate 钩子抛异常）
@@ -693,6 +696,39 @@ routerAdd('POST', '/api/auth/register', (e) => {
   }
 
   return e.json(200, { ok: true, id: user.id, email: data.email, username: data.username });
+});
+
+/* 🩸 临时诊断路由（2026-09-01 注册 400 排查用，确认后删除）：
+   用与 register 完全相同的建用户逻辑，但不走邮箱验证，直接把原始报错（含 stack）
+   以 JSON 返回。这样无需收验证码即可读出 $app.save 阶段在 PB 里到底炸在哪。
+   用完即删，勿留生产。 */
+routerAdd('POST', '/api/_diag_register', (e) => {
+  const data = new DynamicModel({ email: '', username: '', password: '' });
+  e.bindBody(data);
+  var created = null;
+  try {
+    var ucol = $app.findCollectionByNameOrId('users');
+    if (!ucol) return e.json(200, { ok: false, stage: 'findCollection', error: 'users collection missing' });
+    var u = new Record(ucol);
+    u.set('email', data.email);
+    u.set('password', data.password);
+    u.set('name', data.username);
+    u.set('display_name', data.username);
+    u.set('role', 'member');
+    u.set('verified', true);
+    $app.save(u);
+    created = u;
+    return e.json(200, { ok: true, id: u.id, email: data.email });
+  } catch (err) {
+    return e.json(200, {
+      ok: false,
+      error: String(err && err.message ? err.message : err),
+      stack: String(err && err.stack ? err.stack : '')
+    });
+  } finally {
+    /* 自愈：诊断产生的测试用户立即删掉，不留污染 */
+    if (created) { try { $app.deleteRecord(created); } catch (e2) {} }
+  }
 });
 
 routerAdd('POST', '/api/auth/login-username', (e) => {

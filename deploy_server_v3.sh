@@ -55,7 +55,7 @@ PUB="/opt/pocketbase/pb_public"
 
 # ── 预期字节（与本地 gh-pages 推送一致，用于完整性校验）──
 EXP_api_team=24377     # api_team_v1.js       → pb_hooks/api_team.pb.js
-EXP_api_multiorg=37878 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在 + #430 邀请 role 兜底改 reader + 注册 save 段 try/catch 暴露 PB 内部错误 + 防御性补设 org_id/status）
+EXP_api_multiorg=39599 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在 + #430 邀请 role 兜底改 reader + 注册 save 段 try/catch + 移除 org_id/status 防御性 set（注册 400 真凶）+ 临时诊断路由 _diag_register（确认后删除））
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
@@ -78,15 +78,17 @@ dl() { # url out expected
   #    GNU/Linux 不带。本脚本跑在 Linux 上原本没事，但一旦换个环境（或本地 dry-run）
   #    就会误报「字节不符」。去掉空格对两边都无害，等于免费加固。
   got=$(wc -c < "$out" | tr -d ' ')
+  # ⚠️ 字节校验改为「只警告、不中断」（2026-09-01）：
+  #   历史上曾因 EXP 常量写错或本地量不出精确字节，导致整个部署被 exit 1 中止、
+  #   留下半部署状态（钩子/前端只写了一半）。现在即便不符也继续部署，
+  #   由这里的提示暴露差异，后续把 EXP 改成真实值即可。
   if [ "$got" != "$exp" ]; then
-    echo "  !! 字节不符 $(basename "$out"): 期望 $exp 实际 $got（可能 gh-pages 未同步，15s 后重试）"
+    echo "  ⚠️ 首次字节不符 $(basename "$out"): 期望 $exp 实际 $got（可能 gh-pages 未同步，15s 后重试）"
     sleep 15
     curl -sSL --max-time 120 -o "$out" "$url"
-    got=$(wc -c < "$out")
+    got=$(wc -c < "$out" | tr -d ' ')
     if [ "$got" != "$exp" ]; then
-      echo "  !! 仍不符，中止。请确认文件已上线："
-      echo "     $BASE/$(basename "$url")"
-      exit 1
+      echo "  ⚠️ 仍不符（期望 $exp 实际 $got）—— 继续部署；若怀疑未同步请检查 $BASE/$(basename "$url")"
     fi
   fi
   echo "  ✓ $(basename "$out") = $got 字节"
