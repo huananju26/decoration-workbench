@@ -1,5 +1,31 @@
 #!/usr/bin/env bash
 # 焕安居装修工作台 · 只部署运营后台（admin7.html）
+#
+# ⛔⛔⛔ 已废弃 —— 请勿执行，运营后台固定入口是 deploy_admin.sh ⛔⛔⛔
+#
+#   curl -sSL -o /tmp/da.sh https://huananju26.github.io/decoration-workbench/deploy_admin.sh
+#   sudo bash /tmp/da.sh
+#
+# 🚨 为什么必须拦死（安全问题，不是版本问题）：
+#   本脚本会把后台写成 $PUB/**admin7.html**（新文件名）。
+#   而 Caddy 的 basicauth 规则是照 **/admin.html** 这个路径配的 ——
+#   换个名字就会让那条规则命中不到 → **运营后台直接裸奔**（含全量公司/用户数据、
+#   审核通过与否、清理删除操作）。这是本项目的既有铁律：
+#     「别再搞 admin6/admin7/admin8 之类的对外地址——换新名会让针对 /admin.html
+#       的 Caddy 规则（basicauth / no-cache）全部失效、后台变相裸奔」
+#   正确姿势：中转站用递增名绕缓存，落到服务器后**固定覆盖成 admin.html**。
+#   deploy_admin.sh 就是这么做的。
+#
+# 本文件保留仅供考古。真的要用，先确认 Caddy 已为新地址补上 basicauth。
+echo "⛔ deploy_admin7.sh 已废弃，请勿执行 —— 改用 deploy_admin.sh"
+echo ""
+echo "   curl -sSL -o /tmp/da.sh https://huananju26.github.io/decoration-workbench/deploy_admin.sh"
+echo "   sudo bash /tmp/da.sh"
+echo ""
+echo "   🚨 原因：本脚本会把后台落成 admin7.html，而 Caddy 的 basicauth 是按"
+echo "      /admin.html 配的 —— 换名即绕过 → 运营后台裸奔（详见脚本头部注释）。"
+exit 1
+
 # 用途：deploy_server_v3.sh 已跑过后，只修后台页面时用它，不用重启 PocketBase。
 # 用法（在 106.55.14.231 上执行，需 sudo）：
 #   curl -sSL -o /tmp/d7.sh https://huananju26.github.io/decoration-workbench/deploy_admin7.sh

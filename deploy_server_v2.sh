@@ -1,5 +1,30 @@
 #!/usr/bin/env bash
 # 焕安居装修工作台 · 团队管理增强（#406/#407/#408）服务器端部署脚本
+#
+# ⛔⛔⛔ 已废弃 —— 请勿执行，现役脚本是 deploy_server_v3.sh ⛔⛔⛔
+#
+#   curl -sSL -o /tmp/d3.sh https://huananju26.github.io/decoration-workbench/deploy_server_v3.sh
+#   sudo bash /tmp/d3.sh
+#
+# 为什么拦（2026-09-01 审查旧脚本时发现）：
+#   ① 本脚本只装 4 个钩子（api_team / api / api_review / schema_patch_v2），
+#      现役需要 6 个 —— 缺 api_admin、api_cleanup、schema_patch_v3 会**静默失效**：
+#      路由直接消失，运营后台与清理功能点了没反应，且不报错，很难发现。
+#   ② 前端写死 app10.html（EXP_app=1365104），比现役 app23.html（1371374）
+#      落后 6270 字节，等于回退若干次迭代。
+#   ③ EXP_api_multiorg=33964 与现文件 36976 不符 → 它自己会在下载步中止，
+#      卡在半途（钩子已写入、前端没换）的半成品状态，比彻底失败更难收拾。
+#
+# 本文件保留仅供考古。真的要用，先读完上面三条再手动去掉下面的 exit。
+echo "⛔ deploy_server_v2.sh 已废弃，请勿执行 —— 改用 deploy_server_v3.sh"
+echo ""
+echo "   curl -sSL -o /tmp/d3.sh https://huananju26.github.io/decoration-workbench/deploy_server_v3.sh"
+echo "   sudo bash /tmp/d3.sh"
+echo ""
+echo "   原因（详见脚本头部注释）：本脚本只装 4 个钩子（现役需要 6 个，缺的会静默失效）、"
+echo "   前端写死 app10.html（落后 6270 字节）、且字节校验已过期会在下载步卡成半成品。"
+exit 1
+
 # 用法（在 106.55.14.231 上执行，需 sudo）：
 #   curl -sSL -o /tmp/d2.sh https://huananju26.github.io/decoration-workbench/deploy_server_v2.sh
 #   sudo bash /tmp/d2.sh
