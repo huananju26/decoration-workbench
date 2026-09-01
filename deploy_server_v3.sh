@@ -60,7 +60,7 @@ EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=4865 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集）
-EXP_app=1396896        # app23.html           → pb_public/index.html（#437 成员卡操作按钮改横排+卡片高度收敛与上方企业管理员卡等高：actions flex-direction:row，select/按钮/徽章纵向padding收敛，下拉框height:24px）
+EXP_app=1398171        # app23.html           → pb_public/index.html（#438 报价系统「整理重复项」按钮：按「项目名称+说明」完全相同判重，保留第一条删其余，跨sheet/cat全局去重，确认前只统计不改数据）
                        #   ⚠️ #430 兜底：前端 ROLE_OPTIONS 只有 7 项（无 member），而后端 role 是 8 值，
                        #      原 replace 写法对 member 匹配不到 → 下拉框默认选第一项（项目经理），
                        #      与同行文字标签「成员」自相矛盾，且该 select 是 onchange 立即提交，有误改权限风险。

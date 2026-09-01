@@ -8997,7 +8997,7 @@ function renderQuote(){
   // 操作栏
   html+='<div class="quote-bar">';
   html+='<div class="quote-bar-title"><div class="card-title">全案装修报价系统</div><div class="card-subtitle">按「家装全案预算」模板复刻 · 所有金额实时计算</div></div>';
-  html+='<div class="quote-actions"><button class="btn-outline btn-sm" onclick="resetQuote()">↺ 恢复模板</button><button class="btn-primary btn-sm" onclick="printQuote()">🖨 打印 / 导出PDF</button></div>';
+  html+='<div class="quote-actions"><button class="btn-outline btn-sm" onclick="dedupeQuoteItems()">⇲ 整理重复项</button><button class="btn-outline btn-sm" onclick="resetQuote()">↺ 恢复模板</button><button class="btn-primary btn-sm" onclick="printQuote()">🖨 打印 / 导出PDF</button></div>';
   html+='</div>';
   // 封面
   html+=quoteCoverHTML(q);
@@ -9116,6 +9116,20 @@ function addQuoteItem(si,ci){
   cat.items.push(blank);persist();renderQuote();
 }
 function resetQuote(){if(confirm('确定恢复为模板默认数据？当前修改将丢失。')){App.quote=defaultQuote();persist();renderQuote();}}
+/* 整理报价重复项：按「项目名称 + 说明」完全相同判重，保留每个组合的第一条、删除其余重复行。
+   确认前只统计不改动数据；用户取消则数据原样。 */
+function dedupeQuoteItems(){
+  ensureQuote();
+  var keyOf=function(it){return ((it.name||'')+' '+(it.note||'')).trim();};
+  var seen={},removed=0;
+  App.quote.sheets.forEach(function(sh){sh.cats.forEach(function(cat){(cat.items||[]).forEach(function(it){var k=keyOf(it);if(k&&seen[k]){removed++;}else if(k){seen[k]=1;}});});});
+  if(removed===0){alert('没有发现重复的项目名称，无需整理。');return;}
+  if(!confirm('发现 '+removed+' 个重复项目（按「项目名称 + 说明」完全相同判断），\n将保留每个组合的第一条、删除其余重复项。\n\n确定整理？'))return;
+  var seen2={};
+  App.quote.sheets.forEach(function(sh){sh.cats.forEach(function(cat){var out=[];(cat.items||[]).forEach(function(it){var k=keyOf(it);if(k&&seen2[k]){return;}if(k)seen2[k]=1;out.push(it);});cat.items=out;});});
+  persist();renderQuote();
+  alert('已整理：移除 '+removed+' 个重复项，重复的项目名称现在各保留一条。');
+}
 function refreshQuoteTotals(){
   const q=App.quote;
   q.sheets.forEach((sh,si)=>{
