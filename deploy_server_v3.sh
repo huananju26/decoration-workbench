@@ -54,13 +54,13 @@ HOOKS="/opt/pocketbase/pb_hooks"
 PUB="/opt/pocketbase/pb_public"
 
 # ── 预期字节（与本地 gh-pages 推送一致，用于完整性校验）──
-EXP_api_team=24377     # api_team_v1.js       → pb_hooks/api_team.pb.js
-EXP_api_multiorg=38232 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在 + #430 邀请 role 兜底改 reader + 注册 save 段 try/catch + 移除 org_id/status 防御性 set（注册 400 真凶）+ 临时诊断路由 _diag_register 已验证删除）
+EXP_api_team=25011     # api_team_v1.js       → pb_hooks/api_team.pb.js（#424 角色变更审计）
+EXP_api_multiorg=43516 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在 + #430 邀请 role 兜底改 reader + 注册 save 段 try/catch + 移除 org_id/status 防御性 set（注册 400 真凶）+ 临时诊断路由 _diag_register 已验证删除 + #423 前端权限闸门后端配套（reader 写拦截）+ #424 服务端审计日志 audit_logs + /api/audit/list）
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=4865 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集）
-EXP_app=1371374        # app23.html           → pb_public/index.html（#428 日志隔离 + #429 注释订正 + #430 角色下拉 selected 兜底）
+EXP_app=1377662        # app23.html           → pb_public/index.html（#428 日志隔离 + #429 注释订正 + #430 角色下拉 selected 兜底 + #423 页面级四维权限闸门（PAGE_PERM/myPerms/canAccessPage/applyNavPerms/refreshPermUI）+ #424 操作记录页读取服务端审计 /api/audit/list）
                        #   ⚠️ #430 兜底：前端 ROLE_OPTIONS 只有 7 项（无 member），而后端 role 是 8 值，
                        #      原 replace 写法对 member 匹配不到 → 下拉框默认选第一项（项目经理），
                        #      与同行文字标签「成员」自相矛盾，且该 select 是 onchange 立即提交，有误改权限风险。

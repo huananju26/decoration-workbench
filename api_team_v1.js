@@ -446,6 +446,22 @@ routerAdd('POST', '/api/org/set-role', (e) => {
   mem.set('role', role);
   $app.save(mem);
 
+  /* #424 审计：记录角色变更（失败开放） */
+  try {
+    const __c = $app.findCollectionByNameOrId('audit_logs');
+    if (__c) {
+      const __r = new Record(__c);
+      __r.set('org_id', org);
+      __r.set('actor_id', auth.id || '');
+      let __nm = ''; try { __nm = (auth.get('display_name') || auth.get('email') || ''); } catch (eN) {}
+      __r.set('actor_name', __nm);
+      __r.set('action', 'set_role');
+      __r.set('target', uid);
+      __r.set('detail', oldRole + ' → ' + role);
+      $app.save(__r);
+    }
+  } catch (eA) { console.warn('[audit] 角色变更审计写入失败（已忽略）：', eA); }
+
   // users.role 是「激活团队角色」缓存，目标用户正激活本团队时必须同步，否则权限判定会串
   try {
     const tu = $app.findRecordById('users', uid);

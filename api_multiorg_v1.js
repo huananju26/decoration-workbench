@@ -125,6 +125,22 @@ routerAdd('POST', '/api/org/invite', (e) => {
     throw new BadRequestError('创建邀请记录失败：' + (saveErr.message || String(saveErr)));
   }
 
+  /* #424 审计：记录发出邀请（失败开放） */
+  try {
+    const __c = $app.findCollectionByNameOrId('audit_logs');
+    if (__c) {
+      const __r = new Record(__c);
+      __r.set('org_id', org);
+      __r.set('actor_id', auth.id || '');
+      let __nm = ''; try { __nm = (auth.get('display_name') || auth.get('email') || ''); } catch (eN) {}
+      __r.set('actor_name', __nm);
+      __r.set('action', 'invite');
+      __r.set('target', targetEmail);
+      __r.set('detail', 'role=' + role);
+      $app.save(__r);
+    }
+  } catch (eA) { console.warn('[audit] 邀请审计写入失败（已忽略）：', eA); }
+
   /* 真实发送邀请邮件（配置了 SMTP 且填写了邮箱才发；否则回退开发模式直返链接） */
   let mailer = null;
   try { mailer = require(`${__hooks}/mailer.js`); } catch (eM) { mailer = null; }
@@ -379,6 +395,33 @@ routerAdd('POST', '/api/data/save', (e) => {
   const org = auth.get('org_id');
   if (!org) throw new BadRequestError('你还没有加入公司');
 
+  /* #425 只读成员（role=reader，四维权限全空）禁止写入业务数据。
+     ⚠️ 失败开放：memberships 查不到 / 角色未知时一律放行，绝不因权限查询异常锁死正常用户。 */
+  let __blockWrite = false;
+  try {
+    const __mm = $app.findFirstRecordByFilter('memberships', "user_id = '" + auth.id + "' && org_id = '" + org + "'");
+    if (__mm && String(__mm.get('role') || '') === 'reader') __blockWrite = true;
+  } catch (eP) { /* 失败开放 */ }
+  if (__blockWrite) throw new ForbiddenError('您当前的角色（只读成员）没有写入业务数据的权限');
+
+  /* #424 审计写入（失败开放：集合不存在 / 写入异常均忽略，不拖主流程） */
+  function writeAudit(orgId, actor, action, target, detail) {
+    try {
+      const __c = $app.findCollectionByNameOrId('audit_logs');
+      if (!__c) return;
+      const __r = new Record(__c);
+      __r.set('org_id', orgId);
+      __r.set('actor_id', (actor && actor.id) ? actor.id : '');
+      let __nm = '';
+      try { __nm = (actor.get('display_name') || actor.get('email') || ''); } catch (eN) {}
+      __r.set('actor_name', __nm);
+      __r.set('action', action || '');
+      __r.set('target', target || '');
+      __r.set('detail', detail || '');
+      $app.save(__r);
+    } catch (eA) { console.warn('[audit] 写入失败（已忽略）：', eA); }
+  }
+
   const info = e.requestInfo();
   const body = (info && info.body) ? info.body : {};
   const inRev = Number(body.rev || 0);
@@ -397,6 +440,7 @@ routerAdd('POST', '/api/data/save', (e) => {
     rec.set('rev', 1);
     rec.set('updated_by', auth.id);
     $app.save(rec);
+    writeAudit(org, auth, 'data_save', '', '首次保存');
     return e.json(200, { ok: true, rev: 1, updated: String(rec.get('updated') || '') });
   }
 
@@ -441,6 +485,7 @@ routerAdd('POST', '/api/data/save', (e) => {
   rec.set('rev', cur + 1);
   rec.set('updated_by', auth.id);
   $app.save(rec);
+  writeAudit(org, auth, 'data_save', '', 'rev=' + (cur + 1));
   return e.json(200, { ok: true, rev: cur + 1, updated: String(rec.get('updated') || '') });
 });
 
@@ -828,4 +873,78 @@ routerAdd('POST', '/api/auth/confirm-reset', (e) => {
   } catch (err) {}
 
   return e.json(200, { ok: true, message: '密码已重置，请用新密码登录' });
+});
+
+// ---------- 操作审计日志（#424：服务端真实记录） ----------
+// 前端「操作记录」页调用本接口拉取本团队的操作流水。
+// 鉴权沿用统一三行：取 auth，缺失即未登录。
+routerAdd('GET', '/api/audit/list', (e) => {
+  let auth = e.auth;
+  if (!auth || !auth.id) {
+    const hdr = e.request.header.get('Authorization') || '';
+    const tk = hdr.indexOf(' ') > -1 ? hdr.split(' ')[1] : hdr;
+    if (tk) { try { auth = $app.findAuthRecordByToken(tk); } catch (err) { auth = null; } }
+  }
+  if (!auth || !auth.id) throw new ForbiddenError('未登录');
+  const org = auth.get('org_id');
+  if (!org) return e.json(200, { items: [] });
+  let rows = [];
+  try { rows = $app.findRecordsByFilter('audit_logs', "org_id = '" + org + "'", '-created', 50, 0); } catch (err) { rows = []; }
+  const items = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    items.push({
+      actor: String(r.get('actor_name') || ''),
+      actor_id: String(r.get('actor_id') || ''),
+      action: String(r.get('action') || ''),
+      target: String(r.get('target') || ''),
+      detail: String(r.get('detail') || ''),
+      created: String(r.get('created') || '')
+    });
+  }
+  return e.json(200, { items: items });
+});
+
+// ---------- 审计日志集合自愈迁移（#424） ----------
+// 在 cron 回调（启动后 DB 就绪）里创建 audit_logs 集合；成功或已存在即自我注销。
+// gate-allow-swallow：全程 try-catch，绝不重抛，避免拖慢 PB 启动（迁移异常 ≠ 业务 502）。
+cronAdd('audit_logs_migrate', '* * * * *', () => {
+  let done = true;
+  try {
+    const app = (typeof $app !== 'undefined' && $app) ? $app : null;
+    if (!app) { console.warn('[audit_migrate] 暂无 $app，稍后重试'); return; }
+    let col = null;
+    try { col = $app.findCollectionByNameOrId('audit_logs'); } catch (e0) { col = null; }
+    if (!col) {
+      const nc = new Collection({
+        name: 'audit_logs',
+        type: 'base',
+        listRule: null,
+        viewRule: null,
+        createRule: null,
+        updateRule: null,
+        deleteRule: null,
+        fields: [
+          { name: 'org_id', type: 'text', required: true, max: 40 },
+          { name: 'actor_id', type: 'text', max: 40 },
+          { name: 'actor_name', type: 'text', max: 80 },
+          { name: 'action', type: 'text', max: 40 },
+          { name: 'target', type: 'text', max: 60 },
+          { name: 'detail', type: 'text', max: 500 },
+          { name: 'created', type: 'autodate', onCreate: true, onUpdate: false }
+        ]
+      });
+      $app.save(nc);
+      console.log('[audit_migrate] audit_logs 集合已创建');
+    } else {
+      console.log('[audit_migrate] audit_logs 已存在，跳过');
+    }
+  } catch (err) {
+    console.warn('[audit_migrate] 创建失败（已忽略）：' + ((err && err.message) || String(err)));
+    done = false;
+  }
+  if (done) {
+    try { cronRemove('audit_logs_migrate'); console.log('[audit_migrate] 完成，cron 自我注销'); }
+    catch (e3) { console.warn('[audit_migrate] cronRemove 失败（忽略）：' + ((e3 && e3.message) || String(e3))); }
+  }
 });

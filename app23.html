@@ -5009,6 +5009,8 @@ function enterApp(){
   const VALID_PAGES=['home','process','finance','ledger','purchase','compare','tools','quote','diary','knowledge'];
   if(!VALID_PAGES.includes(savedPage))savedPage='home';
   switchPage(savedPage);
+  /* #423 进入工作台即按权限刷新侧栏可见性 */
+  applyNavPerms();
   $('app').style.display='';
   initNavBadgeTicker();
 }
@@ -8270,6 +8272,11 @@ function switchPage(page){
   /* 「储存套餐」已并入「存储影像」页：旧书签 / 旧 sessionStorage 值统一重定向，避免 $('page-storage') 取不到元素报错 */
   if(page==='storage'){page='media';}
   if(page==='standard'){renderStd();}
+  /* #423 页面级权限闸门：无权限直接拦截并提示，不切换 */
+  if(page!=='home'&&!canAccessPage(page)){
+    permDenied('您当前的角色没有访问「'+page+'」页面的权限');
+    return;
+  }
   currentPage=page;
   /* 用 sessionStorage 记录当前页：刷新（不关标签页）可恢复当前页；关闭标签页后清空，重开回到今日总览 */
   try{sessionStorage.setItem('xzgz_current_page',page);}catch(e){}
@@ -8309,6 +8316,8 @@ function switchPage(page){
   var _stdMain=document.querySelector('.main'); if(_stdMain)_stdMain.scrollTop=0;
   /* 刷新侧边栏待处理数量徽章 */
   refreshNavBadges();
+  /* #423 每次切页后同步侧栏权限可见性 */
+  applyNavPerms();
 }
 function toggleSidebar(){$('sidebar').classList.toggle('open')}
 function scrollToSection(id){const el=$(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
@@ -19369,6 +19378,86 @@ function teamRoleDefaultPerms(role){
   return [];
 }
 
+/* ════════════════════════════════════════════════════════════════
+   页面级权限闸门（#423 前端四维权限强制）
+   规则：页面 → 所需权限；用户只要拥有其中任意一个即可访问。
+   - PAGE_PERM[page] === null   → 全员可见（登录即可）
+   - PAGE_PERM[page] === 'admin' → 仅企业管理员
+   - 否则为权限数组              → 拥有其一即可
+   依赖：上面的 ROLE_OPTIONS / PERM_ALL / teamRoleDefaultPerms。
+   ⚠️ CloudSync.__me 未就绪（刚登录 / 首屏）时 canAccessPage 一律放行，
+      避免「角色未知把整页侧栏藏光 + 首屏空白」；me() 回来后再由
+      refreshPermUI() 校正隐藏并必要时跳回总览。 */
+const PAGE_PERM={
+  home:null, tools:null, knowledge:null, logs:null,
+  process:['execute','delivery'],
+  purchase:['cost'], finance:['cost'], ledger:['cost'], compare:['cost'], quote:['cost'],
+  contracts:['contract'], invoices:['contract'],
+  archive:['delivery'],
+  standard:['execute'], media:['execute','delivery'],
+  diary:['execute','delivery'],
+  team:'admin'
+};
+/* 当前登录用户的生效权限（按角色默认；admin 恒为全权）。
+   注：管理员在前端「权限管理」页对成员做的 perms 自定义目前只用于展示，
+       真正的服务端强制与自定义 perms 下发是下一阶段（org_data 域拆分）。 */
+function myPerms(){
+  try{
+    var role=(CloudSync.__me&&CloudSync.__me.role)||'';
+    if(role==='admin')return PERM_ALL.slice();
+    return teamRoleDefaultPerms(role);
+  }catch(e){ return []; }
+}
+/* 是否可访问某页 */
+function canAccessPage(page){
+  try{
+    /* 本地模式（未登录云账号，仅本机自用）：视为全权，所有页面可见。
+       enterApp() 只在两种情形下被调用：① 已登录 ② 点「仅本地使用」进入本地模式，
+       不会有其他「未登录却进了工作台」的路径，故此处可安全放行。 */
+    if(!CloudSync.loggedIn)return true;
+    if(CloudSync.__me===null)return true;          // 角色未知：先放行，稍后校正
+    var req=PAGE_PERM[page];
+    if(req===null||req===undefined)return true;    // 常开页
+    if(req==='admin')return isTeamAdmin();         // 仅管理员
+    var mine=myPerms();
+    if(!mine||!mine.length)return false;           // 无任何域权限 → 仅常开页
+    for(var i=0;i<req.length;i++){ if(mine.indexOf(req[i])>=0)return true; }
+    return false;
+  }catch(e){ return true; }   // 异常降级放行，避免误锁全体
+}
+/* 按权限隐藏 / 显示侧栏项与底部 tab */
+function applyNavPerms(){
+  try{
+    document.querySelectorAll('.nav-item[data-page]').forEach(function(n){
+      n.style.display=canAccessPage(n.dataset.page)?'':'none';
+    });
+    document.querySelectorAll('.mtab[data-page]').forEach(function(t){
+      t.style.display=canAccessPage(t.dataset.page)?'':'none';
+    });
+  }catch(e){}
+}
+/* 权限校正 + 若当前页已不可访问则跳回总览（在 me() / 成员列表就绪后调用） */
+function refreshPermUI(){
+  try{
+    applyNavPerms();
+    if(currentPage&&!canAccessPage(currentPage)&&currentPage!=='home'){
+      switchPage('home');
+    }
+  }catch(e){}
+}
+/* 无权限提示（轻量 toast，失败回退 alert） */
+function permDenied(msg){
+  try{
+    var d=document.createElement('div');
+    d.textContent=msg||'您没有访问该页面的权限';
+    d.style.cssText='position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:9999;'
+      +'background:#fff1f0;color:#cf1322;border:1px solid #ffa39e;padding:8px 14px;border-radius:8px;'
+      +'font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.12)';
+    document.body.appendChild(d);
+    setTimeout(function(){ if(d.parentNode)d.parentNode.removeChild(d); },1800);
+  }catch(e){ try{ alert(msg||'您没有访问该页面的权限'); }catch(_){} }
+}
+
 /* ⚠️ 权限本地存储的 key 必须带团队前缀 ——
    同一个 userId 在 A 公司是采购、在 B 公司可能是质检。
    只用 userId 当 key 的话切换团队后会把上一个团队的权限带过来（越权）。 */
@@ -19531,6 +19620,8 @@ async function loadTeamMembers(){
     __teamMembers=members;
     __teamLoaded=true;
     renderTeamList(members,isAdmin,localPerms);
+    /* #423 成员 / 角色就绪后校正权限可见性（角色可能刚从服务端取回） */
+    refreshPermUI();
     /* ⚠️ 单独 try：徽章统计跟成员列表毫无关系，但它以前在同一个 try 里，
        任何一个项目对象字段不全都会让整块成员列表变成「加载失败」（已踩） */
     try{ refreshNavBadges(); }catch(eB){}
@@ -20052,13 +20143,44 @@ async function doSetMemberRole(uid,role){
 // ============================================================
 let __logFilter={project:'',action:'',kw:''};
 let __operationLogs=[];
+let __serverAudit=[];   /* #424 服务端审计日志（团队共享、不可本地篡改） */
 
 /* 操作记录 localStorage key 必须按 org_id 隔离，否则同一浏览器切换公司时会看到别人的日志（#428） */
 function opLogsKey(){ return 'xzgz_op_logs_'+(curOrgId()||'_norg'); }
 
 function renderLogs(){
   fillLogProjectSelect();
-  applyLogFilter();
+  applyLogFilter();                                   // 先立刻显示本地日志
+  loadServerAudit().then(function(){ try{ applyLogFilter(); }catch(e){} }).catch(function(){}); // 再合并服务端
+}
+
+/* #424 拉取服务端审计日志（团队共享）。失败开放：取不到就只有本地日志。 */
+async function loadServerAudit(){
+  __serverAudit=[];
+  if(!CloudSync.loggedIn)return;
+  try{
+    const j=await CloudSync._req('GET','/api/audit/list');
+    const items=(j&&j.items)||[];
+    const me=(cloudUser&&cloudUser.email)||(CloudSync.__me&&CloudSync.__me.display_name)||'';
+    __serverAudit=items.map(function(it){
+      return {
+        id:'srv_'+(it.created||'')+'_'+(it.actor_id||'')+'_'+(it.action||''),
+        user: it.actor||'--',
+        action: it.action||'other',
+        desc: auditDesc(it),
+        projectId:'',
+        projectName:'',
+        time: it.created||''
+      };
+    });
+  }catch(e){ __serverAudit=[]; }
+}
+function auditDesc(it){
+  var a=it.action||'';
+  if(a==='data_save')return '保存业务数据（'+(it.detail||'')+'）';
+  if(a==='invite')return '邀请成员 '+(it.target||'')+'（'+(it.detail||'')+'）';
+  if(a==='set_role')return '调整成员角色：'+(it.detail||'');
+  return (it.detail||a||'操作');
 }
 
 function fillLogProjectSelect(){
@@ -20133,6 +20255,12 @@ function getAllOperationLogs(){
   try{ logs=JSON.parse(localStorage.getItem(opLogsKey())||'[]'); }catch(e){ logs=[]; }
   /* 合并 App 数据中隐含的操作记录（首次或缓存为空时） */
   if(!logs.length)logs=buildLogsFromData();
+  /* #424 合并服务端审计日志（团队共享、不可本地篡改），按 id 去重 */
+  if(__serverAudit&&__serverAudit.length){
+    const ids={};
+    for(let z=0;z<logs.length;z++){ if(logs[z].id)ids[logs[z].id]=1; }
+    for(let z=0;z<__serverAudit.length;z++){ if(!ids[__serverAudit[z].id])logs.push(__serverAudit[z]); }
+  }
   __operationLogs=logs;
   return logs;
 }
@@ -21537,6 +21665,8 @@ async function init(){
           else showOrgGate();
         }
         else if(me&&me.org_status==='suspended')showOrgFrozen();
+        /* #423 角色从服务端取回后校正权限可见性（首屏 __me 可能为 null） */
+        refreshPermUI();
       }catch(e){/* 取不到身份就维持现状，不打断用户 */}
     })();
   }else{
