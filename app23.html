@@ -3024,6 +3024,16 @@ a{color:#003a8c;text-decoration:none}
       <!-- 已发出但还没被接受的邀请：可取消（链接失效）/ 删除（清记录） -->
       <div id="teamInviteBox" style="display:none"></div>
       <div id="teamMemberList"></div>
+      <!-- 按项目分配成员角色：同一人在不同项目可有不同角色（#432） -->
+      <div class="card" id="projRoleCard" style="margin-top:16px;display:none">
+        <div class="card-title">按项目分配成员角色</div>
+        <div class="card-subtitle">同一成员在不同项目可设为不同角色（如：在 A 项目是项目经理、在 B 项目是只读）。未单独设置的项目默认继承其组织级角色。</div>
+        <div style="margin:8px 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <label style="font-size:13px;color:#555">选择项目：</label>
+          <select id="projRoleProjectSel" onchange="onProjRoleProjectChange()" style="padding:6px 10px;border:1px solid #d9d9d9;border-radius:6px;min-width:200px"></select>
+        </div>
+        <div id="projRoleMatrix"></div>
+      </div>
     </div>
 
     <!-- PAGE: 操作记录 -->
@@ -5920,7 +5930,7 @@ async function unitRealtimeOnEvent(ev){
 }
 
 let App={version:2,currentProjectId:null,projects:[],archive:{personnel:[],suppliers:[]},contracts:[],invoices:[]};
-const APP_DEFAULT={version:2,currentProjectId:null,projects:[],archive:{personnel:[],suppliers:[]},contracts:[],invoices:[]};
+const APP_DEFAULT={version:2,currentProjectId:null,projects:[],archive:{personnel:[],suppliers:[]},contracts:[],invoices:[],projectRoles:{}};
 /* 年度余额手动编辑值：null=未手动设置（显示自动计算值），数字=用户手动覆盖 */
 window.__ledgerManualBalance=0;
 
@@ -6074,6 +6084,7 @@ function ensureAppShape(app){
   if(!Array.isArray(app.projects)) app.projects = [];
   if(!Array.isArray(app.contracts)) app.contracts = [];
   if(!Array.isArray(app.invoices)) app.invoices = [];
+  if(!app.projectRoles||typeof app.projectRoles!=='object') app.projectRoles = {};
 }
 
 /* 迁移前自动备份：完整快照存 localStorage，环形保留最近 KEEP 份（超出删最旧） */
@@ -8153,6 +8164,12 @@ function createProjectFromWizard(){
   };
   App.projects.push(p);
   App.currentProjectId=p.id;
+  /* 新建项目时，把创建者设为该项目的项目经理（团队模式下）。
+     这样创建者对自己的新项目拥有完整项目级权限；其他成员按权限管理页分配。 */
+  if(CloudSync.loggedIn&&cloudUser&&cloudUser.uid){
+    App.projectRoles[p.id]=App.projectRoles[p.id]||{};
+    App.projectRoles[p.id][cloudUser.uid]='pm';
+  }
   persist();
   recordOperation('other','新建项目「'+p.name+'」('+p.code+')',p.id);
   editingProjectId=null;
@@ -19455,7 +19472,40 @@ function myPerms(){
     return teamRoleDefaultPerms(role);
   }catch(e){ return []; }
 }
-/* 能否访问「项目管理」内的某个子板块（按四维权限，支持手动调节） */
+/* 哪些版块属于「项目级业务数据」——其可见性由「本人在这个项目里的角色」决定，
+   而非组织级角色。其余版块（含全开放6项、全局页）仍按组织级角色判定。
+   （今日总览/项目列表/新建项目/实用工具/水电知识/操作记录/权限管理 等为全局；
+     项目管理四子板块单独走 canAccessProjTab 的项目四维权限） */
+const PROJECT_ROLE_SCOPED=['finance','ledger','contracts','invoices','archive','quote','media'];
+/* 本人当前组织级角色 */
+function myOrgRole(){
+  try{ return (CloudSync.__me&&CloudSync.__me.role)||''; }catch(e){ return ''; }
+}
+/* 本人在某项目里的角色：优先 projectRoles 覆盖；未设置则继承组织级角色（用户确认：默认继承）。
+   本地模式（未登录）恒为 admin（全权）；需明确角色却拿不到时回退 reader（最保守）。 */
+function myProjectRole(pid){
+  try{
+    if(!CloudSync.loggedIn)return 'admin';
+    var uid=(cloudUser&&cloudUser.uid)||(CloudSync.__me&&CloudSync.__me.id)||'';
+    var pr=(App.projectRoles&&App.projectRoles[pid])||{};
+    if(uid&&pr[uid])return pr[uid];
+    return myOrgRole()||'reader';
+  }catch(e){ return 'reader'; }
+}
+/* 本人在某项目里的四维权限（供项目管理四子板块判定） */
+function myProjectPerms(pid){
+  try{
+    var role=myProjectRole(pid);
+    if(role==='admin')return PERM_ALL.slice();
+    return teamRoleDefaultPerms(role);
+  }catch(e){ return []; }
+}
+/* 某版块的「闸门角色」：项目级版块用项目角色，其余用组织级角色 */
+function gateRoleFor(page){
+  if(PROJECT_ROLE_SCOPED.indexOf(page)>=0)return myProjectRole(App.currentProjectId);
+  return myOrgRole();
+}
+/* 能否访问「项目管理」内的某个子板块（按四维权限，支持按项目手动调节） */
 function canAccessProjTab(tab){
   try{
     if(!CloudSync.loggedIn)return true;
@@ -19463,10 +19513,10 @@ function canAccessProjTab(tab){
     if(isTeamAdmin())return true;                 // 管理员恒可见
     var dom=PROJTAB_DOMAIN[tab];
     if(!dom)return true;
-    return myPerms().indexOf(dom)>=0;
+    return myProjectPerms(App.currentProjectId).indexOf(dom)>=0;
   }catch(e){ return true; }
 }
-/* 是否可访问某页（版块级闸门，矩阵驱动） */
+/* 是否可访问某页（版块级闸门，矩阵驱动；项目级版块按项目角色） */
 function canAccessPage(page){
   try{
     /* 本地模式（未登录云账号，仅本机自用）：视为全权，所有页面可见。
@@ -19481,7 +19531,8 @@ function canAccessPage(page){
     }
     var allow=SECTION_ACL[page];
     if(!allow)return true;                         // 未登记版块默认放行
-    var role=(CloudSync.__me&&CloudSync.__me.role)||'';
+    var role=gateRoleFor(page);
+    if(!role)return false;                         // 角色未知且非管理员 → 不放行（项目级版块需明确角色）
     return allow.indexOf(role)>=0;
   }catch(e){ return true; }   // 异常降级放行，避免误锁全体
 }
@@ -19697,6 +19748,8 @@ async function loadTeamMembers(){
     __teamMembers=members;
     __teamLoaded=true;
     renderTeamList(members,isAdmin,localPerms);
+    /* #432 成员就绪后渲染「按项目分配成员角色」矩阵 */
+    try{ renderProjRoleSelector(); }catch(eP){}
     /* #423 成员 / 角色就绪后校正权限可见性（角色可能刚从服务端取回） */
     refreshPermUI();
     /* ⚠️ 单独 try：徽章统计跟成员列表毫无关系，但它以前在同一个 try 里，
@@ -19705,6 +19758,74 @@ async function loadTeamMembers(){
   }catch(e){
     area.innerHTML='<div class="media-empty"><div class="media-empty-icon">❌</div>加载失败：'+escHtml(e.message||'未知错误')+'</div>';
   }
+}
+
+/* ═══ 按项目分配成员角色（#432 不同项目不同人员权限）═══
+   仅企业管理员可操作；数据存 App.projectRoles[pid][uid]=role，
+   随团队 org_data 自动同步到所有成员。 */
+function renderProjRoleSelector(){
+  try{
+    var card=document.getElementById('projRoleCard');
+    if(card)card.style.display=isTeamAdmin()?'':'none';
+    if(!isTeamAdmin())return;
+    var sel=document.getElementById('projRoleProjectSel');
+    if(!sel)return;
+    var cur=sel.value||(App.currentProjectId||'');
+    var opts='';
+    (App.projects||[]).forEach(function(p){
+      opts+='<option value="'+escHtml(p.id)+'"'+(p.id===cur?' selected':'')+'>'+escHtml(projDisplayName(p))+'</option>';
+    });
+    sel.innerHTML=opts||'<option value="">（暂无项目）</option>';
+    if(!cur&&App.projects.length)cur=App.projects[0].id;
+    onProjRoleProjectChange();
+  }catch(e){}
+}
+function onProjRoleProjectChange(){
+  try{
+    var sel=document.getElementById('projRoleProjectSel');
+    var pid=sel?sel.value:'';
+    var box=document.getElementById('projRoleMatrix');
+    if(!box)return;
+    if(!pid){ box.innerHTML='<div class="team-desc">请选择上方项目以分配成员角色。</div>'; return; }
+    var pr=(App.projectRoles&&App.projectRoles[pid])||{};
+    var pobj=App.projects.find(function(x){return x.id===pid;})||{id:pid};
+    var pname=projDisplayName(pobj);
+    var members=(__teamMembers&&__teamMembers.length)?__teamMembers:
+      [{id:(cloudUser&&cloudUser.uid)||'',name:'我',role:(CloudSync.__me&&CloudSync.__me.role)||'reader',isMe:true}];
+    var roleOpts='';
+    ROLE_OPTIONS.forEach(function(r){ roleOpts+='<option value="'+r.value+'">'+escHtml(r.label)+'</option>'; });
+    var rows='';var cnt=0;
+    members.forEach(function(m){
+      var uid=m.id; if(!uid)return;
+      var curRole=pr[uid]||'';   // 空 = 继承组织级角色
+      var selHtml=roleOpts.replace('value="'+curRole+'"','value="'+curRole+'" selected');
+      rows+='<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;'
+        +'padding:8px 10px;border:1px solid #f0f0f0;border-radius:8px;margin-bottom:6px;background:#fafafa">'
+        +'<span style="font-size:13px;color:#333">'+escHtml(m.name||uid)+(m.isMe?'（我）':'')+'</span>'
+        +'<select class="proj-role-sel" data-uid="'+escHtml(uid)+'" onchange="setProjectRoleForMember(this)" '
+        +'style="padding:5px 8px;border:1px solid #d9d9d9;border-radius:6px">'
+        +'<option value=""'+(curRole===''?' selected':'')+'>继承组织角色（'+(teamRoleLabel(m.role)||'—')+'）</option>'
+        +selHtml+'</select></div>';
+      cnt++;
+    });
+    box.innerHTML='<div class="team-desc" style="margin-bottom:8px">项目：<b>'+escHtml(pname)+'</b> · 共 '+cnt+' 名成员</div>'+rows;
+  }catch(e){}
+}
+function setProjectRoleForMember(sel){
+  try{
+    var pid=document.getElementById('projRoleProjectSel').value;
+    var uid=sel.getAttribute('data-uid');
+    var val=sel.value;
+    if(!pid||!uid)return;
+    App.projectRoles[pid]=App.projectRoles[pid]||{};
+    if(val){ App.projectRoles[pid][uid]=val; } else { delete App.projectRoles[pid][uid]; }
+    persist();
+    /* 同步刷新当前用户的侧栏/页内可见性（其他成员下次拉取云端后生效） */
+    try{ applyNavPerms(); refreshPermUI(); }catch(e){}
+    var pobj=App.projects.find(function(x){return x.id===pid;})||{id:pid};
+    var who=(__teamMembers.find(function(m){return m.id===uid;})||{}).name||uid;
+    recordOperation('other','设置「'+who+'」在「'+projDisplayName(pobj)+'」的项目角色为'+(val?teamRoleLabel(val):'继承组织角色'));
+  }catch(e){}
 }
 
 function renderTeamList(members,isAdmin,localPerms){
