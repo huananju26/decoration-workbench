@@ -60,7 +60,7 @@ EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=4865 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集）
-EXP_app=1377662        # app23.html           → pb_public/index.html（#428 日志隔离 + #429 注释订正 + #430 角色下拉 selected 兜底 + #423 页面级四维权限闸门（PAGE_PERM/myPerms/canAccessPage/applyNavPerms/refreshPermUI）+ #424 操作记录页读取服务端审计 /api/audit/list）
+EXP_app=1382114        # app23.html           → pb_public/index.html（#431 按岗位→版块权限清单补全：PAGE_PERM 改为 SECTION_ACL 矩阵驱动 + 项目管理四子板块走四维权限 canAccessProjTab（后台手动调节生效）+ #423/#424 继承）
                        #   ⚠️ #430 兜底：前端 ROLE_OPTIONS 只有 7 项（无 member），而后端 role 是 8 值，
                        #      原 replace 写法对 member 匹配不到 → 下拉框默认选第一项（项目经理），
                        #      与同行文字标签「成员」自相矛盾，且该 select 是 onchange 立即提交，有误改权限风险。

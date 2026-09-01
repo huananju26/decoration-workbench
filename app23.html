@@ -2512,8 +2512,8 @@ a{color:#003a8c;text-decoration:none}
     </div>
     <div class="nav-section">
       <div class="nav-section-title">项目管理</div>
-      <div class="nav-item" onclick="openProjectManage()"><span class="nav-icon">📁</span>项目列表</div>
-      <div class="nav-item" onclick="openProjectModal()"><span class="nav-icon">➕</span>新建项目</div>
+      <div class="nav-item" data-page="proj_list" onclick="if(canAccessPage('proj_list'))openProjectManage()"><span class="nav-icon">📁</span>项目列表</div>
+      <div class="nav-item" data-page="proj_new" onclick="if(canAccessPage('proj_new'))openProjectModal()"><span class="nav-icon">➕</span>新建项目</div>
     </div>
     <div class="nav-section">
       <div class="nav-section-title">辅助工具</div>
@@ -7810,6 +7810,8 @@ function addPlanCustomNode(){
 
 /* ── 打开新建项目弹窗 ── */
 function openProjectModal(id){
+  /* 版块权限：仅项目经理 / 企业管理员可新建项目；编辑已有项目（带 id）不受限 */
+  if(!id && !canAccessPage('proj_new')){ permDenied('您没有访问「新建项目」的权限'); return; }
   editingProjectId=null;
   /* 编辑模式：id 传入，回填该项目原始数据（跳过向导，用原单页编辑） */
   if(id){
@@ -8198,6 +8200,7 @@ function switchProject(id){
   }
 }
 function openProjectManage(){
+  if(!canAccessPage('proj_list')){ permDenied('您没有访问「项目列表」的权限'); return; }
   const list=$('projectManageList');
   list.innerHTML=App.projects.map(p=>`
     <div class="project-manage-item">
@@ -12372,6 +12375,11 @@ function switchProjTab(el,tab){
   /* 防御：项目管理内的「人材档案」Tab 已于 2026-08-29 移除（左侧导航已有全局入口）。
      若旧状态/旧调用仍传入 archive，回退到默认 tab，避免所有面板被隐藏导致空白页。 */
   if(tab==='archive'){ tab='process'; el=document.querySelector('.proj-tab[data-tab="process"]')||el; }
+  /* 权限闸门：无对应四维权限的子板块禁止切换 */
+  if(!canAccessProjTab(tab)){
+    permDenied('您当前的角色没有访问「'+(PROJTAB_LABEL[tab]||tab)+'」的权限');
+    return;
+  }
   curProjTab=tab;
   document.querySelectorAll('.proj-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
@@ -19333,12 +19341,18 @@ const PERM_LABELS={execute:'施工执行',contract:'合同收款',cost:'成本�
 const PERM_ALL=['execute','contract','cost','delivery'];
 
 /* 企业角色 → 默认权限映射（邀请时自动赋予，后续可调整） */
+/* 企业角色 → 默认权限映射（邀请时自动赋予，后续可在「权限管理」手动调节）
+   2026-09-01 按用户给定的「岗位→版块权限清单」校准：
+   - 项目经理：四维全开（项目管理四个子板块 + 其余按清单）
+   - 财务：项目管理四个子板块均无（清单中财务不在任何「项目管理-＊」行）
+   - 采购：施工执行 + 供应调配（execute + cost）
+   - 设计师 / 质检：仅施工执行（execute） */
 const ROLE_OPTIONS=[
-  {value:'pm',label:'项目经理',perms:['execute','delivery']},
+  {value:'pm',label:'项目经理',perms:['execute','contract','cost','delivery']},
   {value:'designer',label:'设计师',perms:['execute']},
-  {value:'finance',label:'财务',perms:['contract','cost']},
-  {value:'purchaser',label:'采购',perms:['cost','delivery']},
-  {value:'qa',label:'质检',perms:['delivery']},
+  {value:'finance',label:'财务',perms:[]},
+  {value:'purchaser',label:'采购',perms:['execute','cost']},
+  {value:'qa',label:'质检',perms:['execute']},
   {value:'reader',label:'只读成员',perms:[]},
   {value:'admin',label:'企业管理员',perms:['execute','contract','cost','delivery']}
 ];
@@ -19388,27 +19402,71 @@ function teamRoleDefaultPerms(role){
    ⚠️ CloudSync.__me 未就绪（刚登录 / 首屏）时 canAccessPage 一律放行，
       避免「角色未知把整页侧栏藏光 + 首屏空白」；me() 回来后再由
       refreshPermUI() 校正隐藏并必要时跳回总览。 */
-const PAGE_PERM={
-  home:null, tools:null, knowledge:null, logs:null,
-  process:['execute','delivery'],
-  purchase:['cost'], finance:['cost'], ledger:['cost'], compare:['cost'], quote:['cost'],
-  contracts:['contract'], invoices:['contract'],
-  archive:['delivery'],
-  standard:['execute'], media:['execute','delivery'],
-  diary:['execute','delivery'],
-  team:'admin'
+/* ════════════════════════════════════════════════════════════════════════
+   岗位 → 版块权限清单（用户给定权威矩阵，2026-09-01 补全）
+   键 = 左侧导航 / 底部 tab 的 data-page；值 = 允许访问的角色 value 数组。
+   ROLE_ALL = 七种角色全开放（采购清单 / 比价选品 / 施工标准 / 实用工具 /
+   装修日记 / 水电知识 对任意岗位均可见）。
+   说明：
+   - 项目管理拆成四个子板块（施工执行 / 合同收款 / 供应调配 / 客户交付），
+     分别对应四维权限 execute / contract / cost / delivery，其可见性由
+     canAccessProjTab() 按「本人实际四维权限」判定（支持后台手动调节）。
+   - 其余版块按本矩阵的角色清单判定。
+   - 本地模式（未登录云账号）与角色未知（首屏 me() 未回）一律放行，稍后校正。 */
+const ROLE_ALL=['pm','designer','finance','purchaser','qa','reader','admin'];
+const SECTION_ACL={
+  home:['pm','designer','finance','purchaser','admin'],
+  finance:['pm','finance','admin'],
+  ledger:['finance','admin'],
+  contracts:['pm','finance','admin'],
+  invoices:['pm','finance','purchaser','admin'],
+  archive:['pm','admin'],
+  purchase:ROLE_ALL.slice(),
+  compare:ROLE_ALL.slice(),
+  proj_list:['pm','designer','finance','purchaser','admin'],
+  proj_new:['pm','admin'],
+  standard:ROLE_ALL.slice(),
+  tools:ROLE_ALL.slice(),
+  quote:['pm','admin'],
+  diary:ROLE_ALL.slice(),
+  knowledge:ROLE_ALL.slice(),
+  team:['admin'],
+  logs:['admin'],
+  media:['pm','admin']
 };
-/* 当前登录用户的生效权限（按角色默认；admin 恒为全权）。
-   注：管理员在前端「权限管理」页对成员做的 perms 自定义目前只用于展示，
-       真正的服务端强制与自定义 perms 下发是下一阶段（org_data 域拆分）。 */
+/* 项目管理四个子板块 = 四维权限；其可见性走「本人实际权限」而非角色清单，
+   以便「权限管理」页对成员做的手动调节（localStorage 覆盖）即时生效。 */
+const PROJTAB_DOMAIN={'process':'execute','finance':'contract','purchase':'cost','diary':'delivery'};
+const PROJTAB_LABEL={'process':'施工执行','finance':'合同收款','purchase':'供应调配','diary':'客户交付'};
+/* 当前登录用户的生效四维权限：
+   admin 恒为全权；否则优先用本人在「权限管理」里被手动调节后的 perms
+   （存于 localStorage 的 xzgz_team_perms[org:uid]），回退到角色默认值。 */
 function myPerms(){
   try{
     var role=(CloudSync.__me&&CloudSync.__me.role)||'';
     if(role==='admin')return PERM_ALL.slice();
+    try{
+      var uid=(cloudUser&&cloudUser.uid)||(CloudSync.__me&&CloudSync.__me.id)||'';
+      if(uid){
+        var ov=readMemberPerms(getLocalPerms(),uid);
+        if(ov&&ov.length)return ov;
+      }
+    }catch(e){}
     return teamRoleDefaultPerms(role);
   }catch(e){ return []; }
 }
-/* 是否可访问某页 */
+/* 能否访问「项目管理」内的某个子板块（按四维权限，支持手动调节） */
+function canAccessProjTab(tab){
+  try{
+    if(!CloudSync.loggedIn)return true;
+    if(CloudSync.__me===null)return true;
+    if(isTeamAdmin())return true;                 // 管理员恒可见
+    var dom=PROJTAB_DOMAIN[tab];
+    if(!dom)return true;
+    return myPerms().indexOf(dom)>=0;
+  }catch(e){ return true; }
+}
+/* 是否可访问某页（版块级闸门，矩阵驱动） */
 function canAccessPage(page){
   try{
     /* 本地模式（未登录云账号，仅本机自用）：视为全权，所有页面可见。
@@ -19416,13 +19474,15 @@ function canAccessPage(page){
        不会有其他「未登录却进了工作台」的路径，故此处可安全放行。 */
     if(!CloudSync.loggedIn)return true;
     if(CloudSync.__me===null)return true;          // 角色未知：先放行，稍后校正
-    var req=PAGE_PERM[page];
-    if(req===null||req===undefined)return true;    // 常开页
-    if(req==='admin')return isTeamAdmin();         // 仅管理员
-    var mine=myPerms();
-    if(!mine||!mine.length)return false;           // 无任何域权限 → 仅常开页
-    for(var i=0;i<req.length;i++){ if(mine.indexOf(req[i])>=0)return true; }
-    return false;
+    if(isTeamAdmin())return true;                  // 管理员恒可见全部版块
+    if(page==='process'){                          // 项目管理容器：任一子板块可见即可见
+      return canAccessProjTab('process')||canAccessProjTab('finance')
+            ||canAccessProjTab('purchase')||canAccessProjTab('diary');
+    }
+    var allow=SECTION_ACL[page];
+    if(!allow)return true;                         // 未登记版块默认放行
+    var role=(CloudSync.__me&&CloudSync.__me.role)||'';
+    return allow.indexOf(role)>=0;
   }catch(e){ return true; }   // 异常降级放行，避免误锁全体
 }
 /* 按权限隐藏 / 显示侧栏项与底部 tab */
@@ -19434,6 +19494,23 @@ function applyNavPerms(){
     document.querySelectorAll('.mtab[data-page]').forEach(function(t){
       t.style.display=canAccessPage(t.dataset.page)?'':'none';
     });
+    /* 项目管理四个子板块：按实际四维权限显隐 */
+    document.querySelectorAll('.proj-tab[data-tab]').forEach(function(t){
+      t.style.display=canAccessProjTab(t.dataset.tab)?'':'none';
+    });
+    ensureVisibleProjTab();
+  }catch(e){}
+}
+/* 若当前激活的项目管理子板块被权限隐藏，自动切到第一个可见子板块，避免空白页 */
+function ensureVisibleProjTab(){
+  try{
+    var tabs=document.querySelectorAll('.proj-tab[data-tab]');
+    if(!tabs.length)return;
+    var active=document.querySelector('.proj-tab.active');
+    if(active && active.style.display!=='none')return;
+    for(var i=0;i<tabs.length;i++){
+      if(tabs[i].style.display!=='none'){ switchProjTab(tabs[i],tabs[i].dataset.tab); return; }
+    }
   }catch(e){}
 }
 /* 权限校正 + 若当前页已不可访问则跳回总览（在 me() / 成员列表就绪后调用） */
