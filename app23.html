@@ -2404,10 +2404,14 @@ a{color:#003a8c;text-decoration:none}
 .team-perm-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#f0f0f0;color:#666;border:1px solid #e0e0e0}
 .team-member-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .team-role-label{font-size:12px;color:#8c8c8c;font-weight:500}
-.team-status-badge{font-size:11px;padding:1px 8px;border-radius:8px}
-.status-ok{background:#e6f4ff;color:#1677ff;border:1px solid #91caff}
-.status-offline{background:#fff1f0;color:#ff4d4f;border:1px solid #ffa39e}
-.team-member-actions{margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.team-status-badge{font-size:12px;padding:5px 14px;border-radius:6px;text-align:center;min-width:70px;box-sizing:border-box;display:inline-block}
+.status-ok{color:#389e0d;border:1px solid #b7eb8f;background:#f6ffed}
+.status-offline{color:#8c8c8c;border:1px solid #d9d9d9;background:#fafafa}
+.team-member-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.team-action-btn{padding:5px 14px;border-radius:6px;font-size:12.5px;min-width:70px;text-align:center;box-sizing:border-box;cursor:pointer;transition:all .2s}
+.team-action-btn:hover{opacity:.85}
+.team-role-select-inline{padding:6px 10px;border:2px solid #333;border-radius:6px;font-size:14px;font-weight:500;background:#fff;color:#333;min-width:110px;flex-shrink:0;cursor:pointer}
+.team-action-btn--danger{color:#cf1322;border-color:#ffa39e;background:#fff}
 .team-role-select{font-size:12px;padding:3px 6px;border:1px solid #d9d9d9;border-radius:5px;background:#fff;color:#003a8c}
 
 /* 当前团队 / 多团队切换条 */
@@ -19976,23 +19980,19 @@ function renderTeamList(members,isAdmin,localPerms){
       var soleAdmin=(m.role==='admin'&&__teamAdminCount<=1);
       html+='<button class="btn-outline btn-sm team-action-btn" data-act="leave" data-uid="'+escHtml(m.id)+'"'
         +(soleAdmin?' disabled title="你是本团队唯一的管理员，请先把管理员转让给其他成员再退出"':'')
-        +' onclick="doLeaveOrg()" style="color:#cf1322;border-color:#ffa39e'+(soleAdmin?';opacity:.45;cursor:not-allowed':'')+'">退出团队</button>';
+        +' onclick="doLeaveOrg()"'
+        +(soleAdmin?' style="opacity:.45;cursor:not-allowed" disabled':'')
+        +'>退出团队</button>';
     }else if(isAdmin){
       /* 状态标签 */
-      html+='<span class="team-status-badge '+(statusCls)+'" style="display:inline-block;padding:5px 14px;border-radius:6px;font-size:12.5px;text-align:center;min-width:70px;box-sizing:border-box;border:1px solid '
-        +(statusCls==='status-ok'?'#b7eb8f;color:#389e0d;background:#f6ffed':'#d9d9d9;color:#8c8c8c;background:#fafafa')
-        +'">'+escHtml(m.status||'正常')+'</span>'
+      html+='<span class="team-status-badge '+statusCls+'">'+escHtml(m.status||'正常')+'</span>'
       /* 编辑权限 */
-      +'<button class="btn-outline btn-sm team-action-btn" data-act="perm" data-uid="'+escHtml(m.id)+'" onclick="openPermEditor(\''+escHtml(m.id)+'\')"'
-        +' style="padding:5px 14px;border-radius:6px;font-size:12.5px;min-width:70px;box-sizing:border-box">编辑权限</button>'
+      +'<button class="btn-outline btn-sm team-action-btn" data-act="perm" data-uid="'+escHtml(m.id)+'" onclick="openPermEditor(\''+escHtml(m.id)+'\')">编辑权限</button>'
       /* 移出团队 */
-      +'<button class="btn-outline btn-sm team-action-btn" data-act="remove" data-uid="'+escHtml(m.id)+'" onclick="doRemoveMember(\''+escHtml(m.id)+'\')"'
-        +' style="color:#cf1322;border-color:#ffa39e;padding:5px 14px;border-radius:6px;font-size:12.5px;min-width:70px;box-sizing:border-box">移出团队</button>';
+      +'<button class="btn-outline btn-sm team-action-btn team-action-btn--danger" data-act="remove" data-uid="'+escHtml(m.id)+'" onclick="doRemoveMember(\''+escHtml(m.id)+'\')">移除团队</button>';
     }else{
       /* 非管理员看到的成员：只显示状态 */
-      html+='<span class="team-status-badge '+statusCls+'" style="display:inline-block;padding:5px 14px;border-radius:6px;font-size:12.5px;text-align:center;min-width:70px;box-sizing:border-box;border:1px solid '
-        +(statusCls==='status-ok'?'#b7eb8f;color:#389e0d;background:#f6ffed':'#d9d9d9;color:#8c8c8c;background:#fafafa')
-        +'">'+escHtml(m.status||'正常')+'</span>';
+      html+='<span class="team-status-badge '+statusCls+'">'+escHtml(m.status||'正常')+'</span>';
     }
     html+='</div></div>';
   }
