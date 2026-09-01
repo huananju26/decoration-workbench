@@ -668,16 +668,29 @@ routerAdd('POST', '/api/auth/register', (e) => {
         必须用 $app.findCollectionByNameOrId()。
      🩸 users 集合没有 username 字段（PB 内置的是 name），set('username') 静默失效，
         导致后续按用户名登录永远查不到。统一用 name 存用户名。 */
-  var ucol = $app.findCollectionByNameOrId('users');
-  if (!ucol) throw new BadRequestError('系统未就绪：users 集合缺失');
-  var user = new Record(ucol);
-  user.set('email', data.email);
-  user.set('password', data.password);
-  user.set('name', data.username);
-  user.set('display_name', data.username);
-  user.set('role', 'member');
-  user.set('verified', true);
-  $app.save(user);
+  var ucol, user;
+  try {
+    ucol = $app.findCollectionByNameOrId('users');
+    if (!ucol) throw new BadRequestError('系统未就绪：users 集合缺失');
+    user = new Record(ucol);
+    user.set('email', data.email);
+    user.set('password', data.password);
+    user.set('name', data.username);
+    user.set('display_name', data.username);
+    user.set('role', 'member');
+    user.set('verified', true);
+    /* 🩸 防御性补全：users.status 字段存在但代码未接（#430 记忆），org_id 是关系字段；
+       若集合对其有必填约束，未设置会导致 $app.save 抛「字段必填」被 PB 吞成英文兜底。
+       set 不存在的字段会被 PB 静默忽略，无副作用；存在则补默认值。 */
+    try { user.set('org_id', null); } catch (e) {}
+    try { user.set('status', 'pending'); } catch (e) {}
+    $app.save(user);
+  } catch (err) {
+    /* 🩸 异常必须出声：save 阶段若因字段必填/类型不符/约束冲突（或 AfterCreate 钩子抛异常）
+       失败，PB 会吞成英文 400 "Something went wrong"，无法定位。
+       这里转成中文并带原始 message，让前端/用户能看到真实原因。 */
+    throw new BadRequestError('注册保存失败：' + String(err && err.message ? err.message : err));
+  }
 
   return e.json(200, { ok: true, id: user.id, email: data.email, username: data.username });
 });
