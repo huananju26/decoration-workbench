@@ -19955,7 +19955,7 @@ function renderTeamList(members,isAdmin,localPerms){
       +'<span class="team-member-name">'+escHtml(m.name)+'</span>'
       +' <span style="color:#ccc;margin:0 2px">·</span> ';
     if(m.isMe){
-      html+='<span style="font-size:12px;color:#888">'+escHtml(teamRoleLabel(role))+'</span>';
+      html+='<span style="font-size:12px;color:#888">'+escHtml(roleLabel)+'</span>';
     }else if(isAdmin){
       var roleOptsForMember=roleOpts, roleKnown=false;
       for(var rk=0;rk<ROLE_OPTIONS.length;rk++){ if(ROLE_OPTIONS[rk].value===m.role){ roleKnown=true; break; } }
