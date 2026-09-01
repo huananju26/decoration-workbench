@@ -19878,11 +19878,11 @@ function onProjRoleProjectChange(){
       var uid=m.id; if(!uid)return;
       var curRole=pr[uid]||'';   // 空 = 继承组织级角色
       var selHtml=roleOpts.replace('value="'+curRole+'"','value="'+curRole+'" selected');
-      rows+='<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;'
+      rows+='<div style="display:flex;align-items:center;gap:12px;'
         +'padding:8px 10px;border:1px solid #f0f0f0;border-radius:8px;margin-bottom:6px;background:#fafafa">'
-        +'<span style="font-size:13px;color:#333">'+escHtml(m.name||uid)+(m.isMe?'（我）':'')+'</span>'
+        +'<span style="font-size:13px;color:#333;min-width:140px;flex-shrink:0">'+escHtml(m.name||uid)+(m.isMe?'（我）':'')+'</span>'
         +'<select class="proj-role-sel" data-uid="'+escHtml(uid)+'" onchange="setProjectRoleForMember(this)" '
-        +'style="padding:5px 8px;border:1px solid #d9d9d9;border-radius:6px">'
+        +'style="padding:5px 8px;border:1px solid #d9d9d9;border-radius:6px;flex:1;min-width:0">'
         +'<option value=""'+(curRole===''?' selected':'')+'>继承组织角色（'+(teamRoleLabel(m.role)||'—')+'）</option>'
         +selHtml+'</select></div>';
       cnt++;
@@ -19950,42 +19950,49 @@ function renderTeamList(members,isAdmin,localPerms){
       +(m.isMe?' data-me="1"':'')+'>'
       +'<div class="team-member-avatar">'+escHtml((m.name||'?').charAt(0).toUpperCase())+'</div>'
       +'<div class="team-member-info">'
+      /* 第一行：名字 + 角色下拉（内联，如 "小焕安 · 项目经理 ▾"） */
       +'<div class="team-member-name-row">'
       +'<span class="team-member-name">'+escHtml(m.name)+'</span>'
-      +(m.isMe?'<span class="badge badge-ok" style="font-size:11px;margin-left:6px">我</span>':'')
-      +'</div>'
-      +'<div class="team-member-email">'+escHtml(m.email||'')+(m.joinedAt?' · 加入于 '+escHtml(m.joinedAt):'')+'</div>'
-      +'<div class="team-member-perms">'+permTags.join('')+'</div>'
-      +'</div>'
-      +'<div class="team-member-meta">'
-      +'<span class="team-role-label">'+escHtml(roleLabel)+'</span>'
-      +'<span class="team-status-badge '+statusCls+'">'+escHtml(m.status||'--')+'</span>'
-      +'</div>'
-      +'<div class="team-member-actions">';
+      +' <span style="color:#ccc;margin:0 2px">·</span> ';
     if(m.isMe){
-      /* 本人退出团队。唯一管理员必须先转让管理员，否则公司会没人管 */
-      var soleAdmin=(m.role==='admin'&&__teamAdminCount<=1);
-      html+='<button class="btn-outline btn-sm" data-act="leave" data-uid="'+escHtml(m.id)+'"'
-        +(soleAdmin?' disabled title="你是本团队唯一的管理员，请先把管理员转让给其他成员再退出"':'')
-        +' onclick="doLeaveOrg()" style="color:#cf1322;border-color:#ffa39e'+(soleAdmin?';opacity:.45;cursor:not-allowed':'')+'">退出团队</button>';
+      html+='<span style="font-size:12px;color:#888">'+escHtml(teamRoleLabel(role))+'</span>';
     }else if(isAdmin){
-      /* 🩸 角色下拉的 selected 兜底（2026-09-01，#430 连带发现）：
-         后端 role 候选值是 8 个（含 'member' —— api_review.pb.js 有 4 处 || 'member' 兜底），
-         而前端 ROLE_OPTIONS 只暴露 7 个邀请选项（没有 member）。
-         原写法 roleOpts.replace('value="'+m.role+'"', ...) 对未知角色**匹配不到** →
-         没有任何 option 带 selected → 浏览器默认选中第一项（项目经理），
-         与旁边 teamRoleLabel() 显示的「成员」自相矛盾（文字标签对、下拉框错）。
-         ⚠️ 该 select 是 onchange 立即提交，显示错会让管理员误判甚至误改权限。
-         故：未知角色时先插一个对应 option 并选中，保证下拉框与真实角色一致。 */
       var roleOptsForMember=roleOpts, roleKnown=false;
       for(var rk=0;rk<ROLE_OPTIONS.length;rk++){ if(ROLE_OPTIONS[rk].value===m.role){ roleKnown=true; break; } }
       if(roleKnown) roleOptsForMember=roleOpts.replace('value="'+m.role+'"','value="'+m.role+'" selected');
       else roleOptsForMember='<option value="'+escHtml(m.role)+'" selected>'+escHtml(teamRoleLabel(m.role))+'</option>'+roleOpts;
-      html+='<select class="team-role-select" data-act="role" data-uid="'+escHtml(m.id)+'" onchange="doSetMemberRole(\''+escHtml(m.id)+'\',this.value)">'
-        +roleOptsForMember
-        +'</select>'
-        +'<button class="btn-outline btn-sm" data-act="perm" data-uid="'+escHtml(m.id)+'" onclick="openPermEditor(\''+escHtml(m.id)+'\')">编辑权限</button>'
-        +'<button class="btn-outline btn-sm" data-act="remove" data-uid="'+escHtml(m.id)+'" onclick="doRemoveMember(\''+escHtml(m.id)+'\')" style="color:#cf1322;border-color:#ffa39e">移出团队</button>';
+      html+='<select class="team-role-select-inline" data-act="role" data-uid="'+escHtml(m.id)+'" onchange="doSetMemberRole(\''+escHtml(m.id)+'\',this.value)">'
+        +roleOptsForMember+'</select>';
+    }else{
+      html+='<span style="font-size:12px;color:#555;font-weight:500">'+escHtml(roleLabel)+'</span>';
+    }
+    html+=(m.isMe?'<span class="badge badge-ok" style="font-size:11px;margin-left:6px">我</span>':'')
+      +'</div>'
+      +'<div class="team-member-email">'+escHtml(m.email||'')+(m.joinedAt?' · 加入于 '+escHtml(m.joinedAt):'')+'</div>'
+      +'</div>'
+      /* 右侧操作区：状态 / 编辑权限 / 移出团队 —— 三行等大徽章 */
+      +'<div class="team-member-actions">';
+    if(m.isMe){
+      var soleAdmin=(m.role==='admin'&&__teamAdminCount<=1);
+      html+='<button class="btn-outline btn-sm team-action-btn" data-act="leave" data-uid="'+escHtml(m.id)+'"'
+        +(soleAdmin?' disabled title="你是本团队唯一的管理员，请先把管理员转让给其他成员再退出"':'')
+        +' onclick="doLeaveOrg()" style="color:#cf1322;border-color:#ffa39e'+(soleAdmin?';opacity:.45;cursor:not-allowed':'')+'">退出团队</button>';
+    }else if(isAdmin){
+      /* 状态标签 */
+      html+='<span class="team-status-badge '+(statusCls)+'" style="display:inline-block;padding:5px 14px;border-radius:6px;font-size:12.5px;text-align:center;min-width:70px;box-sizing:border-box;border:1px solid '
+        +(statusCls==='status-ok'?'#b7eb8f;color:#389e0d;background:#f6ffed':'#d9d9d9;color:#8c8c8c;background:#fafafa')
+        +'">'+escHtml(m.status||'正常')+'</span>'
+      /* 编辑权限 */
+      +'<button class="btn-outline btn-sm team-action-btn" data-act="perm" data-uid="'+escHtml(m.id)+'" onclick="openPermEditor(\''+escHtml(m.id)+'\')"'
+        +' style="padding:5px 14px;border-radius:6px;font-size:12.5px;min-width:70px;box-sizing:border-box">编辑权限</button>'
+      /* 移出团队 */
+      +'<button class="btn-outline btn-sm team-action-btn" data-act="remove" data-uid="'+escHtml(m.id)+'" onclick="doRemoveMember(\''+escHtml(m.id)+'\')"'
+        +' style="color:#cf1322;border-color:#ffa39e;padding:5px 14px;border-radius:6px;font-size:12.5px;min-width:70px;box-sizing:border-box">移出团队</button>';
+    }else{
+      /* 非管理员看到的成员：只显示状态 */
+      html+='<span class="team-status-badge '+statusCls+'" style="display:inline-block;padding:5px 14px;border-radius:6px;font-size:12.5px;text-align:center;min-width:70px;box-sizing:border-box;border:1px solid '
+        +(statusCls==='status-ok'?'#b7eb8f;color:#389e0d;background:#f6ffed':'#d9d9d9;color:#8c8c8c;background:#fafafa')
+        +'">'+escHtml(m.status||'正常')+'</span>';
     }
     html+='</div></div>';
   }
@@ -20065,23 +20072,17 @@ function openPermEditor(uid){
   var lp=getLocalPerms();
   var entry=lp[permKey(uid)]||lp[uid]||{};
   var savedSections=(entry.sections&&Array.isArray(entry.sections))?entry.sections:null;
-  var curPerms=(entry.perms&&Array.isArray(entry.perms))?entry.perms:(m.perms||[]);
   var role=m.role||'';
   /* 默认勾选：有自定义 sections 用它；否则按角色在 SECTION_ACL / 四维权限里的默认值 */
   var defaultAllowed=[];
   if(savedSections){ defaultAllowed=savedSections.slice(); }
   else {
-    /* SECTION_EDIT_ORDER 部分key ≠ SECTION_ACL key，需映射：
-       - 四子板块(process/finance/purchase/diary)→走四维权限
-       - acct→finance(装修记账), purch_list→purchase(采购清单), journal→diary(装修日记)
-       - 其余与ACL key一致 */
     var SK2ACL={acct:'finance',purch_list:'purchase',journal:'diary'};
     var SUBTAB_PERM={process:'execute',finance:'contract',purchase:'cost',diary:'delivery'};
     var rolePerms4=teamRoleDefaultPerms(role);
     for(var si=0;si<SECTION_EDIT_ORDER.length;si++){
       var sk=SECTION_EDIT_ORDER[si];
       if(SUBTAB_PERM[sk]){
-        /* 项目管理四子板块：按角色四维权限判定 */
         if(rolePerms4.indexOf(SUBTAB_PERM[sk])>=0)defaultAllowed.push(sk);
       }else{
         var aclKey=SK2ACL[sk]||sk;
@@ -20091,52 +20092,41 @@ function openPermEditor(uid){
     }
   }
 
-  /* ── 弹窗 HTML ── */
-  var body='<div style="text-align:left">'
-    +'<div style="margin-bottom:10px;font-size:14px;font-weight:600">编辑「'+escHtml(m.name)+'」的权限</div>'
-    +'<div style="font-size:12px;color:#999;margin-bottom:8px">当前角色：'+escHtml(teamRoleLabel(role))
+  /* ── 弹窗 HTML（单行对齐：☑｜版块名｜描述）── */
+  var body='<div style="text-align:left;position:relative">'
+    /* 右上角 X 关闭按钮 */
+    +'<div onclick="closeModal(\'confirmModal\')" style="position:absolute;top:-8px;right:-8px;width:28px;height:28px;border-radius:50%;'
+    +'background:#f0f0f0;border:none;color:#999;font-size:16px;line-height:28px;text-align:center;cursor:pointer;'
+    +'display:flex;align-items:center;justify-content:center;z-index:1" title="关闭">&times;</div>'
+    +'<div style="margin-bottom:6px;font-size:15px;font-weight:600">编辑「'+escHtml(m.name)+'」的权限</div>'
+    +'<div style="font-size:12px;color:#999;margin-bottom:10px">当前角色：'+escHtml(teamRoleLabel(role))
     +'（勾选结果只覆盖本团队，不影响该成员在其它公司的权限）</div>';
 
-  /* ① 22 个版块逐行 checkbox */
-  body+='<div style="font-size:12px;font-weight:600;color:#1677ff;margin:10px 0 6px">业务版块访问权限</div>'
-    +'<div style="display:grid;gap:2px;max-height:360px;overflow-y:auto;padding-right:4px">';
+  /* 22 个版块 —— 单行：☑ ｜ 版块名 ｜ 描述 */
+  body+='<div style="font-size:12px;font-weight:600;color:#1677ff;margin:8px 0 6px">业务版块访问权限</div>'
+    +'<div style="display:flex;flex-direction:column;gap:0;max-height:420px;overflow-y:auto;padding-right:4px">';
   for(var si=0;si<SECTION_EDIT_ORDER.length;si++){
     var sk=SECTION_EDIT_ORDER[si];
     var info=SECTION_INFO[sk]||{label:sk,desc:''};
     var checked=defaultAllowed.indexOf(sk)>=0?'checked':'';
-    body+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 6px;cursor:pointer;'
-      +'border-radius:6px;'+(checked?'background:#e6f4ff':'')+'" '
-      +'onmouseover="this.style.background=\''+(checked?'#d9edff':'#f5f5f5')+'\'" '
+    body+='<label style="display:flex;align-items:center;gap:0;font-size:13px;padding:6px 8px;cursor:pointer;'
+      +'border-radius:6px;border-bottom:1px solid #f5f5f5'
+      +(checked?';background:#e6f4ff':'')+'" '
+      +'onmouseover="this.style.background=\''+(checked?'#d9edff':'#fafafa')+'\'" '
       +'onmouseout="this.style.background=\''+(checked?'#e6f4ff':'')+'\'">'
-      +'<input type="checkbox" value="'+sk+'" data-section="'+sk+'" '+checked+'> '
-      +'<span style="font-weight:550;min-width:72px;flex-shrink:0">'+escHtml(info.label)+'</span>'
-      +'<span style="color:#888;font-size:11.5px">'+escHtml(info.desc)+'</span>'
-      +'</label>';
-  }
-  body+='</div>';
-
-  /* ② 项目管理四子板块四维权限（高级：控制施工执行/合同收款/供应调配/客户交付可见性） */
-  body+='<div style="font-size:12px;font-weight:600;color:#1677ff;margin:14px 0 6px;border-top:1px solid #e8e8e8;padding-top:10px">'
-    +'项目管理子板块细控（四维权限）</div>'
-    +'<div style="display:grid;gap:2px">';
-  var permDesc={execute:'查看/编辑施工计划和节点',contract:'查看/编辑合同和收款记录',
-    cost:'查看/编辑成本、采购和增减项',delivery:'查看/编辑客户交付和发布'};
-  for(var pi=0;pi<PERM_ALL.length;pi++){
-    var p=PERM_ALL[pi];
-    var pChecked=curPerms.indexOf(p)>=0?'checked':'';
-    body+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 6px;cursor:pointer;border-radius:6px;'
-      +(pChecked?'background:#e6f4ff':'')+'" '
-      +'onmouseover="this.style.background=\''+(pChecked?'#d9edff':'#f5f5f5')+'\'" '
-      +'onmouseout="this.style.background=\''+(pChecked?'#e6f4ff':'')+'\'">'
-      +'<input type="checkbox" value="'+p+'" data-perm="'+p+'" '+pChecked+'> '
-      +'<span style="font-weight:550;min-width:56px;flex-shrink:0">'+escHtml(PERM_LABELS[p])+'</span>'
-      +'<span style="color:#888;font-size:11.5px">'+escHtml(permDesc[p]||'')+'</span>'
+      +'<input type="checkbox" value="'+sk+'" data-section="'+sk+'" '+checked
+      +' style="flex-shrink:0;margin:0 12px 0 0;width:16px;height:16px;accent-color:#1677ff"> '
+      +'<span style="font-weight:550;min-width:80px;flex-shrink:0;color:#333">'+escHtml(info.label)+'</span>'
+      +'<span style="color:#bbb;margin:0 12px;flex-shrink:0;font-size:14px">|</span>'
+      +'<span style="color:#888;font-size:12px;flex:1">'+escHtml(info.desc)+'</span>'
       +'</label>';
   }
   body+='</div></div>';
 
   confirmDialog(body,function(){ savePermEdits(uid); },{okText:'保存权限',okClass:'primary'});
   $('confirmMsg').innerHTML=body;
+  /* 加宽弹窗 */
+  try{ var modal=$('confirmModal'); if(modal){var box=modal.querySelector('.modal');if(box)box.style.minWidth='560px';}}catch(e){}
 }
 
 function savePermEdits(uid){
@@ -20144,20 +20134,15 @@ function savePermEdits(uid){
   var sections=[];
   var sNodes=document.querySelectorAll('#confirmModal input[data-section]:checked');
   for(var ni=0;ni<sNodes.length;ni++){sections.push(sNodes[ni].value);}
-  /* 收集四维权限勾选 */
-  var perms=[];
-  var pNodes=document.querySelectorAll('#confirmModal input[data-perm]:checked');
-  for(var pi=0;pi<pNodes.length;pi++){perms.push(pNodes[pi].value);}
-  /* 持久化 */
+  /* 持久化（仅存版块级覆盖；四维权限不再单独编辑，由角色默认值驱动） */
   var lp=getLocalPerms();
-  lp[permKey(uid)]={perms:perms,sections:sections,updatedAt:new Date().toISOString()};
+  lp[permKey(uid)]={sections:sections,updatedAt:new Date().toISOString()};
   try{ delete lp[uid]; }catch(e){}
   saveLocalPerms(lp);
   /* 更新内存 */
-  for(var ti=0;ti<__teamMembers.length;ti++){if(__teamMembers[ti].id===uid){__teamMembers[ti].perms=perms;break;}}
+  for(var ti=0;ti<__teamMembers.length;ti++){if(__teamMembers[ti].id===uid){break;}}
   closeModal('confirmModal');
   renderTeamList(__teamMembers,isTeamAdmin(),lp);
-  /* 立即刷新当前用户自己的侧栏（如果编辑的是自己） */
   try{ applyNavPerms(); refreshPermUI(); }catch(e){}
   showToast('权限已更新','ok');
 }
