@@ -3027,7 +3027,7 @@ a{color:#003a8c;text-decoration:none}
       <!-- 按项目分配成员角色：同一人在不同项目可有不同角色（#432） -->
       <div class="card" id="projRoleCard" style="margin-top:16px;display:none">
         <div class="card-title">按项目分配成员角色</div>
-        <div class="card-subtitle">同一成员在不同项目可设为不同角色（如：在 A 项目是项目经理、在 B 项目是只读）。未单独设置的项目默认继承其组织级角色。</div>
+        <div class="card-subtitle">同一成员在不同项目可设为不同角色（如：在 A 项目是项目经理、在 B 项目是只读）。企业管理员可管理全部项目；各项目经理仅可管理自己负责的项目。未单独设置的项目默认继承其组织级角色。</div>
         <div style="margin:8px 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <label style="font-size:13px;color:#555">选择项目：</label>
           <select id="projRoleProjectSel" onchange="onProjRoleProjectChange()" style="padding:6px 10px;border:1px solid #d9d9d9;border-radius:6px;min-width:200px"></select>
@@ -19451,6 +19451,48 @@ const SECTION_ACL={
   logs:['admin'],
   media:['pm','admin']
 };
+/* 22 个业务版块的中文名与简要描述（用于「编辑权限」弹窗逐行展示） */
+const SECTION_INFO={
+  home:       {label:'今日总览',     desc:'工作台首页，汇总待办、进度与关键指标'},
+  process:    {label:'施工执行',     desc:'项目管理子板块：查看/编辑施工计划和节点'},
+  finance:    {label:'合同收款',     desc:'项目管理子板块：查看/编辑合同和收款记录'},
+  purchase:   {label:'供应调配',     desc:'项目管理子板块：查看/编辑成本、采购和增减项'},
+  diary:      {label:'客户交付',     desc:'项目管理子板块：查看/编辑客户交付和发布'},
+  acct:       {label:'装修记账',     desc:'项目级财务记账与科目管理'},
+  ledger:     {label:'收支流水',     desc:'公司级收支流水台账与汇总'},
+  contracts:  {label:'合同管理',     desc:'合同模板、条款与归档管理'},
+  invoices:   {label:'发票管理',     desc:'进项/销项发票 5 状态跟踪（无票/待开/已开/待收/已收）'},
+  archive:    {label:'人材档案',     desc:'人员与供应商档案库'},
+  purch_list: {label:'采购清单',     desc:'材料/设备采购明细清单'},
+  compare:    {label:'比价选品',     desc:'供应商报价对比与选品决策'},
+  proj_list:  {label:'项目列表',     desc:'查看全部项目列表与概览'},
+  proj_new:   {label:'新建项目',     desc:'创建新项目（仅项目经理/管理员）'},
+  standard:   {label:'施工标准',     desc:'施工工艺标准与规范库'},
+  tools:      {label:'实用工具',     desc:'常用计算器与辅助工具集'},
+  quote:      {label:'报价系统',     desc:'项目报价方案生成与管理'},
+  journal:    {label:'装修日记',     desc:'施工过程图文日记记录'},
+  knowledge:  {label:'水电知识',     desc:'水电工程知识库与资料'},
+  team:       {label:'权限管理',     desc:'团队成员邀请、角色与权限配置（仅企业管理员）'},
+  logs:       {label:'操作记录',     desc:'全员操作审计日志（仅企业管理员）'},
+  media:      {label:'存储影像',     desc:'项目影像资料上传与管理'}
+};
+/* 编辑权限弹窗用的版块顺序（与用户给定的矩阵一致） */
+const SECTION_EDIT_ORDER=[
+  'home','process','finance','purchase','diary',
+  'acct','ledger','contracts','invoices','archive',
+  'purch_list','compare','proj_list','proj_new',
+  'standard','tools','quote','journal','knowledge',
+  'team','logs','media'
+];
+/* SECTION_ACL 的 key 与页面 data-page 的映射（部分版块 key ≠ data-page） */
+const SECTION_TO_PAGE={
+  home:'home',process:'process',finance:'process',purchase:'purchase',diary:'diary',
+  acct:'finance',ledger:'ledger',contracts:'contracts',invoices:'invoices',
+  archive:'archive',purch_list:'purchase',compare:'compare',
+  proj_list:'proj_list',proj_new:'proj_new',standard:'standard',tools:'tools',
+  quote:'quote',journal:'diary',knowledge:'knowledge',team:'team',logs:'logs',media:'media'
+};
+
 /* 项目管理四个子板块 = 四维权限；其可见性走「本人实际权限」而非角色清单，
    以便「权限管理」页对成员做的手动调节（localStorage 覆盖）即时生效。 */
 const PROJTAB_DOMAIN={'process':'execute','finance':'contract','purchase':'cost','diary':'delivery'};
@@ -19516,26 +19558,46 @@ function canAccessProjTab(tab){
     return myProjectPerms(App.currentProjectId).indexOf(dom)>=0;
   }catch(e){ return true; }
 }
-/* 是否可访问某页（版块级闸门，矩阵驱动；项目级版块按项目角色） */
+/* 是否可访问某页（版块级闸门，矩阵驱动；项目级版块按项目角色）
+   优先级：管理员 > 本地模式 > 自定义版块覆盖(sections) > SECTION_ACL 角色矩阵 */
 function canAccessPage(page){
   try{
-    /* 本地模式（未登录云账号，仅本机自用）：视为全权，所有页面可见。
-       enterApp() 只在两种情形下被调用：① 已登录 ② 点「仅本地使用」进入本地模式，
-       不会有其他「未登录却进了工作台」的路径，故此处可安全放行。 */
     if(!CloudSync.loggedIn)return true;
-    if(CloudSync.__me===null)return true;          // 角色未知：先放行，稍后校正
-    if(isTeamAdmin())return true;                  // 管理员恒可见全部版块
+    if(CloudSync.__me===null)return true;
+    if(isTeamAdmin())return true;
     if(page==='process'){                          // 项目管理容器：任一子板块可见即可见
       return canAccessProjTab('process')||canAccessProjTab('finance')
             ||canAccessProjTab('purchase')||canAccessProjTab('diary');
     }
+    /* ★ 优先检查「编辑权限」弹窗保存的版块级自定义覆盖 */
+    try{
+      var uid=(cloudUser&&cloudUser.uid)||(CloudSync.__me&&CloudSync.__me.id)||'';
+      if(uid){
+        var secs=readMemberSections(getLocalPerms(),uid);
+        if(secs){
+          /* 有自定义：page 对应的 section key 在列表中？*/
+          var sk=PAGE_TO_SECTION[page]||page;
+          return secs.indexOf(sk)>=0;
+        }
+      }
+    }catch(eSec){}
+    /* 无自定义 → 走角色矩阵 */
     var allow=SECTION_ACL[page];
     if(!allow)return true;                         // 未登记版块默认放行
     var role=gateRoleFor(page);
-    if(!role)return false;                         // 角色未知且非管理员 → 不放行（项目级版块需明确角色）
+    if(!role)return false;
     return allow.indexOf(role)>=0;
-  }catch(e){ return true; }   // 异常降级放行，避免误锁全体
+  }catch(e){ return true; }
 }
+/* 页面 data-key → SECTION_EDIT_ORDER 中对应的 section key（用于版块覆盖查询） */
+const PAGE_TO_SECTION={
+  home:'home',process:'process',finance:'acct',ledger:'ledger',
+  contracts:'contracts',invoices:'invoices',archive:'archive',
+  purchase:'purch_list',compare:'compare',proj_list:'proj_list',
+  proj_new:'proj_new',standard:'standard',tools:'tools',
+  quote:'quote',diary:'journal',knowledge:'knowledge',
+  team:'team',logs:'logs',media:'media'
+};
 /* 按权限隐藏 / 显示侧栏项与底部 tab */
 function applyNavPerms(){
   try{
@@ -19761,22 +19823,39 @@ async function loadTeamMembers(){
 }
 
 /* ═══ 按项目分配成员角色（#432 不同项目不同人员权限）═══
-   仅企业管理员可操作；数据存 App.projectRoles[pid][uid]=role，
-   随团队 org_data 自动同步到所有成员。 */
+   企业管理员可管理全部项目；各项目经理只能管理自己担任 PM 的项目。
+   数据存 App.projectRoles[pid][uid]=role，随团队 org_data 自动同步到所有成员。 */
 function renderProjRoleSelector(){
   try{
     var card=document.getElementById('projRoleCard');
-    if(card)card.style.display=isTeamAdmin()?'':'none';
-    if(!isTeamAdmin())return;
+    if(!card)return;
+    var show=false;
+    if(isTeamAdmin()){ show=true; }
+    else {
+      /* 项目经理：只要自己在任一项目中是 pm 就显示面板（下拉只列出自己负责的项目） */
+      var myUid=(cloudUser&&cloudUser.uid)||(CloudSync.__me&&CloudSync.__me.id)||'';
+      if(myUid&&(App.projects||[]).some(function(p){return myProjectRole(p.id)==='pm';})){
+        show=true;
+      }
+    }
+    card.style.display=show?'':'none';
+    if(!show)return;
     var sel=document.getElementById('projRoleProjectSel');
     if(!sel)return;
     var cur=sel.value||(App.currentProjectId||'');
     var opts='';
+    var myUid2=(cloudUser&&cloudUser.uid)||(CloudSync.__me&&CloudSync.__me.id)||'';
     (App.projects||[]).forEach(function(p){
+      /* 非管理员：只列出自己是 PM 的项目 */
+      if(!isTeamAdmin()&&myProjectRole(p.id)!=='pm')return;
       opts+='<option value="'+escHtml(p.id)+'"'+(p.id===cur?' selected':'')+'>'+escHtml(projDisplayName(p))+'</option>';
     });
-    sel.innerHTML=opts||'<option value="">（暂无项目）</option>';
-    if(!cur&&App.projects.length)cur=App.projects[0].id;
+    sel.innerHTML=opts||'<option value="">（暂无可管理的项目）</option>';
+    if(!cur&&App.projects.length){
+      /* 自动选第一个有权限的项目 */
+      var firstOpt=sel.querySelector('option[value]');
+      if(firstOpt)cur=firstOpt.value;
+    }
     onProjRoleProjectChange();
   }catch(e){}
 }
@@ -19813,10 +19892,18 @@ function onProjRoleProjectChange(){
 }
 function setProjectRoleForMember(sel){
   try{
-    var pid=document.getElementById('projRoleProjectSel').value;
+    var pid=sel.getAttribute('data-pid')||document.getElementById('projRoleProjectSel').value;
     var uid=sel.getAttribute('data-uid');
     var val=sel.value;
     if(!pid||!uid)return;
+    /* 权限校验：管理员可操作全部项目；PM 只能操作自己是 pm 的项目 */
+    if(!isTeamAdmin()&&myProjectRole(pid)!=='pm'){
+      showToast('您不是该项目「项目经理」，无权分配项目角色','warn');
+      /* 回滚下拉框 */
+      var pr=(App.projectRoles&&App.projectRoles[pid])||{};
+      sel.value=pr[uid]||'';
+      return;
+    }
     App.projectRoles[pid]=App.projectRoles[pid]||{};
     if(val){ App.projectRoles[pid][uid]=val; } else { delete App.projectRoles[pid][uid]; }
     persist();
@@ -19970,47 +20057,115 @@ async function doInviteMember(){
   }
 }
 
-/* 权限编辑器弹窗 */
+/* 权限编辑器弹窗（22 版块全量矩阵 + 四维权限子板块控制） */
 function openPermEditor(uid){
   var m=null;
   for(var ti=0;ti<__teamMembers.length;ti++){if(__teamMembers[ti].id===uid){m=__teamMembers[ti];break;}}
   if(!m)return;
   var lp=getLocalPerms();
-  var curPerms=readMemberPerms(lp,uid)||m.perms||[];
-  var body='<div style="text-align:left"><div style="margin-bottom:10px;font-size:14px;font-weight:600">编辑「'+escHtml(m.name)+'」的权限</div>'
-    +'<div style="font-size:12px;color:#999;margin-bottom:8px">当前角色：'+escHtml(teamRoleLabel(m.role))+'（勾选结果只覆盖本团队，不影响该成员在其它公司的权限）</div>'
-    +'<div style="display:grid;gap:10px">';
-  var permDesc={execute:'查看/编辑施工计划和节点',contract:'查看/编辑合同和收款记录',cost:'查看/编辑成本、采购和增减项',delivery:'查看/编辑客户交付和发布'};
+  var entry=lp[permKey(uid)]||lp[uid]||{};
+  var savedSections=(entry.sections&&Array.isArray(entry.sections))?entry.sections:null;
+  var curPerms=(entry.perms&&Array.isArray(entry.perms))?entry.perms:(m.perms||[]);
+  var role=m.role||'';
+  /* 默认勾选：有自定义 sections 用它；否则按角色在 SECTION_ACL / 四维权限里的默认值 */
+  var defaultAllowed=[];
+  if(savedSections){ defaultAllowed=savedSections.slice(); }
+  else {
+    /* SECTION_EDIT_ORDER 部分key ≠ SECTION_ACL key，需映射：
+       - 四子板块(process/finance/purchase/diary)→走四维权限
+       - acct→finance(装修记账), purch_list→purchase(采购清单), journal→diary(装修日记)
+       - 其余与ACL key一致 */
+    var SK2ACL={acct:'finance',purch_list:'purchase',journal:'diary'};
+    var SUBTAB_PERM={process:'execute',finance:'contract',purchase:'cost',diary:'delivery'};
+    var rolePerms4=teamRoleDefaultPerms(role);
+    for(var si=0;si<SECTION_EDIT_ORDER.length;si++){
+      var sk=SECTION_EDIT_ORDER[si];
+      if(SUBTAB_PERM[sk]){
+        /* 项目管理四子板块：按角色四维权限判定 */
+        if(rolePerms4.indexOf(SUBTAB_PERM[sk])>=0)defaultAllowed.push(sk);
+      }else{
+        var aclKey=SK2ACL[sk]||sk;
+        var acl=SECTION_ACL[aclKey];
+        if(acl&&acl.indexOf(role)>=0)defaultAllowed.push(sk);
+      }
+    }
+  }
+
+  /* ── 弹窗 HTML ── */
+  var body='<div style="text-align:left">'
+    +'<div style="margin-bottom:10px;font-size:14px;font-weight:600">编辑「'+escHtml(m.name)+'」的权限</div>'
+    +'<div style="font-size:12px;color:#999;margin-bottom:8px">当前角色：'+escHtml(teamRoleLabel(role))
+    +'（勾选结果只覆盖本团队，不影响该成员在其它公司的权限）</div>';
+
+  /* ① 22 个版块逐行 checkbox */
+  body+='<div style="font-size:12px;font-weight:600;color:#1677ff;margin:10px 0 6px">业务版块访问权限</div>'
+    +'<div style="display:grid;gap:2px;max-height:360px;overflow-y:auto;padding-right:4px">';
+  for(var si=0;si<SECTION_EDIT_ORDER.length;si++){
+    var sk=SECTION_EDIT_ORDER[si];
+    var info=SECTION_INFO[sk]||{label:sk,desc:''};
+    var checked=defaultAllowed.indexOf(sk)>=0?'checked':'';
+    body+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 6px;cursor:pointer;'
+      +'border-radius:6px;'+(checked?'background:#e6f4ff':'')+'" '
+      +'onmouseover="this.style.background=\''+(checked?'#d9edff':'#f5f5f5')+'\'" '
+      +'onmouseout="this.style.background=\''+(checked?'#e6f4ff':'')+'\'">'
+      +'<input type="checkbox" value="'+sk+'" data-section="'+sk+'" '+checked+'> '
+      +'<span style="font-weight:550;min-width:72px;flex-shrink:0">'+escHtml(info.label)+'</span>'
+      +'<span style="color:#888;font-size:11.5px">'+escHtml(info.desc)+'</span>'
+      +'</label>';
+  }
+  body+='</div>';
+
+  /* ② 项目管理四子板块四维权限（高级：控制施工执行/合同收款/供应调配/客户交付可见性） */
+  body+='<div style="font-size:12px;font-weight:600;color:#1677ff;margin:14px 0 6px;border-top:1px solid #e8e8e8;padding-top:10px">'
+    +'项目管理子板块细控（四维权限）</div>'
+    +'<div style="display:grid;gap:2px">';
+  var permDesc={execute:'查看/编辑施工计划和节点',contract:'查看/编辑合同和收款记录',
+    cost:'查看/编辑成本、采购和增减项',delivery:'查看/编辑客户交付和发布'};
   for(var pi=0;pi<PERM_ALL.length;pi++){
     var p=PERM_ALL[pi];
-    var checked=curPerms.indexOf(p)>=0?'checked':'';
-    var desc=permDesc[p]||'';
-    body+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;padding:6px 0;cursor:pointer;border-bottom:1px solid #f0f0f0">'
-      +'<input type="checkbox" value="'+p+'" data-perm="'+p+'" '+checked+'> '
-      +'<span style="font-weight:600">'+escHtml(PERM_LABELS[p])+'</span>'
-      +'<span style="color:#999;font-size:12px;margin-left:auto">'+escHtml(desc)+'.</span>'
+    var pChecked=curPerms.indexOf(p)>=0?'checked':'';
+    body+='<label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 6px;cursor:pointer;border-radius:6px;'
+      +(pChecked?'background:#e6f4ff':'')+'" '
+      +'onmouseover="this.style.background=\''+(pChecked?'#d9edff':'#f5f5f5')+'\'" '
+      +'onmouseout="this.style.background=\''+(pChecked?'#e6f4ff':'')+'\'">'
+      +'<input type="checkbox" value="'+p+'" data-perm="'+p+'" '+pChecked+'> '
+      +'<span style="font-weight:550;min-width:56px;flex-shrink:0">'+escHtml(PERM_LABELS[p])+'</span>'
+      +'<span style="color:#888;font-size:11.5px">'+escHtml(permDesc[p]||'')+'</span>'
       +'</label>';
   }
   body+='</div></div>';
-  confirmDialog(body,function(){
-    savePermEdits(uid);
-  },{okText:'保存权限',okClass:'primary'});
+
+  confirmDialog(body,function(){ savePermEdits(uid); },{okText:'保存权限',okClass:'primary'});
   $('confirmMsg').innerHTML=body;
 }
 
 function savePermEdits(uid){
+  /* 收集 22 版块勾选 */
+  var sections=[];
+  var sNodes=document.querySelectorAll('#confirmModal input[data-section]:checked');
+  for(var ni=0;ni<sNodes.length;ni++){sections.push(sNodes[ni].value);}
+  /* 收集四维权限勾选 */
   var perms=[];
-  var nodes=document.querySelectorAll('#confirmModal input[data-perm]:checked');
-  for(var ni=0;ni<nodes.length;ni++){perms.push(nodes[ni].value);}
+  var pNodes=document.querySelectorAll('#confirmModal input[data-perm]:checked');
+  for(var pi=0;pi<pNodes.length;pi++){perms.push(pNodes[pi].value);}
+  /* 持久化 */
   var lp=getLocalPerms();
-  lp[permKey(uid)]={perms:perms,updatedAt:new Date().toISOString()};
-  try{ delete lp[uid]; }catch(e){}      /* 顺手清掉不带团队前缀的历史 key */
+  lp[permKey(uid)]={perms:perms,sections:sections,updatedAt:new Date().toISOString()};
+  try{ delete lp[uid]; }catch(e){}
   saveLocalPerms(lp);
   /* 更新内存 */
   for(var ti=0;ti<__teamMembers.length;ti++){if(__teamMembers[ti].id===uid){__teamMembers[ti].perms=perms;break;}}
   closeModal('confirmModal');
   renderTeamList(__teamMembers,isTeamAdmin(),lp);
+  /* 立即刷新当前用户自己的侧栏（如果编辑的是自己） */
+  try{ applyNavPerms(); refreshPermUI(); }catch(e){}
   showToast('权限已更新','ok');
+}
+/* 读一个成员的已存版块覆盖（返回 null 表示未自定义，走角色默认） */
+function readMemberSections(pm,uid){
+  var k=permKey(uid);
+  var v=pm[k]||pm[uid];
+  return (v&&v.sections&&Array.isArray(v.sections))?v.sections:null;
 }
 
 // ============================================================

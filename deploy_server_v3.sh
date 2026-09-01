@@ -60,7 +60,7 @@ EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=4865 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集）
-EXP_app=1389140        # app23.html           → pb_public/index.html（#432 不同项目不同人员权限：App.projectRoles[pid][uid]=role 随 org_data 同步；PROJECT_ROLE_SCOPED 业务版块按项目角色闸门；权限管理页新增「按项目分配成员角色」矩阵；新建项目自动把创建者设为该项目 pm）
+EXP_app=1397619        # app23.html           → pb_public/index.html（#426 编辑权限弹窗扩展至22版块全量矩阵+SECTION_INFO/PAGE_TO_SECTION/canAccessPage覆盖优先 + #427 项目角色分配开放给各项目经理管理自己项目）
                        #   ⚠️ #430 兜底：前端 ROLE_OPTIONS 只有 7 项（无 member），而后端 role 是 8 值，
                        #      原 replace 写法对 member 匹配不到 → 下拉框默认选第一项（项目经理），
                        #      与同行文字标签「成员」自相矛盾，且该 select 是 onchange 立即提交，有误改权限风险。
