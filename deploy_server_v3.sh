@@ -61,7 +61,7 @@ EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=5142 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集；修「集合不存在/无 role 字段」跳过分支误置 done=true 导致日志假阳性，详见 pb-pitfalls ⑭）
 EXP_api_acct=14832     # api_acct_v1.js       → pb_hooks/api_acct.pb.js（#487 账户聚合：/api/acct/profile 改名 + /api/acct/password 改密码（绕开 users.updateRule 仅 superuser 限制）+ /api/client/* 业主绑定码/绑定/列表/解绑/业主列表）
-EXP_schema_patch_v6=11367 # schema_patch_v6_client_bind.pb.js → pb_hooks/schema_patch_v6_client_bind.pb.js（#489 取代 v5：空壳建表+逐级加字段，并开 /api/_diag/v6 诊断路由）
+EXP_schema_patch_v6=6473 # schema_patch_v6_client_bind.pb.js → pb_hooks/schema_patch_v6_client_bind.pb.js（#489 取代 v5：空壳建表+逐级加字段；清理版已移除诊断路由，仅保留 cron 自愈守护）
 EXP_app=1453374        # app24.html           → pb_public/index.html（#487 账户聚合弹窗：改名/改密走新 hook 路由 + 绑定装修公司后端 + 角色说明同步「供应调配」+ 退出按钮胶囊化 + 侧栏显示用户名；#488 修绑定弹窗 div 嵌套错位导致的竖排布局崩坏 + 新接口 404 友好提示）
                        #   #439 总价清单名称可点击跳转+删除重编号、删均价行、消除打印空白页、说明textarea自适应
                        #   #440 总价清单计算区动态化（删半包优惠一口价行、无主材隐藏管理费/主材合计）
@@ -152,9 +152,9 @@ echo "  ⏳ schema_patch_v3 / schema_patch_v6 走 cron（每分钟触发一次�
 echo "     v3：约 1 分钟内把 invitations / access_requests / users 的 role 候选值扩为 8 值并集。"
 echo "     v6：约 1 分钟内自建 client_bind_codes / client_bindings 两张业主绑定表（空壳+加字段两步走）。"
 echo "     两者打完补丁均自我注销（cronRemove）。"
-echo "     远程自查（无需登录）：curl "http://106.55.14.231/api/_diag/v6?k=hajdiag2026"
-     确认命令：sudo journalctl -u pocketbase -n 80 | grep sp_v6"
-echo "     预期看到：v3「已生效，cron 自我注销」+ v5「client_bind_codes 已创建 / client_bindings 已创建 / 已生效，cron 自我注销」"
+echo "     远程自查（无需登录：404=表不存在，403=表已存在）："
+echo "       curl -o /dev/null -w '%{http_code}' 'http://106.55.14.231/api/collections/client_bind_codes/records?perPage=1'"
+echo "     预期看到：v3「已生效，cron 自我注销」+ v6「两张表已就位，cron 自我注销」"
 
 echo "== [5/5] 部署前端 app24.html → index.html + 运营后台 admin10.html → admin.html =="
 sudo cp /tmp/app24.html "$PUB/index.html"
@@ -214,7 +214,8 @@ echo "  ✅ 邀请成员选「项目经理」→ 对方提交加入申请→管�
 echo "  ✅ #487 账号管理：修改用户名 / 修改密码应成功（不再报 Only superusers）"
 echo "  ✅ #487 邀请弹窗权限说明：项目经理应显示「施工执行、合同收款、供应调配、客户交付」（不再出现「成本管理」）"
 echo "  ✅ #487 绑定装修公司：公司管理员打开弹窗能看到本公司绑定码；业主（无公司账号）提交绑定码后列表立即出现该公司"
-  ✅ #489 自建绑定表：curl "http://106.55.14.231/api/_diag/v6?k=hajdiag2026" 应返回 ok:true
+  ✅ #489 诊断路由已下线：curl "http://106.55.14.231/api/_diag/v6" 应返回 404（不是 403/200）
+  ✅ #489 自建绑定表：client_bind_codes / client_bindings 均返回 403（存在），不再是 404
      （ok:false 时看 errors；若 env.Collection 不是 function = JSVM 建表不可用，需改存已有表）
 echo "  ✅ #487 退出确认弹窗：红色「退出登录」按钮与「留在这里」同为胶囊圆角形"
 echo "  ✅ #487 侧栏左下角按钮显示登录用户名（未登录时仍为「账户聚合」）"
