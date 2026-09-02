@@ -61,7 +61,7 @@ EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=5142 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集；修「集合不存在/无 role 字段」跳过分支误置 done=true 导致日志假阳性，详见 pb-pitfalls ⑭）
 EXP_api_acct=14832     # api_acct_v1.js       → pb_hooks/api_acct.pb.js（#487 账户聚合：/api/acct/profile 改名 + /api/acct/password 改密码（绕开 users.updateRule 仅 superuser 限制）+ /api/client/* 业主绑定码/绑定/列表/解绑/业主列表）
-EXP_schema_patch_v5=4447 # schema_patch_v5_client_bind.pb.js → pb_hooks/schema_patch_v5_client_bind.pb.js（#487 cron 自建 client_bind_codes / client_bindings 两表后自注销）
+EXP_schema_patch_v5=5948 # schema_patch_v5_client_bind.pb.js → pb_hooks/schema_patch_v5_client_bind.pb.js（#487 cron 自建 client_bind_codes / client_bindings 两表后自注销）
 EXP_app=1453374        # app24.html           → pb_public/index.html（#487 账户聚合弹窗：改名/改密走新 hook 路由 + 绑定装修公司后端 + 角色说明同步「供应调配」+ 退出按钮胶囊化 + 侧栏显示用户名；#488 修绑定弹窗 div 嵌套错位导致的竖排布局崩坏 + 新接口 404 友好提示）
                        #   #439 总价清单名称可点击跳转+删除重编号、删均价行、消除打印空白页、说明textarea自适应
                        #   #440 总价清单计算区动态化（删半包优惠一口价行、无主材隐藏管理费/主材合计）
