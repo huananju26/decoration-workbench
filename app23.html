@@ -399,7 +399,7 @@ a{color:#003a8c;text-decoration:none}
 .step-num{width:28px;height:28px;border-radius:50%;background:#e6f4ff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#003a8c;flex-shrink:0}
 .step-card.completed .step-num{background:#003a8c;color:#fff}
 
-/* ── 左栏：编号+名称+状态标签+DCSpace副行（固定 1/4 宽度，左对齐） ── */
+/* ── 左栏：编号+名称+状态标签+副行（固定 1/4 宽度，左对齐） ── */
 .step-left-col{flex:0 0 25%;max-width:25%;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding-right:8px}
 .step-name-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.3;max-width:100%;min-width:0}
 .step-name{font-size:14px;font-weight:600;color:#1a1a1a;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto}
@@ -709,16 +709,11 @@ a{color:#003a8c;text-decoration:none}
 .rp-confirm-date{margin-top:8px;color:#888;font-size:11.5px}
 .rp-confirm-note{margin-top:8px;color:#999;font-size:11.5px}
 /* 整改记录单：企业抬头（与导出进度表 gs-top 一致） */
-.rp-doc-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:20px;padding-bottom:14px;border-bottom:2px solid #003a8c}
-.rp-brand{display:flex;align-items:center;gap:14px}
-.rp-logo{width:56px;height:56px;border-radius:0;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
-.rp-logo-img{height:56px;width:auto;max-width:220px;border-radius:0;object-fit:contain;background:#fff;border:none;flex-shrink:0}
-.rp-company{font-size:15px;font-weight:700;color:#003a8c}
-.rp-tagline{font-size:11px;color:#999;margin-top:1px}
-.rp-title-area{text-align:right}
-/* 无企业 logo 时：标题左移，不再孤悬右侧（有 logo 时仍品牌左/标题右平衡布局） */
-.rp-doc-header.rp-no-logo{justify-content:flex-start}
-.rp-doc-header.rp-no-logo .rp-title-area{text-align:left}
+.rp-doc-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;gap:20px;padding-bottom:14px;border-bottom:2px solid #003a8c}
+.rp-brand{display:block}
+/* 标题固定右侧：margin-left:auto 让标题区无论企业抬头是否存在都被推向最右
+   （space-between 在只剩 1 个可见子元素时会把它放在主轴起点即左侧，故必须靠 margin-left:auto 兜底） */
+.rp-title-area{text-align:right;margin-left:auto}
 .rp-main-title{font-size:22px;font-weight:800;color:#003a8c;letter-spacing:1px}
 .rp-sub-title{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;margin-top:2px}
 
@@ -739,7 +734,7 @@ a{color:#003a8c;text-decoration:none}
     overflow:visible!important
   }
   html.gs-printing-rectify #rectifyPreviewModal .modal-header,
-  html.gs-printing-rectify #rectifyPreviewModal .form-actions{display:none!important}
+  html.gs-printing-rectify #rectifyPreviewModal .modal-footer{display:none!important}
   html.gs-printing-rectify #rectifyPreviewModal .modal-body{
     overflow:visible!important;max-height:none!important;max-width:none!important;height:auto!important;
     padding:12px 16px!important;background:#fff!important
@@ -751,7 +746,10 @@ a{color:#003a8c;text-decoration:none}
   html.gs-printing-rectify #rectifyPreviewModal .rp-table,
   html.gs-printing-rectify #rectifyPreviewModal .rp-confirm-table{break-inside:avoid!important;page-break-inside:avoid!important}
   html.gs-printing-rectify #rectifyPreviewModal img{max-width:100%!important;height:auto!important;break-inside:avoid!important;page-break-inside:avoid!important}
-  html.gs-printing-rectify #rectifyPreviewModal .rp-logo-img{height:56px!important;width:auto!important;max-width:220px!important}
+  html.gs-printing-rectify #rectifyPreviewModal .xz-logo-img{height:56px!important;width:auto!important;max-width:220px!important;object-fit:contain!important}
+  /* 打印时强制标题固定右侧（无论企业抬头/logo 是否存在） */
+  html.gs-printing-rectify .rp-doc-header{flex-direction:row!important;align-items:flex-end!important;justify-content:space-between!important}
+  html.gs-printing-rectify .rp-title-area{text-align:right!important;margin-left:auto!important}
 }
 
 /* 右侧：D 验收单图片区 */
@@ -2047,44 +2045,69 @@ a{color:#003a8c;text-decoration:none}
 /* ===== 报价系统（按 PDF 模板复刻排版） ===== */
 #page-quote{padding:0;background:#fff}
 #quoteRoot{max-width:980px;margin:0 auto;padding:22px 20px 60px;background:#fff;color:#222}
-/* 操作栏 */
-.quote-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #222}
+/* 操作栏 — 表头统一规范（与问题整改记录单 .rp-doc-header 一致）：底部深蓝线 + 深蓝标题 */
+.quote-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:2px solid #003a8c}
 .quote-bar .quote-bar-title{flex:1}
-.quote-bar .card-title{font-size:17px;font-weight:700;color:#222;margin:0}
+.quote-bar .card-title{font-size:17px;font-weight:700;color:#003a8c;margin:0;letter-spacing:1px}
+.quote-bar .card-en{font-size:11px;font-weight:600;color:#003a8c;letter-spacing:2px;margin-top:3px;text-transform:uppercase}
 .quote-bar .card-subtitle{font-size:12px;color:#999;margin-top:2px}
 .quote-actions{display:flex;gap:8px;align-items:center}
 /* 打印页码开关 */
 .pg-num-toggle{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#666;cursor:pointer;white-space:nowrap;margin-left:4px;padding:3px 8px;border:1px solid #d9d9d9;border-radius:4px;background:#fafafa;transition:all .2s}
 .pg-num-toggle:hover{border-color:#1677ff;color:#1677ff}
 .pg-num-toggle input[type=checkbox]{cursor:pointer;accent-color:#1677ff}
-/* 封面 */
-.quote-cover{text-align:center;padding:26px 0 20px;border-bottom:1px solid #ddd;margin-bottom:20px}
-.qc-company{font-size:21px;font-weight:700;color:#222;letter-spacing:1px}
-.qc-en{font-size:11px;letter-spacing:3px;color:#8a8a8a;margin-top:6px;text-transform:uppercase}
-.qc-title{font-size:30px;font-weight:800;color:#1a1a1a;letter-spacing:2px;margin-top:10px;font-family:Georgia,"Times New Roman",serif}
-.qc-sub{font-size:11px;letter-spacing:2px;color:#777;margin-top:3px}
-.qc-cn{font-size:15px;font-weight:600;color:#333;margin-top:14px;letter-spacing:1px}
-.qc-year{font-size:38px;font-weight:800;color:#222;margin-top:4px;font-family:Georgia,serif}
-.qc-info{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 26px;margin-top:14px;font-size:13px;color:#444}
-.qc-info span{color:#999;margin-right:4px}
+/* 封面 —— 三段式布局（复刻专业报价单） */
+.quote-cover{display:flex;flex-direction:column;justify-content:space-between;flex:1;min-height:0;padding:0}
+/* ── 第1部分：表头（左：统一企业抬头；右：深蓝中英文标题；底部 2px 深蓝通长线） ── */
+.qc-header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:32px 0 14px;border-bottom:2px solid #003a8c}
+/* 水平 padding 必须为 0：品牌块左缘 / 标题右缘要与 border-bottom 深蓝线两端严格齐平（与 .rp-doc-header/.cpr-top/.gs-top 一致） */
+/* ── 全局统一企业抬头（brandBlockHTML 唯一渲染逻辑，所有报表共用） ── */
+.xz-brand{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.xz-logo{width:56px;height:56px;border-radius:0;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
+.xz-logo-img{height:56px;width:auto;max-width:220px;border-radius:0;object-fit:contain;background:#fff;border:none;flex-shrink:0}
+.xz-company{font-size:9px;font-weight:700;color:#003a8c}
+.xz-tagline{font-size:9px;color:#999;margin-top:1px}
+.xz-brand-text{display:flex;flex-direction:column;gap:1px}
+/* 封面表头右侧标题（与 .rp-title-area / .cpr-title-area / .gs-title-area 同源）：
+   margin-left:auto —— 企业抬头为空时仍把标题推向最右（space-between 单子元素会落左侧） */
+.qc-title-area{text-align:right;margin-left:auto}
+.qc-h-main{font-size:22px;font-weight:800;color:#003a8c;letter-spacing:1px;line-height:1.2}
+.qc-h-sub{font-size:11px;font-weight:600;color:#003a8c;letter-spacing:2px;margin-top:2px;text-transform:uppercase}
+/* ── 第2部分：中间封面信息（左对齐） ── */
+.qc-body{flex:1;display:flex;flex-direction:column;justify-content:center;padding:20px 40px 16px}
+/* 表头统一规范：英文 + 中文标题统一深蓝色调（与 .rp/cpr/gs-main-title 一致） */
+.qc-en{font-size:11px;letter-spacing:3px;color:#003a8c;text-transform:uppercase}
+.qc-title{font-size:22px;font-weight:800;color:#003a8c;letter-spacing:2px;margin-top:6px;font-family:Georgia,"Times New Roman",serif;line-height:1.2}
+.qc-sub{font-size:14px;letter-spacing:2px;color:#003a8c;margin-top:3px;text-transform:uppercase}
+.qc-cn{font-size:34px;font-weight:800;color:#003a8c;margin-top:0;letter-spacing:2px;line-height:1.2}
+.qc-accent{width:72px;height:4px;background:#003a8c;margin-top:14px;border-radius:2px}
+.qc-year{font-size:48px;font-weight:800;color:#003a8c;margin-top:10px;font-family:Georgia,serif;line-height:1.1}
+/* ── 第3部分：底部项目信息（加框） ── */
+.qc-info-box{border:1.5px solid #333;padding:18px 28px;margin:0 40px 28px;display:flex;flex-direction:column;gap:10px;background:#fafafa;flex-shrink:0}
+.qc-info-row{display:flex;justify-content:flex-start;align-items:baseline;font-size:13px}
+.qc-info-label{color:#333;font-weight:500;white-space:nowrap;flex-shrink:0}
+.qc-info-value{color:#1a1a1a;text-align:left;flex:0 1 auto;margin-left:0}
 /* ── 分页文档结构（A4 整页呈现） ── */
 .quote-doc{display:block}
-.quote-cover-page{display:flex;flex-direction:column;justify-content:center;min-height:62vh;padding:24px 8px 28px;background:#fff}
+.quote-cover-page{display:flex;flex-direction:column;min-height:calc(100vh - 120px);padding:0;background:#fff;position:relative}
 .quote-page{page-break-after:always}
 /* 屏幕下编辑条视觉与封面协调 */
 .quote-info-edit{margin-top:0}
 /* 项目信息编辑条 */
-.quote-info-edit{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;background:#fafafa;border:1px solid #e8e8e8;border-radius:8px;padding:12px 16px;margin-bottom:22px}
-.qie-field{display:flex;flex-direction:column;gap:4px}
+.quote-info-edit{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 16px;align-items:end;background:#fafafa;border:1px solid #e8e8e8;border-radius:8px;padding:12px 16px;margin-bottom:22px}
+.qie-field{display:flex;flex-direction:column;gap:4px;min-width:0}
 .qie-field label{font-size:11px;color:#999}
-.qie-field input{border:1px solid #d9d9d9;border-radius:6px;padding:6px 8px;font-size:13px;width:150px;outline:none;background:#fff}
+.qie-field input{border:1px solid #d9d9d9;border-radius:6px;padding:6px 8px;font-size:13px;width:100%;box-sizing:border-box;outline:none;background:#fff}
+@media(max-width:780px){.quote-info-edit{grid-template-columns:repeat(2,1fr)}}
 .qie-field input:focus{border-color:#003a8c}
 /* 明细表容器 */
 .quote-sheet{margin-bottom:26px;page-break-inside:avoid}
-.qs-head{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid #222;padding-bottom:5px;margin-bottom:0}
-.qs-title{font-size:15px;font-weight:700;color:#222}
+/* 表头统一规范：底部深蓝线 + 深蓝标题 */
+.qs-head{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid #003a8c;padding-bottom:5px;margin-bottom:0}
+.qs-title{font-size:15px;font-weight:700;color:#003a8c}
 .qs-no{font-size:13px;color:#888}
-.qt-meta{display:flex;gap:6px 22px;flex-wrap:wrap;font-size:12px;color:#666;padding:7px 2px;border-bottom:1px solid #ddd}
+.qt-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 22px;font-size:12px;color:#666;padding:7px 2px;border-bottom:1px solid #ddd}
+.qt-meta span:first-child{grid-column:span 2}
 .qt-meta b{color:#333;font-weight:600}
 /* 表格 */
 .quote-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:0}
@@ -2121,7 +2144,9 @@ a{color:#003a8c;text-decoration:none}
 .sub-row .qt-money,.total-row .qt-money{text-align:right}
 /* 总价表 */
 .quote-summary{margin-top:28px;page-break-inside:avoid}
-.sm-info{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:13px;color:#444;padding:10px 0;border-bottom:1px solid #ddd;margin-bottom:12px}
+.sm-info{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 22px;font-size:13px;color:#444;padding:10px 0;border-bottom:1px solid #ddd;margin-bottom:12px}
+.sm-info div:nth-child(1),.sm-info div:nth-child(4){grid-column:span 2}
+@media(max-width:600px){.sm-info{grid-template-columns:1fr 1fr}}
 .sm-info span{color:#999;margin-right:4px}
 .sm-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px}
 .sm-table th,.sm-table td{border:1px solid #cfcfcf;padding:7px 10px}
@@ -2162,10 +2187,13 @@ a{color:#003a8c;text-decoration:none}
   .qie-field input{border:none!important;background:transparent!important;padding:0!important}
   .qt-input,.item-name-input,.item-note-input{border:none!important;background:transparent!important;appearance:none;-webkit-appearance:none}
   #page-quote{padding:0!important}
+  @page{size:A4;margin:6mm}
   #quoteRoot{max-width:100%!important;padding:0!important}
   .quote-sheet,.quote-summary,.quote-notes,.qt-meta{page-break-inside:avoid}
   .quote-doc{display:block!important}
-  .quote-cover-page{page-break-after:always!important;break-after:page!important;padding:0!important}
+  /* 封面打印：绝对定位三段式，不依赖 flex/vh */
+  .quote-cover-page{page-break-after:always!important;break-after:page!important;padding:0!important;margin:0!important;width:198mm!important;height:285mm!important;overflow:hidden!important;position:relative!important;display:block!important}
+  .quote-cover{position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:0!important;display:flex!important;flex-direction:column!important;border:none!important;margin:0!important}
   /* 仅对非末尾的 .quote-page 强制分页；末尾元素不设 break-after → 不产生空白尾页 */
   .quote-page:not(:last-child){page-break-after:always!important;break-after:page!important;padding:0!important}
   /* 兜底：明确取消末尾分页（压制 2073 行屏幕样式的 page-break-after:always） */
@@ -2202,14 +2230,12 @@ a{color:#003a8c;text-decoration:none}
 }
 
 /* ── 客户版合同收款计划表 ── */
+/* 表头统一规范（与问题整改记录单 .rp-doc-header 一致）：底部深蓝线 + 右侧深蓝标题 */
 .cpr-sheet{background:#fff;padding:32px 36px 36px;margin:0 0 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#1a1a1a;line-height:1.6}
-.cpr-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
-.cpr-brand{display:flex;align-items:center;gap:14px}
-.cpr-logo{width:56px;height:56px;border-radius:0;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
-.cpr-logo-img{height:56px;width:auto;max-width:220px;border-radius:0;object-fit:contain;background:#fff;border:none;flex-shrink:0}
-.cpr-company{font-size:15px;font-weight:700;color:#003a8c}
-.cpr-tagline{font-size:11px;color:#999;margin-top:1px}
-.cpr-title-area{text-align:right}
+.cpr-top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;gap:20px;padding-bottom:14px;border-bottom:2px solid #003a8c}
+/* 企业抬头已统一为 .xz-brand（见上方全局定义） */
+/* margin-left:auto：企业抬头为空时仍把标题推向最右（space-between 单子元素会落左侧） */
+.cpr-title-area{text-align:right;margin-left:auto}
 .cpr-main-title{font-size:22px;font-weight:800;color:#003a8c;letter-spacing:1px}
 .cpr-sub-title{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;margin-top:2px}
 .cpr-project-name{font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:6px}
@@ -2236,8 +2262,9 @@ a{color:#003a8c;text-decoration:none}
 .cpr-foot-sign{font-size:11px;color:#bbb;text-align:right}
 @media(max-width:600px){
   .cpr-sheet{padding:18px 14px 14px}
-  .cpr-top{flex-direction:column;gap:14px}
-  .cpr-title-area{text-align:left}
+  /* 窄屏竖排时保留深蓝底线（统一表头规范） */
+  .cpr-top{flex-direction:column;gap:14px;align-items:stretch}
+  .cpr-title-area{text-align:left;margin-left:0}
   .cpr-summary-row{grid-template-columns:1fr 1fr}
   .cpr-table{font-size:12px}
   .cpr-table th,.cpr-table td{padding:8px 8px}
@@ -2267,10 +2294,9 @@ a{color:#003a8c;text-decoration:none}
 #clientTimelineBody img,#planVsActualBody img{-webkit-user-drag:none;user-drag:none;pointer-events:none}
 #clientTimelineBody.dragging,#planVsActualBody.dragging{cursor:grabbing}
 .gs-sheet{background:#fff;padding:30px 34px 26px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#1a1a1a;line-height:1.6;width:100%;box-sizing:border-box}
-.gs-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:20px}
-.gs-brand{display:flex;align-items:center;gap:14px}
-.gs-logo{width:56px;height:56px;border-radius:0;background:#003a8c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
-.gs-logo-img{height:56px;width:auto;max-width:220px;border-radius:0;object-fit:contain;background:#fff;border:none;flex-shrink:0}
+/* 表头统一规范（与问题整改记录单 .rp-doc-header 一致）：底部深蓝线 + 右侧深蓝标题 */
+.gs-top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;gap:20px;padding-bottom:14px;border-bottom:2px solid #003a8c}
+/* 企业抬头已统一为 .xz-brand（见上方全局定义） */
 /* ── 客户版表格打印隔离（class 方案，与整改记录单/成本对账单同源） ── */
 @media print{
   html.gs-printing-sheet,html.gs-printing-sheet body{margin:0!important;padding:0!important}
@@ -2292,6 +2318,9 @@ a{color:#003a8c;text-decoration:none}
     overflow:visible!important;max-height:none!important;max-width:none!important;height:auto!important;
     padding:0!important;background:#fff!important
   }
+  /* 打印时强制标题固定右侧（避免窄屏 media query 把标题改成左对齐） */
+  html.gs-printing-sheet .cpr-top{flex-direction:row!important;align-items:flex-end!important;justify-content:space-between!important}
+  html.gs-printing-sheet .cpr-title-area{text-align:right!important;margin-left:auto!important}
   @page{size:A4;margin:8mm}
 }
 /* ── 甘特图类（施工进度表 / 计划与实际进度表）横向 A4 打印 ── */
@@ -2317,9 +2346,9 @@ a{color:#003a8c;text-decoration:none}
   }
   @page{size:A4 landscape;margin:5mm}
 }
-.gs-company{font-size:15px;font-weight:700;color:#003a8c}
-.gs-tagline{font-size:11px;color:#999;margin-top:1px}
-.gs-title-area{text-align:right}
+/* 企业抬头已统一为 .xz-brand（见上方全局定义） */
+/* margin-left:auto：企业抬头为空时仍把标题推向最右（space-between 单子元素会落左侧） */
+.gs-title-area{text-align:right;margin-left:auto}
 .gs-main-title{font-size:22px;font-weight:800;color:#003a8c;letter-spacing:1px}
 .gs-sub-title{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;margin-top:2px}
 .gs-project-name{font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:6px}
@@ -2333,7 +2362,7 @@ a{color:#003a8c;text-decoration:none}
 .gs-sum-val.ok{color:#003a8c}
 .gs-sum-val.warn{color:#ff4d4f}
 .gs-sum-val.muted{color:#999}
-.gs-chart{position:relative;background:#fbfdff;border:1px solid #e8e8e8;border-radius:12px;padding:16px 14px 12px;overflow:hidden}
+.gs-chart{position:relative;background:#fbfdff;border:1px solid #e8e8e8;border-radius:12px;padding:16px 14px 12px;overflow:visible}
 .gs-axis{display:flex;border-bottom:1px solid #d9e3f0;margin-bottom:6px;padding-left:124px;position:relative}
 .gs-axis-month{flex:1;text-align:center;font-size:11px;font-weight:600;color:#666;padding:4px 0;border-right:1px dashed #d9e3f0}
 .gs-axis-month:last-child{border-right:none}
@@ -2370,12 +2399,32 @@ a{color:#003a8c;text-decoration:none}
 @media(max-width:780px){
   .proj-plan-export{border-left:none;padding-left:0;margin-top:12px;width:100%;justify-content:flex-end}
   .gs-sheet{padding:18px 14px 14px}
-  .gs-top{flex-direction:column;gap:12px}
-  .gs-title-area{text-align:left}
+  /* 窄屏竖排时保留深蓝底线（统一表头规范） */
+  .gs-top{flex-direction:column;gap:12px;align-items:stretch}
+  .gs-title-area{text-align:left;margin-left:0}
   .gs-summary-row{grid-template-columns:1fr 1fr}
   .gs-foot{flex-direction:column;gap:8px}
   .gs-axis{padding-left:0}
   .gs-axis-weekdays{padding-left:0}
+}
+/* 窄屏：封面表头竖排（底部深蓝通长线由 .qc-header 的 border-bottom 承担，竖排也不丢） */
+@media(max-width:600px){
+  .qc-header{flex-direction:column;gap:12px;padding:20px 0 12px;align-items:stretch}
+  .qc-title-area{text-align:left;margin-left:0}
+  .qc-h-main{font-size:18px}
+}
+/* ══════ 打印统一规范：所有报表表头深蓝底线 + 右侧深蓝中英文标题（覆盖窄屏规则的 none） ══════ */
+@media print{
+  /* 表头容器：底部统一 2px 深蓝实线（左右通长，粗细一致） */
+  .cpr-top,.gs-top,.rp-doc-header,.quote-bar,.qs-head,.qc-header{border-bottom:2px solid #003a8c!important;padding-bottom:14px!important}
+  .qs-head{padding-bottom:5px!important}
+  /* 标题区一律靠右：覆盖窄屏 media 的 text-align:left;margin-left:0
+     （A4 打印宽度约 744px，会命中 max-width:780px 的窄屏规则） */
+  .rp-title-area,.cpr-title-area,.gs-title-area,.qc-title-area{text-align:right!important;margin-left:auto!important}
+  /* 主标题（中英文）：统一深蓝色（覆盖 qc-title / qc-sub / qc-cn / qc-en 等所有标题元素） */
+  .cpr-main-title,.cpr-sub-title,.gs-main-title,.gs-sub-title,.rp-main-title,.rp-sub-title,.qc-h-main,.qc-h-sub,.qc-title,.qc-sub,.qc-cn,.qc-en,.qc-year,.qs-title{color:#003a8c!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  /* 底部信息卡片里的强调文字（页码/项目编号等） */
+  .qc-accent{background:#003a8c!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 /* 合同扫描件上传与预览 */
 .scan-uploader{border:1px dashed #91caff;background:#f5faff;border-radius:10px;padding:10px}
@@ -4031,13 +4080,7 @@ a{color:#003a8c;text-decoration:none}
     <div class="modal-body" style="overflow-y:auto;padding:16px 24px 20px;background:#fafbfc">
       <!-- 企业抬头（与导出进度表一致） -->
       <div class="rp-doc-header">
-        <div class="rp-brand" id="rpBrandBlock">
-          <div id="rpLogoBig"></div>
-          <div>
-            <div id="rpCompanyName" class="rp-company"></div>
-            <div id="rpCompanyTagline" class="rp-tagline"></div>
-          </div>
-        </div>
+        <div class="rp-brand" id="rpBrandBlock"></div>
         <div class="rp-title-area">
           <div class="rp-main-title">问题整改记录单</div>
           <div class="rp-sub-title">RECTIFICATION RECORD</div>
@@ -4119,12 +4162,11 @@ a{color:#003a8c;text-decoration:none}
       </div>
     </div>
 
-    <!-- 底部操作 -->
-    <div class="form-actions" style="flex-shrink:0;padding:12px 24px;border-top:1px solid #e8e8e8;background:#fff">
-      <button class="btn-outline" onclick="openCompanyCfgFromRectify()" style="display:inline-flex;align-items:center;gap:4px">⚙ 企业抬头</button>
-      <button class="btn-outline" onclick="closeModal('rectifyPreviewModal')">关闭预览</button>
-      <button class="btn-primary" onclick="printRectifyRecord()" style="margin-left:auto">导出 PDF</button>
-      <button class="btn-primary" onclick="printRectifyRecord()" style="background:#1677ff">打印</button>
+    <!-- 底部操作（与节点验收报告一致：全部右侧排列） -->
+    <div class="modal-footer" style="flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:14px 20px;border-top:1px solid #f0f0f0;background:#fafafa">
+      <button class="btn-outline" onclick="openCompanyCfgFromRectify()" style="padding:8px 16px;font-size:13px">⊙ 企业抬头</button>
+      <button class="btn-outline" onclick="closeModal('rectifyPreviewModal')" style="padding:8px 20px;font-size:13px">关闭预览</button>
+      <button class="btn-primary" onclick="printRectifyRecord()" style="padding:10px 22px;font-size:13px;background:#003a8c;border-color:#003a8c">🖨 打印</button>
     </div>
   </div>
 </div>
@@ -4409,14 +4451,13 @@ a{color:#003a8c;text-decoration:none}
       </div>
       <div class="modal-close" onclick="closeModal('customerPayModal')" style="margin-left:auto">✕</div>
     </div>
-    <div id="customerPayBody" style="flex:1;min-height:0;overflow-y:auto;padding:0"></div>
+    <div id="cprSheetHost" style="flex:1;min-height:0;overflow:auto;padding:0"></div>
     <div style="padding:12px 20px;border-top:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fafafa">
       <span id="customerPaySize" style="font-size:11px;color:#bbb"></span>
       <div style="display:flex;gap:8px">
         <button class="btn-outline" onclick="openCompanyCfgModal()" style="padding:8px 16px;font-size:13px" title="设置企业名称与 Logo">⚙ 企业抬头</button>
         <button class="btn-outline" onclick="closeModal('customerPayModal')" style="padding:8px 20px;font-size:13px">关闭预览</button>
-        <button class="btn-outline" onclick="exportCustomerPayXLSX()" style="padding:8px 16px;font-size:13px">⬇ 导出 Excel</button>
-        <button class="btn-outline" onclick="printSheet('cprSheet')" style="padding:8px 18px;font-size:13px">打印进度表</button>
+        <button class="btn-outline" onclick="printSheet('cprSheet')" style="padding:8px 18px;font-size:13px">打印计划表</button>
       </div>
     </div>
   </div>
@@ -4443,7 +4484,7 @@ a{color:#003a8c;text-decoration:none}
       <div style="display:flex;gap:8px">
         <button class="btn-outline" onclick="openCompanyCfgModal()" style="padding:8px 16px;font-size:13px" title="设置企业名称与 Logo">⚙ 企业抬头</button>
         <button class="btn-outline" onclick="closeModal('clientTimelineModal');zoomGsReset('clientTimelineSheet')" style="padding:8px 20px;font-size:13px">关闭预览</button>
-        <button class="btn-outline" onclick="printSheet('clientTimelineSheet')" style="padding:8px 18px;font-size:13px">打印进度表</button>
+        <button class="btn-outline" onclick="printSheet('clientTimelineSheet')" style="padding:8px 18px;font-size:13px">打印计划表</button>
       </div>
     </div>
   </div>
@@ -4470,7 +4511,7 @@ a{color:#003a8c;text-decoration:none}
       <div style="display:flex;gap:8px">
         <button class="btn-outline" onclick="openCompanyCfgModal()" style="padding:8px 16px;font-size:13px" title="设置企业名称与 Logo">⚙ 企业抬头</button>
         <button class="btn-outline" onclick="closeModal('planVsActualModal');zoomGsReset('planVsActualSheet')" style="padding:8px 20px;font-size:13px">关闭预览</button>
-        <button class="btn-outline" onclick="printSheet('planVsActualSheet')" style="padding:8px 18px;font-size:13px">打印进度表</button>
+        <button class="btn-outline" onclick="printSheet('planVsActualSheet')" style="padding:8px 18px;font-size:13px">打印计划表</button>
       </div>
     </div>
   </div>
@@ -4481,7 +4522,7 @@ a{color:#003a8c;text-decoration:none}
   <div class="modal" style="max-width:460px">
     <div class="modal-header"><div class="modal-title" style="font-size:16px">企业抬头设置</div><div class="modal-close" onclick="closeModal('companyCfgModal')">✕</div></div>
     <div class="modal-body">
-      <div class="form-group"><label class="form-label">企业名称</label><input id="cfgCompanyName" class="form-input" placeholder="如：DCspace / 某某装饰" maxlength="20"></div>
+      <div class="form-group"><label class="form-label">企业名称</label><input id="cfgCompanyName" class="form-input" placeholder="如：某某装饰工程有限公司" maxlength="20"></div>
       <div class="form-group"><label class="form-label">企业标语</label><input id="cfgCompanyTagline" class="form-input" placeholder="如：专业施工 · 透明交付 · 节点验收" maxlength="30"></div>
       <div class="form-group">
         <label class="form-label">企业 Logo（PNG，推荐透明背景、正方形）</label>
@@ -8928,6 +8969,8 @@ function ensureQuote(){
   if(i.company===undefined)i.company=QUOTE_COMPANY;
   if(i.version===undefined)i.version='V1';
   if(i.year===undefined)i.year='2026';
+  /* 报价类型（驱动封面中文大标题）：空 = 默认「全案装修报价清单」，可下拉选或自由填写 */
+  if(i.coverType===undefined)i.coverType='';
   if(!i.paymentRates)i.paymentRates=[35,35,25,5];
   if(i.showPageNumber===undefined||i.showPageNumber===null)i.showPageNumber=false;
   if(i.mgRate===undefined||i.mgRate===null)i.mgRate=8;
@@ -8965,26 +9008,49 @@ function fmtM(n){const v=Number(n)||0;return '¥'+v.toLocaleString('zh-CN',{mini
 function fmtN(n){const v=Number(n)||0;return v.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 // ---- 渲染 ----
+/* 封面中文大标题 = 报价类型（qi_coverType 下拉/手写）+（版本号）；
+   手写内容若已含括号（自带版本等信息）则原样使用，不重复拼接 */
+function quoteCoverTitle(q){
+  const t=String((q.info&&q.info.coverType)||'').trim()||'全案装修报价清单';
+  const v=String((q.info&&q.info.version)||'V1');
+  return /[（(]/.test(t)?t:(t+'（'+v+'）');
+}
 function quoteCoverHTML(q){
   return '<div class="quote-cover">'
-    +'<div class="qc-company">'+escHtml(q.info.company||QUOTE_COMPANY)+'</div>'
-    +'<div class="qc-en">INTERIOR DECORATION</div>'
-    +'<div class="qc-title">QUOTATION SHEET</div>'
-    +'<div class="qc-sub">FOR COMPREHENSIVE RENOVATION</div>'
-    +'<div class="qc-cn">全案装修报价清单（'+escHtml(q.info.version||'V1')+'）</div>'
-    +'<div class="qc-year">'+escHtml(q.info.year||'2026')+'</div>'
-    +'<div class="qc-info"><div><span>项目名称：</span>'+escHtml(q.info.name||'')+'</div><div><span>项目编号：</span>'+escHtml(q.info.code||'')+'</div><div><span>编制日期：</span>'+escHtml(q.info.date||'')+'</div></div>'
+    /* 第1部分：表头（左：统一企业抬头 brandBlockHTML；右：深蓝中英文标题；
+       底部 2px 深蓝通长线由 .qc-header 的 border-bottom 承担 —— 与 .rp/.cpr/.gs 表头同源） */
+    +'<div class="qc-header">'
+      + brandBlockHTML()
+      +'<div class="qc-title-area">'
+        +'<div class="qc-h-main">报价单</div>'
+        +'<div class="qc-h-sub">QUOTATION SHEET</div>'
+      +'</div>'
+    +'</div>'
+    /* 第2部分：中间封面信息（中文大字标题（版本可编辑） + 英文主视觉 + 副标题 + 装饰条 + 年份） */
+    +'<div class="qc-body">'
+      +'<div class="qc-cn">'+escHtml(quoteCoverTitle(q))+'</div>'
+      +'<div class="qc-title">INTERIOR DECORATION</div>'
+      +'<div class="qc-sub">FOR COMPREHENSIVE RENOVATION</div>'
+      +'<div class="qc-accent"></div>'
+      +'<div class="qc-year">'+escHtml(q.info.year||String(new Date().getFullYear()))+'</div>'
+    +'</div>'
+    /* 第3部分：底部项目信息框 */
+    +'<div class="qc-info-box">'
+      +'<div class="qc-info-row"><span class="qc-info-label">项目名称：</span><span class="qc-info-value">'+escHtml(q.info.name||'')+'</span></div>'
+      +'<div class="qc-info-row"><span class="qc-info-label">项目编号：</span><span class="qc-info-value">'+escHtml(q.info.code||'')+'</span></div>'
+      +'<div class="qc-info-row"><span class="qc-info-label">编制日期：</span><span class="qc-info-value">'+escHtml(q.info.date||'')+'</span></div>'
+    +'</div>'
     +'</div>';
 }
 function quoteInfoEditHTML(q){
   return '<div class="quote-info-edit">'
-    +'<div class="qie-field"><label>封面公司名</label><input id="qi_company" value="'+escHtml(q.info.company||QUOTE_COMPANY)+'" onchange="updateQuoteInfo(\'company\',this.value)"></div>'
+    +'<div class="qie-field"><label>报价类型</label><input id="qi_coverType" list="coverTypeOptions" placeholder="全案装修报价清单" title="下拉选择或直接输入，与封面标题联动" value="'+escHtml(q.info.coverType||'')+'" onchange="updateQuoteInfo(\'coverType\',this.value)"><datalist id="coverTypeOptions"><option value="全案装修报价清单"><option value="半包装修报价清单"></datalist></div>'
     +'<div class="qie-field"><label>版本号</label><input id="qi_version" value="'+escHtml(q.info.version||'V1')+'" onchange="updateQuoteInfo(\'version\',this.value)"></div>'
     +'<div class="qie-field"><label>年份</label><input id="qi_year" value="'+escHtml(q.info.year||String(new Date().getFullYear()))+'" onchange="updateQuoteInfo(\'year\',this.value)"></div>'
-    +'<div class="qie-field"><label>项目名称</label><input id="qi_name" value="'+escHtml(q.info.name||'')+'" onchange="updateQuoteInfo(\'name\',this.value)"></div>'
-    +'<div class="qie-field"><label>项目编号</label><input id="qi_code" value="'+escHtml(q.info.code||'')+'" placeholder="如：202601-001" onchange="updateQuoteInfo(\'code\',this.value)"></div>'
     +'<div class="qie-field"><label>项目地址</label><input id="qi_address" value="'+escHtml(q.info.address||'')+'" onchange="updateQuoteInfo(\'address\',this.value)"></div>'
     +'<div class="qie-field"><label>面积(m²)</label><input id="qi_area" value="'+escHtml(String(q.info.area||''))+'" onchange="updateQuoteInfo(\'area\',this.value)"></div>'
+    +'<div class="qie-field"><label>项目名称</label><input id="qi_name" value="'+escHtml(q.info.name||'')+'" onchange="updateQuoteInfo(\'name\',this.value)"></div>'
+    +'<div class="qie-field"><label>项目编号</label><input id="qi_code" value="'+escHtml(q.info.code||'')+'" placeholder="如：202601-001" onchange="updateQuoteInfo(\'code\',this.value)"></div>'
     +'<div class="qie-field"><label>编制日期</label><input type="date" id="qi_date" value="'+escHtml(q.info.date||'')+'" onchange="updateQuoteInfo(\'date\',this.value)"></div>'
     +'</div>';
 }
@@ -8994,8 +9060,8 @@ function renderQuote(){
   let html='';
   // 操作栏
   html+='<div class="quote-bar">';
-  html+='<div class="quote-bar-title"><div class="card-title">全案装修报价系统</div><div class="card-subtitle">按「家装全案预算」模板复刻 · 所有金额实时计算</div></div>';
-  html+='<div class="quote-actions"><button class="btn-outline btn-sm" onclick="dedupeQuoteItems()">⇲ 整理重复项</button><button class="btn-outline btn-sm" onclick="resetQuote()">↺ 恢复模板</button><button class="btn-primary btn-sm" onclick="printQuote()">🖨 打印 / 导出PDF</button><label class="pg-num-toggle" title="打印时是否在页面底部居中显示页码"><input type="checkbox" '+(q.info.showPageNumber?'checked':'')+' onchange="toggleShowPageNum(this.checked)"> 显示页码</label></div>';
+  html+='<div class="quote-bar-title"><div class="card-title">全案装修报价系统</div><div class="card-en">FULL-CASE QUOTATION</div><div class="card-subtitle">按「家装全案预算」模板复刻 · 所有金额实时计算</div></div>';
+  html+='<div class="quote-actions"><button class="btn-outline btn-sm" onclick="openCompanyCfgModal()" title="设置企业名称与 Logo">⚙ 企业抬头</button><button class="btn-outline btn-sm" onclick="dedupeQuoteItems()">⇲ 整理重复项</button><button class="btn-outline btn-sm" onclick="resetQuote()">↺ 恢复模板</button><button class="btn-primary btn-sm" onclick="printQuote()">🖨 打印 / 导出PDF</button><label class="pg-num-toggle" title="打印时是否在页面底部居中显示页码"><input type="checkbox" '+(q.info.showPageNumber?'checked':'')+' onchange="toggleShowPageNum(this.checked)"> 显示页码</label></div>';
   html+='</div>';
   // 项目信息编辑条（仅屏幕可编辑，打印隐藏）
   html+=quoteInfoEditHTML(q);
@@ -9077,8 +9143,8 @@ function renderQuoteSummary(S){
   h+='<div class="sm-info">';
   h+='<div><span>项目名称：</span>'+escHtml(q.info.name||'')+'</div>';
   h+='<div><span>项目编号：</span>'+escHtml(q.info.code||'')+'</div>';
-  h+='<div><span>项目地址：</span>'+escHtml(q.info.address||'')+'</div>';
   h+='<div><span>项目面积：</span>'+escHtml(String(q.info.area||''))+' m²</div>';
+  h+='<div><span>项目地址：</span>'+escHtml(q.info.address||'')+'</div>';
   h+='<div><span>金额总计：</span>'+fmtM(S.grand)+'</div>';
   h+='</div>';
   h+='<table class="sm-table"><thead><tr><th>序号</th><th>清单名称</th><th>金额</th><th style="width:40px"></th></tr></thead><tbody>';
@@ -9369,9 +9435,21 @@ function printQuote(){
   }
   var qName=(App.quote&&App.quote.info&&App.quote.info.name)||'';
   setPrintTitle(qName?qName+'-报价单':'报价单');
+  /* 注册一次性的 afterprint 清理钩子（之前 printQuote 只清理 printPageTotal 元素，
+     printQuoteStyle 永远残留在 <head> 里，污染后续所有打印：原生 Ctrl+P 触发打印时，
+     printQuoteStyle 的 body *{visibility:hidden} + #quoteRoot *{visibility:visible} 会让
+     后续 modal 里的内容被错误地隐藏/显示，导致「报价系统打印变成合同收款计划表」等异常） */
+  var _cleanup=function(){
+    var s=document.getElementById('printQuoteStyle'); if(s) s.remove();
+    var t=document.getElementById('printPageTotal'); if(t) t.remove();
+  };
+  window.addEventListener('afterprint', function _once(){
+    window.removeEventListener('afterprint',_once);
+    _cleanup();
+  });
   window.print();
-  /* 清理总页数元素 */
-  var t=document.getElementById('printPageTotal'); if(t) t.remove();
+  /* 兜底：部分浏览器不触发 afterprint，3秒后强制清理 */
+  setTimeout(_cleanup,3000);
 }
 
 // ============================================================
@@ -10718,29 +10796,11 @@ function ryPreviewRectifyPdf(recordId){
   };
   const stCfg=stMap[status]||stMap['待处理'];
 
-  /* 抬头 Logo */
-  /* 企业抬头（与导出进度表一致，无设置时不显示预设） */
-  const cLogo=companyLogo();
-  const cName=companyName();
-  const cTag=companyTagline();
-  /* 无企业名称时隐藏整块品牌抬头（与导出进度表一致：未设置则不显示），避免空白/预设 */
-  const brandEl=document.getElementById('rpBrandBlock');
-  if(brandEl){ brandEl.style.display = cName ? '' : 'none'; }
-  /* 无企业 logo 时：标题左移（不再孤悬右侧）；有 logo 时维持「品牌左 / 标题右」平衡布局 */
-  const headerEl=document.querySelector('.rp-doc-header');
-  if(headerEl){ headerEl.classList.toggle('rp-no-logo', !cLogo); }
-  if(cName){
-    /* 有 logo 用图，无 logo 以企业名称首个字为头像（取消"装"预设） */
-    $('rpLogoBig').innerHTML = cLogo
-      ? '<img class="rp-logo-img" src="'+cLogo+'">'
-      : '<div class="rp-logo">'+cName.charAt(0)+'</div>';
-    $('rpCompanyName').textContent=cName;
-    $('rpCompanyTagline').textContent=cTag||'';
-  }else{
-    $('rpLogoBig').innerHTML='';
-    $('rpCompanyName').textContent='';
-    $('rpCompanyTagline').textContent='';
-  }
+  /* 企业抬头（统一 brandBlockHTML：logo 在上 + 名称/标语在下，未设置则不显示，与进度表/报价单同源）
+     抬头为空时 .rp-brand 隐藏，标题区靠 .rp-title-area{margin-left:auto} 固定右侧，位置不变 */
+  const _rpBrand=brandBlockHTML();
+  const _rpBrandEl=$('rpBrandBlock');
+  if(_rpBrandEl){ _rpBrandEl.innerHTML=_rpBrand; _rpBrandEl.style.display=_rpBrand.trim()?'':'none'; }
 
   /* 项目信息栏 */
   $('rpInfoBar').innerHTML=
@@ -10838,13 +10898,16 @@ function ryExportRectifyPdf(recordId){
 function printRectifyRecord(){
   /* 与 printNodeReport 完全同源的 visibility 注入方案 */
   var mid='rectifyPreviewModal';
-  var old=document.getElementById('printRectifyStyle'); if(old) old.remove();
+  /* 清理所有可能残留的打印样式（避免与其他报表的 printStyle 冲突导致打印错误内容） */
+  var _oldIds=['printRectifyStyle','printNodeStyle','printSheetStyle','printGanttStyle','printCostReconStyle','printQuoteStyle'];
+  _oldIds.forEach(function(id){ var e=document.getElementById(id); if(e) e.remove(); });
   var css='@media print{'+
+    'body>*:not(#'+mid+'){display:none!important}'+
     'body *{visibility:hidden}'+
     '#'+mid+',#'+mid+' *{visibility:visible}'+
     '#'+mid+'{position:absolute;left:0;top:0;width:100%;height:auto!important;background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;margin:0!important;box-shadow:none!important;border:none!important}'+
     '#'+mid+' .modal{max-width:none!important;width:100%!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important;background:#fff!important}'+
-    '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important}'+
+    '#'+mid+' .modal-header,#'+mid+' .modal-footer{display:none!important}'+
     '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:16px 24px!important;background:#fff!important}'+
     '@page{size:A4;margin:10mm}'+
   '}';
@@ -11155,7 +11218,9 @@ function sbAddAcceptDoc(i){
   },50);
 }
 // 预览报告：合同收款计划表同款统一制版式（cpr 风格 + 深蓝系）
+let _sbReportStepIdx=-1;
 function sbPreviewReport(i){
+  _sbReportStepIdx=i;
   const p=cur();if(!p||!p.processSteps||!p.processSteps[i])return;
   const step=p.processSteps[i];
   const ac=getAcceptStats(step);
@@ -11199,13 +11264,7 @@ function sbPreviewReport(i){
     <div class="cpr-sheet" id="nodeAcceptReportSheet" style="border-radius:10px 10px 0 0">
       <!-- ═ 顶部：Logo+公司名（左） / 标题（右）═ -->
       <div class="cpr-top">
-        ${companyName()?`<div class="cpr-brand">
-          ${companyLogo()?'<img class="cpr-logo-img" src="'+companyLogo()+'">':'<div class="cpr-logo">'+(companyName()||'').charAt(0)+'</div>'}
-          <div>
-            <div class="cpr-company">${escHtml(companyName())}</div>
-            <div class="cpr-tagline">${escHtml(companyTagline()||'让生活更焕新，让居住更安心')}</div>
-          </div>
-        </div>`:''}
+        ${brandBlockHTML()}
         <div class="cpr-title-area">
           <div class="cpr-main-title">节点验收报告</div>
           <div class="cpr-sub-title">ACCEPTANCE REPORT</div>
@@ -11354,9 +11413,7 @@ function applyStepSplitToAll(){
     grid.style.setProperty('--sb-left-w', (ratio*100).toFixed(2)+'%');
   });
 }
-// 简易 companyName 公司名（若未定义则不暴露）
-function companyName(){return (window._companyName_||localStorage.getItem('xzgz_company')||'').toString();}
-function companyTagline(){return (window._companyTagline_||'').toString();}
+
 
 
 function renderProcess(){
@@ -11610,7 +11667,6 @@ function renderProcess(){
                 </div>
                 <div class="ry-actions">
                   <button class="ry-act" onclick="ryPreviewRectifyPdf('${r.id}')">预览整改 PDF</button>
-                  <button class="ry-act" onclick="ryExportRectifyPdf('${r.id}')">导出整改 PDF</button>
                   <button class="ry-act warn" onclick="openRectifyEditModal('${r.id}')">编辑整改</button>
                   <button class="ry-act outline-danger" onclick="ryRevokeRectify('${r.id}')">撤销整改</button>
                   ${status==='待处理'?`<button class="ry-act primary" onclick="ryChangeStatus('${r.id}','进行中')">开始整改</button>`:''}
@@ -12969,7 +13025,7 @@ function exportFinanceTable(){
   const contractTotal=parseFloat(p.totalAmount)||0;
   const incList=(p.income||[]).filter(i=>i.amount>0);
   if(!incList.length){alert('当前项目还没有收款计划，无法导出。');return;}
-  $('customerPayBody').innerHTML=renderCustomerPayReport(p,incList,contractTotal);
+  $('cprSheetHost').innerHTML=renderCustomerPayReport(p,incList,contractTotal);
   showModal('customerPayModal');
   /* 延迟计算尺寸 */
   requestAnimationFrame(()=>{
@@ -13009,15 +13065,9 @@ function renderCustomerPayReport(p,incList,contractTotal){
     </tr>`;
   });
   return `<div class="cpr-sheet" id="cprSheet">
-    <!-- 顶部：企业抬头（有设置时显示）+ 标题 -->
-    <div class="cpr-top"${companyName()?'':' style="justify-content:flex-end"'}>
-      ${companyName()?`<div class="cpr-brand">
-        ${companyLogo()?'<img class="cpr-logo-img" src="'+companyLogo()+'">':'<div class="cpr-logo">'+(companyName()||'').charAt(0)+'</div>'}
-        <div>
-          <div class="cpr-company">${escHtml(companyName())}</div>
-          <div class="cpr-tagline">${escHtml(companyTagline()||'专业施工 · 透明交付 · 节点验收')}</div>
-        </div>
-      </div>`:''}
+    <!-- 顶部：企业抬头（有设置时显示）+ 标题（标题由 .cpr-title-area{margin-left:auto} 固定右侧） -->
+    <div class="cpr-top">
+      ${brandBlockHTML()}
       <div class="cpr-title-area">
         <div class="cpr-main-title">合同收款计划表</div>
         <div class="cpr-sub-title">PAYMENT SCHEDULE</div>
@@ -13064,6 +13114,21 @@ function companyCfg(){
 function companyName(){ return companyCfg().name||''; }
 function companyTagline(){ return companyCfg().tagline||''; }
 function companyLogo(){ return companyCfg().logo||''; }
+/* 全局统一企业抬头渲染（唯一逻辑）：logo 在上 + 名称/标语在下（纵向排列），未设置则不渲染任何内容 */
+function brandBlockHTML(){
+  var n=companyName(),t=companyTagline(),l=companyLogo();
+  if(!(n||l)) return '';
+  var h='<div class="xz-brand">';
+  h += l ? '<img class="xz-logo-img" src="'+escHtml(l)+'">' : '<div class="xz-logo">'+escHtml(n.charAt(0))+'</div>';
+  if(n||t){
+    h+='<div class="xz-brand-text">';
+    if(n) h+='<div class="xz-company">'+escHtml(n)+'</div>';
+    if(t) h+='<div class="xz-tagline">'+escHtml(t)+'</div>';
+    h+='</div>';
+  }
+  return h+'</div>';
+}
+
 function saveCompanyCfg(name,tagline,logo){ try{ localStorage.setItem('xzgz_company',JSON.stringify({name:(name||'').trim(),tagline:(tagline||'').trim(),logo:logo||''})); }catch(e){ alert('保存企业抬头失败：'+(e&&e.message||e)); } }
 let _cfgLogoTemp='';
 function openCompanyCfgModal(){
@@ -13109,12 +13174,15 @@ function saveCompanyCfgFromUI(){
   saveCompanyCfg(name,tagline,_cfgLogoTemp);
   closeModal('companyCfgModal');
   rerenderOpenGsSheets();
+  /* 抬头变更后同步刷新报价封面 */
+  if(typeof renderQuote==='function') renderQuote();
 }
 function rerenderOpenGsSheets(){
   const cb=document.getElementById('clientTimelineModal'); if(cb&&cb.classList.contains('show')){ exportClientTimeline(); }
   const pv=document.getElementById('planVsActualModal'); if(pv&&pv.classList.contains('show')){ exportPlanVsActualImage(); }
   const cp=document.getElementById('customerPayModal'); if(cp&&cp.classList.contains('show')){ exportFinanceTable(); }
   const rp=document.getElementById('rectifyPreviewModal'); if(rp&&rp.classList.contains('show')&&window._previewRectifyId){ ryPreviewRectifyPdf(window._previewRectifyId); }
+  const nr=document.getElementById('sbReportModal'); if(nr&&nr.classList.contains('show')&&_sbReportStepIdx>=0){ sbPreviewReport(_sbReportStepIdx); }
 }
 
 /* ── DOM → PNG（零外部依赖，SVG foreignObject + canvas）── */
@@ -13123,6 +13191,15 @@ function buildSheetSVG(el){
   const w=el.scrollWidth,h=el.scrollHeight;
   const clone=el.cloneNode(true);
   clone.style.width=w+'px';clone.style.height=h+'px';clone.style.position='absolute';clone.style.left='-9999px';clone.style.top='0';clone.style.background='#fff';
+  /* 确保克隆元素及其子元素不裁切溢出内容（打印截取必须完整） */
+  (function removeOverflow(node){
+    if(node.nodeType===1){
+      node.style.overflow='visible';
+      node.style.overflowX='visible';
+      node.style.overflowY='visible';
+      for(let i=0;i<node.children.length;i++)removeOverflow(node.children[i]);
+    }
+  })(clone);
   /* 收集元素内实际用到的所有 class 名 */
   const usedClasses=new Set();
   function collectClasses(node){
@@ -13135,31 +13212,80 @@ function buildSheetSVG(el){
     }
   }
   collectClasses(clone);
-  /* 只提取包含已使用 class 的 CSS 规则，大幅缩减体积 */
+  /* 只提取包含已使用 class 的 CSS 规则，大幅缩减体积
+     关键：必须用字符级解析器处理 @media 嵌套块，不能用 split('}') 切
+     ——旧实现把 @media(max-width:780px){.gs-top{...}} 切成两半，内层 .gs-top{flex-direction:column} 变成
+     独立规则后覆盖默认的横排样式，导致打印图呈现「窄屏竖排 + 标题左对齐」与显示预览不一致 */
+  const elId=el.id, elTag=el.tagName.toLowerCase();
+  const usedArr=Array.from(usedClasses);
+  function selectorMatches(sel){
+    for(let i=0;i<usedArr.length;i++){
+      const c=usedArr[i];
+      if(sel.indexOf('.'+c)!==-1)return true;
+    }
+    if(elId && sel.indexOf('#'+elId)!==-1)return true;
+    if(sel.indexOf(elTag+' ')!==-1 || sel.indexOf(elTag+'.')!==-1)return true;
+    return false;
+  }
+  function innerMatches(innerText){
+    /* 检查 @media 块的内层是否有任一规则匹配已用 class —— 不递归解析，只粗扫选择器 */
+    let j=0, len=innerText.length, d=0, buf='', start=0;
+    while(j<len){
+      const ch=innerText[j];
+      if(ch==='{'){ if(d===0)start=j+1; d++; }
+      else if(ch==='}'){ d--; if(d===0){ const s=innerText.substring(start===0?0:start, j).split('{')[0]; if(selectorMatches(s))return true; buf=''; start=0; } }
+      j++;
+    }
+    return false;
+  }
   let css='';
   document.querySelectorAll('style').forEach(function(st){
     const text=st.textContent||'';
-    /* 按 } 分割规则块，逐块检查是否包含已使用的 class */
-    const rules=text.split('}');
-    rules.forEach(function(rule){
-      if(!rule.trim())return;
-      const selectors=rule.split('{')[0];
-      let shouldInclude=false;
-      usedClasses.forEach(function(cls){
-        if(selectors.indexOf('.'+cls)!==-1||selectors.indexOf('#'+el.id)!==-1||selectors.indexOf(el.tagName.toLowerCase()+' ')!==-1||selectors.indexOf(el.tagName.toLowerCase()+'.')!==-1){
-          shouldInclude=true;
-        }
-      });
-      /* 始终保留 @media print 和 @page 规则 */
-      if(selectors.indexOf('@media')!==-1||selectors.indexOf('@page')!==-1)shouldInclude=true;
-      if(shouldInclude)css+=rule+'}\n';
-    });
+    let i=0, n=text.length;
+    while(i<n){
+      /* 跳过空白与注释 */
+      while(i<n && /\s/.test(text[i]))i++;
+      if(i>=n)break;
+      if(text[i]==='/' && text[i+1]==='*'){ const e=text.indexOf('*/',i+2); i=(e===-1)?n:e+2; continue; }
+      const start=i;
+      let depth=0, braceStart=-1;
+      /* 字符级扫描，记录大括号配对 */
+      while(i<n){
+        const ch=text[i];
+        if(ch==='{'){ if(depth===0)braceStart=i; depth++; }
+        else if(ch==='}'){ depth--; if(depth===0){ i++; break; } }
+        else if(ch===';' && depth===0){ i++; break; }
+        i++;
+      }
+      if(braceStart===-1)continue; /* 无块规则（如 @charset）跳过 */
+      const block=text.substring(start,i);
+      const header=text.substring(start,braceStart).trim();
+      if(/^@media/i.test(header)){
+        /* @media 块：只在 print 上下文整块保留；其他（含 max-width 窄屏）整块丢弃
+           ——SVG foreignObject 没有真正的视口宽度，窄屏规则会错误生效覆盖默认横排 */
+        if(/print/i.test(header)){ css+=block+'\n'; }
+      }else if(/^@page/i.test(header)){
+        /* @page 整块保留 */
+        css+=block+'\n';
+      }else if(/^@[-a-z]+/i.test(header)){
+        /* 其他 @ 规则（keyframes/font-face 等）丢弃，打印图不需要动画/字体声明 */
+      }else{
+        /* 普通规则：选择器匹配已用 class 才保留 */
+        if(selectorMatches(header)) css+=block+'\n';
+      }
+    }
   });
   css=css.replace(/]]>/g,']]\u2060>');
   const style='<style><![CDATA['+css+']]></style>';
+  /* XML 合法化：foreignObject 内容按 XML 解析，HTML 序列化输出会致命：
+     1) void 标签 <img>/<br>/<hr>/<input> 未自闭合 → "Opening and ending tag mismatch" → Layer1 静默降级 Layer2（带 logo 图时必现）
+     2) &nbsp; 等命名实体在 XML 里未定义 → 解析失败（innerHTML 会把 U+00A0 序列化成 &nbsp;） */
+  let inner=clone.innerHTML
+    .replace(/<(img|br|hr|input|col|area|base|link|meta|source|track|wbr)((?:[^>"']|"[^"]*"|'[^']*')*?)\s*\/?>/gi,'<$1$2/>')
+    .replace(/&nbsp;/gi,'&#160;');
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'">'
     +'<foreignObject width="100%" height="100%">'+style
-    +'<div xmlns="http://www.w3.org/1999/xhtml" style="width:'+w+'px;height:'+h+'px">'+clone.innerHTML+'</div>'
+    +'<div xmlns="http://www.w3.org/1999/xhtml" style="width:'+w+'px;height:'+h+'px">'+inner+'</div>'
     +'</foreignObject></svg>';
   return {svg:svg,w:w,h:h};
 }
@@ -13223,9 +13349,12 @@ function printNodeReport(){
   const el=$('nodeAcceptReportSheet'); if(!el){ alert('报告内容未就绪'); return; }
   /* 注入一次性打印样式：隐藏所有非报告内容，但保留报告整条祖先链可见 */
   let ps=document.getElementById('printNodeStyle');
+  /* 清理所有可能残留的打印样式 */
+  var _oldIds=['printRectifyStyle','printNodeStyle','printSheetStyle','printGanttStyle','printCostReconStyle','printQuoteStyle'];
+  _oldIds.forEach(function(id){ var e=document.getElementById(id); if(e) e.remove(); });
   if(!ps){
     ps=document.createElement('style'); ps.id='printNodeStyle';
-    ps.textContent='@media print{body *{visibility:hidden}#sbReportModal,#sbReportModal *,#nodeAcceptReportSheet,#nodeAcceptReportSheet *{visibility:visible}#nodeAcceptReportSheet{position:absolute;left:0;top:0;width:100%;margin:0;padding:24px 28px;box-shadow:none;border:none;background:#fff}#sbReportModal{position:absolute;left:0;top:0;background:none!important;border:none!important;box-shadow:none;padding:0;margin:0}@page{size:A4;margin:12mm}}';
+    ps.textContent='@media print{body>*:not(#sbReportModal):not(#nodeAcceptReportSheet){display:none!important}body *{visibility:hidden}#sbReportModal,#sbReportModal *,#nodeAcceptReportSheet,#nodeAcceptReportSheet *{visibility:visible}#nodeAcceptReportSheet{position:absolute;left:0;top:0;width:100%;margin:0;padding:24px 28px;box-shadow:none;border:none;background:#fff}#sbReportModal{position:absolute;left:0;top:0;background:none!important;border:none!important;box-shadow:none;padding:0;margin:0}@page{size:A4;margin:12mm}}';
     document.head.appendChild(ps);
   }
   var nrName=(cur()&&cur().name)||'';
@@ -13261,7 +13390,7 @@ function _doGeneratePDF(el,sheetId,fileBase){
   }).catch(function(err){
     console.warn('PDF生成失败(主方案):',err&&err.message||err);
     /* 降级方案：提示用户使用浏览器打印→另存为PDF */
-    alert('PDF 自动生成失败，请点击「打印进度表」按钮，在打印对话框中选择「另存为 PDF」保存。');
+    alert('PDF 自动生成失败，请点击「打印计划表」按钮，在打印对话框中选择「另存为 PDF」保存。');
   });
 }
 function printSheet(sheetId){
@@ -13273,72 +13402,106 @@ function printSheet(sheetId){
   if(sheetId==='cprSheet') title=pPrefix+'合同收款计划表';
   else if(sheetId==='clientTimelineSheet') title=pPrefix+'施工进度表';
   else if(sheetId==='planVsActualSheet') title=pPrefix+'计划与实际进度表';
+  /* 三张计划表统一直接走 Layer2 DOM 打印（浏览器原生引擎）：
+     1) Layer1 图片方案（SVG foreignObject→canvas）因 foreignObject 画布必染污（Tainted canvas，
+        SecurityError）toBlob 100% 抛错——历史上 Layer1 从未真正成功，用户实际看到的一直是 Layer2；
+     2) Layer2 的按行分页（page-break-inside:avoid）已过实战验证，图片切片方案反而有空白页风险；
+     3) Layer2 打印 CSS 已强制表头容器横排+底对齐（反制窄屏 @media 竖排规则），表头修复对用户可见。
+     Layer1 直出 SVG blob 的新实现保留给其他未列举的 sheetId 兜底使用。 */
+  if(sheetId==='cprSheet'||sheetId==='clientTimelineSheet'||sheetId==='planVsActualSheet'){ _printSheetFallback(el,sheetId,title); return; }
   /* ── 三层降级打印方案 ──
-     Layer1: 图片方案（DOM→SVG→Canvas→PNG→新窗口打印），像素级所见即所得
+     Layer1: 图片方案（DOM→SVG→blob URL→新窗口 <img> 打印），像素级所见即所得
      Layer2: visibility 隐藏隔离（浏览器原生打印引擎渲染 DOM）
      Layer3: 失败提示 */
-  /* Layer 1: 图片打印（优化版：自适应 scale + blob URL） */
+  /* Layer 1: 图片打印（直出 SVG blob，不经 canvas）
+     关键：foreignObject SVG 画到 canvas 后必染污（SecurityError: Tainted canvases），
+     toBlob/toDataURL 100% 抛错 → 曾导致 Layer1 永远静默降级 Layer2（与 logo 无关）。
+     改为 <img src=svgBlob> 直接打印：无染污问题，且浏览器按打印 DPI 矢量光栅化更清晰 */
   try{
     var r=buildSheetSVG(el);
-    var MAX_CANVAS=11000; /* 浏览器 canvas 安全上限 */
-    var scale=1.6;
-    /* 若尺寸超大则降低 scale 防止 canvas 超限 */
-    if(r.w*scale>MAX_CANVAS||r.h*scale>MAX_CANVAS){
-      scale=Math.min(MAX_CANVAS/r.w, MAX_CANVAS/r.h, 1.2);
-      scale=Math.max(scale, 0.8); /* 最低 0.8，再低就糊了 */
-    }
-    svgToCanvas(r.svg,r.w,r.h,scale).then(function(canvas){
-      /* 用 blob URL 替代 dataURL，避免 URL 长度超限 */
-      canvas.toBlob(function(blob){
-        if(!blob){ _printSheetFallback(el,sheetId,title); return; }
-        var blobUrl=URL.createObjectURL(blob);
-        var isLandscape=(r.w>r.h);
-        /* A4 横版: 297×210mm, 纵版: 210×297mm; 减去边距 = 可打印区域 */
-        var pw=isLandscape?287:194; /* mm, A4横297-2×5 或 纵210-2×8 */
-        var pageCSS=isLandscape ? '@page{size:A4 landscape;margin:5mm}' : '@page{size:A4;margin:8mm}';
-        /* 图片不设 CSS 宽度，留待 JS 在 load 后按 96dpi 动态设置像素尺寸（最可靠） */
-        var doc='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
-          '<style>'+
-            '*{margin:0;padding:0}'+
-            'html,body{width:'+pw+'mm;background:#fff;overflow:hidden}'+
-            'body{display:flex;justify-content:center;align-items:flex-start}'+
-            'img{display:block}'+
-            pageCSS+
-          '</style></head><body>'+
-          '<img id="__pimg" src="'+blobUrl+'">'+
-          '</body></html>';
-        var w=window.open('','_blank');
-        if(!w){ URL.revokeObjectURL(blobUrl); alert('请允许弹出窗口后重试'); return; }
-        w.document.write(doc);
-        w.document.close();
-        /* load 后图片已就绪：用 JS 按打印 DPI 计算并强制设置像素宽度，确保等比缩放进一页 */
-        w.addEventListener('load',function(){
-          var img=w.document.getElementById('__pimg');
-          if(!img){ _printSheetFallback(el,sheetId,title); return; }
-          var targetPx=Math.round(pw/25.4*96); /* 96dpi 下 A4 可打印宽度(px) */
-          if(img.naturalWidth>targetPx){
-            img.style.width=targetPx+'px';
-            img.style.height='auto';
-          }
-          setTimeout(function(){ try{ w.print(); }catch(e){void 0;} }, 300);
-          /* 打印后延迟释放 blob URL */
-          setTimeout(function(){ try{ URL.revokeObjectURL(blobUrl); }catch(e){void 0;} }, 30000);
-        });
-        /* 兜底：若 4 秒后仍未触发 load（极少见），直接回退 */
-        setTimeout(function(){
-          if(!w.document.getElementById('__pimg')||!w.document.getElementById('__pimg').complete){
-            try{ w.close(); }catch(e){void 0;}
-            URL.revokeObjectURL(blobUrl);
-            _printSheetFallback(el,sheetId,title);
-          }
-        }, 4000);
-      },'image/png');
-    }).catch(function(err){
-      console.warn('[printSheet] Layer1 图片方案失败:',err&&(err.message||err));
-      _printSheetFallback(el,sheetId,title);
+    var svgBlob=new Blob([r.svg],{type:'image/svg+xml;charset=utf-8'});
+    var blobUrl=URL.createObjectURL(svgBlob);
+    var isLandscape=(r.w>r.h);
+    /* A4 横版: 297×210mm, 纵版: 210×297mm; 减去边距 = 可打印区域 */
+    var pw=isLandscape?287:194; /* mm, A4横297-2×5 或 纵210-2×8 */
+    var pageCSS=isLandscape ? '@page{size:A4 landscape;margin:5mm}' : '@page{size:A4;margin:8mm}';
+    /* 图片不设 CSS 宽度，留待 JS 在 load 后按 96dpi 动态设置像素尺寸（最可靠） */
+    var doc='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>'+
+      '<style>'+
+        '*{margin:0;padding:0;box-sizing:border-box}'+
+        'html{width:'+pw+'mm;overflow:hidden}'+
+        'body{width:'+pw+'mm;background:#fff;overflow:hidden;display:flex;justify-content:center;align-items:flex-start}'+
+        'img{display:block;max-width:100%;height:auto;width:auto}'+
+        pageCSS+
+      '</style></head><body>'+
+      '<img id="__pimg" src="'+blobUrl+'">'+
+      '</body></html>';
+    var w=window.open('','_blank');
+    if(!w){ URL.revokeObjectURL(blobUrl); alert('请允许弹出窗口后重试'); return; }
+    w.document.write(doc);
+    w.document.close();
+    /* load 后图片已就绪：用 JS 按打印 DPI 计算并强制设置像素宽度，确保等比缩放进一页 */
+    w.addEventListener('load',function(){
+      var img=w.document.getElementById('__pimg');
+      if(!img){ _printSheetFallback(el,sheetId,title); return; }
+      var targetPx=Math.round(pw/25.4*96); /* 96dpi 下 A4 可打印宽度(px) */
+      if(img.naturalWidth>targetPx){
+        img.style.width=targetPx+'px';
+        img.style.height='auto';
+      }
+      setTimeout(function(){ try{ w.print(); }catch(e){void 0;} }, 300);
+      /* 打印后延迟释放 blob URL */
+      setTimeout(function(){ try{ URL.revokeObjectURL(blobUrl); }catch(e){void 0;} }, 30000);
     });
+    /* 兜底：若 4 秒后仍未触发 load（极少见），直接回退 */
+    setTimeout(function(){
+      if(!w.document.getElementById('__pimg')||!w.document.getElementById('__pimg').complete){
+        try{ w.close(); }catch(e){void 0;}
+        URL.revokeObjectURL(blobUrl);
+        _printSheetFallback(el,sheetId,title);
+      }
+    }, 4000);
   }catch(e){
     console.warn('[printSheet] Layer1 异常:',e&&(e.message||e));
+    _printSheetFallback(el,sheetId,title);
+  }
+}
+/* 甘特类进度表 DOM 打印：浏览器原生引擎渲染，支持按行分页，徽章不被截断 */
+function _printGanttDOM(el,sheetId,title){
+  try{
+    var modal=el.closest('.modal-overlay');
+    if(!modal){ _printSheetFallback(el,sheetId,title); return; }
+    var mid=modal.id;
+    var old=document.getElementById('printGanttStyle'); if(old) old.remove();
+    /* 清理所有可能残留的打印样式（避免与其他报表冲突） */
+    ['printRectifyStyle','printNodeStyle','printSheetStyle','printCostReconStyle','printQuoteStyle'].forEach(function(id){ var e=document.getElementById(id); if(e) e.remove(); });
+    var css='@media print{'+
+      'html,body{margin:0!important;padding:0!important;background:#fff!important;width:100%!important}'+
+      'body>*:not(#'+mid+'){display:none!important}'+
+      'body *{visibility:hidden}'+
+      '#'+mid+',#'+mid+' *,#'+sheetId+',#'+sheetId+' *{visibility:visible}'+
+      '#'+mid+'{position:absolute;left:0;top:0;width:100%;height:auto!important;min-height:0!important;background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;margin:0!important;box-shadow:none!important;border:none!important}'+
+      '#'+mid+' .modal{position:static!important;max-width:none!important;max-height:none!important;width:100%!important;height:auto!important;min-height:0!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important;background:#fff!important;display:block!important}'+
+      '#'+mid+' .modal-header,#'+mid+' .modal-close,#'+mid+' .gs-zoom-ctrl,#'+mid+' .modal-actions,#'+mid+' > div:last-child{display:none!important}'+
+      '#clientTimelineBody,#planVsActualBody,#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:0!important;background:#fff!important}'+
+      '#'+sheetId+'{width:100%!important;max-width:100%!important;box-sizing:border-box!important}'+
+      '.gs-zoom-pad{width:100%!important;transform:none!important;position:static!important}'+
+      '.gs-sheet{width:100%!important;max-width:100%!important}'+
+      '.gs-chart{overflow:visible!important}'+
+      /* 按行分页：节点行/统计卡/图例/脚注整块不被拆断 */
+      '.pg-row,.gs-sum-card,.gs-legend,.gs-foot,.gs-top,.gs-project-name,.gs-project-meta{page-break-inside:avoid!important;break-inside:avoid!important}'+
+      '.pg-row{page-break-after:auto!important}'+
+      '@page{size:A4 landscape;margin:6mm}'+
+    '}';
+    var ps=document.createElement('style');
+    ps.id='printGanttStyle';
+    ps.textContent=css;
+    document.head.appendChild(ps);
+    setPrintTitle(title);
+    window.print();
+    setTimeout(function(){ if(ps&&ps.parentNode) ps.parentNode.removeChild(ps); }, 800);
+  }catch(e){
+    console.warn('[printGanttDOM] 失败:',e&&(e.message||e));
     _printSheetFallback(el,sheetId,title);
   }
 }
@@ -13349,15 +13512,37 @@ function _printSheetFallback(el,sheetId,title){
     if(modal){
       var mid=modal.id, sid=sheetId;
       var old=document.getElementById('printSheetStyle'); if(old) old.remove();
+      /* 清理所有可能残留的打印样式（避免与其他报表冲突） */
+      ['printRectifyStyle','printNodeStyle','printGanttStyle','printCostReconStyle','printQuoteStyle'].forEach(function(id){ var e=document.getElementById(id); if(e) e.remove(); });
       var isGantt=(sid==='clientTimelineSheet'||sid==='planVsActualSheet');
-      var pageRule=isGantt ? '@page{size:A4 landscape;margin:5mm}' : '@page{size:auto;margin:10mm}';
+      var pageRule=isGantt ? '@page{size:A4 landscape;margin:5mm}' : '@page{size:A4 portrait;margin:10mm}';
       var css='@media print{'+
+        'body>*:not(#'+mid+'){display:none!important}'+
         'body *{visibility:hidden}'+
         '#'+mid+',#'+mid+' *,#'+sid+',#'+sid+' *{visibility:visible}'+
         '#'+mid+'{position:absolute;left:0;top:0;width:100%;height:auto!important;min-height:0!important;background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;margin:0!important;box-shadow:none!important;border:none!important}'+
-        '#'+mid+' .modal{max-width:none!important;width:100%!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important;background:#fff!important}'+
-        '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important}'+
-        '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:16px 24px!important;background:#fff!important}'+
+        '#'+mid+' .modal{display:block!important;max-width:none!important;max-height:none!important;width:100%!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important;background:#fff!important}'+
+        /* 隐藏：标题栏 / 缩放控件 / 关闭按钮 / 底部按钮栏(无class用:last-child) / 尺寸文字 */
+        '#'+mid+' .modal-header,#'+mid+' .gs-zoom-ctrl,#'+mid+' .modal-close,#'+mid+' .modal > div:last-child{display:none!important}'+
+        '#'+mid+' .modal-body,#cprSheetHost,#planVsActualBody{display:block!important;flex:none!important;min-height:auto!important;overflow:visible!important;max-height:none!important;height:auto!important;padding:0!important;background:#fff!important}'+
+        /* 报表内容区：重置边距防止底部被裁切 */
+        '#'+sid+',.cpr-sheet,.gs-sheet{margin:0!important;padding:'+(!isGantt?'24px 28px':'16px 20px')+'!important}'+
+        /* 合同收款计划表分页规则（彻底解决底部错位）：
+           - 顶部信息块整块不被分页切断（项目名/合同号/汇总卡片）
+           - 表格行不拆断
+           - cpr-foot（计算说明+签名）只设 page-break-before:avoid 紧跟表格，**不强制 page-break-inside:avoid**——
+             否则内容超高时整块被推到独立空白页，造成「底部错位」 */
+        '.cpr-top,.cpr-project-name,.cpr-project-meta,.cpr-summary-row,.cpr-table-wrap{page-break-inside:avoid!important;break-inside:avoid!important}'+
+        '.cpr-foot{page-break-before:avoid!important;break-before:avoid!important}'+
+        '.cpr-table tr{page-break-inside:avoid!important;break-inside:avoid!important}'+
+        /* 甘特图宽度约束：防止超出 A4 横向 */
+        '.gs-sheet{width:100%!important;max-width:100%!important;box-sizing:border-box!important}'+
+        '.gs-zoom-pad{width:100%!important;transform:none!important;position:static!important}'+
+        /* 表头容器在打印上下文强制横排+底部对齐：Chrome 打印视口可能命中 @media(max-width:780px)
+           窄屏规则，把 .gs-top 等切成竖排（品牌块被顶到最上方、与右侧标题底距错位）——
+           Layer2 走原生 DOM 打印必须显式反制窄屏规则 */
+        '.rp-doc-header,.cpr-top,.gs-top,.qc-header,.qs-head{flex-direction:row!important;align-items:flex-end!important}'+
+        '.rp-title-area,.cpr-title-area,.gs-title-area,.qc-title-area{text-align:right!important;margin-left:auto!important}'+
         pageRule+
       '}';
       var ps=document.createElement('style');
@@ -13376,6 +13561,16 @@ function _printSheetFallback(el,sheetId,title){
 window.addEventListener('afterprint',function(){
   document.documentElement.classList.remove('gs-printing-rectify');
   document.documentElement.classList.remove('gs-printing-costrecon');
+  /* 全局兜底清理 printStyle 残留：任意打印结束后，清理 <head> 里全部已知 printStyle。
+     防止 printQuote（之前漏清理 printQuoteStyle）/ printRectifyRecord / printNodeReport / printGantt / printSheet / costRecon
+     任意一个遗漏时残留 style 污染后续打印——尤其是原生 Ctrl+P 触发的打印，弹窗本身没有专属 printStyle，
+     此时残留的 printQuoteStyle 里的 body *{visibility:hidden} + #quoteRoot *{visibility:visible}
+     会让 modal 内容被错误隐藏/显示，导致「报价系统里打印变成合同收款计划表」等异常 */
+  ['printRectifyStyle','printNodeStyle','printSheetStyle','printGanttStyle','printCostReconStyle','printQuoteStyle'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.remove();
+  });
+  /* 兜底清理 printPageTotal 元素 */
+  var pt=document.getElementById('printPageTotal'); if(pt) pt.remove();
 });
 
 function downloadCustomerPayPNG(){
@@ -13647,14 +13842,8 @@ function renderClientTimelineSheet(p,steps){
     rowsHtml+=`<div class="pg-row">${nameCell}<div class="pg-track">${todayEl}<div class="pg-bar ${cls}" title="${escHtml((s.name||'')+' · '+barLabel)}" style="left:${leftPct}%;width:${wPct}%"></div><span class="pg-bar-label" style="${labelStyle2}"><span class="pg-label-name">${escHtml(s.name||('节点'+(idx+1)))}</span><span class="pg-label-date">${barLabel}</span></span></div></div>`;
   });
   return `<div class="gs-sheet" id="clientTimelineSheet">
-    <div class="gs-top"${companyName()?'':' style="justify-content:flex-end"'}>
-      ${companyName()?`<div class="gs-brand">
-        ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">'+(companyName()||'').charAt(0)+'</div>'}
-        <div>
-          <div class="gs-company">${escHtml(companyName())}</div>
-          <div class="gs-tagline">${escHtml(companyTagline()||'专业施工 · 透明交付 · 节点验收')}</div>
-        </div>
-      </div>`:''}
+    <div class="gs-top">
+      ${brandBlockHTML()}
       <div class="gs-title-area">
         <div class="gs-main-title">施工进度表</div>
         <div class="gs-sub-title">CONSTRUCTION TIMELINE</div>
@@ -13805,14 +13994,8 @@ function renderPlanVsActualSheet(p,steps){
       +`</div></div>`;
   });
   return `<div class="gs-sheet" id="planVsActualSheet">
-    <div class="gs-top"${companyName()?'':' style="justify-content:flex-end"'}>
-      ${companyName()?`<div class="gs-brand">
-        ${companyLogo()?'<img class="gs-logo-img" src="'+companyLogo()+'">':'<div class="gs-logo">'+(companyName()||'').charAt(0)+'</div>'}
-        <div>
-          <div class="gs-company">${escHtml(companyName())}</div>
-          <div class="gs-tagline">${escHtml(companyTagline()||'专业施工 · 透明交付 · 节点验收')}</div>
-        </div>
-      </div>`:''}
+    <div class="gs-top">
+      ${brandBlockHTML()}
       <div class="gs-title-area">
         <div class="gs-main-title">计划与实际进度表</div>
         <div class="gs-sub-title">PLAN vs ACTUAL TIMELINE</div>
@@ -18360,7 +18543,7 @@ function previewCostRecon(){
     '#'+mid+',#'+mid+' *{visibility:visible}'+
     '#'+mid+'{position:absolute;left:0;top:0;width:100%;height:auto!important;background:#fff!important;display:block!important;overflow:visible!important;padding:0!important;margin:0!important;box-shadow:none!important;border:none!important}'+
     '#'+mid+' .modal{max-width:none!important;width:100%!important;height:auto!important;box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important;background:#fff!important}'+
-    '#'+mid+' .modal-header,#'+mid+' .form-actions{display:none!important}'+
+    '#'+mid+' .modal-header,#'+mid+' .modal-footer{display:none!important}'+
     '#'+mid+' .modal-body{overflow:visible!important;max-height:none!important;height:auto!important;padding:16px 24px!important;background:#fff!important}'+
     '#'+mid+' #crDetailList{max-height:none!important;overflow:visible!important}'+
     '@page{size:A4;margin:10mm}'+

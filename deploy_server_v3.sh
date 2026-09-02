@@ -60,7 +60,7 @@ EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=4865 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集）
-EXP_app=1411393        # app23.html           → pb_public/index.html（#439-#446 报价系统大轮改，一次部署）
+EXP_app=1427455        # app23.html           → pb_public/index.html（#439-#476 报价系统大轮改 + 表头统一 + 打印链路修复：Layer1放弃canvas直出SVG、三表直连Layer2、打印态表头强制横排底对齐，一次部署）
                        #   #439 总价清单名称可点击跳转+删除重编号、删均价行、消除打印空白页、说明textarea自适应
                        #   #440 总价清单计算区动态化（删半包优惠一口价行、无主材隐藏管理费/主材合计）
                        #   #441 累计总金额计算链修复（不再吃半包优惠常量，删除项后总额随动）
