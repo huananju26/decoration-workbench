@@ -5,11 +5,11 @@
 #   sudo bash /tmp/d3.sh
 #
 # 本脚本做的事：
-#   1) 从 GitHub Pages 中转站拉后端钩子（数量见下方 HOOK_N）+ 前端 app23.html + 运营后台 admin10.html
+#   1) 从 GitHub Pages 中转站拉后端钩子（数量见下方 HOOK_N）+ 前端 app24.html + 运营后台 admin10.html
 #   2) 字节校验（不一致=gh-pages 未同步，自动重试一次）
 #   3) 备份当前 pb_public/index.html（回退点）
 #   4) 写入 HOOK_N 个常驻钩子（含 api_admin / api_cleanup / schema_patch_v3）+ 重启 PB
-#   5) 部署前端 app23.html → index.html、运营后台 admin10.html → admin.html（固定地址）
+#   5) 部署前端 app24.html → index.html、运营后台 admin10.html → admin.html（固定地址）
 #
 # 本次重点修复：
 #   - 侧栏「影像资料」+「储存套餐」合并为「存储影像」（归企业设置组，套餐在上/影像在下，#425）
@@ -59,8 +59,10 @@ EXP_api_multiorg=43516 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注�
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
-EXP_schema_patch_v3=4865 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集）
-EXP_app=1427455        # app23.html           → pb_public/index.html（#439-#476 报价系统大轮改 + 表头统一 + 打印链路修复：Layer1放弃canvas直出SVG、三表直连Layer2、打印态表头强制横排底对齐，一次部署）
+EXP_schema_patch_v3=5142 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集；修「集合不存在/无 role 字段」跳过分支误置 done=true 导致日志假阳性，详见 pb-pitfalls ⑭）
+EXP_api_acct=14832     # api_acct_v1.js       → pb_hooks/api_acct.pb.js（#487 账户聚合：/api/acct/profile 改名 + /api/acct/password 改密码（绕开 users.updateRule 仅 superuser 限制）+ /api/client/* 业主绑定码/绑定/列表/解绑/业主列表）
+EXP_schema_patch_v5=4447 # schema_patch_v5_client_bind.pb.js → pb_hooks/schema_patch_v5_client_bind.pb.js（#487 cron 自建 client_bind_codes / client_bindings 两表后自注销）
+EXP_app=1453374        # app24.html           → pb_public/index.html（#487 账户聚合弹窗：改名/改密走新 hook 路由 + 绑定装修公司后端 + 角色说明同步「供应调配」+ 退出按钮胶囊化 + 侧栏显示用户名；#488 修绑定弹窗 div 嵌套错位导致的竖排布局崩坏 + 新接口 404 友好提示）
                        #   #439 总价清单名称可点击跳转+删除重编号、删均价行、消除打印空白页、说明textarea自适应
                        #   #440 总价清单计算区动态化（删半包优惠一口价行、无主材隐藏管理费/主材合计）
                        #   #441 累计总金额计算链修复（不再吃半包优惠常量，删除项后总额随动）
@@ -72,7 +74,7 @@ EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 �
 
 # 钩子数量。⚠️ 以前是写死在两处回显里的字面量，加第 6 个钩子（schema_patch_v3）时只改了
 # 其中一处 → 回显自相矛盾（"写入 5 个钩子" / "6 个钩子已写入"）。改用变量，加钩子时改这里即可。
-HOOK_N=6
+HOOK_N=8
 
 dl() { # url out expected
   local url="$1" out="$2" exp="$3" got
@@ -104,9 +106,11 @@ dl "$BASE/api_review_v2.js"   /tmp/api_review.pb.js   $EXP_api_review
 dl "$BASE/api_admin_v1.js"    /tmp/api_admin.pb.js    $EXP_api_admin
 dl "$BASE/api_cleanup_v1.js"  /tmp/api_cleanup.pb.js  $EXP_api_cleanup
 dl "$BASE/schema_patch_v3.pb.js" /tmp/schema_patch_v3.pb.js $EXP_schema_patch_v3
+dl "$BASE/api_acct_v1.js"     /tmp/api_acct.pb.js     $EXP_api_acct
+dl "$BASE/schema_patch_v5_client_bind.pb.js" /tmp/schema_patch_v5_client_bind.pb.js $EXP_schema_patch_v5
 
-echo "== [2/5] 下载前端 app23.html + 运营后台 admin10.html =="
-dl "$BASE/app23.html" /tmp/app23.html $EXP_app
+echo "== [2/5] 下载前端 app24.html + 运营后台 admin10.html =="
+dl "$BASE/app24.html" /tmp/app24.html $EXP_app
 dl "$BASE/admin10.html" /tmp/admin10.html $EXP_admin
 
 echo "== [3/5] 备份当前 index.html + 写入 $HOOK_N 个钩子 =="
@@ -120,6 +124,8 @@ sudo cp /tmp/api_review.pb.js   "$HOOKS/api_review.pb.js"
 sudo cp /tmp/api_admin.pb.js    "$HOOKS/api_admin.pb.js"
 sudo cp /tmp/api_cleanup.pb.js  "$HOOKS/api_cleanup.pb.js"
 sudo cp /tmp/schema_patch_v3.pb.js "$HOOKS/schema_patch_v3.pb.js"
+sudo cp /tmp/api_acct.pb.js     "$HOOKS/api_acct.pb.js"
+sudo cp /tmp/schema_patch_v5_client_bind.pb.js "$HOOKS/schema_patch_v5_client_bind.pb.js"
 echo "  ✓ $HOOK_N 个钩子已写入 $HOOKS/"
 
 echo "== [4/5] 重启 pocketbase（加载含 api_admin / api_cleanup / schema_patch_v3 的钩子集）=="
@@ -131,17 +137,18 @@ if ! sudo systemctl is-active --quiet pocketbase; then
 fi
 echo "  ✓ pocketbase 已启动（$HOOK_N 钩子常驻）"
 echo ""
-echo "  ⏳ schema_patch_v3 走 cron（每分钟触发一次），不是启动即生效："
-echo "     重启后约 1 分钟内会自动把 invitations / access_requests / users 三张表的"
-echo "     role 候选值扩为 8 值并集，打完补丁自我注销（cronRemove）。"
-echo "     确认命令：sudo journalctl -u pocketbase -n 50 | grep schema_patch_v3"
-echo "     预期看到：invitations.role 已扩展 / access_requests.role 已扩展 / users.role 已扩展 / cron 自我注销"
+echo "  ⏳ schema_patch_v3 / schema_patch_v5 走 cron（每分钟触发一次），不是启动即生效："
+echo "     v3：约 1 分钟内把 invitations / access_requests / users 的 role 候选值扩为 8 值并集。"
+echo "     v5：约 1 分钟内自建 client_bind_codes / client_bindings 两张业主绑定表。"
+echo "     两者打完补丁均自我注销（cronRemove）。"
+echo "     确认命令：sudo journalctl -u pocketbase -n 80 | grep schema_patch_v"
+echo "     预期看到：v3「已生效，cron 自我注销」+ v5「client_bind_codes 已创建 / client_bindings 已创建 / 已生效，cron 自我注销」"
 
-echo "== [5/5] 部署前端 app23.html → index.html + 运营后台 admin10.html → admin.html =="
-sudo cp /tmp/app23.html "$PUB/index.html"
-sudo cp /tmp/app23.html "$PUB/app23.html"
+echo "== [5/5] 部署前端 app24.html → index.html + 运营后台 admin10.html → admin.html =="
+sudo cp /tmp/app24.html "$PUB/index.html"
+sudo cp /tmp/app24.html "$PUB/app24.html"
 sudo cp /tmp/admin10.html "$PUB/admin.html"
-echo "  ✓ 前端已部署（index.html / app23.html）"
+echo "  ✓ 前端已部署（index.html / app24.html）"
 echo "  ✓ 运营后台已部署（固定地址）：http://106.55.14.231/admin.html"
 
 # ── 部署后自检（2026-09-01 新增）──
@@ -192,3 +199,8 @@ echo "  ✅ 🩸 #430 重启后约 1 分钟，日志出现 schema_patch_v3 的 4
 echo "       invitations.role 已扩展 / access_requests.role 已扩展 / users.role 已扩展 / cron 自我注销"
 echo "  ✅ 权限管理页：把成员角色改成「项目经理/设计师/财务/采购/质检/只读」任一项，保存应成功（不再 400）"
 echo "  ✅ 邀请成员选「项目经理」→ 对方提交加入申请→管理员通过→对方角色显示为「项目经理」（不是普通成员）"
+echo "  ✅ #487 账号管理：修改用户名 / 修改密码应成功（不再报 Only superusers）"
+echo "  ✅ #487 邀请弹窗权限说明：项目经理应显示「施工执行、合同收款、供应调配、客户交付」（不再出现「成本管理」）"
+echo "  ✅ #487 绑定装修公司：公司管理员打开弹窗能看到本公司绑定码；业主（无公司账号）提交绑定码后列表立即出现该公司"
+echo "  ✅ #487 退出确认弹窗：红色「退出登录」按钮与「留在这里」同为胶囊圆角形"
+echo "  ✅ #487 侧栏左下角按钮显示登录用户名（未登录时仍为「账户聚合」）"

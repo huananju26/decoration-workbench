@@ -45,9 +45,11 @@ cronAdd('schema_patch_v3', '* * * * *', () => {
     for (var i = 0; i < cols.length; i++) {
       try {
         var c = app.findCollectionByNameOrId(cols[i]);
-        if (!c) { console.warn('[schema_patch_v3] 跳过 ' + cols[i] + '：集合不存在'); continue; }
+        /* ⚠️ 跳过 ≠ 达成：集合不存在 / 无 role 字段时目标态未确认，必须把 done 置 false，
+           否则三表全部没找到也会打印「已生效」骗人（2026-09-02 踩到，详见 pb-pitfalls ⑭）。 */
+        if (!c) { console.warn('[schema_patch_v3] 跳过 ' + cols[i] + '：集合不存在'); done = false; continue; }
         var f = c.fields.getByName('role');
-        if (!f) { console.warn('[schema_patch_v3] 跳过 ' + cols[i] + '：无 role 字段'); continue; }
+        if (!f) { console.warn('[schema_patch_v3] 跳过 ' + cols[i] + '：无 role 字段'); done = false; continue; }
 
         var cur = [];
         if (Array.isArray(f.values)) cur = f.values.slice();
