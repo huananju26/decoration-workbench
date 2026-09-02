@@ -77,26 +77,36 @@ EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 �
 HOOK_N=8
 
 dl() { # url out expected
-  local url="$1" out="$2" exp="$3" got
-  curl -sSL --max-time 120 -o "$out" "$url"
-  # ⚠️ 必须 tr -d ' '：BSD/macOS 的 `wc -c < file` 输出带前导空格（"   24377"），
-  #    GNU/Linux 不带。本脚本跑在 Linux 上原本没事，但一旦换个环境（或本地 dry-run）
-  #    就会误报「字节不符」。去掉空格对两边都无害，等于免费加固。
-  got=$(wc -c < "$out" | tr -d ' ')
-  # ⚠️ 字节校验改为「只警告、不中断」（2026-09-01）：
-  #   历史上曾因 EXP 常量写错或本地量不出精确字节，导致整个部署被 exit 1 中止、
-  #   留下半部署状态（钩子/前端只写了一半）。现在即便不符也继续部署，
-  #   由这里的提示暴露差异，后续把 EXP 改成真实值即可。
-  if [ "$got" != "$exp" ]; then
-    echo "  ⚠️ 首次字节不符 $(basename "$out"): 期望 $exp 实际 $got（可能 gh-pages 未同步，15s 后重试）"
-    sleep 15
-    curl -sSL --max-time 120 -o "$out" "$url"
-    got=$(wc -c < "$out" | tr -d ' ')
-    if [ "$got" != "$exp" ]; then
-      echo "  ⚠️ 仍不符（期望 $exp 实际 $got）—— 继续部署；若怀疑未同步请检查 $BASE/$(basename "$url")"
+  # 🩸 2026-09-02 加固：服务器 → GitHub Pages 链路很慢，1.45MB 的 app24.html
+  #   曾在 120s 硬性超时中断在 663669/1453374 字节，且每次重试都从 0 开始，永远下不完。
+  #   改为：断点续传(-C -) + 最多 5 轮 + 卡速(30 秒低于 1KB/s)自动断开重连。
+  local url="$1" out="$2" exp="$3" got=0 try=0
+  # ⚠️ 这里不能 rm：保留上一次中断留下的半成品，重跑脚本时能接着续传（跨运行续传）
+  while [ "$try" -lt 5 ]; do
+    try=$((try+1))
+    got=0; [ -f "$out" ] && got=$(wc -c < "$out" | tr -d ' ')
+    [ "$got" = "$exp" ] && break
+    if [ "$got" -gt 0 ] && [ "$got" -lt "$exp" ]; then
+      echo "  ↻ 续传 $(basename "$out"): 已下 $got/$exp 字节，第 $try 轮继续…"
+      curl -sSL -C - --max-time 600 --speed-time 30 --speed-limit 1024 -o "$out" "$url" || true
+    else
+      # got=0 或 got>exp（续传撞上不支持 Range 的源导致文件被追加撑大）→ 删掉重下
+      [ "$got" -gt "$exp" ] && echo "  ↺ $(basename "$out") 续传异常（$got > $exp），删除重下"
+      rm -f "$out"
+      curl -sSL --max-time 600 --speed-time 30 --speed-limit 1024 -o "$out" "$url" || true
     fi
+  done
+  got=0; [ -f "$out" ] && got=$(wc -c < "$out" | tr -d ' ')
+  # ⚠️ 必须 tr -d ' '：BSD/macOS 的 `wc -c < file` 输出带前导空格（"   24377"），
+  #    GNU/Linux 不带。去掉空格对两边都无害，等于免费加固。
+  # ⚠️ 字节不符「只警告、不中断」（2026-09-01）：历史上曾因 EXP 常量写错或本地量不出
+  #    精确字节，导致整个部署 exit 1、留下半部署状态。现在由提示暴露差异。
+  if [ "$got" != "$exp" ]; then
+    echo "  ⚠️ 字节不符 $(basename "$out"): 期望 $exp 实际 $got（已重试 $try 轮）"
+    echo "     手动续传： curl -sSL -C - --max-time 600 -o $out $url"
+  else
+    echo "  ✓ $(basename "$out") = $got 字节"
   fi
-  echo "  ✓ $(basename "$out") = $got 字节"
 }
 
 echo "== [1/5] 下载后端钩子（GitHub Pages 中转）=="
