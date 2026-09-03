@@ -115,9 +115,15 @@ routerAdd('POST', '/api/acct/password', (e) => {
 
 // ---------------------------------------------------------------------------
 // 3) GET /api/client/bindcode —— 公司管理员：获取/生成本公司业主绑定码
-//    依赖 client_bind_codes 集合（schema_patch_v5 建）
+//    依赖 client_bind_codes 集合（schema_patch_v6/v7 建）
+//    #491 修复：① 旧版按 `org_id` 过滤，而表里字段就叫 `org` → 百分之百过滤语法错 → 400
+//            ② 报错文案不再笼统说「未就绪…schema_patch_v5」，改由 client_bind_helpers
+//               体检后区分「表缺失 / 字段缺失 / 查询异常」并带真实原因
 // ---------------------------------------------------------------------------
 routerAdd('GET', '/api/client/bindcode', (e) => {
+  let H = null;
+  try { H = require(`${__hooks}/client_bind_helpers.js`); } catch (eH) { H = null; }
+  if (!H) throw new BadRequestError('服务端绑定模块未部署（client_bind_helpers.js 缺失），请联系管理员');
   let auth = e.auth;
   if (!auth || !auth.id) {
     let hdr = '';
@@ -142,12 +148,9 @@ routerAdd('GET', '/api/client/bindcode', (e) => {
 
   /* 已有直接返回；没有生成一个：HAJ-XXXX-XXXX（去掉易混字符 0/O/1/I） */
   let row = null;
-  try {
-    const rows = $app.findRecordsByFilter('client_bind_codes', "org_id = '" + org + "'", '', 1, 0);
-    if (rows && rows.length > 0) row = rows[0];
-  } catch (eF) {
-    throw new BadRequestError('绑定码表未就绪：请确认 schema_patch_v5 已执行（重启后约 1 分钟）');
-  }
+  const r1 = H.find($app, H.BIND_CODES, "org = '" + org + "'", '-created', 1);
+  if (!r1.ok) throw new BadRequestError(H.errText(r1, '读取本公司绑定码'));
+  if (r1.rows && r1.rows.length > 0) row = r1.rows[0];
   if (!row) {
     const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -173,6 +176,9 @@ routerAdd('GET', '/api/client/bindcode', (e) => {
 //    body: { code }   绑定码即授权（码由公司管理员保管、自愿提供）
 // ---------------------------------------------------------------------------
 routerAdd('POST', '/api/client/bind', (e) => {
+  let H = null;
+  try { H = require(`${__hooks}/client_bind_helpers.js`); } catch (eH) { H = null; }
+  if (!H) throw new BadRequestError('服务端绑定模块未部署（client_bind_helpers.js 缺失），请联系管理员');
   let auth = e.auth;
   if (!auth || !auth.id) {
     let hdr = '';
@@ -193,13 +199,10 @@ routerAdd('POST', '/api/client/bind', (e) => {
   }
 
   let codeRow = null;
-  try {
-    const rows = $app.findRecordsByFilter('client_bind_codes',
-      'code = "' + code.replace(/"/g, '\\"') + '"', '', 1, 0);
-    if (rows && rows.length > 0) codeRow = rows[0];
-  } catch (eF) {
-    throw new BadRequestError('绑定码表未就绪：请确认 schema_patch_v5 已执行');
-  }
+  const rc = H.find($app, H.BIND_CODES,
+    'code = "' + code.replace(/"/g, '\\"') + '"', '-created', 1);
+  if (!rc.ok) throw new BadRequestError(H.errText(rc, '校验绑定码'));
+  if (rc.rows && rc.rows.length > 0) codeRow = rc.rows[0];
   if (!codeRow) throw new NotFoundError('绑定码不存在，请向装修公司确认');
 
   const org = String(codeRow.get('org') || '');
@@ -210,13 +213,10 @@ routerAdd('POST', '/api/client/bind', (e) => {
 
   /* 幂等：重复绑定直接返回成功 */
   let existed = null;
-  try {
-    const rows2 = $app.findRecordsByFilter('client_bindings',
-      "owner = '" + auth.id + "' && org = '" + org + "'", '', 1, 0);
-    if (rows2 && rows2.length > 0) existed = rows2[0];
-  } catch (eF2) {
-    throw new BadRequestError('绑定表未就绪：请确认 schema_patch_v5 已执行');
-  }
+  const re = H.find($app, H.BINDINGS,
+    "owner = '" + auth.id + "' && org = '" + org + "'", '-created', 1);
+  if (!re.ok) throw new BadRequestError(H.errText(re, '检查重复绑定'));
+  if (re.rows && re.rows.length > 0) existed = re.rows[0];
   if (existed) return e.json(200, { ok: true, already: true, id: String(existed.id), org_name: orgName });
 
   const col = $app.findCollectionByNameOrId('client_bindings');
@@ -234,22 +234,21 @@ routerAdd('POST', '/api/client/bind', (e) => {
 // 5) GET /api/client/bindings —— 业主：我绑定的装修公司列表
 // ---------------------------------------------------------------------------
 routerAdd('GET', '/api/client/bindings', (e) => {
+  let H = null;
+  try { H = require(`${__hooks}/client_bind_helpers.js`); } catch (eH) { H = null; }
+  if (!H) throw new BadRequestError('服务端绑定模块未部署（client_bind_helpers.js 缺失），请联系管理员');
   let auth = e.auth;
   if (!auth || !auth.id) {
     let hdr = '';
-    try { hdr = e.request.header.get('Authorization') || ''; } catch (eH) { hdr = ''; }
+    try { hdr = e.request.header.get('Authorization') || ''; } catch (eA) { hdr = ''; }
     const tk = hdr.indexOf(' ') > -1 ? hdr.split(' ')[1] : hdr;
     if (tk) { try { auth = $app.findAuthRecordByToken(tk); } catch (err) { auth = null; } }
   }
   if (!auth || !auth.id) throw new ForbiddenError('未登录');
 
-  let rows = [];
-  try {
-    rows = $app.findRecordsByFilter('client_bindings',
-      "owner = '" + auth.id + "'", '-created', 100, 0);
-  } catch (eF) {
-    throw new BadRequestError('绑定表未就绪：请确认 schema_patch_v5 已执行');
-  }
+  const rb = H.find($app, H.BINDINGS, "owner = '" + auth.id + "'", '-created', 100);
+  if (!rb.ok) throw new BadRequestError(H.errText(rb, '读取我的绑定列表'));
+  const rows = rb.rows || [];
   const out = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -272,6 +271,8 @@ routerAdd('GET', '/api/client/bindings', (e) => {
 //    body: { id }
 // ---------------------------------------------------------------------------
 routerAdd('POST', '/api/client/unbind', (e) => {
+  let H = null;
+  try { H = require(`${__hooks}/client_bind_helpers.js`); } catch (eH) { H = null; }
   let auth = e.auth;
   if (!auth || !auth.id) {
     let hdr = '';
@@ -288,7 +289,18 @@ routerAdd('POST', '/api/client/unbind', (e) => {
 
   let rec = null;
   try { rec = $app.findRecordById('client_bindings', id); } catch (eF) { rec = null; }
-  if (!rec) throw new NotFoundError('绑定记录不存在');
+  if (!rec) {
+    /* 区分「真没有这条」和「表/字段压根不健康」：后者不该报成 404，否则用户反复点解绑 */
+    if (H) {
+      const ck = H.check($app);
+      if (!ck.ok) {
+        throw new BadRequestError(ck.tableMissing.length
+          ? '绑定表未建立（缺 ' + ck.tableMissing.join('、') + '），请稍后重试'
+          : '绑定表字段缺失（' + ck.fieldMissing.join('、') + '），服务端自愈中，请约 1 分钟后重试');
+      }
+    }
+    throw new NotFoundError('绑定记录不存在');
+  }
   if (String(rec.get('owner') || '') !== String(auth.id)) throw new NotFoundError('绑定记录不存在');
 
   $app.delete(rec);
@@ -300,6 +312,9 @@ routerAdd('POST', '/api/client/unbind', (e) => {
 // 7) GET /api/client/owners —— 公司管理员：查看绑定了本公司的业主
 // ---------------------------------------------------------------------------
 routerAdd('GET', '/api/client/owners', (e) => {
+  let H = null;
+  try { H = require(`${__hooks}/client_bind_helpers.js`); } catch (eH) { H = null; }
+  if (!H) throw new BadRequestError('服务端绑定模块未部署（client_bind_helpers.js 缺失），请联系管理员');
   let auth = e.auth;
   if (!auth || !auth.id) {
     let hdr = '';
@@ -319,13 +334,9 @@ routerAdd('GET', '/api/client/owners', (e) => {
   } catch (eR) {}
   if (myRole !== 'admin') throw new ForbiddenError('只有企业管理员可以查看业主列表');
 
-  let rows = [];
-  try {
-    rows = $app.findRecordsByFilter('client_bindings',
-      "org = '" + org + "'", '-created', 500, 0);
-  } catch (eF) {
-    throw new BadRequestError('绑定表未就绪：请确认 schema_patch_v5 已执行');
-  }
+  const ro = H.find($app, H.BINDINGS, "org = '" + org + "'", '-created', 500);
+  if (!ro.ok) throw new BadRequestError(H.errText(ro, '读取业主列表'));
+  const rows = ro.rows || [];
   const out = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];

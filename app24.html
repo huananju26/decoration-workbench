@@ -5124,6 +5124,10 @@ function enterApp(){
   switchPage(savedPage);
   /* #423 进入工作台即按权限刷新侧栏可见性 */
   applyNavPerms();
+  /* #449 左下角账户入口必须在进工作台时就刷新：
+     刷新页面走 init() → enterApp()，而 updateAcctEntry() 原先只在打开账户 popover
+     时才被调用，结果刷新后左下角一直是 HTML 里的静态文案「👤 账户聚合」。 */
+  try{ refreshAcctEntry(); }catch(eAcct){}
   $('app').style.display='';
   initNavBadgeTicker();
 }
@@ -5193,6 +5197,8 @@ async function cloudEnterApp(){
   if(m.org_status==='suspended'){ showOrgFrozen(); return; }
   cloudSyncNow();
   enterApp();
+  /* #448 登录本身也是一条操作记录（以前只有成员变更会记，谁什么时候登进来完全没痕迹） */
+  try{ if(typeof addOpLog==='function')addOpLog('member','登录工作台','') }catch(eLog){}
 }
 /* 仅本地使用：不登录，直接用本地数据进工作台（满足本地优先、不强制联网） */
 function enterLocalMode(){
@@ -6054,6 +6060,9 @@ function hideStorageWarning(){
   if(b)b.style.display='none';
 }
 function persist(){
+  /* #448 全局操作埋点：在落盘前与「上一次落盘后的指纹」做差分，业务数据的任何
+     增删改都会留下一条记录（放在 syncAllPayLinks 之前，避免联动重算污染差分） */
+  try{ opLogAutoDiff(); }catch(eOp){ console.error('[persist] opLogAutoDiff 失败', eOp); }
   /* 任何保存前，先按当前施工计划重算所有关联的收款日期 */
   try{ syncAllPayLinks(); }catch(e){ console.error('[persist] syncAllPayLinks 失败', e); }
   /* ── 云端「已改未推」标记（必须在写盘前设置）──
@@ -20009,6 +20018,13 @@ function canAccessProjTab(tab){
     if(!CloudSync.loggedIn)return true;
     if(CloudSync.__me===null)return true;
     if(isTeamAdmin())return true;                 // 管理员恒可见
+    /* ★ #447 次因修复：项目管理四个子板块（施工执行/合同收款/供应调配/客户交付）
+         在「编辑权限」弹窗里就是前四行，但这里只走四维权限 myProjectPerms()，
+         从不读 sections 覆盖 —— 勾了也白勾、取消了也照旧。补上版块覆盖优先。 */
+    try{
+      var secsT=mySections();
+      if(secsT)return secsT.indexOf(tab)>=0;
+    }catch(eSecT){}
     var dom=PROJTAB_DOMAIN[tab];
     if(!dom)return true;
     return myProjectPerms(App.currentProjectId).indexOf(dom)>=0;
@@ -20025,16 +20041,15 @@ function canAccessPage(page){
       return canAccessProjTab('process')||canAccessProjTab('finance')
             ||canAccessProjTab('purchase')||canAccessProjTab('diary');
     }
-    /* ★ 优先检查「编辑权限」弹窗保存的版块级自定义覆盖 */
+    /* ★ 优先检查「编辑权限」弹窗保存的版块级自定义覆盖
+         #447：取值顺序改为「服务端 memberships.sections」>「本机覆盖」，
+         以前只认本机，管理员给成员调的权限成员永远读不到。 */
     try{
-      var uid=(cloudUser&&cloudUser.uid)||(CloudSync.__me&&CloudSync.__me.id)||'';
-      if(uid){
-        var secs=readMemberSections(getLocalPerms(),uid);
-        if(secs){
-          /* 有自定义：page 对应的 section key 在列表中？*/
-          var sk=PAGE_TO_SECTION[page]||page;
-          return secs.indexOf(sk)>=0;
-        }
+      var secs=mySections();
+      if(secs){
+        /* 有自定义：page 对应的 section key 在列表中？*/
+        var sk=PAGE_TO_SECTION[page]||page;
+        return secs.indexOf(sk)>=0;
       }
     }catch(eSec){}
     /* 无自定义 → 走角色矩阵 */
@@ -20260,7 +20275,9 @@ async function loadTeamMembers(){
         perms: (m.role==='admin')?PERM_ALL.slice():(saved||teamRoleDefaultPerms(m.role)),
         status: (m.user_status==='disabled')?'已停用':'正常',
         joinedAt: String(m.joined_at||'').replace('T',' ').slice(0,10),
-        isMe: !!m.is_me
+        isMe: !!m.is_me,
+        /* #447 服务端成员版块级权限（null = 未自定义，走角色默认） */
+        sections: Array.isArray(m.sections)?m.sections.slice():null
       });
     }
     __teamMembers=members;
@@ -20534,7 +20551,10 @@ function openPermEditor(uid){
   if(!m)return;
   var lp=getLocalPerms();
   var entry=lp[permKey(uid)]||lp[uid]||{};
-  var savedSections=(entry.sections&&Array.isArray(entry.sections))?entry.sections:null;
+  /* #447 服务端为准：管理员在任何一台机器上设的权限都要能看到、能改 */
+  var serverSections=(m.sections&&Array.isArray(m.sections))?m.sections:null;
+  var savedSections=serverSections
+    ||((entry.sections&&Array.isArray(entry.sections))?entry.sections:null);
   var role=m.role||'';
   /* 默认勾选：有自定义 sections 用它；否则按角色在 SECTION_ACL / 四维权限里的默认值 */
   var defaultAllowed=[];
@@ -20597,23 +20617,54 @@ function savePermEdits(uid){
   var sections=[];
   var sNodes=document.querySelectorAll('#confirmModal input[data-section]:checked');
   for(var ni=0;ni<sNodes.length;ni++){sections.push(sNodes[ni].value);}
-  /* 持久化（仅存版块级覆盖；四维权限不再单独编辑，由角色默认值驱动） */
+  /* ① 本机先落一份（离线 / 服务端未就绪时仍可用） */
   var lp=getLocalPerms();
   lp[permKey(uid)]={sections:sections,updatedAt:new Date().toISOString()};
   try{ delete lp[uid]; }catch(e){}
   saveLocalPerms(lp);
-  /* 更新内存 */
-  for(var ti=0;ti<__teamMembers.length;ti++){if(__teamMembers[ti].id===uid){break;}}
+  /* ② 同步到服务端 memberships.sections —— 只落本机的话，被设置的那个人永远读不到 */
+  var mem=null;
+  for(var ti=0;ti<__teamMembers.length;ti++){if(__teamMembers[ti].id===uid){mem=__teamMembers[ti];break;}}
+  if(mem)mem.sections=sections.slice();
   closeModal('confirmModal');
   renderTeamList(__teamMembers,isTeamAdmin(),lp);
   try{ applyNavPerms(); refreshPermUI(); }catch(e){}
-  showToast('权限已更新','ok');
+  if(!CloudSync.loggedIn){ showToast('权限已保存（未登录，仅存在本机）','ok'); return; }
+  CloudSync._req('POST','/api/org/set-sections',
+    {user_id:uid,sections:JSON.stringify(sections)},15000).then(function(){
+    showToast('权限已保存，该成员下次进入即生效','ok');
+    /* 改的是自己 → 立刻重拉 /api/me 刷新自己的可见性 */
+    try{
+      if(uid===((cloudUser&&cloudUser.uid)||'')){
+        CloudSync.__me=null;
+        CloudSync.me(true).then(function(){ refreshPermUI(); }).catch(function(){});
+      }
+    }catch(eSelf){}
+  }).catch(function(e){
+    showToast('已存本机，但同步服务器失败：'+((e&&e.message)||'未知错误'),'err');
+  });
 }
 /* 读一个成员的已存版块覆盖（返回 null 表示未自定义，走角色默认） */
 function readMemberSections(pm,uid){
   var k=permKey(uid);
   var v=pm[k]||pm[uid];
   return (v&&v.sections&&Array.isArray(v.sections))?v.sections:null;
+}
+/* 当前登录用户「生效的版块级权限」，优先级：
+     ① 服务端 memberships.sections（管理员在权限管理页设的，随账号走）
+     ② 本机 localStorage 覆盖（离线 / 服务端未就绪时的兜底）
+     ③ null → 交给角色默认矩阵
+   #447：以前只有 ②，管理员给张三调权限，张三那边毫无变化 —— 就是用户报的「不起作用」。 */
+function mySections(){
+  try{
+    var me=CloudSync.__me;
+    if(me&&Array.isArray(me.sections))return me.sections.slice();
+  }catch(e){}
+  try{
+    var uid=(cloudUser&&cloudUser.uid)||(CloudSync.__me&&CloudSync.__me.id)||'';
+    if(uid)return readMemberSections(getLocalPerms(),uid);
+  }catch(e){}
+  return null;
 }
 
 // ============================================================
@@ -21109,9 +21160,93 @@ function addOpLog(action,desc,projectId){
   const log={id:uid(),user:me,action:action||'other',desc:desc||'',projectId:projectId||'',projectName:p?p.name:'',time:new Date().toISOString()};
   let logs=[];try{logs=JSON.parse(localStorage.getItem(opLogsKey())||'[]');}catch(e){}
   logs.unshift(log);
-  if(logs>500)logs=logs.slice(0,500);
+  /* 🩸 原写法 `if(logs>500)` —— 拿数组跟数字比，恒为 false，日志永远不裁剪，
+       500 条上限形同虚设（localStorage 迟早被撑爆）。必须比 length。 */
+  if(logs.length>500)logs=logs.slice(0,500);
   try{localStorage.setItem(opLogsKey(),JSON.stringify(logs));}catch(e){}
   __operationLogs=logs;
+}
+
+/* ══════════ #448 全局操作埋点：数据指纹差分 ══════════
+   此前只有 6 处手工 addOpLog，且全是「成员变更」—— 施工计划 / 收款 / 付款 /
+   材料 / 整改 / 增减项 / 日记等业务操作一条都不记，用户看到的「操作记录」几乎空白。
+   逐个业务函数打点既补不完也容易漏，改成在 persist()（一切数据落盘的唯一入口）
+   做**前后指纹差分**：只要数据变了就一定有记录，以后新增字段也自动覆盖。
+   ⚠️ 指纹只取「条数 / 完成数 / 金额合计」这类轻量指标，绝不深拷贝业务数据。 */
+var __opSig=null;
+var __opLogSuspend=false;          /* 云端数据落地期间挂起，避免整包数据被记成本人操作 */
+var OP_ARR_META={
+  tasks:        {label:'施工待办', action:'plan'},
+  processSteps: {label:'施工节点', action:'plan'},
+  purchases:    {label:'材料采购', action:'material'},
+  income:       {label:'收款',     action:'payment'},
+  expense:      {label:'付款',     action:'payment'},
+  diaries:      {label:'装修日记', action:'publish'},
+  compares:     {label:'比价选品', action:'material'},
+  personnel:    {label:'人员',     action:'member'},
+  suppliers:    {label:'供应商',   action:'material'}
+};
+var __opRecent={};                 /* 去重节流：同一句话 3 秒内只记一次 */
+function opArrMeta(k){ return OP_ARR_META[k]||{label:k,action:'other'}; }
+function opSigOf(){
+  var sig={n:0,p:{}};
+  try{
+    var ps=App.projects||[];
+    sig.n=ps.length;
+    for(var i=0;i<ps.length;i++){
+      var p=ps[i]; if(!p||!p.id)continue;
+      var o={name:String(p.name||''),amt:Number(p.totalAmount||0)||0,adj:Number(p.adjustment||0)||0,arr:{}};
+      for(var k in p){
+        if(!Object.prototype.hasOwnProperty.call(p,k))continue;
+        var v=p[k];
+        if(Object.prototype.toString.call(v)!=='[object Array]')continue;
+        var done=0,amt=0;
+        for(var j=0;j<v.length;j++){
+          var it=v[j];
+          if(!it||typeof it!=='object')continue;
+          if(it.done)done++;
+          amt+=Number(it.amount!=null?it.amount:(it.total!=null?it.total:0))||0;
+        }
+        o.arr[k]={len:v.length,done:done,amt:Math.round(amt*100)/100};
+      }
+      sig.p[p.id]=o;
+    }
+  }catch(e){}
+  return sig;
+}
+function opLogAutoDiff(){
+  var cur=opSigOf(), prev=__opSig;
+  __opSig=cur;
+  if(__opLogSuspend)return;              /* 云端同步落地期间不记 */
+  if(!prev)return;                       /* 基线未立：只建基线、不补记历史 */
+  var made=[], now=Date.now();
+  function push(action,desc,pid,pname){
+    if(made.length>=8)return;            /* 一次保存最多 8 条，防批量改动刷屏 */
+    var key=desc+'|'+(pid||'');
+    if(__opRecent[key]&&(now-__opRecent[key])<3000)return;
+    __opRecent[key]=now;
+    made.push({action:action,desc:desc,projectId:pid||'',projectName:pname||''});
+  }
+  var id;
+  for(id in cur.p){ if(!prev.p[id])push('other','新建项目「'+cur.p[id].name+'」',id,cur.p[id].name); }
+  for(id in prev.p){ if(!cur.p[id])push('other','删除项目「'+prev.p[id].name+'」',id,prev.p[id].name); }
+  for(id in cur.p){
+    var a=prev.p[id], b=cur.p[id];
+    if(!a||!b)continue;
+    var nm=b.name||'(未命名)';
+    if(a.name!==b.name)push('other','项目改名「'+a.name+'」→「'+b.name+'」',id,nm);
+    if(a.amt!==b.amt)push('adjustment','项目总金额 '+a.amt+' → '+b.amt,id,nm);
+    if(a.adj!==b.adj)push('adjustment','增减项 '+a.adj+' → '+b.adj,id,nm);
+    for(var k in b.arr){
+      var A=a.arr[k]||{len:0,done:0,amt:0}, B=b.arr[k], meta=opArrMeta(k);
+      if(B.len>A.len)push(meta.action,meta.label+' 新增 '+(B.len-A.len)+' 条',id,nm);
+      else if(B.len<A.len)push(meta.action,meta.label+' 删除 '+(A.len-B.len)+' 条',id,nm);
+      if(B.done>A.done)push(meta.action,meta.label+' 完成 '+(B.done-A.done)+' 项',id,nm);
+      else if(B.done<A.done)push(meta.action,meta.label+' 取消完成 '+(A.done-B.done)+' 项',id,nm);
+      if(B.amt!==A.amt)push(meta.action,meta.label+' 金额 '+A.amt+' → '+B.amt,id,nm);
+    }
+  }
+  for(var mi=0;mi<made.length;mi++){ addOpLog(made[mi].action,made[mi].desc,made[mi].projectId); }
 }
 
 // ============================================================
@@ -22439,6 +22574,8 @@ function handleDeepLinks(){
 async function init(){
   handleDeepLinks();
   load();
+  /* #448 建立操作埋点的差分基线（此时数据刚从本机读出，变更才算「本次操作」） */
+  try{ __opSig=opSigOf(); }catch(eOp){}
   /* 徽章 ticker 在此挂载一次：init() 是所有路径的必经入口（含未登录停在登录页的场景）；
      enterApp() 里也有调用，靠 __on 防重，不会重复注册监听器。 */
   initNavBadgeTicker();
@@ -22468,6 +22605,9 @@ async function init(){
         else if(me&&me.org_status==='suspended')showOrgFrozen();
         /* #423 角色从服务端取回后校正权限可见性（首屏 __me 可能为 null） */
         refreshPermUI();
+        /* #449 身份回来后重刷左下角：enterApp() 那一刻 __me 还是 null，
+           只能先用邮箱前缀顶上，这里拿到 display_name / 公司名后再校正一次 */
+        try{ refreshAcctEntry(); }catch(eAcct){}
       }catch(e){/* 取不到身份就维持现状，不打断用户 */}
     })();
   }else{
@@ -22503,6 +22643,8 @@ async function init(){
            反序会让云端旧快照覆盖本地，用户刚做的修改刷新后凭空消失。 */
         const canPull=await cloudPushBeforePull();
         if(!canPull){ updateCloudUI(); return; }
+        /* 云端数据落地不是本人操作，先挂起埋点，落地后重建基线 */
+        __opLogSuspend=true;
         const d=await CloudSync.pull();
         if(d){
           if(applyCloudData(d,true)===false){
@@ -22538,7 +22680,13 @@ async function init(){
           else if(page==='ledger')renderLedger();
           else if(page==='quote')renderQuote();
         }
-      }catch(e){/* 云端失败，本地兜底已生效 */}
+        /* 云端数据已落地：重建差分基线，否则整包数据会被记成「新增 N 条」刷屏 */
+        __opLogSuspend=false;
+        try{ __opSig=opSigOf(); }catch(eOp){}
+      }catch(e){/* 云端失败，本地兜底已生效 */
+        __opLogSuspend=false;
+        try{ __opSig=opSigOf(); }catch(eOp){}
+      }
       updateCloudUI();
     })();
   }
@@ -23512,6 +23660,16 @@ function openContractStd() { openStd('product'); }  // 合同关联产品范围/
           <div id="bindCoAdminCode" style="font-size:18px;font-weight:700;letter-spacing:1px;color:#003a8c;flex:1">—</div>
           <button class="btn-outline btn-sm" onclick="bindCoCopyAdmin()">复制</button>
         </div>
+        <div style="font-size:12px;color:#003a8c;font-weight:600;margin:14px 0 6px">业主分享链接（业主点开即自动填入绑定码）</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input id="bindCoAdminLink" readonly
+                 style="flex:1;min-width:0;padding:7px 10px;border:1px solid #d9d9d9;border-radius:8px;font-size:12px;color:#555;background:#fff"
+                 value="">
+          <button class="btn-outline btn-sm" onclick="bindCoCopyAdminLink()">复制链接</button>
+        </div>
+        <div style="font-size:11px;color:#8c8c8c;margin:6px 2px 0;line-height:1.6">
+          把这个链接发给业主，对方打开后会自动填入绑定码，点「绑定到我的账号」即完成绑定。
+        </div>
       </div>
       <div id="bindCoOwnerBox">
         <div style="font-size:13px;color:#555;line-height:1.7;margin-bottom:14px">装修公司审核并推送后，<b>施工进度、现场照片</b>会同步到这里。业主只可查看现场执行情况，不能改动公司数据。</div>
@@ -23520,7 +23678,7 @@ function openContractStd() { openStd('product'); }  // 合同关联产品范围/
           <input id="bindCoInput" placeholder="粘贴装修公司的绑定码或分享链接" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid #d9d9d9;border-radius:8px;font-size:14px">
           <button class="btn-primary btn-sm" onclick="bindCompanySubmit()">绑定到我的账号</button>
         </div>
-        <div style="font-size:12px;color:#8c8c8c;margin:6px 2px 16px">绑定码 / 分享链接由装修公司提供；也可让公司把你的用户名或邮箱加进项目，即可主动绑定。</div>
+        <div style="font-size:12px;color:#8c8c8c;margin:6px 2px 16px">绑定码 / 分享链接由装修公司提供（对方在「账号 ▸ 绑定装修公司」里复制）；也可让公司把你的用户名或邮箱加进项目，即可主动绑定。</div>
       </div>
       <div style="font-size:13px;font-weight:600;color:#003a8c;margin-bottom:8px" id="bindCoListTitle">已绑定的装修公司</div>
       <div id="bindCoList"></div>
@@ -23639,7 +23797,9 @@ function renderBindCoList(){
   box.innerHTML='<div style="font-size:13px;color:#8c8c8c;padding:14px 0;text-align:center">加载中…</div>';
   CloudSync._req('GET','/api/client/bindcode',undefined,15000).then(function(r){
     bindCoSetView(true);
-    var cEl=document.getElementById('bindCoAdminCode'); if(cEl)cEl.textContent=(r&&r.code)||'—';
+    var code=(r&&r.code)||'';
+    var cEl=document.getElementById('bindCoAdminCode'); if(cEl)cEl.textContent=code||'—';
+    var lEl=document.getElementById('bindCoAdminLink'); if(lEl)lEl.value=code?bindCoShareLink(code):'';
     return CloudSync._req('GET','/api/client/owners',undefined,15000).then(function(r2){
       __bindCoItems=(r2&&r2.items)||[]; renderBindCoRows();
     });
@@ -23657,6 +23817,13 @@ function renderBindCoList(){
 function bindCompanySubmit(){
   var inp=document.getElementById('bindCoInput'); if(!inp)return;
   var v=(inp.value||'').trim();
+  if(!v){ showToast('请输入装修公司的绑定码或分享链接','err'); return; }
+  /* 兼容直接粘分享链接：优先抠 ?bind=CODE，其次取链接末段 */
+  var m=/[?&]bind=([A-Za-z0-9-]{4,})/.exec(v);
+  if(m)v=m[1];
+  else if(/bind[/=]([A-Za-z0-9-]{4,})/i.test(v))v=RegExp.$1;
+  else if(/^https?:\/\//i.test(v)){ var seg=(v.split('?')[0]||'').replace(/\/+$/,'').split('/'); v=seg[seg.length-1]||v; }
+  v=v.toUpperCase();
   if(!v){ showToast('请输入装修公司的绑定码或分享链接','err'); return; }
   if(!CloudSync.loggedIn){
     var list=bindCoLoad();
@@ -23695,6 +23862,48 @@ function bindCoRemoveCloud(id,name){
   });
 }
 function bindCoRemove(idx){ bindCoRemoveLocal(idx); }  /* 兼容本地态入口 */
+/* #491 分享链接：把绑定码拼成 ?bind=CODE 的直达链接，业主点开即可自动填入 */
+function bindCoShareLink(code){
+  if(!code)return '';
+  try{
+    var u=new URL(location.href);
+    u.hash='';
+    u.searchParams.set('bind',code);
+    return u.toString();
+  }catch(e){
+    return location.origin+location.pathname+'?bind='+encodeURIComponent(code);
+  }
+}
+function bindCoUrlCode(){
+  try{
+    var u=new URL(location.href);
+    return (u.searchParams.get('bind')||'').trim().toUpperCase();
+  }catch(e){
+    var m=/[?&]bind=([^&#]*)/.exec(location.search||'');
+    return m?decodeURIComponent(m[1]).trim().toUpperCase():'';
+  }
+}
+/* 业主从分享链接进来：自动把码填进输入框并提示，避免「不知道码从哪来」 */
+function bindCoApplyUrlParam(){
+  var code=bindCoUrlCode();
+  if(!code)return;
+  var inp=document.getElementById('bindCoInput');
+  if(!inp)return;
+  inp.value=code;
+  showToast('已填入分享链接中的绑定码 '+code+'，点「绑定到我的账号」即可','ok');
+}
+function bindCoCopyAdminLink(){
+  var v=(document.getElementById('bindCoAdminLink')||{}).value||'';
+  if(!v){ showToast('分享链接还没生成','err'); return; }
+  var done=function(){ showToast('分享链接已复制，发给业主即可','ok'); };
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(v).then(done,done); return; }
+  }catch(e){}
+  try{
+    var ta=document.createElement('textarea'); ta.value=v; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done();
+  }catch(e){ showToast('复制失败，请手动选择复制','err'); }
+}
 function bindCoCopyAdmin(){
   var code=(document.getElementById('bindCoAdminCode')||{}).textContent||'';
   if(!code||code==='—'){ showToast('绑定码还没加载好','err'); return; }
@@ -23710,6 +23919,7 @@ function bindCoCopyAdmin(){
 function openBindCompanyModal(){
   showModal('bindCompanyModal');
   renderBindCoList();
+  bindCoApplyUrlParam();
 }
 
 /* 账号管理 */
@@ -23797,6 +24007,16 @@ function updateAcctEntry(){
   var el=document.getElementById('acctEntry'); if(!el)return;
   var u=acctUserInfo();
   el.textContent='👤 '+(u.loggedIn?(u.name||'账户聚合'):'账户聚合');
+}
+/* #449 统一的账户入口刷新点：
+   ① 左下角入口（侧栏常驻，刷新后也要对）
+   ② 若账户 popover 正开着，顺带重绘（否则开着 pop 时改名/切团队看不到变化） */
+function refreshAcctEntry(){
+  try{ updateAcctEntry(); }catch(e1){}
+  try{
+    var p=document.getElementById('acctPop');
+    if(p&&p.style.display==='block')renderAcctPop();
+  }catch(e2){}
 }
 function renderAcctPop(){
   var u=acctUserInfo();

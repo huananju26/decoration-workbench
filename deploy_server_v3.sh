@@ -54,15 +54,17 @@ HOOKS="/opt/pocketbase/pb_hooks"
 PUB="/opt/pocketbase/pb_public"
 
 # ── 预期字节（与本地 gh-pages 推送一致，用于完整性校验）──
-EXP_api_team=25011     # api_team_v1.js       → pb_hooks/api_team.pb.js（#424 角色变更审计）
-EXP_api_multiorg=43516 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在 + #430 邀请 role 兜底改 reader + 注册 save 段 try/catch + 移除 org_id/status 防御性 set（注册 400 真凶）+ 临时诊断路由 _diag_register 已验证删除 + #423 前端权限闸门后端配套（reader 写拦截）+ #424 服务端审计日志 audit_logs + /api/audit/list）
+EXP_api_team=29724     # api_team_v1.js       → pb_hooks/api_team.pb.js（#424 角色变更审计 + #447 成员列表返回 sections + 新增 POST /api/org/set-sections 把版块级权限写进 memberships）
+EXP_api_multiorg=44786 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#447 /api/me 增加 sections（当前用户版块级权限））（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在 + #430 邀请 role 兜底改 reader + 注册 save 段 try/catch + 移除 org_id/status 防御性 set（注册 400 真凶）+ 临时诊断路由 _diag_register 已验证删除 + #423 前端权限闸门后端配套（reader 写拦截）+ #424 服务端审计日志 audit_logs + /api/audit/list）
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=5142 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集；修「集合不存在/无 role 字段」跳过分支误置 done=true 导致日志假阳性，详见 pb-pitfalls ⑭）
-EXP_api_acct=14832     # api_acct_v1.js       → pb_hooks/api_acct.pb.js（#487 账户聚合：/api/acct/profile 改名 + /api/acct/password 改密码（绕开 users.updateRule 仅 superuser 限制）+ /api/client/* 业主绑定码/绑定/列表/解绑/业主列表）
-EXP_schema_patch_v6=6473 # schema_patch_v6_client_bind.pb.js → pb_hooks/schema_patch_v6_client_bind.pb.js（#489 取代 v5：空壳建表+逐级加字段；清理版已移除诊断路由，仅保留 cron 自愈守护）
-EXP_app=1453374        # app24.html           → pb_public/index.html（#487 账户聚合弹窗：改名/改密走新 hook 路由 + 绑定装修公司后端 + 角色说明同步「供应调配」+ 退出按钮胶囊化 + 侧栏显示用户名；#488 修绑定弹窗 div 嵌套错位导致的竖排布局崩坏 + 新接口 404 友好提示）
+EXP_api_acct=16363     # api_acct_v1.js       → pb_hooks/api_acct.pb.js（#487 账户聚合 + /api/client/* 业主绑定；#491 修 bindcode 按 org_id 过滤（真字段名叫 org）+ 五处路由改走 client_bind_helpers 体检，报错区分表缺失/字段缺失/查询异常，不再一律甩锅「schema_patch_v5」）
+EXP_client_bind_helpers=4424 # client_bind_helpers.js → pb_hooks/client_bind_helpers.js（#491 普通 .js 不是钩子，只被 api_acct.pb.js require；绑定表体检+查询封装）
+EXP_schema_patch_v7=8712 # schema_patch_v7_client_bind.pb.js → pb_hooks/schema_patch_v7_client_bind.pb.js（#491 取代 v6：体检改按**字段名**比对，修掉 v6「数 fields.length 把 id/created/updated 三个系统字段也算上 → 字段一个没加成功仍判定通过并自我注销」的致命误判）
+EXP_schema_patch_v8=4182 # schema_patch_v8_member_sections.pb.js → pb_hooks/schema_patch_v8_member_sections.pb.js（#447 给 memberships 补 sections 字段，让「编辑权限」的勾选随成员关系落库，不再只写管理员本机 localStorage）
+EXP_app=1465387        # app24.html           → pb_public/index.html（#487 账户聚合弹窗：改名/改密走新 hook 路由 + 绑定装修公司后端 + 角色说明同步「供应调配」+ 退出按钮胶囊化 + 侧栏显示用户名；#488 修绑定弹窗 div 嵌套错位导致的竖排布局崩坏 + 新接口 404 友好提示）
                        #   #439 总价清单名称可点击跳转+删除重编号、删均价行、消除打印空白页、说明textarea自适应
                        #   #440 总价清单计算区动态化（删半包优惠一口价行、无主材隐藏管理费/主材合计）
                        #   #441 累计总金额计算链修复（不再吃半包优惠常量，删除项后总额随动）
@@ -70,11 +72,17 @@ EXP_app=1453374        # app24.html           → pb_public/index.html（#487 �
                        #   #443 说明编号规范化(268条)+累计5%协调费硬核修复(无主材=0)+新增空间模板undefined修复
                        #   #444 分类标题可编辑+分类删除、#445 分类序号固定+删除后自动重排
                        #   #446 付款方式4比例可手调（35/35/25/5 填空风格联动）
+                       #   #447 权限管理「编辑权限」勾选真正生效：改走服务端 memberships.sections +
+                       #        四个项目管理子板块（施工执行/合同收款/供应调配/客户交付）补读版块覆盖
+                       #   #448 操作记录全局埋点：persist() 做数据指纹差分，业务增删改一律留痕
+                       #   #449 刷新后左下角账户入口显示登录用户名（进工作台即刷新 + 身份回来再校正）
+                       #   #446/#491 绑定弹窗：管理员视角增加「业主分享链接」（?bind=码，业主点开自动填入）
 EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 徽章同行 + 套餐字号对齐）
 
 # 钩子数量。⚠️ 以前是写死在两处回显里的字面量，加第 6 个钩子（schema_patch_v3）时只改了
 # 其中一处 → 回显自相矛盾（"写入 5 个钩子" / "6 个钩子已写入"）。改用变量，加钩子时改这里即可。
-HOOK_N=8
+# ⚠️ 只数 *.pb.js（会被 PB 当钩子加载）。client_bind_helpers.js 是普通 .js，只被 require，不算。
+HOOK_N=9
 
 dl() { # url out expected
   # 🩸 2026-09-02 加固：服务器 → GitHub Pages 链路很慢，1.45MB 的 app24.html
@@ -117,7 +125,9 @@ dl "$BASE/api_admin_v1.js"    /tmp/api_admin.pb.js    $EXP_api_admin
 dl "$BASE/api_cleanup_v1.js"  /tmp/api_cleanup.pb.js  $EXP_api_cleanup
 dl "$BASE/schema_patch_v3.pb.js" /tmp/schema_patch_v3.pb.js $EXP_schema_patch_v3
 dl "$BASE/api_acct_v1.js"     /tmp/api_acct.pb.js     $EXP_api_acct
-dl "$BASE/schema_patch_v6_client_bind.pb.js" /tmp/schema_patch_v6_client_bind.pb.js $EXP_schema_patch_v6
+dl "$BASE/client_bind_helpers.js" /tmp/client_bind_helpers.js $EXP_client_bind_helpers
+dl "$BASE/schema_patch_v7_client_bind.pb.js" /tmp/schema_patch_v7_client_bind.pb.js $EXP_schema_patch_v7
+dl "$BASE/schema_patch_v8_member_sections.pb.js" /tmp/schema_patch_v8_member_sections.pb.js $EXP_schema_patch_v8
 
 echo "== [2/5] 下载前端 app24.html + 运营后台 admin10.html =="
 dl "$BASE/app24.html" /tmp/app24.html $EXP_app
@@ -135,8 +145,15 @@ sudo cp /tmp/api_admin.pb.js    "$HOOKS/api_admin.pb.js"
 sudo cp /tmp/api_cleanup.pb.js  "$HOOKS/api_cleanup.pb.js"
 sudo cp /tmp/schema_patch_v3.pb.js "$HOOKS/schema_patch_v3.pb.js"
 sudo cp /tmp/api_acct.pb.js     "$HOOKS/api_acct.pb.js"
-sudo cp /tmp/schema_patch_v6_client_bind.pb.js "$HOOKS/schema_patch_v6_client_bind.pb.js"
-sudo rm -f "$HOOKS/schema_patch_v5_client_bind.pb.js"   # 旧版每分钟刷「建表失败」日志，已由 v6 取代
+# 普通 .js（不是 .pb.js）：只被 api_acct.pb.js require，PB 不会把它当钩子加载
+sudo cp /tmp/client_bind_helpers.js "$HOOKS/client_bind_helpers.js"
+sudo cp /tmp/schema_patch_v7_client_bind.pb.js "$HOOKS/schema_patch_v7_client_bind.pb.js"
+sudo cp /tmp/schema_patch_v8_member_sections.pb.js "$HOOKS/schema_patch_v8_member_sections.pb.js"
+sudo rm -f "$HOOKS/schema_patch_v5_client_bind.pb.js"   # 旧版每分钟刷「建表失败」日志，已由 v6 → v7 取代
+# ⚠️ v6 必须删：它的字段齐全判定是错的（数 fields.length，把 id/created/updated 三个系统字段算进去，
+#    字段一个没加成功也会判定通过并 cronRemove），留着只会让人误以为绑定表是健康的。
+sudo rm -f "$HOOKS/schema_patch_v6_client_bind.pb.js"
+echo "  ✓ 附带模块 client_bind_helpers.js 已写入（供 api_acct.pb.js require）"
 
 # ── 清理历史残留钩子（2026-09-03，用户授权）──
 #   这两个都不在 HOOK_N=8 里，属于早期遗留：留着不影响功能，但每次 PB 启动都会白跑一遍。
@@ -154,10 +171,13 @@ if ! sudo systemctl is-active --quiet pocketbase; then
 fi
 echo "  ✓ pocketbase 已启动（$HOOK_N 钩子常驻）"
 echo ""
-echo "  ⏳ schema_patch_v3 / schema_patch_v6 走 cron（每分钟触发一次），不是启动即生效："
+echo "  ⏳ schema_patch_v3 / v7 / v8 走 cron（每分钟触发一次），不是启动即生效："
 echo "     v3：约 1 分钟内把 invitations / access_requests / users 的 role 候选值扩为 8 值并集。"
-echo "     v6：约 1 分钟内自建 client_bind_codes / client_bindings 两张业主绑定表（空壳+加字段两步走）。"
-echo "     两者打完补丁均自我注销（cronRemove）。"
+echo "     v7：约 1 分钟内体检并补建 client_bind_codes / client_bindings 的字段（按字段名逐个比对）。"
+echo "     v8：约 1 分钟内给 memberships 补 sections 字段（成员版块级权限落库）。"
+echo "     三者打完补丁均自我注销（cronRemove）。"
+echo "  📌 取证命令（看补丁到底做了什么、有没有自我注销）："
+echo "       sudo journalctl -u pocketbase --since '-5min' | grep -E 'sp_v7|sp_v8'"
 echo "     远程自查（无需登录：404=表不存在，403=表已存在）："
 echo "       curl -o /dev/null -w '%{http_code}' 'http://106.55.14.231/api/collections/client_bind_codes/records?perPage=1'"
 echo "     预期看到：v3「已生效，cron 自我注销」+ v6「两张表已就位，cron 自我注销」"
@@ -225,3 +245,12 @@ echo "  ✅ #489 自建绑定表：client_bind_codes / client_bindings 均返回
 echo '     注：本机无法访问 github.io（代理 502），但可直连服务器 IP 自查'
 echo "  ✅ #487 退出确认弹窗：红色「退出登录」按钮与「留在这里」同为胶囊圆角形"
 echo "  ✅ #487 侧栏左下角按钮显示登录用户名（未登录时仍为「账户聚合」）"
+echo "  ✅ #446/#491 绑定弹窗不再报「绑定表未就绪…schema_patch_v5」："
+echo "       公司管理员打开「账号 ▸ 绑定装修公司」应看到本公司绑定码 + 业主分享链接 + 已绑定业主列表"
+echo "       ⚠️ 若仍报错，报错文案会直接说明是「表尚未建立」还是「字段缺失」还是具体查询异常 —— 照文案处理，"
+echo "          并可 sudo journalctl -u pocketbase --since '-5min' | grep sp_v7 看补丁自愈情况"
+echo "  ✅ #447 权限管理 ▸ 编辑权限：勾选/取消后点保存，提示「权限已保存，该成员下次进入即生效」"
+echo "       换该成员账号登录后，其侧栏可见版块应与勾选一致（服务端 memberships.sections 生效）"
+echo "       项目管理四个子板块（施工执行/合同收款/供应调配/客户交付）勾选后也必须生效"
+echo "  ✅ #448 操作记录：施工待办/节点/采购/收款/付款/日记/增减项/项目增删任一操作都应留下记录（不再只有成员变更）"
+echo "  ✅ #449 刷新页面（Cmd/Ctrl+R）后，左下角直接显示登录用户名，不再是「👤 账户聚合」"

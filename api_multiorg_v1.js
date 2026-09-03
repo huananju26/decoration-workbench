@@ -327,6 +327,30 @@ routerAdd('GET', '/api/me', (e) => {
   } catch (errC) { orgCount = 0; }
   if (!orgCount && org) orgCount = 1;
 
+  /* #447 当前用户在本公司的版块级权限（memberships.sections）
+     null = 没有自定义，前端回退到「本机覆盖 → 角色默认矩阵」。
+     ⚠️ 字段由 schema_patch_v8 补；补丁没跑完时 get 返回 null，这里必须静默降级，
+        不能因为一个权限字段把 /api/me 整个打挂（登录链路的第一道口子）。 */
+  var mySections = null;
+  if (org) {
+    try {
+      const mrow = $app.findFirstRecordByFilter('memberships',
+        "user_id = '" + auth.id + "' && org_id = '" + org + "' && status = 'active'");
+      if (mrow) {
+        const sv = mrow.get('sections');
+        if (sv === null || sv === undefined || sv === '') {
+          mySections = null;
+        } else if (typeof sv === 'string') {
+          try { const pv = JSON.parse(sv); mySections = (pv && typeof pv.length === 'number') ? pv : null; }
+          catch (eP) { mySections = null; }
+        } else if (typeof sv.length === 'number') {
+          mySections = [];
+          for (let si = 0; si < sv.length; si++) mySections.push(String(sv[si]));
+        }
+      }
+    } catch (eSec) { mySections = null; }
+  }
+
   return e.json(200, {
     signedIn: true,
     id: auth.id,
@@ -347,7 +371,9 @@ routerAdd('GET', '/api/me', (e) => {
     storage_quota: storageQuota,
     org_status: orgStatus,
     /* > 1 时前端权限管理页显示「切换团队」下拉 */
-    org_count: orgCount
+    org_count: orgCount,
+    /* #447 版块级权限自定义（22 版块 key 的子集）；null = 未自定义 */
+    sections: mySections
   });
 });
 

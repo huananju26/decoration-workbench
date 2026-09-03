@@ -212,7 +212,8 @@ routerAdd('GET', '/api/org/members', (e) => {
         role: myRole,
         status: 'active',
         joined_at: String(auth.get('created') || ''),
-        is_me: true
+        is_me: true,
+        sections: null
       }]
     });
   }
@@ -233,6 +234,21 @@ routerAdd('GET', '/api/org/members', (e) => {
     } catch (eU) {}
     const role = String(r.get('role') || '');
     if (role === 'admin') adminCount++;
+    /* #447 版块级权限（memberships.sections）：JSON 字段存数组；
+       字段刚由 schema_patch_v8 补上、或降级成 TextField 时，值可能是 JSON 字符串 —— 两种都兼容。
+       null = 该成员没有自定义，走角色默认矩阵。 */
+    let secs = null;
+    try {
+      const sv = r.get('sections');
+      if (sv === null || sv === undefined || sv === '') secs = null;
+      else if (typeof sv === 'string') {
+        try { const pv = JSON.parse(sv); secs = (pv && typeof pv.length === 'number') ? pv : null; }
+        catch (eP) { secs = null; }
+      } else if (typeof sv.length === 'number') {
+        secs = [];
+        for (let si = 0; si < sv.length; si++) secs.push(String(sv[si]));
+      }
+    } catch (eS) { secs = null; }
     out.push({
       id: String(r.id),
       user_id: uid,
@@ -242,10 +258,91 @@ routerAdd('GET', '/api/org/members', (e) => {
       status: String(r.get('status') || ''),
       user_status: ustatus,
       joined_at: String(r.get('joined_at') || r.get('created') || ''),
-      is_me: uid === String(auth.id)
+      is_me: uid === String(auth.id),
+      sections: secs
     });
   }
   return e.json(200, { ok: true, my_role: myRole, admin_count: adminCount, members: out });
+});
+
+
+// ---------------------------------------------------------------------------
+// 4.5) POST /api/org/set-sections —— 企业管理员：设置某成员的版块级权限（#447）
+//      body: { user_id, sections: JSON 字符串数组 }
+//        · 传具体数组 = 该成员只能访问这些版块（22 版块 key 的子集）
+//        · 传空数组   = 全部取消（只剩管理员恒权以外的入口）
+//        · 传 null    = 清除自定义，恢复角色默认矩阵
+//      落点：memberships.sections（schema_patch_v8 补的字段），随成员关系走，
+//            谁登录都读到同一份 —— 以前只写管理员本机 localStorage，本人那侧毫无变化。
+// ---------------------------------------------------------------------------
+routerAdd('POST', '/api/org/set-sections', (e) => {
+  let auth = e.auth;
+  if (!auth || !auth.id) {
+    let hdr = '';
+    try { hdr = e.request.header.get('Authorization') || ''; } catch (eH) { hdr = ''; }
+    const tk = hdr.indexOf(' ') > -1 ? hdr.split(' ')[1] : hdr;
+    if (tk) { try { auth = $app.findAuthRecordByToken(tk); } catch (err) { auth = null; } }
+  }
+  if (!auth || !auth.id) throw new ForbiddenError('未登录');
+  const org = String(auth.get('org_id') || '');
+  if (!org) throw new BadRequestError('你还没有加入任何团队');
+
+  /* 管理员闸门：优先 memberships.role，回退 users.role */
+  let myRole = String(auth.get('role') || '');
+  try {
+    const m = $app.findFirstRecordByFilter('memberships',
+      "user_id = '" + auth.id + "' && org_id = '" + org + "' && status = 'active'");
+    if (m) myRole = String(m.get('role') || myRole);
+  } catch (eR) {}
+  if (myRole !== 'admin') throw new ForbiddenError('只有企业管理员可以设置成员权限');
+
+  /* sections 走 JSON 字符串：DynamicModel 绑数组没有先例（本仓库其它路由都不敢用），
+     字符串 + JSON.parse 是确定性的，不存在「绑成空数组还自以为成功」的静默失败。 */
+  const data = new DynamicModel({ user_id: '', sections: '' });
+  e.bindBody(data);
+  const target = String(data.user_id || '');
+  if (!target) throw new BadRequestError('缺少成员 user_id');
+
+  let arr = null;                                  /* null = 清除自定义 */
+  const raw = String(data.sections || '').trim();
+  if (raw && raw !== 'null') {
+    try {
+      const pv = JSON.parse(raw);
+      if (pv && typeof pv.length === 'number') {
+        arr = [];
+        for (let i = 0; i < pv.length; i++) arr.push(String(pv[i]));
+      } else { throw new Error('不是数组'); }
+    } catch (eP) {
+      throw new BadRequestError('sections 格式不正确：应为 JSON 数组字符串');
+    }
+  }
+
+  let mem = null;
+  try {
+    mem = $app.findFirstRecordByFilter('memberships',
+      "user_id = '" + target + "' && org_id = '" + org + "' && status = 'active'");
+  } catch (eF) { mem = null; }
+  if (!mem) throw new NotFoundError('该成员不在本公司（或成员关系未激活）');
+
+  /* 🩸 PB 的 record.set() 对**不存在**的字段是静默忽略 —— 不先确认字段在，
+       就会「看起来保存成功、实际什么都没写」，下一次排查又得花半天。 */
+  let hasField = false;
+  try {
+    const mc = $app.findCollectionByNameOrId('memberships');
+    hasField = !!(mc && mc.fields.getByName('sections'));
+  } catch (eC) { hasField = false; }
+  if (!hasField) {
+    throw new BadRequestError('服务端 memberships.sections 字段尚未就绪（schema_patch_v8 每分钟自愈一次），请约 1 分钟后重试');
+  }
+
+  try {
+    if (arr === null) mem.set('sections', null);
+    else mem.set('sections', arr);
+    $app.save(mem);
+  } catch (err) {
+    throw new BadRequestError('权限保存失败：' + String(err && err.message ? err.message : err));
+  }
+  return e.json(200, { ok: true, user_id: target, sections: arr });
 });
 
 
