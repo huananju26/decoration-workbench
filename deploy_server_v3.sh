@@ -5,11 +5,11 @@
 #   sudo bash /tmp/d3.sh
 #
 # 本脚本做的事：
-#   1) 从 GitHub Pages 中转站拉后端钩子（数量见下方 HOOK_N）+ 前端 app24.html + 运营后台 admin10.html
+#   1) 从 GitHub Pages 中转站拉后端钩子（数量见下方 HOOK_N）+ 前端 app25.html + 运营后台 admin10.html
 #   2) 字节校验（不一致=gh-pages 未同步，自动重试一次）
 #   3) 备份当前 pb_public/index.html（回退点）
 #   4) 写入 HOOK_N 个常驻钩子（含 api_admin / api_cleanup / schema_patch_v3）+ 重启 PB
-#   5) 部署前端 app24.html → index.html、运营后台 admin10.html → admin.html（固定地址）
+#   5) 部署前端 app25.html → index.html、运营后台 admin10.html → admin.html（固定地址）
 #
 # 本次重点修复：
 #   - 侧栏「影像资料」+「储存套餐」合并为「存储影像」（归企业设置组，套餐在上/影像在下，#425）
@@ -66,7 +66,7 @@ EXP_schema_patch_v7=8712 # schema_patch_v7_client_bind.pb.js → pb_hooks/schema
 EXP_schema_patch_v8=4182 # schema_patch_v8_member_sections.pb.js → pb_hooks/schema_patch_v8_member_sections.pb.js（#447 给 memberships 补 sections 字段，让「编辑权限」的勾选随成员关系落库，不再只写管理员本机 localStorage）
 EXP_schema_patch_v9=5943 # schema_patch_v9_bind_dates.pb.js → pb_hooks/schema_patch_v9_bind_dates.pb.js（#451 给 client_bind_codes / client_bindings 补 created/updated 两个 AutodateField —— v7 建表时没建系统时间字段，所有 '-created' 排序 400「invalid sort field "created"」，绑定弹窗加载失败、蓝框消失）
 EXP_perm_sections_helper=4660 # perm_sections_helper.js → pb_hooks/perm_sections_helper.js（#452 普通 .js：memberships.sections 的解析/编码封装 —— 识别 goja 字节数组、清洗空串、TextField 降级路径兼容；api_team.pb.js 与 api.pb.js 共用）
-EXP_app=1468571        # app24.html           → pb_public/index.html（#451-#455：绑定弹窗蓝框+列表修复前置防线 + #452 sanitizeSections 坏数据自愈（ASCII 码垃圾回退角色默认权限）+ #453 修「更新合同被记成新建合同」（_editingContractId 先清后判）+ 同款修编辑收款/付款丢「编辑」前缀 + #454 云端落地期间挂起 push（__cloudLanding）+ #455 cossign {error} 字段透出（配额满/没加公司不再显示成「操作失败」））
+EXP_app=1468571        # app25.html           → pb_public/index.html（#451-#455：绑定弹窗蓝框+列表修复前置防线 + #452 sanitizeSections 坏数据自愈（ASCII 码垃圾回退角色默认权限）+ #453 修「更新合同被记成新建合同」（_editingContractId 先清后判）+ 同款修编辑收款/付款丢「编辑」前缀 + #454 云端落地期间挂起 push（__cloudLanding）+ #455 cossign {error} 字段透出（配额满/没加公司不再显示成「操作失败」））
                        #   #439 总价清单名称可点击跳转+删除重编号、删均价行、消除打印空白页、说明textarea自适应
                        #   #440 总价清单计算区动态化（删半包优惠一口价行、无主材隐藏管理费/主材合计）
                        #   #441 累计总金额计算链修复（不再吃半包优惠常量，删除项后总额随动）
@@ -117,7 +117,7 @@ sha_of() { # file → sha256（服务器 Ubuntu 有 sha256sum；本机 macOS 有
 }
 
 dl() { # url out expected_bytes expected_sha256
-  # 🩸 2026-09-02 加固：服务器 → GitHub Pages 链路很慢，1.45MB 的 app24.html
+  # 🩸 2026-09-02 加固：服务器 → GitHub Pages 链路很慢，1.45MB 的 app25.html
   #   曾在 120s 硬性超时中断在 663669/1453374 字节，且每次重试都从 0 开始，永远下不完。
   #   → 断点续传(-C -) + 多轮 + 卡速(30 秒低于 1KB/s)自动断开重连。
   # 🩸🩸 2026-09-03 血案加固（本函数是事故现场，改之前先读这段）：
@@ -189,8 +189,8 @@ dl "$BASE/schema_patch_v8_member_sections.pb.js" /tmp/schema_patch_v8_member_sec
 dl "$BASE/schema_patch_v9_bind_dates.pb.js" /tmp/schema_patch_v9_bind_dates.pb.js $EXP_schema_patch_v9 $SHA_schema_patch_v9
 dl "$BASE/perm_sections_helper.js" /tmp/perm_sections_helper.js $EXP_perm_sections_helper $SHA_perm_sections_helper
 
-echo "== [2/5] 下载前端 app24.html + 运营后台 admin10.html =="
-dl "$BASE/app24.html" /tmp/app24.html $EXP_app $SHA_app
+echo "== [2/5] 下载前端 app25.html + 运营后台 admin10.html =="
+dl "$BASE/app25.html" /tmp/app25.html $EXP_app $SHA_app
 dl "$BASE/admin10.html" /tmp/admin10.html $EXP_admin $SHA_admin
 
 # 🩸 下载阶段没写任何文件（写钩子在 [3/5]、写前端在 [5/5]），此处中止 = 服务仍跑旧版，零风险。
@@ -199,7 +199,7 @@ if [ "$DL_FAIL" != "0" ]; then
   echo ""
   echo "❌ 有文件未下载完整或内容校验失败 → 已中止，pb_hooks / index.html 均未改动。"
   echo "   最常见原因：GitHub Pages 还没传播完（拿到旧版）。等 1-2 分钟重跑本脚本即可。"
-  echo "   若连续多次失败，清掉缓存重来： sudo rm -f /tmp/*.pb.js.part /tmp/app24.html.part"
+  echo "   若连续多次失败，清掉缓存重来： sudo rm -f /tmp/*.pb.js.part /tmp/app25.html.part"
   exit 1
 fi
 
@@ -256,11 +256,11 @@ echo "     远程自查（无需登录：404=表不存在，403=表已存在）�
 echo "       curl -o /dev/null -w '%{http_code}' 'http://106.55.14.231/api/collections/client_bind_codes/records?perPage=1'"
 echo "     预期看到：v3「已生效，cron 自我注销」+ v6「两张表已就位，cron 自我注销」"
 
-echo "== [5/5] 部署前端 app24.html → index.html + 运营后台 admin10.html → admin.html =="
-sudo cp /tmp/app24.html "$PUB/index.html"
-sudo cp /tmp/app24.html "$PUB/app24.html"
+echo "== [5/5] 部署前端 app25.html → index.html + 运营后台 admin10.html → admin.html =="
+sudo cp /tmp/app25.html "$PUB/index.html"
+sudo cp /tmp/app25.html "$PUB/app25.html"
 sudo cp /tmp/admin10.html "$PUB/admin.html"
-echo "  ✓ 前端已部署（index.html / app24.html）"
+echo "  ✓ 前端已部署（index.html / app25.html）"
 echo "  ✓ 运营后台已部署（固定地址）：http://106.55.14.231/admin.html"
 
 # ── 部署后自检（2026-09-01 新增）──

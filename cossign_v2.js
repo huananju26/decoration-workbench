@@ -57,8 +57,12 @@ async function userByToken(token) {
 }
 
 let admToken = null;
+let admTokenAt = 0;
+const ADM_TOKEN_TTL = 10 * 60 * 1000; // 10 分钟，到期强制重登，避免长跑进程拿到过期 token
+
 async function admAuth(force) {
-  if (admToken && !force) return admToken;
+  const now = Date.now();
+  if (admToken && !force && (now - admTokenAt) < ADM_TOKEN_TTL) return admToken;
   const r = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -67,17 +71,23 @@ async function admAuth(force) {
   if (!r.ok) throw new Error('管理员登录失败');
   const j = await r.json();
   admToken = j.token;
+  admTokenAt = Date.now();
   return admToken;
 }
 
+// 用超级管理员 token 访问 PB。
+// 任何非 2xx（含 401/403 过期）都清空缓存、强制重登后重试一次，
+// 彻底杜绝「缓存的 admToken 过期 → 公司信息读取失败 403」这类偶发故障。
 async function admFetch(path, options) {
-  let t = await admAuth(false);
-  let r = await fetch(PB_URL + path, { ...options, headers: { ...(options || {}).headers, Authorization: t } });
-  if (r.status === 401) {
-    t = await admAuth(true);
-    r = await fetch(PB_URL + path, { ...options, headers: { ...(options || {}).headers, Authorization: t } });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const t = await admAuth(attempt > 0);
+    const r = await fetch(PB_URL + path, { ...options, headers: { ...(options || {}).headers, Authorization: t } });
+    if (r.ok) return r;
+    admToken = null; admTokenAt = 0; // 非 2xx：强制下一轮重登
   }
-  return r;
+  // 两次都失败：返回最后一次响应，交由调用方按 .ok 处理
+  const t = await admAuth(true);
+  return await fetch(PB_URL + path, { ...options, headers: { ...(options || {}).headers, Authorization: t } });
 }
 
 // ---------- 业务判断：这张图要不要留原图 ----------
@@ -160,7 +170,10 @@ const server = http.createServer(async (req, res) => {
 
       // 配额检查
       const orgRes = await admFetch(`/api/collections/organizations/records/${orgId}`);
-      if (!orgRes.ok) return send(res, 403, { error: '公司信息读取失败' });
+      if (!orgRes.ok) {
+        console.error('[cossign] 读取公司信息失败 orgId=%s status=%s', orgId, orgRes.status);
+        return send(res, 403, { error: '公司信息读取失败' });
+      }
       const org = await orgRes.json();
       const used = Number(org.storage_used || 0);
       const quota = Number(org.storage_quota || 0);
