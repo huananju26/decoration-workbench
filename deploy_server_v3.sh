@@ -79,59 +79,123 @@ EXP_app=1465387        # app24.html           → pb_public/index.html（#487 �
                        #   #446/#491 绑定弹窗：管理员视角增加「业主分享链接」（?bind=码，业主点开自动填入）
 EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 徽章同行 + 套餐字号对齐）
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 🩸 SHA256 内容校验（2026-09-03 血案后新增，必填）
+#    事故：只校字节数 → curl -C - 续传把【上一次跑脚本留在 /tmp 的旧版文件】当成半成品，
+#          从旧文件末尾接着写新文件尾部 → 长度恰好等于新大小、字节校验全过，
+#          但内容 =「旧版正文 + 新版尾部」，3 个钩子语法崩坏（PB 静默跳过 → 全部路由 404）、
+#          前端回退到旧版。大小没变的文件反而没事（续传起点=文件末尾=空操作）。
+#    → 字节数只能证明「长度对」，证明不了「内容对」。必须上 sha256。
+#    更新方式（本机）：cd gh-pages && shasum -a 256 <文件> | cut -d' ' -f1
+# ─────────────────────────────────────────────────────────────────────────────
+SHA_api_team=5bb273fc70e3e9e7a814e9941f46d1889032bb80cad70106739b2da178199a82
+SHA_api_multiorg=0c2e3c61b3d388dac7e17e10509b622d45ed2f96ea2ec9fbb69074698c3b4cb5
+SHA_api_review=1ed3827b94f72840544634ded7b5711d0d9fca927b11c4bafdc8eda7041ad413
+SHA_api_admin=dbe8ba8e664f719cde9d61da298e12e8ae39e93c125322baa86373ff2bcace63
+SHA_api_cleanup=a4774805fb588da90cdc2a88929ffde195ddd465c7cb59b4fc78abfc3888853c
+SHA_schema_patch_v3=439e13b2e8d8baf42829e9e4f10d0b820e0f7c95ee60c89ad667e328bd79fd6b
+SHA_api_acct=7b4e4cf9dbc63f13d76688c3fa2773a963e97298188cbc1661561f37058a93bf
+SHA_client_bind_helpers=686fae44d3601f2a6c0bcb12e9eda11bb873de26a682046d5dd928191e8f4887
+SHA_schema_patch_v7=fb60338d84b99072412a286fa56f02bfc6c55792b0562c3f8b43bc628ce411c1
+SHA_schema_patch_v8=ae92a7d3eededaa07da4b7e478c4e37afebc23fc967a94ba4a17066ad093c314
+SHA_app=9825e55a3ac424751e9678f95031ab9854de71b9afc00708d2d8da22ab6a79bd
+SHA_admin=75e66a165c7183e71916d720c29ca13e7e9dfb21d0ef357df7c2703ab87f4be5
+
 # 钩子数量。⚠️ 以前是写死在两处回显里的字面量，加第 6 个钩子（schema_patch_v3）时只改了
 # 其中一处 → 回显自相矛盾（"写入 5 个钩子" / "6 个钩子已写入"）。改用变量，加钩子时改这里即可。
 # ⚠️ 只数 *.pb.js（会被 PB 当钩子加载）。client_bind_helpers.js 是普通 .js，只被 require，不算。
 HOOK_N=9
 
-dl() { # url out expected
+sha_of() { # file → sha256（服务器 Ubuntu 有 sha256sum；本机 macOS 有 shasum）
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
+  elif command -v shasum    >/dev/null 2>&1; then shasum -a 256 "$1" | cut -d' ' -f1
+  else echo ""; fi
+}
+
+dl() { # url out expected_bytes expected_sha256
   # 🩸 2026-09-02 加固：服务器 → GitHub Pages 链路很慢，1.45MB 的 app24.html
   #   曾在 120s 硬性超时中断在 663669/1453374 字节，且每次重试都从 0 开始，永远下不完。
-  #   改为：断点续传(-C -) + 最多 5 轮 + 卡速(30 秒低于 1KB/s)自动断开重连。
-  local url="$1" out="$2" exp="$3" got=0 try=0
-  # ⚠️ 这里不能 rm：保留上一次中断留下的半成品，重跑脚本时能接着续传（跨运行续传）
-  while [ "$try" -lt 5 ]; do
+  #   → 断点续传(-C -) + 多轮 + 卡速(30 秒低于 1KB/s)自动断开重连。
+  # 🩸🩸 2026-09-03 血案加固（本函数是事故现场，改之前先读这段）：
+  #   原实现直接在 $out 上续传，且只校字节数。$out 是 /tmp 下的**跨运行保留**文件，
+  #   上一次跑脚本留下的【旧版完整文件】会被当成「半成品」→ 从旧文件末尾接着写新文件尾部
+  #   → 长度恰好等于新大小、字节校验全过，内容却是「旧正文 + 新尾部」。
+  #   后果：api.pb.js / api_acct.pb.js / api_team.pb.js 三个钩子语法崩坏，PB 静默跳过加载
+  #   （只打日志不报错）→ /api/me、/api/data/load 等全部 404；前端回退到旧版，肉眼完全看不出。
+  #   三道防线：
+  #     ① 只续传 $out.part（本轮自己写的半成品），绝不在 $out 上续传；
+  #     ② 下完先校字节数，再校 sha256；
+  #     ③ 任一不符 → 删 .part 全量重下一轮；仍不符 → 置 DL_FAIL 并中止整个部署（此时还没写任何文件）。
+  local url="$1" out="$2" exp="$3" want="$4"
+  local part="$out.part" got=0 try=0 h=""
+  while [ "$try" -lt 6 ]; do
     try=$((try+1))
-    got=0; [ -f "$out" ] && got=$(wc -c < "$out" | tr -d ' ')
-    [ "$got" = "$exp" ] && break
+    got=0; [ -f "$part" ] && got=$(wc -c < "$part" | tr -d ' ')
+    if [ "$got" = "$exp" ]; then
+      h=$(sha_of "$part")
+      if [ -n "$want" ] && [ "$h" != "$want" ]; then
+        echo "  ↺ $(basename "$out") 长度对但内容不符（多半是续传拼了旧版）→ 删除重下"
+        rm -f "$part"; got=0
+      else
+        break
+      fi
+    fi
     if [ "$got" -gt 0 ] && [ "$got" -lt "$exp" ]; then
       echo "  ↻ 续传 $(basename "$out"): 已下 $got/$exp 字节，第 $try 轮继续…"
-      curl -sSL -C - --max-time 600 --speed-time 30 --speed-limit 1024 -o "$out" "$url" || true
+      curl -sSL -C - --max-time 600 --speed-time 30 --speed-limit 1024 -o "$part" "$url" || true
     else
       # got=0 或 got>exp（续传撞上不支持 Range 的源导致文件被追加撑大）→ 删掉重下
       [ "$got" -gt "$exp" ] && echo "  ↺ $(basename "$out") 续传异常（$got > $exp），删除重下"
-      rm -f "$out"
-      curl -sSL --max-time 600 --speed-time 30 --speed-limit 1024 -o "$out" "$url" || true
+      rm -f "$part"
+      curl -sSL --max-time 600 --speed-time 30 --speed-limit 1024 -o "$part" "$url" || true
     fi
   done
-  got=0; [ -f "$out" ] && got=$(wc -c < "$out" | tr -d ' ')
-  # ⚠️ 必须 tr -d ' '：BSD/macOS 的 `wc -c < file` 输出带前导空格（"   24377"），
-  #    GNU/Linux 不带。去掉空格对两边都无害，等于免费加固。
-  # ⚠️ 字节不符「只警告、不中断」（2026-09-01）：历史上曾因 EXP 常量写错或本地量不出
-  #    精确字节，导致整个部署 exit 1、留下半部署状态。现在由提示暴露差异。
+  got=0; [ -f "$part" ] && got=$(wc -c < "$part" | tr -d ' ')
+  h="";  [ -f "$part" ] && h=$(sha_of "$part")
+  # ⚠️ 必须 tr -d ' '：BSD/macOS 的 `wc -c < file` 输出带前导空格（"   24377"），GNU/Linux 不带
   if [ "$got" != "$exp" ]; then
-    echo "  ⚠️ 字节不符 $(basename "$out"): 期望 $exp 实际 $got（已重试 $try 轮）"
-    echo "     手动续传： curl -sSL -C - --max-time 600 -o $out $url"
-  else
-    echo "  ✓ $(basename "$out") = $got 字节"
+    echo "  ❌ 下载不完整 $(basename "$out"): 期望 $exp 实际 $got（已重试 $try 轮）"
+    DL_FAIL=1; return 0
+  # ⚠️ 这里必须 return 0：脚本开头有 set -e，return 1 会让脚本当场静默退出，
+  #    用户看不到「等 1-2 分钟重跑」的提示。统一交给下面的 DL_FAIL 闸门处理。
   fi
+  if [ -n "$want" ] && [ "$h" != "$want" ]; then
+    echo "  ❌ 内容校验失败 $(basename "$out"): sha256 期望 ${want:0:12}… 实际 ${h:0:12}…"
+    echo "     最常见原因：GitHub Pages 还没传播完，拿到的是旧版文件。等 1-2 分钟重跑本脚本。"
+    DL_FAIL=1; return 0
+  # ⚠️ 这里必须 return 0：脚本开头有 set -e，return 1 会让脚本当场静默退出，
+  #    用户看不到「等 1-2 分钟重跑」的提示。统一交给下面的 DL_FAIL 闸门处理。
+  fi
+  mv -f "$part" "$out"
+  echo "  ✓ $(basename "$out") = $got 字节 · sha256 校验通过"
 }
 
+DL_FAIL=0
 echo "== [1/5] 下载后端钩子（GitHub Pages 中转）=="
-dl "$BASE/api_team_v1.js"     /tmp/api_team.pb.js     $EXP_api_team
-dl "$BASE/api_multiorg_v1.js" /tmp/api.pb.js          $EXP_api_multiorg
-dl "$BASE/api_review_v2.js"   /tmp/api_review.pb.js   $EXP_api_review
-dl "$BASE/api_admin_v1.js"    /tmp/api_admin.pb.js    $EXP_api_admin
-dl "$BASE/api_cleanup_v1.js"  /tmp/api_cleanup.pb.js  $EXP_api_cleanup
-dl "$BASE/schema_patch_v3.pb.js" /tmp/schema_patch_v3.pb.js $EXP_schema_patch_v3
-dl "$BASE/api_acct_v1.js"     /tmp/api_acct.pb.js     $EXP_api_acct
-dl "$BASE/client_bind_helpers.js" /tmp/client_bind_helpers.js $EXP_client_bind_helpers
-dl "$BASE/schema_patch_v7_client_bind.pb.js" /tmp/schema_patch_v7_client_bind.pb.js $EXP_schema_patch_v7
-dl "$BASE/schema_patch_v8_member_sections.pb.js" /tmp/schema_patch_v8_member_sections.pb.js $EXP_schema_patch_v8
+dl "$BASE/api_team_v1.js"     /tmp/api_team.pb.js     $EXP_api_team     $SHA_api_team
+dl "$BASE/api_multiorg_v1.js" /tmp/api.pb.js          $EXP_api_multiorg $SHA_api_multiorg
+dl "$BASE/api_review_v2.js"   /tmp/api_review.pb.js   $EXP_api_review   $SHA_api_review
+dl "$BASE/api_admin_v1.js"    /tmp/api_admin.pb.js    $EXP_api_admin    $SHA_api_admin
+dl "$BASE/api_cleanup_v1.js"  /tmp/api_cleanup.pb.js  $EXP_api_cleanup  $SHA_api_cleanup
+dl "$BASE/schema_patch_v3.pb.js" /tmp/schema_patch_v3.pb.js $EXP_schema_patch_v3 $SHA_schema_patch_v3
+dl "$BASE/api_acct_v1.js"     /tmp/api_acct.pb.js     $EXP_api_acct     $SHA_api_acct
+dl "$BASE/client_bind_helpers.js" /tmp/client_bind_helpers.js $EXP_client_bind_helpers $SHA_client_bind_helpers
+dl "$BASE/schema_patch_v7_client_bind.pb.js" /tmp/schema_patch_v7_client_bind.pb.js $EXP_schema_patch_v7 $SHA_schema_patch_v7
+dl "$BASE/schema_patch_v8_member_sections.pb.js" /tmp/schema_patch_v8_member_sections.pb.js $EXP_schema_patch_v8 $SHA_schema_patch_v8
 
 echo "== [2/5] 下载前端 app24.html + 运营后台 admin10.html =="
-dl "$BASE/app24.html" /tmp/app24.html $EXP_app
-dl "$BASE/admin10.html" /tmp/admin10.html $EXP_admin
+dl "$BASE/app24.html" /tmp/app24.html $EXP_app $SHA_app
+dl "$BASE/admin10.html" /tmp/admin10.html $EXP_admin $SHA_admin
+
+# 🩸 下载阶段没写任何文件（写钩子在 [3/5]、写前端在 [5/5]），此处中止 = 服务仍跑旧版，零风险。
+#    宁可让用户看到明确的「等 1-2 分钟重跑」，也不要把拼坏的文件写进 pb_hooks。
+if [ "$DL_FAIL" != "0" ]; then
+  echo ""
+  echo "❌ 有文件未下载完整或内容校验失败 → 已中止，pb_hooks / index.html 均未改动。"
+  echo "   最常见原因：GitHub Pages 还没传播完（拿到旧版）。等 1-2 分钟重跑本脚本即可。"
+  echo "   若连续多次失败，清掉缓存重来： sudo rm -f /tmp/*.pb.js.part /tmp/app24.html.part"
+  exit 1
+fi
 
 echo "== [3/5] 备份当前 index.html + 写入 $HOOK_N 个钩子 =="
 if [ -f "$PUB/index.html" ]; then
@@ -205,6 +269,39 @@ sudo ls -1 "$HOOKS"/*.pb.js 2>/dev/null | while read -r h; do echo "      $(base
 echo "      本次部署 $HOOK_N 个；若上面列出更多，是历史残留的旧钩子，需人工确认是否被同时加载"
 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1/api/health 2>/dev/null || echo 000)
 if [ "$code" = "200" ]; then echo "  ✓ /api/health → 200"; else echo "  !! /api/health → $code（服务可能还没起来，稍等再试）"; fi
+
+# 🩸🩸 钩子加载自检（2026-09-03 事故后新增，这是唯一能当场抓到「钩子没加载」的检查）
+#    血案：钩子文件被续传拼接搞成「旧正文+新尾部」→ 语法崩坏 → **PB 只打日志、不报错、照常启动**，
+#    /api/health 照样 200、systemctl is-active 照样 active、字节数也照样对。
+#    唯一破绽：那些路由根本没注册，全返回 404。所以必须真的去打路由。
+#    ⚠️ 必须直连 PB 端口，不能走 127.0.0.1（Caddy）——Caddy 会把 PB 的 404 重写成 index.html 伪装成 200。
+echo "  · 钩子路由注册自检（404 = 该钩子文件没被加载）："
+PB=""
+for p in 8090 8080; do
+  c=$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 "http://127.0.0.1:$p/api/health" 2>/dev/null || echo 000)
+  [ "$c" = "200" ] && PB="http://127.0.0.1:$p"
+  [ -n "$PB" ] && break
+done
+if [ -z "$PB" ]; then
+  echo "      （没探到 PB 直连端口，跳过；可手动：curl -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/ping）"
+else
+  hook_ok=0; hook_bad=0
+  for r in /api/ping /api/me /api/data/load /api/org/members /api/audit/list /api/client/bindcode /api/org/set-role /api/auth/send-code; do
+    c=$(curl -s -o /dev/null -w '%{http_code}' --max-time 6 "$PB$r" 2>/dev/null || echo 000)
+    if [ "$c" = "404" ] || [ "$c" = "000" ]; then
+      echo "      ❌ $r → $c（未注册）"; hook_bad=$((hook_bad+1))
+    else
+      hook_ok=$((hook_ok+1))
+    fi
+  done
+  if [ "$hook_bad" = "0" ]; then
+    echo "      ✓ $hook_ok 条钩子路由全部注册（$PB）"
+  else
+    echo "      ⚠️ $hook_bad 条未注册 → 钩子文件语法崩坏，PB 会静默跳过加载（服务照常起来，功能全废）"
+    echo "         立刻看日志：sudo journalctl -u pocketbase -n 100 | grep -iE 'hook|error|panic'"
+    echo "         紧急回退：git 取回上一版钩子 → cp 进 $HOOKS → sudo systemctl restart pocketbase"
+  fi
+fi
 
 echo ""
 echo "DONE ✅ 部署完成。"
