@@ -137,7 +137,13 @@ sudo cp /tmp/schema_patch_v3.pb.js "$HOOKS/schema_patch_v3.pb.js"
 sudo cp /tmp/api_acct.pb.js     "$HOOKS/api_acct.pb.js"
 sudo cp /tmp/schema_patch_v6_client_bind.pb.js "$HOOKS/schema_patch_v6_client_bind.pb.js"
 sudo rm -f "$HOOKS/schema_patch_v5_client_bind.pb.js"   # 旧版每分钟刷「建表失败」日志，已由 v6 取代
-echo "  ✓ $HOOK_N 个钩子已写入 $HOOKS/"
+
+# ── 清理历史残留钩子（2026-09-03，用户授权）──
+#   这两个都不在 HOOK_N=8 里，属于早期遗留：留着不影响功能，但每次 PB 启动都会白跑一遍。
+#   ⚠️ 删之前务必确认「功能已由别处承接」，别删成次生事故（见 pb-pitfalls ②ⓐ）。
+sudo rm -f "$HOOKS/api_sync.pb.js"                       # /api/sync/* 旧整包同步接口；单元化（B 方案）上线后已是死代码
+sudo rm -f "$HOOKS/schema_patch_v4_lock_users.pb.js"     # 一次性安全补丁（users/org 字段锁定），早已落库，现为空跑
+echo "  ✓ $HOOK_N 个钩子已写入 $HOOKS/（已清理 2 个历史残留：api_sync / schema_patch_v4_lock_users）"
 
 echo "== [4/5] 重启 pocketbase（加载含 api_admin / api_cleanup / schema_patch_v3 的钩子集）=="
 sudo systemctl restart pocketbase
@@ -214,8 +220,8 @@ echo "  ✅ 邀请成员选「项目经理」→ 对方提交加入申请→管�
 echo "  ✅ #487 账号管理：修改用户名 / 修改密码应成功（不再报 Only superusers）"
 echo "  ✅ #487 邀请弹窗权限说明：项目经理应显示「施工执行、合同收款、供应调配、客户交付」（不再出现「成本管理」）"
 echo "  ✅ #487 绑定装修公司：公司管理员打开弹窗能看到本公司绑定码；业主（无公司账号）提交绑定码后列表立即出现该公司"
-  ✅ #489 诊断路由已下线：curl "http://106.55.14.231/api/_diag/v6" 应返回 404（不是 403/200）
-  ✅ #489 自建绑定表：client_bind_codes / client_bindings 均返回 403（存在），不再是 404
-     （ok:false 时看 errors；若 env.Collection 不是 function = JSVM 建表不可用，需改存已有表）
+echo '  ✅ #489 诊断路由已下线：/api/_diag/v6 应返回 SPA 兜底 HTML（PB 404 被 Caddy 重写），不是 JSON'
+echo "  ✅ #489 自建绑定表：client_bind_codes / client_bindings 均返回 403（存在），不再是 404"
+echo '     注：本机无法访问 github.io（代理 502），但可直连服务器 IP 自查'
 echo "  ✅ #487 退出确认弹窗：红色「退出登录」按钮与「留在这里」同为胶囊圆角形"
 echo "  ✅ #487 侧栏左下角按钮显示登录用户名（未登录时仍为「账户聚合」）"
