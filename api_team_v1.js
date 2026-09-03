@@ -234,19 +234,29 @@ routerAdd('GET', '/api/org/members', (e) => {
     } catch (eU) {}
     const role = String(r.get('role') || '');
     if (role === 'admin') adminCount++;
-    /* #447 版块级权限（memberships.sections）：JSON 字段存数组；
-       字段刚由 schema_patch_v8 补上、或降级成 TextField 时，值可能是 JSON 字符串 —— 两种都兼容。
+    /* #447/#452 版块级权限（memberships.sections）
+       🩸 #452 血案：**PB 的 JSONField 在 goja 里 get() 返回的是「原始 JSON 字节数组」**，
+          不是解析好的 JS 值（本地 0.40.1 实测：DB 存 ["home","process"]，
+          get() 拿到 [91,34,104,111,109,101,...] 一串 ASCII 码；字段为空时拿到 len=0 的 []）。
+          旧逻辑 `typeof sv.length === 'number'` 正好命中字节数组分支，于是
+          「从没设过权限的成员」被读成 `[]` 而不是 null → 前端空数组是 truthy
+          → 22 个版块一个都不勾 —— 用户看到的「全部岗位都没预设权限」。
+          解析统一交给 perm_sections_helper.js（能识别字节数组并还原），
+          这里只保留「模块拿不到就静默降级为未自定义」的兜底。
        null = 该成员没有自定义，走角色默认矩阵。 */
     let secs = null;
     try {
-      const sv = r.get('sections');
-      if (sv === null || sv === undefined || sv === '') secs = null;
-      else if (typeof sv === 'string') {
-        try { const pv = JSON.parse(sv); secs = (pv && typeof pv.length === 'number') ? pv : null; }
-        catch (eP) { secs = null; }
-      } else if (typeof sv.length === 'number') {
-        secs = [];
-        for (let si = 0; si < sv.length; si++) secs.push(String(sv[si]));
+      let PS = null;
+      try { PS = require(`${__hooks}/perm_sections_helper.js`); } catch (eReq) { PS = null; }
+      if (PS && typeof PS.parseSections === 'function') {
+        secs = PS.parseSections(r.get('sections'));
+      } else {
+        /* 模块缺失时的极简兜底：只认字符串，其余一律当未自定义（宁可走角色默认，也不要错的 []） */
+        const sv = r.get('sections');
+        if (typeof sv === 'string' && sv.trim() && sv.trim().charAt(0) === '[') {
+          try { const pv = JSON.parse(sv.trim()); secs = (pv && typeof pv.length === 'number') ? pv : null; }
+          catch (eP) { secs = null; }
+        }
       }
     } catch (eS) { secs = null; }
     out.push({
@@ -335,9 +345,11 @@ routerAdd('POST', '/api/org/set-sections', (e) => {
     throw new BadRequestError('服务端 memberships.sections 字段尚未就绪（schema_patch_v8 每分钟自愈一次），请约 1 分钟后重试');
   }
 
+  let PS2 = null;
+  try { PS2 = require(`${__hooks}/perm_sections_helper.js`); } catch (eReq2) { PS2 = null; }
   try {
     if (arr === null) mem.set('sections', null);
-    else mem.set('sections', arr);
+    else mem.set('sections', (PS2 && typeof PS2.encodeSections === 'function') ? PS2.encodeSections(arr) : arr);
     $app.save(mem);
   } catch (err) {
     throw new BadRequestError('权限保存失败：' + String(err && err.message ? err.message : err));

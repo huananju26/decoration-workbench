@@ -54,17 +54,19 @@ HOOKS="/opt/pocketbase/pb_hooks"
 PUB="/opt/pocketbase/pb_public"
 
 # ── 预期字节（与本地 gh-pages 推送一致，用于完整性校验）──
-EXP_api_team=29724     # api_team_v1.js       → pb_hooks/api_team.pb.js（#424 角色变更审计 + #447 成员列表返回 sections + 新增 POST /api/org/set-sections 把版块级权限写进 memberships）
-EXP_api_multiorg=44786 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#447 /api/me 增加 sections（当前用户版块级权限））（#429 注册 400 + 静默 catch 治理 + findRecordByFilter 不存在 + #430 邀请 role 兜底改 reader + 注册 save 段 try/catch + 移除 org_id/status 防御性 set（注册 400 真凶）+ 临时诊断路由 _diag_register 已验证删除 + #423 前端权限闸门后端配套（reader 写拦截）+ #424 服务端审计日志 audit_logs + /api/audit/list）
+EXP_api_team=30790     # api_team_v1.js       → pb_hooks/api_team.pb.js（#452 成员 sections 解析改走 perm_sections_helper：修「goja 里 JSONField get() 返回原始 JSON 字节数组 → 空字段被读成 [] → 全部岗位预设权限消失」）
+EXP_api_multiorg=48385 # api_multiorg_v1.js   → pb_hooks/api.pb.js（#452 /api/me 的 sections 同改 perm_sections_helper + #454 /api/data/save 内容没变就不落盘（rev/updated_by 不动），根治「成员刷新一下就被记成修改者 → 真正改数据的人 409」）
 EXP_api_review=11800   # api_review_v2.js     → pb_hooks/api_review.pb.js
 EXP_api_admin=9175     # api_admin_v1.js      → pb_hooks/api_admin.pb.js
 EXP_api_cleanup=11121  # api_cleanup_v1.js    → pb_hooks/api_cleanup.pb.js
 EXP_schema_patch_v3=5142 # schema_patch_v3.pb.js → pb_hooks/schema_patch_v3.pb.js（#430 角色候选值 8 值并集；修「集合不存在/无 role 字段」跳过分支误置 done=true 导致日志假阳性，详见 pb-pitfalls ⑭）
 EXP_api_acct=16363     # api_acct_v1.js       → pb_hooks/api_acct.pb.js（#487 账户聚合 + /api/client/* 业主绑定；#491 修 bindcode 按 org_id 过滤（真字段名叫 org）+ 五处路由改走 client_bind_helpers 体检，报错区分表缺失/字段缺失/查询异常，不再一律甩锅「schema_patch_v5」）
-EXP_client_bind_helpers=4424 # client_bind_helpers.js → pb_hooks/client_bind_helpers.js（#491 普通 .js 不是钩子，只被 api_acct.pb.js require；绑定表体检+查询封装）
+EXP_client_bind_helpers=5459 # client_bind_helpers.js → pb_hooks/client_bind_helpers.js（#491 普通 .js 不是钩子，只被 api_acct.pb.js require；#451 find() 排序降级防线：sort 报错自动回退 '-id'，补丁没跑完的一分钟里弹窗也能出内容）
 EXP_schema_patch_v7=8712 # schema_patch_v7_client_bind.pb.js → pb_hooks/schema_patch_v7_client_bind.pb.js（#491 取代 v6：体检改按**字段名**比对，修掉 v6「数 fields.length 把 id/created/updated 三个系统字段也算上 → 字段一个没加成功仍判定通过并自我注销」的致命误判）
 EXP_schema_patch_v8=4182 # schema_patch_v8_member_sections.pb.js → pb_hooks/schema_patch_v8_member_sections.pb.js（#447 给 memberships 补 sections 字段，让「编辑权限」的勾选随成员关系落库，不再只写管理员本机 localStorage）
-EXP_app=1465387        # app24.html           → pb_public/index.html（#487 账户聚合弹窗：改名/改密走新 hook 路由 + 绑定装修公司后端 + 角色说明同步「供应调配」+ 退出按钮胶囊化 + 侧栏显示用户名；#488 修绑定弹窗 div 嵌套错位导致的竖排布局崩坏 + 新接口 404 友好提示）
+EXP_schema_patch_v9=5943 # schema_patch_v9_bind_dates.pb.js → pb_hooks/schema_patch_v9_bind_dates.pb.js（#451 给 client_bind_codes / client_bindings 补 created/updated 两个 AutodateField —— v7 建表时没建系统时间字段，所有 '-created' 排序 400「invalid sort field "created"」，绑定弹窗加载失败、蓝框消失）
+EXP_perm_sections_helper=4660 # perm_sections_helper.js → pb_hooks/perm_sections_helper.js（#452 普通 .js：memberships.sections 的解析/编码封装 —— 识别 goja 字节数组、清洗空串、TextField 降级路径兼容；api_team.pb.js 与 api.pb.js 共用）
+EXP_app=1468571        # app24.html           → pb_public/index.html（#451-#455：绑定弹窗蓝框+列表修复前置防线 + #452 sanitizeSections 坏数据自愈（ASCII 码垃圾回退角色默认权限）+ #453 修「更新合同被记成新建合同」（_editingContractId 先清后判）+ 同款修编辑收款/付款丢「编辑」前缀 + #454 云端落地期间挂起 push（__cloudLanding）+ #455 cossign {error} 字段透出（配额满/没加公司不再显示成「操作失败」））
                        #   #439 总价清单名称可点击跳转+删除重编号、删均价行、消除打印空白页、说明textarea自适应
                        #   #440 总价清单计算区动态化（删半包优惠一口价行、无主材隐藏管理费/主材合计）
                        #   #441 累计总金额计算链修复（不再吃半包优惠常量，删除项后总额随动）
@@ -88,23 +90,25 @@ EXP_admin=32278        # admin10.html         → pb_public/admin.html（#426 �
 #    → 字节数只能证明「长度对」，证明不了「内容对」。必须上 sha256。
 #    更新方式（本机）：cd gh-pages && shasum -a 256 <文件> | cut -d' ' -f1
 # ─────────────────────────────────────────────────────────────────────────────
-SHA_api_team=5bb273fc70e3e9e7a814e9941f46d1889032bb80cad70106739b2da178199a82
-SHA_api_multiorg=0c2e3c61b3d388dac7e17e10509b622d45ed2f96ea2ec9fbb69074698c3b4cb5
+SHA_api_team=cda7ade8d1ba5676053425a547e31a95ebf1c13eddd177da9ad53f09754efdd5
+SHA_api_multiorg=60482cecbd16e1c346379f5b42a9395a79d51c6d15776d022b3a2fa400991944
 SHA_api_review=1ed3827b94f72840544634ded7b5711d0d9fca927b11c4bafdc8eda7041ad413
 SHA_api_admin=dbe8ba8e664f719cde9d61da298e12e8ae39e93c125322baa86373ff2bcace63
 SHA_api_cleanup=a4774805fb588da90cdc2a88929ffde195ddd465c7cb59b4fc78abfc3888853c
 SHA_schema_patch_v3=439e13b2e8d8baf42829e9e4f10d0b820e0f7c95ee60c89ad667e328bd79fd6b
 SHA_api_acct=7b4e4cf9dbc63f13d76688c3fa2773a963e97298188cbc1661561f37058a93bf
-SHA_client_bind_helpers=686fae44d3601f2a6c0bcb12e9eda11bb873de26a682046d5dd928191e8f4887
+SHA_client_bind_helpers=9d64d77db43cdebfa7898f714f65a88fc36e59261313ceb5a0ecbdeec158c882
 SHA_schema_patch_v7=fb60338d84b99072412a286fa56f02bfc6c55792b0562c3f8b43bc628ce411c1
 SHA_schema_patch_v8=ae92a7d3eededaa07da4b7e478c4e37afebc23fc967a94ba4a17066ad093c314
-SHA_app=9825e55a3ac424751e9678f95031ab9854de71b9afc00708d2d8da22ab6a79bd
+SHA_schema_patch_v9=1b125e555c1d7015f53f42a7516dcbd510ab635d1eea4ddfc2d0c192150a6f23
+SHA_perm_sections_helper=ac7b2d6acad1bd9f1a27908b27076ff9153bd1cc882c5aceb36a07fccb37b89b
+SHA_app=580e47db00e65794657a24384e166c35246a37e7ba5214569127e358f14ceecb
 SHA_admin=75e66a165c7183e71916d720c29ca13e7e9dfb21d0ef357df7c2703ab87f4be5
 
 # 钩子数量。⚠️ 以前是写死在两处回显里的字面量，加第 6 个钩子（schema_patch_v3）时只改了
 # 其中一处 → 回显自相矛盾（"写入 5 个钩子" / "6 个钩子已写入"）。改用变量，加钩子时改这里即可。
 # ⚠️ 只数 *.pb.js（会被 PB 当钩子加载）。client_bind_helpers.js 是普通 .js，只被 require，不算。
-HOOK_N=9
+HOOK_N=10
 
 sha_of() { # file → sha256（服务器 Ubuntu 有 sha256sum；本机 macOS 有 shasum）
   if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
@@ -182,6 +186,8 @@ dl "$BASE/api_acct_v1.js"     /tmp/api_acct.pb.js     $EXP_api_acct     $SHA_api
 dl "$BASE/client_bind_helpers.js" /tmp/client_bind_helpers.js $EXP_client_bind_helpers $SHA_client_bind_helpers
 dl "$BASE/schema_patch_v7_client_bind.pb.js" /tmp/schema_patch_v7_client_bind.pb.js $EXP_schema_patch_v7 $SHA_schema_patch_v7
 dl "$BASE/schema_patch_v8_member_sections.pb.js" /tmp/schema_patch_v8_member_sections.pb.js $EXP_schema_patch_v8 $SHA_schema_patch_v8
+dl "$BASE/schema_patch_v9_bind_dates.pb.js" /tmp/schema_patch_v9_bind_dates.pb.js $EXP_schema_patch_v9 $SHA_schema_patch_v9
+dl "$BASE/perm_sections_helper.js" /tmp/perm_sections_helper.js $EXP_perm_sections_helper $SHA_perm_sections_helper
 
 echo "== [2/5] 下载前端 app24.html + 运营后台 admin10.html =="
 dl "$BASE/app24.html" /tmp/app24.html $EXP_app $SHA_app
@@ -213,11 +219,14 @@ sudo cp /tmp/api_acct.pb.js     "$HOOKS/api_acct.pb.js"
 sudo cp /tmp/client_bind_helpers.js "$HOOKS/client_bind_helpers.js"
 sudo cp /tmp/schema_patch_v7_client_bind.pb.js "$HOOKS/schema_patch_v7_client_bind.pb.js"
 sudo cp /tmp/schema_patch_v8_member_sections.pb.js "$HOOKS/schema_patch_v8_member_sections.pb.js"
+sudo cp /tmp/schema_patch_v9_bind_dates.pb.js "$HOOKS/schema_patch_v9_bind_dates.pb.js"
+# 普通 .js（不是 .pb.js）：被 api_team.pb.js / api.pb.js require，PB 不会把它当钩子加载
+sudo cp /tmp/perm_sections_helper.js "$HOOKS/perm_sections_helper.js"
 sudo rm -f "$HOOKS/schema_patch_v5_client_bind.pb.js"   # 旧版每分钟刷「建表失败」日志，已由 v6 → v7 取代
 # ⚠️ v6 必须删：它的字段齐全判定是错的（数 fields.length，把 id/created/updated 三个系统字段算进去，
 #    字段一个没加成功也会判定通过并 cronRemove），留着只会让人误以为绑定表是健康的。
 sudo rm -f "$HOOKS/schema_patch_v6_client_bind.pb.js"
-echo "  ✓ 附带模块 client_bind_helpers.js 已写入（供 api_acct.pb.js require）"
+echo "  ✓ 附带模块 client_bind_helpers.js / perm_sections_helper.js 已写入（供钩子 require）"
 
 # ── 清理历史残留钩子（2026-09-03，用户授权）──
 #   这两个都不在 HOOK_N=8 里，属于早期遗留：留着不影响功能，但每次 PB 启动都会白跑一遍。
@@ -235,13 +244,14 @@ if ! sudo systemctl is-active --quiet pocketbase; then
 fi
 echo "  ✓ pocketbase 已启动（$HOOK_N 钩子常驻）"
 echo ""
-echo "  ⏳ schema_patch_v3 / v7 / v8 走 cron（每分钟触发一次），不是启动即生效："
+echo "  ⏳ schema_patch_v3 / v7 / v8 / v9 走 cron（每分钟触发一次），不是启动即生效："
 echo "     v3：约 1 分钟内把 invitations / access_requests / users 的 role 候选值扩为 8 值并集。"
 echo "     v7：约 1 分钟内体检并补建 client_bind_codes / client_bindings 的字段（按字段名逐个比对）。"
 echo "     v8：约 1 分钟内给 memberships 补 sections 字段（成员版块级权限落库）。"
-echo "     三者打完补丁均自我注销（cronRemove）。"
+echo "     v9：约 1 分钟内给 client_bind_codes / client_bindings 补 created/updated（AutodateField）。"
+echo "     四者打完补丁均自我注销（cronRemove）。"
 echo "  📌 取证命令（看补丁到底做了什么、有没有自我注销）："
-echo "       sudo journalctl -u pocketbase --since '-5min' | grep -E 'sp_v7|sp_v8'"
+echo "       sudo journalctl -u pocketbase --since '-5min' | grep -E 'sp_v7|sp_v8|sp_v9'"
 echo "     远程自查（无需登录：404=表不存在，403=表已存在）："
 echo "       curl -o /dev/null -w '%{http_code}' 'http://106.55.14.231/api/collections/client_bind_codes/records?perPage=1'"
 echo "     预期看到：v3「已生效，cron 自我注销」+ v6「两张表已就位，cron 自我注销」"

@@ -337,15 +337,20 @@ routerAdd('GET', '/api/me', (e) => {
       const mrow = $app.findFirstRecordByFilter('memberships',
         "user_id = '" + auth.id + "' && org_id = '" + org + "' && status = 'active'");
       if (mrow) {
-        const sv = mrow.get('sections');
-        if (sv === null || sv === undefined || sv === '') {
-          mySections = null;
-        } else if (typeof sv === 'string') {
-          try { const pv = JSON.parse(sv); mySections = (pv && typeof pv.length === 'number') ? pv : null; }
-          catch (eP) { mySections = null; }
-        } else if (typeof sv.length === 'number') {
-          mySections = [];
-          for (let si = 0; si < sv.length; si++) mySections.push(String(sv[si]));
+        /* #452：JSONField 的 get() 在 goja 里返回**原始 JSON 字节数组**（元素是 ASCII 码），
+           `typeof sv.length === 'number'` 的旧分支会把空字段读成 []（空数组 truthy）
+           → 前端当成「已自定义且一个版块都没勾」→ 全部岗位预设权限消失。
+           统一交给 perm_sections_helper.js 解析；模块缺失时只认字符串，绝不返回 []。 */
+        let PS = null;
+        try { PS = require(`${__hooks}/perm_sections_helper.js`); } catch (eReq) { PS = null; }
+        if (PS && typeof PS.parseSections === 'function') {
+          mySections = PS.parseSections(mrow.get('sections'));
+        } else {
+          const sv = mrow.get('sections');
+          if (typeof sv === 'string' && sv.trim() && sv.trim().charAt(0) === '[') {
+            try { const pv = JSON.parse(sv.trim()); mySections = (pv && typeof pv.length === 'number') ? pv : null; }
+            catch (eP) { mySections = null; }
+          }
         }
       }
     } catch (eSec) { mySections = null; }
@@ -482,6 +487,63 @@ routerAdd('POST', '/api/data/save', (e) => {
       updated: String(rec.get('updated') || ''),
       updated_by: who
     });
+  }
+
+  /* #454 内容没变就不写：V1 整包同步是「拉完就 persist → persist 就 push」，
+     任何成员刷新/登录都会把一字未变的数据原样推回来。旧行为照单全收
+     → rev+1、updated_by 顶成刚刷新的人 → 其他真正改了数据的同事立刻 409
+     「xxx 在 xx:xx 修改过这份数据」（其实人家只是打开了一下页面）。
+     这里把「云端已有数据」与「本次上传」做深比较（键序无关：服务端 Go 序列化
+     按字典序排键，客户端保持自己的键序，字符串比对必不等——本地已实测踩坑），
+     完全一致就不落盘：rev 不动、updated_by 不动、不写历史快照。
+     ⚠️ ①goja 里 JSONField 的 get() 返回原始 JSON **字节数组**（#452），中文是
+        UTF-8 多字节，逐字节 fromCharCode 会变乱码，必须手动 UTF-8 解码；
+       ②钩子回调上下文看不到文件顶层声明，辅助函数必须放回调体内；
+       ③比对失败则失败开放走原保存路径，绝不因比对逻辑挡住正常保存。 */
+  if (!force) {
+    try {
+      function bytesToUtf8(bytes) {
+        let out = '', i = 0;
+        while (i < bytes.length) {
+          const b = bytes[i] & 0xff;
+          if (b < 0x80) { out += String.fromCharCode(b); i += 1; }
+          else if (b < 0xE0) { out += String.fromCharCode(((b & 0x1F) << 6) | (bytes[i + 1] & 0x3F)); i += 2; }
+          else if (b < 0xF0) { out += String.fromCharCode(((b & 0x0F) << 12) | ((bytes[i + 1] & 0x3F) << 6) | (bytes[i + 2] & 0x3F)); i += 3; }
+          else {
+            let cp = ((b & 0x07) << 18) | ((bytes[i + 1] & 0x3F) << 12) | ((bytes[i + 2] & 0x3F) << 6) | (bytes[i + 3] & 0x3F);
+            cp -= 0x10000;
+            out += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF));
+            i += 4;
+          }
+        }
+        return out;
+      }
+      function deepEq(x, y) {
+        if (x === y) return true;
+        if (typeof x !== 'object' || typeof y !== 'object' || x === null || y === null) return false;
+        if (Array.isArray(x) !== Array.isArray(y)) return false;
+        if (Array.isArray(x)) {
+          if (x.length !== y.length) return false;
+          for (let i = 0; i < x.length; i++) { if (!deepEq(x[i], y[i])) return false; }
+          return true;
+        }
+        const kx = Object.keys(x), ky = Object.keys(y);
+        if (kx.length !== ky.length) return false;
+        for (let i = 0; i < kx.length; i++) {
+          const k = kx[i];
+          if (!Object.prototype.hasOwnProperty.call(y, k)) return false;
+          if (!deepEq(x[k], y[k])) return false;
+        }
+        return true;
+      }
+      const raw = rec.get('data');
+      let stored = '';
+      if (typeof raw === 'string') stored = raw;
+      else if (raw && typeof raw.length === 'number') stored = bytesToUtf8(raw);
+      if (stored && deepEq(JSON.parse(stored), inData)) {
+        return e.json(200, { ok: true, rev: cur, unchanged: true });
+      }
+    } catch (eEq) { /* 比不了就当变了，走原保存路径 */ }
   }
 
   /* ── 后悔药：覆盖写之前先把当前这一版存进历史表 ──

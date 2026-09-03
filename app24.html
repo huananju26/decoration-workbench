@@ -4778,7 +4778,7 @@ function isJwtExpired(t){
 /* PocketBase 错误 → 中文提示 */
 function cloudAuthErr(j,fallback){
   if(!j||typeof j!=='object')return fallback;
-  const msg=String(j.message||j.msg||'');
+  const msg=String(j.message||j.msg||j.error||'');   /* #455：cossign 全部返回 {error:...}，此前不认 → 真实原因（配额满/没加公司）被吞成「操作失败」 */
   const map=[
     ['Failed to authenticate','邮箱或密码错误，请重试'],
     ['already exists','该邮箱已注册，请直接登录'],
@@ -4818,7 +4818,7 @@ const CloudSync={
       let j=null;try{j=JSON.parse(txt);}catch(e){j={__raw:txt};}
       if(!r.ok){
         const friendly=cloudAuthErr(j,'操作失败');
-        const raw=(j&&(j.message||j.__raw))||'';
+        const raw=(j&&(j.message||j.msg||j.error||j.__raw))||'';   /* #455：同上，透出 cossign 的 error 原文 */
         const err=new Error(friendly+(r.status?('（HTTP '+r.status+'）'):'')
           +((friendly==='操作失败'&&raw)?('：'+String(raw).slice(0,120)):''));
         err.status=r.status;err.body=j;
@@ -5328,7 +5328,7 @@ async function cloudReloadFromServer(){
   cloudStatusSet('\u2601\ufe0f 正在加载对方的版本…');
   try{
     const d=await CloudSync.pull();
-    if(d){applyCloudData(d,false);persist();}
+    if(d){__cloudLanding=true;applyCloudData(d,false);persist();__cloudLanding=false;}
     try{ refreshProjectUI(); }catch(e){}
     try{ if(typeof currentPage!=='undefined'&&currentPage)switchPage(currentPage); }catch(e){}
     cloudStatusSet('\u2601\ufe0f 已切换到对方的版本 '+new Date().toLocaleTimeString());
@@ -5737,7 +5737,9 @@ async function unitSyncNow(){
     const changed=applyUnits(res);
     if(changed){
       cleanupOrphanedRecords(App);
+      __cloudLanding=true;           /* #454：落地期间挂起 push（unit 模式有哈希跳过，双保险） */
       persist();
+      __cloudLanding=false;
       try{ refreshProjectUI(); }catch(e){}
       if(typeof currentPage!=='undefined'&&currentPage)switchPage(currentPage);
       cloudStatusSet('☁️ 已同步（已合并同事的改动）'+new Date().toLocaleTimeString());
@@ -5781,7 +5783,9 @@ async function cloudSyncNow(){
           return;
         }
       cleanupOrphanedRecords(App);   /* 云端数据也可能含孤儿，拉取后再次清理再落地 */
+      __cloudLanding=true;           /* #454：落地期间挂起 push，别把刚拉的数据推回去顶版本号 */
       persist();
+      __cloudLanding=false;
       refreshProjectUI();if(currentPage)switchPage(currentPage);
       cloudStatusSet('☁️ 已同步（已下载云端数据）'+new Date().toLocaleTimeString());
     }else{
@@ -6079,7 +6083,8 @@ function persist(){
   }
   try{localStorage.setItem(APP_KEY,JSON.stringify(App));__storageBroken=false;hideStorageWarning();}
   catch(e){__storageBroken=true;showStorageWarning();}
-  if(CloudSync.configured&&CloudSync.loggedIn){cloudPushSoon();}
+  /* #454：云端落地触发的 persist 不推（数据刚从云端拉回来，推回去只会空转顶版本号） */
+  if(CloudSync.configured&&CloudSync.loggedIn&&!__cloudLanding){cloudPushSoon();}
   /* 数据一变更即刷新侧边栏红点数字（此前只在 switchPage/初始化时刷新，导致「要点一下才更新」） */
   scheduleNavBadgeRefresh();
 }
@@ -15262,6 +15267,10 @@ function openAddContract(prefill){
 function saveContract(){
   const title=$('conTitle').value.trim();
   if(!title){alert('请填写合同名称');$('conTitle').focus();return;}
+  /* #453：必须在改 _editingContractId **之前**先记下「是不是编辑」——
+     原写法在下面 15274 行编辑分支里已经把它清成 null，末尾再判断恒为 null
+     → 更新合同永远被记成「新建合同」。 */
+  const isEdit=!!_editingContractId;
   const data={
     title:title,type:$('conType').value,projectId:$('conProject').value||'',
     supplierId:$('conSupplier').value||'',party:$('conParty').value.trim(),
@@ -15282,7 +15291,7 @@ function saveContract(){
     _pendingConLink=null;
   }
   persist();closeModal('contractModal');renderContracts();renderHome();
-  recordOperation(_editingContractId?'contract':'contract',(_editingContractId?'编辑':'新建')+'合同「'+title+'」',data.projectId);
+  recordOperation('contract',(isEdit?'编辑':'新建')+'合同「'+title+'」',data.projectId);
   _editingContractId=null;
 }
 function editContract(id){
@@ -19423,8 +19432,11 @@ function saveFinance(){
   else{rec.paid=status;rec.cat=$('fCat').value;rec.stage=$('fStage').value;rec.payee=$('fPayee').value;target.expense.push(rec);}
   /* 反向同步：记账支出改动后回写采购调配单的 payStatus/paidAmount（双向联动） */
   if(type==='expense')syncExpensesToPurchases(target);
+  /* #453 同款时序坑：下一行先把 editingFinance 清 null，原来的下一行才判断
+     → 编辑流水永远记成不带「编辑」前缀的新增。先记快照。 */
+  const __finIsEdit=!!editingFinance;
   persist();closeModal('financeModal');editingFinance=null;renderFinance();renderLedger&&renderLedger();renderHome();renderContracts&&renderContracts();
-  recordOperation(type==='income'?'payment':'payment',(editingFinance?'编辑':'')+(type==='income'?'收款':'付款')+'「'+name+'」('+amount+'元)',pid);
+  recordOperation(type==='income'?'payment':'payment',(__finIsEdit?'编辑':'')+(type==='income'?'收款':'付款')+'「'+name+'」('+amount+'元)',pid);
 }
 /* 由「记一笔」自动创建发票并关联（满足对公开票自动进入发票管理）。
    status 缺省 '草稿'（未开票路径）；已开票路径传 '已开'。 */
@@ -20544,6 +20556,22 @@ async function doInviteMember(){
   }
 }
 
+/* #452 版块 key 合法性清洗（自愈）
+   后端 memberships.sections 是 PB 的 JSONField，goja 里 get() 返回的是**原始 JSON 字节数组**
+   —— 老读取逻辑把字节当字符串数组，于是库里可能被写进 ["91","34","104",...] 这种 ASCII 码垃圾。
+   这里做两件事：
+     ① 只保留 SECTION_EDIT_ORDER 里登记过的合法 key（顺带清掉历史脏值）
+     ② **一条合法 key 都没有** → 判定为坏数据，返回 null，让其回退到角色默认权限
+        （宁可给足角色预设，也不能让人一个版块都进不去）
+   注意：[]（显式空数组）原样返回 —— 那是管理员「全部取消」的合法语义。 */
+function sanitizeSections(arr){
+  if(!arr||!arr.length)return arr;              /* null / [] 原样放行 */
+  var ok=[];
+  for(var i=0;i<arr.length;i++){
+    if(SECTION_EDIT_ORDER.indexOf(arr[i])>=0)ok.push(arr[i]);
+  }
+  return ok.length?ok:null;                     /* 全是垃圾 → 当作未自定义 */
+}
 /* 权限编辑器弹窗（22 版块全量矩阵 + 四维权限子板块控制） */
 function openPermEditor(uid){
   var m=null;
@@ -20553,8 +20581,8 @@ function openPermEditor(uid){
   var entry=lp[permKey(uid)]||lp[uid]||{};
   /* #447 服务端为准：管理员在任何一台机器上设的权限都要能看到、能改 */
   var serverSections=(m.sections&&Array.isArray(m.sections))?m.sections:null;
-  var savedSections=serverSections
-    ||((entry.sections&&Array.isArray(entry.sections))?entry.sections:null);
+  var savedSections=sanitizeSections(serverSections)
+    ||sanitizeSections((entry.sections&&Array.isArray(entry.sections))?entry.sections:null);
   var role=m.role||'';
   /* 默认勾选：有自定义 sections 用它；否则按角色在 SECTION_ACL / 四维权限里的默认值 */
   var defaultAllowed=[];
@@ -20658,11 +20686,17 @@ function readMemberSections(pm,uid){
 function mySections(){
   try{
     var me=CloudSync.__me;
-    if(me&&Array.isArray(me.sections))return me.sections.slice();
+    /* #452：先过一遍清洗 —— 服务端若返回字节数组坏数据（["91","34",…]），
+       sanitizeSections 会返回 null，这里就能继续往下走到本机覆盖 / 角色默认，
+       而不是把「一条都匹配不上」当成「一个版块都不许进」把人锁死。 */
+    if(me&&Array.isArray(me.sections)){
+      var sv=sanitizeSections(me.sections.slice());
+      if(sv)return sv;
+    }
   }catch(e){}
   try{
     var uid=(cloudUser&&cloudUser.uid)||(CloudSync.__me&&CloudSync.__me.id)||'';
-    if(uid)return readMemberSections(getLocalPerms(),uid);
+    if(uid)return sanitizeSections(readMemberSections(getLocalPerms(),uid));
   }catch(e){}
   return null;
 }
@@ -21175,6 +21209,10 @@ function addOpLog(action,desc,projectId){
    ⚠️ 指纹只取「条数 / 完成数 / 金额合计」这类轻量指标，绝不深拷贝业务数据。 */
 var __opSig=null;
 var __opLogSuspend=false;          /* 云端数据落地期间挂起，避免整包数据被记成本人操作 */
+var __cloudLanding=false;          /* #454：云端数据落地期间挂起 push —— 拉下来的数据本来就是
+                                      服务端最新的，落地后 persist 再无条件推回去，等于
+                                      「刷新一次就顶掉一次版本号/updated_by」，让没改数据的
+                                      同事被冤枉成「修改者」，真正改数据的人反而 409。 */
 var OP_ARR_META={
   tasks:        {label:'施工待办', action:'plan'},
   processSteps: {label:'施工节点', action:'plan'},
@@ -22663,7 +22701,9 @@ async function init(){
             return;
           }
           cleanupOrphanedRecords(App);   /* 云端数据也可能含孤儿，拉取后再次清理再落地 */
+          __cloudLanding=true;           /* #454：落地期间挂起 push（见 persist 内说明） */
           persist();
+          __cloudLanding=false;
           refreshProjectUI();
           /* 静默刷新当前页面（不跳转、不滚动），用户无感知数据已更新 */
           const page=currentPage||'home';

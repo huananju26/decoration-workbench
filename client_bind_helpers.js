@@ -73,12 +73,29 @@ function find(app, col, filter, sort, limit) {
   if (ck.fieldMissing.length > 0) {
     return { ok: false, kind: 'no-field', msg: ck.fieldMissing.join('、') };
   }
-  try {
-    var rows = app.findRecordsByFilter(col, filter, sort || '-created', limit || 100, 0);
-    return { ok: true, rows: rows || [] };
-  } catch (err) {
-    return { ok: false, kind: 'query', msg: String((err && err.message) ? err.message : err) };
+  /* 排序降级链：'-created' → '-id' → ''（不排序）
+     #451：JSVM 空壳建表（new Collection({fields:[]})）**不会自动补 created/updated**
+     —— 实测建出来的集合只有 id，于是任何按 -created 的排序都抛
+        `invalid sort field "created"`，把整个绑定弹窗打成 400（详见 pb-pitfalls ㉖）。
+     根因由 schema_patch_v9_bind_dates 补字段解决；这里加降级是为了让**补丁跑完前那一分钟**
+     弹窗也能出内容，而不是整块红字报错。
+     · 只有「排序类」错误才值得换排序重试；过滤语法错 / 权限异常换排序也没用，直接回。 */
+  var want = sort || '-created';
+  var tries = [want, '-id', ''];
+  if (want === '-created') tries = ['-created', '-id', ''];
+  var last = '';
+  for (var i = 0; i < tries.length; i++) {
+    try {
+      var rows = app.findRecordsByFilter(col, filter, tries[i], limit || 100, 0);
+      return { ok: true, rows: rows || [], sort: tries[i] };
+    } catch (err) {
+      last = String((err && err.message) ? err.message : err);
+      if (last.indexOf('sort') < 0) {
+        return { ok: false, kind: 'query', msg: last };   /* 非排序错误，换排序没意义 */
+      }
+    }
   }
+  return { ok: false, kind: 'query', msg: last };
 }
 
 /* 把 find 的回执翻成能直接甩给用户看的中文 */
